@@ -1,0 +1,36 @@
+# Python
+.venv/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# Build and packaging
+build/
+dist/
+*.egg-info/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Operating systems
+.DS_Store
+Thumbs.db
+
+# Data contents (keep directory placeholders)
+/data/raw/*
+!/data/raw/.gitkeep
+/data/normalized/*
+!/data/normalized/.gitkeep
+/data/media/*
+!/data/media/.gitkeep
