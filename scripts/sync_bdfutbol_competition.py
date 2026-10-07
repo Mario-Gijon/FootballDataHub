@@ -583,8 +583,14 @@ def _print_events(events: list[dict[str, Any]]) -> None:
             print(f"             error={event['error']}")
 
 
-def run_sync(args: argparse.Namespace) -> int:
-    project_root = Path(__file__).resolve().parents[1]
+def run_sync(
+    args: argparse.Namespace,
+    *,
+    project_root: Path | None = None,
+) -> int:
+    project_root = (
+        project_root or Path(__file__).resolve().parents[1]
+    ).resolve()
 
     try:
         url, snapshot_name = build_url_and_snapshot_name(
