@@ -12,6 +12,7 @@ dependencies = [
     "httpx",
     "beautifulsoup4",
     "lxml",
+    "playwright",
 ]
 
 [project.optional-dependencies]
