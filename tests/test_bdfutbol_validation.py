@@ -68,3 +68,13 @@ def test_url_match_treats_requested_query_parameters_as_significant() -> None:
         requested,
         "https://www.bdfutbol.com/es/t/table.html?a=1&b=3",
     )
+
+
+def test_url_match_requires_query_equality_on_both_urls() -> None:
+    base = "https://www.bdfutbol.com/es/t/t2026-271rf1.html"
+
+    assert url_matches_target(base, base)
+    assert not url_matches_target(base, f"{base}?tab=referees")
+    assert url_matches_target(f"{base}?tab=top", f"{base}?tab=top")
+    assert not url_matches_target(f"{base}?tab=top", f"{base}?tab=referees")
+    assert not url_matches_target(f"{base}?tab=top", base)

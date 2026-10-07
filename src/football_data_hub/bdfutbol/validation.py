@@ -61,11 +61,40 @@ def url_matches_target(requested_url: str, final_url: str) -> bool:
     if requested_path != final_path:
         return False
 
-    requested_query = parse_qsl(requested.query, keep_blank_values=True)
-    if requested_query:
-        final_query = parse_qsl(final.query, keep_blank_values=True)
-        return sorted(requested_query) == sorted(final_query)
-    return True
+    requested_query = sorted(parse_qsl(requested.query, keep_blank_values=True))
+    final_query = sorted(parse_qsl(final.query, keep_blank_values=True))
+    return requested_query == final_query
+
+
+def urls_share_origin(first_url: str, second_url: str) -> bool:
+    """Return whether two HTTP(S) URLs have the same normalized origin."""
+
+    try:
+        first = urlsplit(first_url)
+        second = urlsplit(second_url)
+        first_host = (first.hostname or "").encode("idna").decode().casefold().rstrip(".")
+        second_host = (second.hostname or "").encode("idna").decode().casefold().rstrip(".")
+        first_port = first.port
+        second_port = second.port
+    except (UnicodeError, ValueError):
+        return False
+
+    first_scheme = first.scheme.casefold()
+    second_scheme = second.scheme.casefold()
+    if first_scheme not in {"http", "https"} or first_scheme != second_scheme:
+        return False
+    if not first_host or first_host != second_host:
+        return False
+    if first.username or first.password or second.username or second.password:
+        return False
+
+    def normalized_port(scheme: str, port: int | None) -> int | None:
+        default_port = {"http": 80, "https": 443}.get(scheme)
+        return None if port == default_port else port
+
+    return normalized_port(first_scheme, first_port) == normalized_port(
+        second_scheme, second_port
+    )
 
 
 @dataclass(frozen=True, slots=True)

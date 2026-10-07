@@ -14,7 +14,12 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import sync_playwright
 
 from .browser import BrowserRuntimeError, start_browser, stop_browser
-from .validation import PageAssessment, assess_page, url_matches_target
+from .validation import (
+    PageAssessment,
+    assess_page,
+    url_matches_target,
+    urls_share_origin,
+)
 
 
 class AcquisitionStatus(str, Enum):
@@ -65,12 +70,12 @@ def _classify_page(
 ) -> AcquisitionStatus:
     if assessment.challenge_visible:
         return AcquisitionStatus.BLOCKED
+    if navigation_error:
+        return AcquisitionStatus.NAVIGATION_ERROR
     if not url_matches_target(requested_url, final_url):
         return AcquisitionStatus.INVALID_CONTENT
     if assessment.accessible:
         return AcquisitionStatus.VALID
-    if navigation_error:
-        return AcquisitionStatus.NAVIGATION_ERROR
     return AcquisitionStatus.INVALID_CONTENT
 
 
@@ -450,10 +455,18 @@ class BDFutbolAcquirer:
                 context = browser.contexts[0]
                 page = self._find_target_page(context.pages, url)
                 if page is None:
+                    page = self._find_bdfutbol_candidate_page(context.pages, url)
+
+                if page is None:
                     deadline = time.monotonic() + min(self.warmup_seconds, 5.0)
                     while time.monotonic() < deadline and page is None:
                         time.sleep(0.25)
                         page = self._find_target_page(context.pages, url)
+                        if page is None:
+                            page = self._find_bdfutbol_candidate_page(
+                                context.pages,
+                                url,
+                            )
 
                 if page is None:
                     observed_final_url = None
@@ -487,28 +500,52 @@ class BDFutbolAcquirer:
 
                 deadline = time.monotonic() + self.warmup_seconds
                 assessment: PageAssessment | None = None
+                navigation_error: str | None = None
                 final_url = page.url
                 target_matches = url_matches_target(url, final_url)
                 while True:
-                    assessment = assess_page(page, expected_texts)
                     final_url = page.url
                     target_matches = url_matches_target(url, final_url)
-                    if (
-                        assessment.accessible and target_matches
-                    ) or time.monotonic() >= deadline:
+                    assessment = assess_page(
+                        page,
+                        expected_texts if target_matches else (),
+                    )
+
+                    if assessment.accessible and not assessment.challenge_visible:
+                        if not target_matches:
+                            try:
+                                page.goto(
+                                    url,
+                                    wait_until="domcontentloaded",
+                                    timeout=self.timeout_ms,
+                                )
+                                page.wait_for_timeout(self.settle_ms)
+                            except PlaywrightError as exc:
+                                navigation_error = (
+                                    f"{type(exc).__name__}: {exc}"
+                                )
+
+                            final_url = page.url
+                            target_matches = url_matches_target(url, final_url)
+                            assessment = assess_page(page, expected_texts)
+                        break
+
+                    if time.monotonic() >= deadline:
                         break
                     time.sleep(1.0)
 
-                if assessment.accessible and target_matches:
+                if assessment.accessible and target_matches and not navigation_error:
                     # Damos un instante al navegador para persistir cookies/storage.
                     time.sleep(1.0)
                     final_url = page.url
                     target_matches = url_matches_target(url, final_url)
+                    assessment = assess_page(page, expected_texts)
 
                 status = _classify_page(
                     assessment,
                     requested_url=url,
                     final_url=final_url,
+                    navigation_error=navigation_error,
                 )
 
                 self._save_page_artifacts(page, output_dir, assessment)
@@ -518,6 +555,7 @@ class BDFutbolAcquirer:
                     status=status,
                     directory=str(output_dir),
                     assessment=assessment.as_dict(),
+                    navigation_error=navigation_error,
                     requested_url=url,
                     final_url=final_url,
                     url_matches_target=target_matches,
@@ -548,6 +586,22 @@ class BDFutbolAcquirer:
             except Exception:
                 continue
         return None
+
+    @staticmethod
+    def _find_bdfutbol_candidate_page(pages: list[Any], url: str) -> Any | None:
+        first_same_origin_page = None
+        for page in pages:
+            try:
+                if not urls_share_origin(url, page.url):
+                    continue
+                if first_same_origin_page is None:
+                    first_same_origin_page = page
+                assessment = assess_page(page)
+                if assessment.accessible and not assessment.challenge_visible:
+                    return page
+            except Exception:
+                continue
+        return first_same_origin_page
 
     @staticmethod
     def _safe_name(name: str) -> str:
