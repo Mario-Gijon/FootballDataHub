@@ -254,6 +254,16 @@ class BDFutbolAcquirer:
                     expected_texts=tuple(expected_texts),
                 )
                 attempts.append(warmup)
+                if warmup.status is AcquisitionStatus.VALID:
+                    final_status = AcquisitionStatus.VALID
+                    valid_snapshot = warmup_dir
+                    self._write_latest_valid(
+                        base_dir=base_dir,
+                        run_dir=run_dir,
+                        snapshot_dir=warmup_dir,
+                        url=url,
+                    )
+                    break
 
             if self.retry_delay_seconds:
                 time.sleep(self.retry_delay_seconds)
