@@ -1,4 +1,4 @@
-from football_data_hub.bdfutbol.validation import assess_snapshot
+from football_data_hub.bdfutbol.validation import assess_snapshot, url_matches_target
 
 
 def test_cloudflare_verification_is_blocked() -> None:
@@ -48,3 +48,23 @@ def test_expected_text_can_reject_wrong_bdfutbol_page() -> None:
     assert assessment.accessible is False
     assert assessment.challenge_visible is False
     assert assessment.expected_texts_ok is False
+
+
+def test_url_match_normalizes_host_trailing_slash_and_fragment() -> None:
+    assert url_matches_target(
+        "HTTPS://WWW.BDFUTBOL.COM/es/t/t2026-271rf1.html/#tabla",
+        "https://www.bdfutbol.com/es/t/t2026-271rf1.html",
+    )
+
+
+def test_url_match_treats_requested_query_parameters_as_significant() -> None:
+    requested = "https://www.bdfutbol.com/es/t/table.html?a=1&b=2"
+
+    assert url_matches_target(
+        requested,
+        "https://www.bdfutbol.com/es/t/table.html?b=2&a=1#fixtures",
+    )
+    assert not url_matches_target(
+        requested,
+        "https://www.bdfutbol.com/es/t/table.html?a=1&b=3",
+    )

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from typing import Any, Iterable
+from urllib.parse import parse_qsl, urlsplit
 
 
 VISIBLE_CHALLENGE_MARKERS = (
@@ -15,6 +16,56 @@ VISIBLE_CHALLENGE_MARKERS = (
     "verifique que es un ser humano",
     "verify you are human",
 )
+
+
+def url_matches_target(requested_url: str, final_url: str) -> bool:
+    """Return whether two URLs identify the same requested resource.
+
+    Scheme and hostname casing are normalized, default ports and trailing
+    slashes are ignored, and fragments never affect resource identity. If the
+    requested URL has query parameters, they must match regardless of order.
+    """
+
+    try:
+        requested = urlsplit(requested_url)
+        final = urlsplit(final_url)
+        requested_host = (
+            (requested.hostname or "").encode("idna").decode().casefold().rstrip(".")
+        )
+        final_host = (final.hostname or "").encode("idna").decode().casefold().rstrip(".")
+        requested_port = requested.port
+        final_port = final.port
+    except (UnicodeError, ValueError):
+        return False
+
+    if not requested_host or requested_host != final_host:
+        return False
+    if requested.scheme.casefold() not in {"http", "https"}:
+        return False
+    if requested.scheme.casefold() != final.scheme.casefold():
+        return False
+    if requested.username or requested.password or final.username or final.password:
+        return False
+
+    def normalized_port(scheme: str, port: int | None) -> int | None:
+        default_port = {"http": 80, "https": 443}.get(scheme.casefold())
+        return None if port == default_port else port
+
+    if normalized_port(requested.scheme, requested_port) != normalized_port(
+        final.scheme, final_port
+    ):
+        return False
+
+    requested_path = requested.path.rstrip("/") or "/"
+    final_path = final.path.rstrip("/") or "/"
+    if requested_path != final_path:
+        return False
+
+    requested_query = parse_qsl(requested.query, keep_blank_values=True)
+    if requested_query:
+        final_query = parse_qsl(final.query, keep_blank_values=True)
+        return sorted(requested_query) == sorted(final_query)
+    return True
 
 
 @dataclass(frozen=True, slots=True)

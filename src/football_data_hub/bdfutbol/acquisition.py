@@ -14,7 +14,7 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import sync_playwright
 
 from .browser import BrowserRuntimeError, start_browser, stop_browser
-from .validation import PageAssessment, assess_page
+from .validation import PageAssessment, assess_page, url_matches_target
 
 
 class AcquisitionStatus(str, Enum):
@@ -39,6 +39,9 @@ class AttemptRecord:
     navigation_error: str | None = None
     assessment: dict[str, Any] | None = None
     browser_error: str | None = None
+    requested_url: str | None = None
+    final_url: str | None = None
+    url_matches_target: bool | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,6 +54,24 @@ class AcquisitionResult:
     @property
     def ok(self) -> bool:
         return self.status is AcquisitionStatus.VALID
+
+
+def _classify_page(
+    assessment: PageAssessment,
+    *,
+    requested_url: str,
+    final_url: str,
+    navigation_error: str | None = None,
+) -> AcquisitionStatus:
+    if assessment.challenge_visible:
+        return AcquisitionStatus.BLOCKED
+    if not url_matches_target(requested_url, final_url):
+        return AcquisitionStatus.INVALID_CONTENT
+    if assessment.accessible:
+        return AcquisitionStatus.VALID
+    if navigation_error:
+        return AcquisitionStatus.NAVIGATION_ERROR
+    return AcquisitionStatus.INVALID_CONTENT
 
 
 def resolve_latest_valid_snapshot(project_root: Path, snapshot_name: str) -> Path:
@@ -342,15 +363,14 @@ class BDFutbolAcquirer:
                 page.wait_for_timeout(self.settle_ms)
                 assessment = assess_page(page, expected_texts)
                 self._save_page_artifacts(page, output_dir, assessment)
-
-                if assessment.accessible:
-                    status = AcquisitionStatus.VALID
-                elif assessment.challenge_visible:
-                    status = AcquisitionStatus.BLOCKED
-                elif navigation_error:
-                    status = AcquisitionStatus.NAVIGATION_ERROR
-                else:
-                    status = AcquisitionStatus.INVALID_CONTENT
+                final_url = page.url
+                target_matches = url_matches_target(url, final_url)
+                status = _classify_page(
+                    assessment,
+                    requested_url=url,
+                    final_url=final_url,
+                    navigation_error=navigation_error,
+                )
 
                 record = AttemptRecord(
                     number=attempt_number,
@@ -360,11 +380,12 @@ class BDFutbolAcquirer:
                     http_status_diagnostic=response_status,
                     navigation_error=navigation_error,
                     assessment=assessment.as_dict(),
+                    requested_url=url,
+                    final_url=final_url,
+                    url_matches_target=target_matches,
                 )
                 metadata = {
                     **self._record_dict(record),
-                    "requested_url": url,
-                    "final_url": page.url,
                     "browser_binary": runtime.browser_path,
                     "profile": str(runtime.profile),
                     "using_xvfb": runtime.using_xvfb,
@@ -435,12 +456,28 @@ class BDFutbolAcquirer:
                         page = self._find_target_page(context.pages, url)
 
                 if page is None:
+                    observed_final_url = None
+                    for candidate in context.pages:
+                        try:
+                            observed_final_url = candidate.url
+                            break
+                        except Exception:
+                            continue
                     record = AttemptRecord(
                         number=attempt_number,
                         phase="warmup",
                         status=AcquisitionStatus.INVALID_CONTENT,
                         directory=str(output_dir),
-                        browser_error="Brave no abrió una pestaña para la URL objetivo.",
+                        browser_error=(
+                            "No existe una pestaña para la URL/recurso objetivo."
+                        ),
+                        requested_url=url,
+                        final_url=observed_final_url,
+                        url_matches_target=(
+                            url_matches_target(url, observed_final_url)
+                            if observed_final_url is not None
+                            else None
+                        ),
                     )
                     self._dump_json(
                         output_dir / "metadata.json",
@@ -450,20 +487,29 @@ class BDFutbolAcquirer:
 
                 deadline = time.monotonic() + self.warmup_seconds
                 assessment: PageAssessment | None = None
+                final_url = page.url
+                target_matches = url_matches_target(url, final_url)
                 while True:
                     assessment = assess_page(page, expected_texts)
-                    if assessment.accessible or time.monotonic() >= deadline:
+                    final_url = page.url
+                    target_matches = url_matches_target(url, final_url)
+                    if (
+                        assessment.accessible and target_matches
+                    ) or time.monotonic() >= deadline:
                         break
                     time.sleep(1.0)
 
-                if assessment.accessible:
+                if assessment.accessible and target_matches:
                     # Damos un instante al navegador para persistir cookies/storage.
                     time.sleep(1.0)
-                    status = AcquisitionStatus.VALID
-                elif assessment.challenge_visible:
-                    status = AcquisitionStatus.BLOCKED
-                else:
-                    status = AcquisitionStatus.INVALID_CONTENT
+                    final_url = page.url
+                    target_matches = url_matches_target(url, final_url)
+
+                status = _classify_page(
+                    assessment,
+                    requested_url=url,
+                    final_url=final_url,
+                )
 
                 self._save_page_artifacts(page, output_dir, assessment)
                 record = AttemptRecord(
@@ -472,11 +518,12 @@ class BDFutbolAcquirer:
                     status=status,
                     directory=str(output_dir),
                     assessment=assessment.as_dict(),
+                    requested_url=url,
+                    final_url=final_url,
+                    url_matches_target=target_matches,
                 )
                 metadata = {
                     **self._record_dict(record),
-                    "requested_url": url,
-                    "final_url": page.url,
                     "warmup_seconds": self.warmup_seconds,
                     "browser_binary": runtime.browser_path,
                     "profile": str(runtime.profile),
@@ -494,14 +541,13 @@ class BDFutbolAcquirer:
 
     @staticmethod
     def _find_target_page(pages: list[Any], url: str) -> Any | None:
-        target_host = re.sub(r"^https?://", "", url).split("/", 1)[0].casefold()
         for page in pages:
             try:
-                if target_host in page.url.casefold():
+                if url_matches_target(url, page.url):
                     return page
             except Exception:
                 continue
-        return pages[0] if pages else None
+        return None
 
     @staticmethod
     def _safe_name(name: str) -> str:

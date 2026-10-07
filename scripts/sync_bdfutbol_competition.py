@@ -69,6 +69,8 @@ def _print_attempts(result: AcquisitionResult) -> None:
                 f" challenge={assessment['challenge_visible']}"
                 f" links={assessment['link_count']}"
             )
+        if item.url_matches_target is not None:
+            detail += f" url_matches_target={item.url_matches_target}"
         if item.browser_error:
             detail += f" error={item.browser_error}"
         print(f"[{item.phase:<7}] #{item.number} {item.status.value:<18}{detail}")
@@ -76,6 +78,10 @@ def _print_attempts(result: AcquisitionResult) -> None:
         if item.status is not AcquisitionStatus.VALID and item.assessment:
             for line in _assessment_diagnostic(item.assessment):
                 print(f"           {line}")
+        if item.requested_url is not None:
+            print(f"           requested_url={item.requested_url}")
+        if item.final_url is not None:
+            print(f"           final_url={item.final_url}")
 
 
 def _display_path(path: Path, project_root: Path) -> str:

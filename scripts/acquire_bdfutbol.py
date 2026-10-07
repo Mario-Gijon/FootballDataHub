@@ -81,6 +81,8 @@ def main() -> int:
                 f" challenge={item.assessment['challenge_visible']}"
                 f" links={item.assessment['link_count']}"
             )
+        if item.url_matches_target is not None:
+            detail += f" url_matches_target={item.url_matches_target}"
         if item.browser_error:
             detail += f" error={item.browser_error}"
         print(
@@ -89,6 +91,10 @@ def main() -> int:
         if item.status is not AcquisitionStatus.VALID and item.assessment:
             for line in _assessment_diagnostic(item.assessment):
                 print(f"           {line}")
+        if item.requested_url is not None:
+            print(f"           requested_url={item.requested_url}")
+        if item.final_url is not None:
+            print(f"           final_url={item.final_url}")
 
     print()
     print(f"Estado final: {result.status.value}")
