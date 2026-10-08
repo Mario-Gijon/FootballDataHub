@@ -8,12 +8,12 @@ import re
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import parse_qs, urljoin, urlsplit
 
 from bs4 import BeautifulSoup, Tag
 
-PLAYER_PARSER_VERSION = "0.1.4"
-PLAYER_SCHEMA_VERSION = "football_data_hub.bdfutbol.player_pages.v1"
+PLAYER_PARSER_VERSION = "0.2.0"
+PLAYER_SCHEMA_VERSION = "football_data_hub.bdfutbol.player_pages.v2"
 PLAYER_VIEWS = ("profile", "statistics", "matches", "rivals")
 _PLAYER_URL = re.compile(r"/es/(?:j/j|p/jr?|p/j)(\d+)\.html$")
 _PLAYER_ID = re.compile(r"(?:^|/)j(\d+)\.html$")
@@ -21,7 +21,7 @@ _TEAM_SEASON_ID = re.compile(r"(?:^|/)(t[^/]+)\.html$")
 _INTEGER = re.compile(r"^-?\d+$")
 _DATE = re.compile(r"^(\d{2})/(\d{2})/(\d{4})$")
 _SEASON = re.compile(r"^\d{4}-\d{2}$")
-_SCORE = re.compile(r"^\d+\s+\d+$")
+_SCORE = re.compile(r"^(\d+)\s+(\d+)$")
 
 
 class PlayerSnapshotError(ValueError):
@@ -43,6 +43,14 @@ def classify_player_view(url: str) -> tuple[str, str]:
     if query.get("p") == "stats":
         return player_id, "statistics"
     return player_id, "profile"
+
+
+def _is_base_view_url(url: str, view: str) -> bool:
+    """Recognize the canonical unfiltered route for each player view."""
+    query = parse_qs(urlsplit(url).query, keep_blank_values=True)
+    if view == "statistics":
+        return query == {"p": ["stats"]}
+    return not query
 
 
 def _text(node: Tag | None) -> str:
@@ -101,6 +109,7 @@ def _cell_record(cell: Tag, column_index: int, base_url: str) -> dict[str, Any]:
         "column_index": column_index,
         "tag": cell.name,
         "raw_value": raw,
+        "data_colid_raw": cell.get("data-colid"),
         "normalized_integer": _integer(raw),
         "value_status": _cell_value_status(raw),
         "title_raw": cell.get("title"),
@@ -196,6 +205,7 @@ def _table_record(
                     "column_index": column_index,
                     "header_original": cell["raw_value"],
                     "header_title_raw": cell["title_raw"],
+                    "data_colid_raw": cell.get("data_colid_raw"),
                     "group_header_raw": group_labels[column_index] if column_index < width else None,
                     "classes_raw": cell["classes_raw"],
                     "hidden_by_inline_style": cell["hidden_by_inline_style"],
@@ -234,6 +244,7 @@ _TABLE_ROLES: dict[str, dict[str, str]] = {
         "#t1": "match_summary_by_season",
         "#t55": "match_summary_by_team",
         "#t5": "match_summary_by_opponent",
+        "#tpartits": "individual_match_fixtures",
     },
     "rivals": {
         "#t5": "opponent_player_statistics",
@@ -544,7 +555,137 @@ def _relationship_occurrences(
     return relationships
 
 
-def _view_records(view: str, tables: list[dict[str, Any]], player_id: str) -> dict[str, Any]:
+def _header_key(value: Any) -> str:
+    return re.sub(r"\s+", " ", str(value or "").strip().casefold())
+
+
+def _individual_player_match_rows(
+    table: dict[str, Any],
+    *,
+    player_id: str,
+    captured_at_utc: str | None,
+) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    """Read fixture-like data rows from tpartits while retaining every source cell."""
+    from football_data_hub.parsers.match_status import assess_match_status
+
+    headers = {
+        int(header["column_index"]): header
+        for header in table.get("column_headers", [])
+        if isinstance(header.get("column_index"), int)
+    }
+
+    def column_index(*, colids: tuple[str, ...] = (), labels: tuple[str, ...] = ()) -> int | None:
+        for index, header in sorted(headers.items()):
+            if str(header.get("data_colid_raw") or "").casefold() in colids:
+                return index
+            label = _header_key(header.get("header_original"))
+            title = _header_key(header.get("header_title_raw"))
+            if label in labels or title in labels:
+                return index
+        return None
+
+    columns = {
+        "date": column_index(colids=("data",), labels=("fecha", "date")),
+        "season": column_index(colids=("temp",), labels=("temporada", "season")),
+        "competition": column_index(colids=("tipus",), labels=("competición", "competicion", "competition")),
+        "round": column_index(colids=("jor",), labels=("jornada", "round")),
+        "home": column_index(colids=("e1",), labels=("local", "home")),
+        "score": column_index(colids=("res",), labels=("marcador", "resultado", "result", "score")),
+        "away": column_index(colids=("e2",), labels=("visitante", "away")),
+    }
+    if columns["score"] is None and columns["home"] is not None and columns["away"] is not None:
+        between = [
+            index for index in sorted(headers)
+            if columns["home"] < index < columns["away"]
+        ]
+        if between:
+            columns["score"] = between[-1]
+
+    rows: list[dict[str, Any]] = []
+    role_counts = {role: 0 for role in ("header", "data", "total", "blank", "section")}
+    for row in table.get("rows", []):
+        role = str(row.get("row_role") or "data")
+        role_counts[role] = role_counts.get(role, 0) + 1
+        if role != "data":
+            continue
+        cells = {int(cell["column_index"]): cell for cell in row.get("cells", [])}
+
+        def raw(field: str) -> str | None:
+            index = columns[field]
+            value = cells.get(index, {}).get("raw_value") if index is not None else None
+            return str(value) if value is not None else None
+
+        match_link = None
+        match_id = None
+        for cell in row.get("cells", []):
+            for link in cell.get("links", []):
+                href = link.get("url")
+                entity_type, entity_id = _entity_reference(href) if href else (None, None)
+                if entity_type == "match" and entity_id:
+                    match_link = link
+                    match_id = entity_id
+                    break
+            if match_id:
+                break
+
+        # The table is the source's fixture list. A data row is retained even
+        # when some expected cells are malformed or absent; it is never made up.
+        date_raw = raw("date")
+        date_match = _DATE.fullmatch((date_raw or "").strip())
+        date_iso = (
+            f"{date_match.group(3)}-{date_match.group(2)}-{date_match.group(1)}"
+            if date_match else None
+        )
+        score_raw = raw("score")
+        score_match = _SCORE.fullmatch((score_raw or "").strip())
+        home_goals = int(score_match.group(1)) if score_match else None
+        away_goals = int(score_match.group(2)) if score_match else None
+        assessment_input = {
+            "match_id": match_id,
+            "date": date_iso,
+            "date_raw": date_raw,
+            "result_raw": score_raw,
+            "home_goals": home_goals,
+            "away_goals": away_goals,
+        }
+        assessment = assess_match_status(assessment_input, captured_at_utc=captured_at_utc)
+        match_row = {
+            "player_id": player_id,
+            "match_id": match_id,
+            "match_url": match_link.get("url") if match_link else None,
+            "season_raw": raw("season"),
+            "competition_raw": raw("competition"),
+            "round_raw": raw("round"),
+            "date_raw": date_raw,
+            "date": date_iso,
+            "home_team_raw": raw("home"),
+            "away_team_raw": raw("away"),
+            "result_raw": score_raw,
+            "home_goals": home_goals,
+            "away_goals": away_goals,
+            "source_values_raw": [cell.get("raw_value") for cell in row.get("cells", [])],
+            "cells": row.get("cells", []),
+            "column_headers": list(table.get("column_headers", [])),
+            "source_table_id": table.get("table_id"),
+            "source_table_index": table.get("table_index"),
+            "source_row_index": row.get("row_index"),
+            "row_duplicate_of": row.get("duplicate_of_row_index"),
+            "match_state": assessment["state"],
+            "match_state_issues": assessment["issues"],
+            "match_state_evidence": assessment["evidence"],
+        }
+        rows.append(match_row)
+    return rows, role_counts
+
+
+def _view_records(
+    view: str,
+    tables: list[dict[str, Any]],
+    player_id: str,
+    *,
+    base_url: str = "",
+    captured_at_utc: str | None = None,
+) -> dict[str, Any]:
     if view == "profile":
         raise PlayerSnapshotError("La vista profile requiere el parser de identidad y trayectoria")
     if view == "statistics":
@@ -566,6 +707,8 @@ def _view_records(view: str, tables: list[dict[str, Any]], player_id: str) -> di
     if view == "matches":
         summaries = []
         for table in tables:
+            if table.get("table_role") == "individual_match_fixtures":
+                continue
             for row in table["rows"]:
                 if row["row_role"] in {"data", "total", "section"}:
                     summaries.append({
@@ -578,10 +721,36 @@ def _view_records(view: str, tables: list[dict[str, Any]], player_id: str) -> di
                         "columns": row["cells"],
                         "source_table_index": table.get("table_index"),
                     })
+        fixture_table = next(
+            (table for table in tables if table.get("table_role") == "individual_match_fixtures"),
+            None,
+        )
+        individual_rows, row_role_counts = _individual_player_match_rows(
+            fixture_table,
+            player_id=player_id,
+            captured_at_utc=captured_at_utc,
+        ) if fixture_table else ([], {})
+        query = parse_qs(urlsplit(base_url).query, keep_blank_values=True)
+        filters = {key: values[-1] for key, values in query.items()}
+        if individual_rows:
+            detail_status = "INDIVIDUAL_MATCH_FIXTURE_ROWS_PRESENT"
+        elif fixture_table and row_role_counts.get("header", 0):
+            detail_status = "AGGREGATE_TABLES_ONLY_HEADER_ONLY_NO_FIXTURES"
+        elif fixture_table:
+            detail_status = "AGGREGATE_TABLES_ONLY_TPARTITS_EMPTY"
+        else:
+            detail_status = "AGGREGATE_TABLES_ONLY_TPARTITS_NOT_PRESENT"
         return {
             "match_summary_rows": summaries,
-            "individual_match_rows": [],
-            "match_detail_coverage": "AGGREGATE_TABLES_ONLY_NO_FIXTURE_ROWS_IN_SNAPSHOT",
+            "individual_match_rows": individual_rows,
+            "match_detail_coverage": detail_status,
+            "individual_match_row_role_counts": row_role_counts,
+            "filter_parameters": filters,
+            "filtered_view": bool(filters),
+            "exhaustiveness_status": (
+                "FILTERED_SNAPSHOT_NOT_EXHAUSTIVE" if filters
+                else "SNAPSHOT_SCOPE_ONLY_NOT_CERTIFIED_COMPLETE"
+            ),
         }
     if view == "rivals":
         records = []
@@ -638,7 +807,13 @@ def parse_player_html(
     if view == "profile":
         view_data = _profile_data(soup, tables, url)
     else:
-        view_data = _view_records(view, tables, player_id)
+        view_data = _view_records(
+            view,
+            tables,
+            player_id,
+            base_url=url,
+            captured_at_utc=str(metadata.get("captured_at_utc") or "") or None,
+        )
     roles_observed = [table["table_role"] for table in tables]
     missing_roles = [
         role for role in _REQUIRED_TABLE_ROLES[view]
@@ -660,7 +835,13 @@ def parse_player_html(
         "player_identity_key": player_id,
     }
     if view == "matches":
-        coverage["match_detail_scope"] = "AGGREGATE_ONLY"
+        coverage["match_detail_scope"] = (
+            "INDIVIDUAL_FIXTURE_ROWS"
+            if view_data.get("individual_match_rows") else "AGGREGATE_ONLY"
+        )
+        coverage["match_detail_coverage"] = view_data.get("match_detail_coverage")
+        coverage["filtered_view"] = view_data.get("filtered_view", False)
+        coverage["filter_parameters"] = view_data.get("filter_parameters", {})
     return {
         "schema_version": PLAYER_SCHEMA_VERSION,
         "parser_version": PLAYER_PARSER_VERSION,
@@ -693,7 +874,9 @@ def parse_player_snapshot(
     html = html_path.read_text(encoding="utf-8")
     actual_sha = hashlib.sha256(html.encode("utf-8")).hexdigest()
     expected_sha = metadata.get("rendered_html_sha256")
-    if expected_sha and actual_sha != expected_sha:
+    if not expected_sha:
+        raise PlayerSnapshotError(f"Falta rendered_html_sha256 en metadata: {snapshot_directory}")
+    if actual_sha != expected_sha:
         raise PlayerSnapshotError(f"HTML raw alterado: {snapshot_directory}")
     if metadata.get("access_status") != "VALID" or metadata.get("http_status") != 200:
         raise PlayerSnapshotError(
@@ -727,7 +910,7 @@ def discover_player_snapshots(raw_root: Path) -> dict[tuple[str, str], list[dict
         html_path = metadata_path.parent / "rendered.html"
         actual_hash = hashlib.sha256(html_path.read_bytes()).hexdigest() if html_path.is_file() else None
         expected_hash = metadata.get("rendered_html_sha256")
-        hash_status = "VALID" if actual_hash and (not expected_hash or actual_hash == expected_hash) else "MISSING_OR_MISMATCH"
+        hash_status = "VALID" if actual_hash and expected_hash and actual_hash == expected_hash else "MISSING_OR_MISMATCH"
         try:
             snapshot_path = metadata_path.parent.resolve().relative_to(raw_root.resolve()).as_posix()
         except ValueError:
@@ -744,6 +927,12 @@ def discover_player_snapshots(raw_root: Path) -> dict[tuple[str, str], list[dict
             "snapshot_directory": snapshot_path,
             "snapshot_sha256": actual_hash,
             "hash_status": hash_status,
+            "filter_parameters": {
+                key: values[-1]
+                for key, values in parse_qs(urlsplit(url).query, keep_blank_values=True).items()
+                if not (view == "statistics" and key == "p" and values == ["stats"])
+            },
+            "is_base_view_snapshot": _is_base_view_url(url, view),
             "usable": metadata.get("access_status") == "VALID" and metadata.get("http_status") == 200 and hash_status == "VALID",
         }
         result[(player_id, view)].append(item)
@@ -769,6 +958,7 @@ def build_player_acquisition_inventory(
         memberships = sorted(by_player[player_id], key=lambda item: str(item.get("team_season_id")))
         urls = sorted({str(item["player_url"]) for item in memberships if item.get("player_url")})
         primary_url = urls[0] if urls else f"https://www.bdfutbol.com/es/j/{player_id}.html"
+        profile_url_status = "VERIFIED_FROM_ROSTER" if urls else "INFERRED_FROM_ROUTE_PATTERN"
         profile_id, _ = classify_player_view(primary_url)
         if profile_id != player_id:
             raise PlayerSnapshotError(f"URL de plantilla inconsistente para {player_id}: {primary_url}")
@@ -779,40 +969,73 @@ def build_player_acquisition_inventory(
         for view in PLAYER_VIEWS:
             candidates = raw_snapshots.get((player_id, view), [])
             valid = [candidate for candidate in candidates if candidate["usable"]]
-            latest = valid[-1] if valid else None
+            base_valid = [candidate for candidate in valid if candidate.get("is_base_view_snapshot", True)]
+            filtered_valid = [candidate for candidate in valid if candidate not in base_valid]
+            invalid = [candidate for candidate in candidates if not candidate["usable"]]
+            latest = base_valid[-1] if base_valid else None
             if latest:
                 available.append(view)
             else:
                 pending.append(view)
             requested_url = primary_url if view == "profile" else _view_url(player_id, view)
+            url_status = profile_url_status if view == "profile" else "INFERRED_FROM_OBSERVED_ROUTE_PATTERN"
+            snapshot_status = (
+                "VALID_SNAPSHOT_EXISTS" if latest
+                else "VALID_FILTERED_VARIANT_EXISTS_BASE_VIEW_PENDING" if filtered_valid and not invalid
+                else "SNAPSHOT_REQUIRES_REVALIDATION" if invalid
+                else "PENDING_SNAPSHOT"
+            )
             coverage.append({
                 "player_id": player_id,
                 "view": view,
                 "requested_url": requested_url,
+                "url_status": url_status,
                 "snapshot_status": "CAPTURED_VALID" if latest else (
-                    "CAPTURED_NON_VALID" if candidates else "PENDING_CAPTURE"
+                    "CAPTURED_NON_VALID" if invalid else (
+                        "CAPTURED_FILTERED_VARIANT" if filtered_valid else "PENDING_CAPTURE"
+                    )
                 ),
+                "snapshot_integrity_status": snapshot_status,
                 "parse_status": "PENDING_PARSE" if latest else "NOT_AVAILABLE",
                 "normalized_fields_status": "PENDING_PARSE" if latest else "NOT_AVAILABLE",
                 "raw_only_fields_status": "PENDING_PARSE" if latest else "NOT_AVAILABLE",
-                "filters_status": "NOT_TESTED" if latest else "NOT_CAPTURED",
+                "filters_status": "NOT_TESTED" if latest else (
+                    "FILTERED_VARIANT_CAPTURED_NOT_INVESTIGATED" if filtered_valid else "NOT_CAPTURED"
+                ),
+                "variants_status": "NOT_INVESTIGATED",
                 "snapshot_count": len(candidates),
                 "valid_snapshot_count": len(valid),
+                "base_valid_snapshot_count": len(base_valid),
+                "filtered_variant_snapshot_count": len(filtered_valid),
                 "selected_snapshot_directory": latest.get("snapshot_directory") if latest else None,
                 "selected_snapshot_sha256": latest.get("snapshot_sha256") if latest else None,
                 "all_snapshot_references": candidates,
-                "coverage_status": "CAPTURED" if latest else "PENDING_CAPTURE",
+                "coverage_status": "CAPTURED" if latest else (
+                    "FILTERED_VARIANT_ONLY" if filtered_valid else "PENDING_CAPTURE"
+                ),
             })
             manifest.append({
                 "player_id": player_id,
                 "view": view,
                 "url": requested_url,
+                "url_status": url_status,
+                "snapshot_status": snapshot_status,
                 "membership_team_season_ids": membership_ids,
                 "snapshot_available": latest is not None,
                 "snapshot_count": len(candidates),
                 "selected_snapshot_directory": latest.get("snapshot_directory") if latest else None,
                 "selected_snapshot_sha256": latest.get("snapshot_sha256") if latest else None,
-                "acquisition_status": "ALREADY_CAPTURED" if latest else "PENDING_AUTHORIZED_ACCESS",
+                "view_coverage_status": "CAPTURED_VALID" if latest else (
+                    "CAPTURED_NON_VALID" if invalid else (
+                        "FILTERED_VARIANT_ONLY" if filtered_valid else "PENDING_CAPTURE"
+                    )
+                ),
+                "variants_status": "NOT_INVESTIGATED",
+                "acquisition_status": "ALREADY_CAPTURED" if latest else (
+                    "REQUIRES_REVALIDATION" if invalid else (
+                        "PENDING_BASE_VIEW_CAPTURE" if filtered_valid else "PENDING_AUTHORIZED_ACCESS"
+                    )
+                ),
             })
         players.append({
             "player_id": player_id,
@@ -833,7 +1056,87 @@ def build_player_acquisition_inventory(
         "memberships": [membership for player_id in sorted(by_player) for membership in by_player[player_id]],
         "coverage": coverage,
         "acquisition_manifest": manifest,
+        "player_pilot_candidates": build_player_pilot_candidates(
+            [membership for player_id in sorted(by_player) for membership in by_player[player_id]],
+            players,
+            raw_snapshots,
+        ),
     }
+
+
+def build_player_pilot_candidates(
+    memberships: list[dict[str, Any]],
+    players: list[dict[str, Any]],
+    raw_snapshots: dict[tuple[str, str], list[dict[str, Any]]],
+    parsed_pages: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    """Prepare a deterministic offline pilot shortlist; never acquires pages."""
+    player_by_id = {str(item["player_id"]): item for item in players}
+    memberships_by_player: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for membership in memberships:
+        memberships_by_player[str(membership["player_id"])].append(membership)
+
+    reasons: dict[str, set[str]] = defaultdict(set)
+    if "j209629" in player_by_id:
+        reasons["j209629"].add("EXISTING_MORILLAS_BASELINE")
+    zero_memberships = sorted(
+        (row for row in memberships if row.get("zero_appearances") is True),
+        key=lambda row: (str(row.get("player_id")), str(row.get("team_season_id"))),
+    )
+    if zero_memberships:
+        reasons[str(zero_memberships[0]["player_id"])].add("ZERO_APPEARANCE_MEMBERSHIP")
+    for player_id, rows in memberships_by_player.items():
+        if len({str(row.get("team_season_id")) for row in rows}) > 1:
+            reasons[player_id].add("MULTIPLE_TEAM_SEASON_MEMBERSHIPS")
+
+    first_by_position: dict[str, str] = {}
+    for row in sorted(memberships, key=lambda item: (str(item.get("player_id")), str(item.get("team_season_id")))):
+        position = str(row.get("position_raw") or "").strip()
+        player_id = str(row.get("player_id"))
+        if position and player_id not in first_by_position:
+            first_by_position[position] = player_id
+    for position, player_id in sorted(first_by_position.items()):
+        reasons[player_id].add(f"REPRESENTATIVE_RAW_POSITION_CODE:{position}")
+
+    parsed_profiles = {
+        str(page.get("player_id")): page
+        for page in (parsed_pages or []) if page.get("view") == "profile"
+    }
+    result = []
+    for player_id in sorted(reasons, key=lambda value: (int(re.sub(r"\D", "", value) or 0), value)):
+        player = player_by_id[player_id]
+        player_memberships = sorted(
+            memberships_by_player[player_id],
+            key=lambda item: str(item.get("team_season_id")),
+        )
+        profile = parsed_profiles.get(player_id)
+        existing_views = sorted(
+            view for view in PLAYER_VIEWS
+            if any(
+                item.get("usable") and item.get("is_base_view_snapshot", True)
+                for item in raw_snapshots.get((player_id, view), [])
+            )
+        )
+        result.append({
+            "player_id": player_id,
+            "profile_url": player.get("profile_url"),
+            "selection_reasons": sorted(reasons[player_id]),
+            "position_raw_values": sorted({
+                str(item.get("position_raw")) for item in player_memberships
+                if item.get("position_raw") not in (None, "")
+            }),
+            "membership_count": len(player_memberships),
+            "team_season_ids": [str(item.get("team_season_id")) for item in player_memberships],
+            "zero_appearance_membership_ids": [
+                str(item.get("team_season_id")) for item in player_memberships
+                if item.get("zero_appearances") is True
+            ],
+            "existing_valid_views": existing_views,
+            "career_rows_observed": len(profile.get("view_data", {}).get("career_rows", [])) if profile else None,
+            "career_history_status": "PARSED_FROM_EXISTING_SNAPSHOT" if profile else "NOT_CAPTURED_OR_PARSED",
+            "acquisition_status": "NOT_ACQUIRED_PLANNED_PILOT",
+        })
+    return result
 
 
 def _view_url(player_id: str, view: str) -> str:
@@ -854,7 +1157,10 @@ def parse_player_snapshot_inventory(
     """Parse the latest intact, valid snapshot for each player and view."""
     parsed: list[dict[str, Any]] = []
     for (player_id, view), candidates in sorted(inventory.items()):
-        valid = [item for item in candidates if item["usable"]]
+        valid = [
+            item for item in candidates
+            if item["usable"] and item.get("is_base_view_snapshot", True)
+        ]
         if not valid:
             continue
         selected = valid[-1]

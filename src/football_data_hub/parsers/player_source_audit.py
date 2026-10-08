@@ -13,6 +13,9 @@ from urllib.parse import parse_qs, urlsplit
 
 from bs4 import BeautifulSoup
 
+from football_data_hub.parsers.match_status import assess_match_status
+from football_data_hub.providers.bdfutbol.competition import COMPETITION_URLS
+
 _SCORE = re.compile(r"^(\d+)\s+(\d+)$")
 _CORE_MATCH_FIELDS = (
     "group", "round", "date", "date_raw", "home_team_name", "away_team_name",
@@ -45,29 +48,31 @@ def _raw_integrity(source: dict[str, Any]) -> dict[str, Any]:
         "snapshot_sha256_actual": actual,
         "raw_hash_matches": bool(actual and actual == source.get("snapshot_sha256")),
         "metadata_hash_matches_raw": bool(actual and actual == metadata.get("rendered_html_sha256")),
+        "metadata_provenance_matches_source": all(
+            source.get(source_field) == metadata.get(metadata_field)
+            for source_field, metadata_field in (
+                ("requested_url", "requested_url"),
+                ("final_url", "final_url"),
+                ("captured_at_utc", "captured_at_utc"),
+                ("access_status", "access_status"),
+                ("http_status", "http_status"),
+            )
+        ),
         "raw_html_present": html_path.is_file(),
     }
 
 
-def _canonical_result_status(item: dict[str, Any]) -> str:
-    """Normalize versioned result-status vocabularies only with score evidence."""
-    result_raw = str(item.get("result_raw") or "").strip()
-    score = _SCORE.fullmatch(result_raw)
-    numeric_goals = isinstance(item.get("home_goals"), int) and isinstance(item.get("away_goals"), int)
-    has_id = item.get("match_id") is not None
-    result_status = str(item.get("result_status") or "").casefold()
-    fixture_status = str(item.get("fixture_status") or "").casefold()
-    if has_id and score and numeric_goals and (
-        result_status == "played" or fixture_status == "played" or result_status == "available"
-    ):
-        return "PLAYED"
-    if fixture_status == "scheduled" or result_status in {"scheduled", "not_available"} or result_raw in {"—", "-", ""}:
-        return "SCHEDULED_OR_UNSCORED"
-    return "UNRESOLVED"
+def _canonical_result_status(
+    item: dict[str, Any], *, captured_at_utc: str | None = None,
+) -> str:
+    """Compatibility wrapper over the shared evidence-based match classifier."""
+    return str(assess_match_status(item, captured_at_utc=captured_at_utc)["state"]).upper()
 
 
 def _candidate_summary(export_directory: Path, metadata_path: Path) -> dict[str, Any]:
     metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    extraction_key = metadata.get("extraction_key")
+    schema_valid = metadata.get("schema_version") == "football_data_hub.competition_export.v1"
     groups = []
     fixtures: list[dict[str, Any]] = []
     quality_checks = []
@@ -79,11 +84,31 @@ def _candidate_summary(export_directory: Path, metadata_path: Path) -> dict[str,
         items = payload.get("items", [])
         source = payload.get("source_snapshots", {}).get(group) or metadata.get("source_snapshots", {}).get(group) or {}
         integrity = _raw_integrity(source) if source else {"raw_hash_matches": False, "metadata_hash_matches_raw": False}
-        statuses = Counter(_canonical_result_status(item) for item in items)
+        source_url_valid = (
+            source.get("requested_url") == COMPETITION_URLS[group]
+            and source.get("final_url") == COMPETITION_URLS[group]
+        )
+        payload_source = payload.get("source_snapshots", {}).get(group) or {}
+        payload_compatible = (
+            payload.get("schema_version") == metadata.get("schema_version")
+            and payload.get("parser_version") == metadata.get("parser_version")
+            and payload.get("extraction_key") == extraction_key
+            and payload.get("season") == metadata.get("season") == "2026/27"
+            and payload.get("group") == group
+            and all(
+                payload_source.get(field) == source.get(field)
+                for field in ("path", "snapshot_sha256", "captured_at_utc", "requested_url", "final_url")
+            )
+        )
+        statuses = Counter(
+            _canonical_result_status(item, captured_at_utc=source.get("captured_at_utc"))
+            for item in items
+        )
         non_null_ids = [str(item["match_id"]) for item in items if item.get("match_id") is not None]
         duplicate_ids = sorted(match_id for match_id, count in Counter(non_null_ids).items() if count > 1)
         score_without_id = sum(
-            bool(_SCORE.fullmatch(str(item.get("result_raw") or ""))) and item.get("match_id") is None
+            bool(_SCORE.fullmatch(str(item.get("result_raw") or "")))
+            and not str(item.get("match_id") or "").strip()
             for item in items
         )
         groups.append({
@@ -97,26 +122,47 @@ def _candidate_summary(export_directory: Path, metadata_path: Path) -> dict[str,
             "duplicate_match_ids": duplicate_ids,
             "score_without_match_id_count": score_without_id,
             "source": integrity,
+            "payload_integrity_valid": payload_compatible,
             "status_vocabulary": dict(Counter(str(item.get("result_status")) for item in items)),
             "fixture_status_vocabulary": dict(Counter(str(item.get("fixture_status")) for item in items)),
+            "normalized_status_counts": {
+                state: statuses.get(state.upper(), 0)
+                for state in ("played", "scheduled", "unresolved", "inconsistent")
+            },
         })
         quality_checks.append(
             len(items) == 380
+            and schema_valid
+            and payload_compatible
             and not duplicate_ids
             and score_without_id == 0
-            and statuses.get("UNRESOLVED", 0) == 0
+            and statuses.get("INCONSISTENT", 0) == 0
             and integrity.get("access_status") == "VALID"
             and integrity.get("http_status") == 200
             and integrity.get("raw_hash_matches") is True
             and integrity.get("metadata_hash_matches_raw") is True
+            and integrity.get("metadata_provenance_matches_source") is True
+            and source_url_valid
         )
-        fixtures.extend({**item, "_export_group": group} for item in items)
+        fixtures.extend({
+            **item,
+            "_export_group": group,
+            "_captured_at_utc": source.get("captured_at_utc"),
+            "_snapshot_sha256": source.get("snapshot_sha256"),
+        } for item in items)
     non_null = [item for item in fixtures if item.get("match_id") is not None]
+    match_ids_by_group = {
+        group: [str(item["match_id"]) for item in fixtures
+                if item.get("_export_group") == group and item.get("match_id") is not None]
+        for group in ("I", "II")
+    }
+    cross_group_duplicate_ids = sorted(set(match_ids_by_group["I"]) & set(match_ids_by_group["II"]))
     return {
         "extraction_key": metadata.get("extraction_key"),
         "export_directory": export_directory.as_posix(),
         "parser_version": metadata.get("parser_version"),
         "schema_version": metadata.get("schema_version"),
+        "schema_valid": schema_valid,
         "source_capture_timestamps_utc": {
             group: (metadata.get("source_snapshots", {}).get(group) or {}).get("captured_at_utc")
             for group in ("I", "II")
@@ -126,7 +172,8 @@ def _candidate_summary(export_directory: Path, metadata_path: Path) -> dict[str,
         "canonical_played_count": sum(_canonical_result_status(item) == "PLAYED" for item in fixtures),
         "match_id_count": len(non_null),
         "unique_match_id_count": len({str(item["match_id"]) for item in non_null}),
-        "quality_valid": len(groups) == 2 and all(quality_checks),
+        "cross_group_duplicate_ids": cross_group_duplicate_ids,
+        "quality_valid": len(groups) == 2 and all(quality_checks) and not cross_group_duplicate_ids,
         "fixtures": fixtures,
     }
 
@@ -147,7 +194,9 @@ def audit_competition_exports(
             "ambos grupos presentes y con 380 filas cada uno",
             "snapshot fuente VALID/HTTP 200 y SHA raw igual a metadata y export",
             "IDs de partido únicos, score crudo y goles numéricos coherentes",
-            "resultado normalizado desde evidence fields, no por una sola etiqueta de estado",
+            "sin registros inconsistentes tras normalizar estados, marcador, goles, ID y fecha de captura",
+            "schema compatible con football_data_hub.competition_export.v1",
+            "fecha de captura por grupo conservada y export tratado como una sola extracción",
             "coincidencia de contenido por ID entre extracciones y marcas temporales/procedencia",
         ],
         "candidates": [{key: value for key, value in item.items() if key != "fixtures"} for item in candidates],

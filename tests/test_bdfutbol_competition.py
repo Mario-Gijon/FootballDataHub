@@ -9,7 +9,9 @@ from pathlib import Path
 import pytest
 
 from football_data_hub.collectors.bdfutbol_competition import (
+    InvalidCompetitionExport,
     InvalidCompetitionSnapshot,
+    load_competition_export,
     load_competition_snapshot,
 )
 from football_data_hub.parsers.competition_coverage import build_competition_coverage
@@ -145,6 +147,49 @@ def test_real_snapshots_cover_both_groups_and_full_fixture_tables() -> None:
     assert group_ii_states["unresolved"] == 1
 
 
+def test_hito1b_exports_are_quality_selected_and_each_has_119_played_matches() -> None:
+    root = REPOSITORY_ROOT / "data/parsed/bdfutbol/primera_federacion_2026_27"
+    expected_keys = ("044edc9b2ef3c6026c7f", "d047191aa847be5c30d7")
+    if not all((root / f"snapshot-{key}-parser-1.0.0/dataset_metadata.json").is_file() for key in expected_keys):
+        pytest.skip("Los exports locales reales de Hito 1B no están disponibles")
+
+    selected_keys = []
+    for extraction_key in expected_keys:
+        export = load_competition_export(root, extraction_key=extraction_key)
+        matches = export["matches"]
+        selection = export["selection"]
+        selected_keys.append(selection["selected_extraction_key"])
+        assert len(matches) == 760
+        assert sum(item["match_state"] == "played" for item in matches) == 119
+        assert selection["fixtures_loaded"] == 760
+        assert selection["normalized_state_counts"]["I"]["played"] + selection["normalized_state_counts"]["II"]["played"] == 119
+        assert {item["_competition_extraction_key"] for item in matches} == {extraction_key}
+        assert all(item["_captured_at_utc"] for item in matches)
+        assert set(selection["groups"]) == {"I", "II"}
+
+    automatic = load_competition_export(root)
+    assert selected_keys == list(expected_keys)
+    assert automatic["selection"]["selection_mode"] == "automatic_quality_then_recency"
+    assert automatic["selection"]["selected_extraction_key"] == "d047191aa847be5c30d7"
+
+
+def test_explicit_selection_rejects_an_incompatible_local_export(tmp_path: Path) -> None:
+    export_dir = tmp_path / "snapshot-untrusted-parser-1.0.0"
+    export_dir.mkdir()
+    (export_dir / "dataset_metadata.json").write_text(json.dumps({
+        "extraction_key": "untrusted",
+        "schema_version": "unknown.schema",
+        "parser_version": "1.0.0",
+        "season": "2026/27",
+    }), encoding="utf-8")
+
+    automatic = load_competition_export(tmp_path)
+    assert automatic["selection"]["selection_status"] == "NO_COMPATIBLE_EXPORT"
+    assert "untrusted" in automatic["selection"]["rejected_candidates"]
+    with pytest.raises(InvalidCompetitionExport, match="untrusted"):
+        load_competition_export(tmp_path, extraction_key="untrusted")
+
+
 def test_scheduled_fixture_preserves_missing_ids_and_optional_links() -> None:
     parsed = parse_fragment(fixture_row(date="—", stadium=None, referee=None))
     match = parsed["matches"][0]
@@ -154,7 +199,7 @@ def test_scheduled_fixture_preserves_missing_ids_and_optional_links() -> None:
     assert match["date"] is None
     assert match["date_raw"] == "—"
     assert match["result_status"] == "not_available"
-    assert match["fixture_status"] == "unconfirmed"
+    assert match["fixture_status"] == "unresolved"
     assert match["result_raw"] == "—"
     assert match["home_goals"] is None and match["away_goals"] is None
     assert match["match_id"] is None and match["match_url"] is None
@@ -181,7 +226,8 @@ def test_played_fixture_extracts_source_ids_and_score() -> None:
             match_id="98765",
             stadium="../s/81.html",
             referee="../r/r602065.html",
-        )
+        ),
+        captured_at_utc="2026-10-01T12:00:00+00:00",
     )
     match = parsed["matches"][0]
 
@@ -204,7 +250,7 @@ def test_unexpected_score_and_invalid_date_are_preserved_and_reported() -> None:
     assert match["date"] is None
     assert match["date_raw"] == "31/02/2027"
     assert match["result_status"] == "unknown"
-    assert match["fixture_status"] == "unknown"
+    assert match["fixture_status"] == "inconsistent"
     assert match["result_raw"] == "pendiente"
     assert match["home_goals"] is None and match["away_goals"] is None
     assert "date_unparseable" in issue_codes

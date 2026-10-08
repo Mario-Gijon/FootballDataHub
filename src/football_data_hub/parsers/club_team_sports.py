@@ -9,6 +9,8 @@ from datetime import datetime
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
+from football_data_hub.parsers.match_status import assess_match_status, normalized_match_state
+
 _INTEGER = re.compile(r"^\d+$")
 _SCORE = re.compile(r"^(\d+)\s+(\d+)$")
 _DATE = re.compile(r"^(\d{2})/(\d{2})/(\d{4})$")
@@ -337,6 +339,11 @@ def _match_observations(
                 "source_club_name": name_by_team.get(team_by_club.get(club_id, "")),
                 **source,
             }
+            assessment = assess_match_status(record)
+            record["fixture_status"] = assessment["state"]
+            record["match_state"] = assessment["state"]
+            record["match_state_issues"] = assessment["issues"]
+            record["match_state_evidence"] = assessment["evidence"]
             observations.append(record)
     return observations, aggregates
 
@@ -394,8 +401,17 @@ def _consolidate_matches(
 
     unique_matches = []
     for match_id, items in sorted(by_id.items()):
-        played = [item for item in items if item.get("result_status") == "PLAYED"]
+        played = [item for item in items if normalized_match_state(item) == "played"]
         if not played:
+            for item in items:
+                if normalized_match_state(item) == "inconsistent":
+                    incidents.append({
+                        "code": "MATCH_STATUS_INCONSISTENT",
+                        "severity": "error",
+                        "match_id": match_id,
+                        "issues": item.get("match_state_issues", []),
+                        "record": item,
+                    })
             continue
         selected = max(played, key=lambda item: item.get("captured_at_utc") or "")
         comp = comp_by_id.get(match_id)
@@ -479,7 +495,7 @@ def _consolidate_matches(
 
     played_comp_ids = {
         str(item["match_id"]) for item in competition_matches
-        if item.get("match_id") is not None and item.get("result_status") == "played"
+        if item.get("match_id") is not None and normalized_match_state(item) == "played"
     }
     observed_ids = set(by_id)
     unobserved_played_ids = sorted(played_comp_ids - observed_ids)
@@ -510,8 +526,11 @@ def _consolidate_matches(
     for club_id in clubs_in_scope:
         team_id = team_by_club[club_id]
         own = [item for item in observations if item.get("source_club_id") == club_id]
-        played_count = sum(item.get("result_status") == "PLAYED" for item in own)
-        distinct_ids = {str(item["match_id"]) for item in own if item.get("match_id") and item.get("result_status") == "PLAYED"}
+        played_count = sum(normalized_match_state(item) == "played" for item in own)
+        distinct_ids = {
+            str(item["match_id"]) for item in own
+            if item.get("match_id") and normalized_match_state(item) == "played"
+        }
         expected = aggregates.get(club_id, {})
         outcomes = outcomes_by_club[club_id]
         has_all_variant = club_id in all_variant_clubs
@@ -521,7 +540,7 @@ def _consolidate_matches(
         })
         expected_competition_ids = {
             str(item["match_id"]) for item in competition_matches
-            if item.get("result_status") == "played" and item.get("match_id") is not None
+            if normalized_match_state(item) == "played" and item.get("match_id") is not None
             and team_id in {item.get("home_team_season_id"), item.get("away_team_season_id")}
         }
         observed_competition_ids = distinct_ids
@@ -545,7 +564,7 @@ def _consolidate_matches(
             "team_season_id": team_id,
             "all_match_variant_captured": has_all_variant,
             "matches_played_observed": len(distinct_ids),
-            "matches_unscored_observed": sum(item.get("result_status") != "PLAYED" for item in own),
+            "matches_unscored_observed": sum(normalized_match_state(item) != "played" for item in own),
             "match_rows_observed": len(own),
             "aggregate_expected": {key: expected.get(key) for key in ("PJ", "PG", "PE", "PP", "GF", "GC")},
             "aggregate_snapshot_captured_at_utc": aggregate_source.get("captured_at_utc"),
@@ -725,7 +744,7 @@ def build_club_team_sports_data(
             "jornada_5_fixture": item.get("jornada_5_fixture"),
             "explanation": (
                 "No existe una columna de minutos para jornada 5 y el Hito 1B solo muestra el encuentro aplazado/sin resultado de esa jornada para este equipo; ausencia dependiente de los datos publicados."
-                if item.get("jornada_5_fixture") and item["jornada_5_fixture"].get("result_status") != "played"
+                if item.get("jornada_5_fixture") and normalized_match_state(item["jornada_5_fixture"]) != "played"
                 else "El DOM capturado no contiene la columna 5; se conserva como variante estructural sin inventar valores."
             ),
         }
@@ -763,7 +782,7 @@ def build_club_team_sports_data(
             "zero_appearance_player_rows": sum(item.get("zero_appearances") is True for item in statistics),
             "coach_memberships": len(coaches),
             "unique_coach_ids": len({item["coach_id"] for item in coaches}),
-            "played_match_observations": sum(item["result_status"] == "PLAYED" for item in observations),
+            "played_match_observations": sum(normalized_match_state(item) == "played" for item in observations),
             "unique_played_matches": len(matches),
             "played_matches_crosschecked": sum(item.get("competition_match_present") is True for item in matches),
             "clubs_match_validated": sum(item["status"] == "VALIDATED" for item in match_coverage),
@@ -774,7 +793,7 @@ def build_club_team_sports_data(
             "all_match_variants_captured": len(all_variant_clubs),
             "competition_played_matches_not_observed": len({
                 str(item["match_id"]) for item in competition_matches
-                if item.get("match_id") is not None and item.get("result_status") == "played"
+                if item.get("match_id") is not None and normalized_match_state(item) == "played"
             } - {str(item["match_id"]) for item in matches}),
         },
     }

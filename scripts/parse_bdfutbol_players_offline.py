@@ -12,6 +12,7 @@ from typing import Any
 
 from football_data_hub.parsers.player_pages import (
     build_player_acquisition_inventory,
+    build_player_pilot_candidates,
     discover_player_snapshots,
     parse_player_snapshot_inventory,
 )
@@ -101,6 +102,12 @@ def run(args: argparse.Namespace) -> int:
         player_inventory = build_player_acquisition_inventory(rosters, raw_inventory)
         _enrich_memberships(player_inventory, args.participants)
         parsed_pages = parse_player_snapshot_inventory(raw_inventory, args.raw_root)
+        player_inventory["player_pilot_candidates"] = build_player_pilot_candidates(
+            player_inventory["memberships"],
+            player_inventory["players"],
+            raw_inventory,
+            parsed_pages,
+        )
 
         b2_metadata = _read_json(
             args.club_sports.parent / "dataset_metadata.json.gz"
@@ -136,6 +143,7 @@ def run(args: argparse.Namespace) -> int:
     print(f"Jugadores: {len(player_inventory['players'])}")
     print(f"Pertenencias: {len(player_inventory['memberships'])}")
     print(f"Snapshots de jugador parseados: {len(parsed_pages)}")
+    print(f"Pilotos futuros preparados (sin adquirir): {len(player_inventory['player_pilot_candidates'])}")
     print(f"Pendientes de vistas jugador: {sum(not row['snapshot_available'] for row in player_inventory['acquisition_manifest'])}")
     print(f"Hito 1B: {retained_key}; estado comparativo={hito1b_audit.get('cross_candidate_comparison') is not None}")
     print(f"Cacereño: {caceres_audit['status']}")
@@ -145,4 +153,3 @@ def run(args: argparse.Namespace) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(run(parse_args()))
-

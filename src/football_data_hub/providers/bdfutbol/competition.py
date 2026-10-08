@@ -7,12 +7,14 @@ Los selectores se basan en los dos snapshots reales de Primera Federación 2026/
 from __future__ import annotations
 
 import re
-from datetime import date, datetime
+from datetime import datetime
 from urllib.parse import parse_qs, urljoin, urlsplit
 
 from bs4 import BeautifulSoup, Tag
 
-PARSER_VERSION = "1.0.0"
+from football_data_hub.parsers.match_status import assess_match_status
+
+PARSER_VERSION = "1.1.0"
 COMPETITION_URLS = {
     "I": "https://www.bdfutbol.com/es/t/t2026-271rf1.html",
     "II": "https://www.bdfutbol.com/es/t/t2026-271rf2.html",
@@ -67,27 +69,6 @@ def _date(raw_value: str) -> tuple[str | None, str | None]:
     except ValueError:
         return None, "date_unparseable"
     return parsed.isoformat(), None
-
-
-def _captured_date(captured_at_utc: str | None) -> date | None:
-    if not captured_at_utc:
-        return None
-    try:
-        return datetime.fromisoformat(captured_at_utc.replace("Z", "+00:00")).date()
-    except ValueError:
-        return None
-
-
-def _fixture_status(
-    result_status: str, date_iso: str | None, captured_date: date | None
-) -> str:
-    if result_status == "available":
-        return "played"
-    if result_status == "unknown":
-        return "unknown"
-    if date_iso is None or captured_date is None:
-        return "unconfirmed"
-    return "scheduled" if date.fromisoformat(date_iso) > captured_date else "unresolved"
 
 
 def _parse_competition(source_url: str, title: str) -> dict[str, str | None]:
@@ -205,7 +186,7 @@ def _parse_fixtures(
     group: str,
     team_by_name: dict[str, list[dict[str, object]]],
     issues: list[dict[str, object]],
-    captured_date: date | None,
+    captured_at_utc: str | None,
 ) -> list[dict[str, object]]:
     table = soup.select_one("table.taula_estil-16")
     if not isinstance(table, Tag):
@@ -248,10 +229,9 @@ def _parse_fixtures(
         result_status = "available" if score_match else "not_available" if is_not_played else "unknown"
         if result_status == "unknown":
             issues.append({"code": "result_unexpected_value", "group": group, "row_index": row_index, "raw_value": score_raw})
-        fixture_status = _fixture_status(result_status, date_iso, captured_date)
         if current_round is None:
             issues.append({"code": "fixture_round_missing", "group": group, "row_index": row_index, "match_id": match_id})
-        if match_id is None and fixture_status == "played":
+        if match_id is None and result_status == "available":
             issues.append({"code": "fixture_match_link_missing", "group": group, "row_index": row_index})
 
         home_refs = team_by_name.get(home_name, [])
@@ -263,7 +243,7 @@ def _parse_fixtures(
         home_ref = home_refs[0] if len(home_refs) == 1 else {}
         away_ref = away_refs[0] if len(away_refs) == 1 else {}
 
-        fixtures.append({
+        fixture = {
             "group": group,
             "season": "2026/27",
             "round": current_round,
@@ -278,7 +258,6 @@ def _parse_fixtures(
             "away_team_season_url": away_ref.get("team_season_url"),
             "away_team_reference_method": "exact_standings_name" if away_ref else None,
             "result_status": result_status,
-            "fixture_status": fixture_status,
             "result_raw": score_raw,
             "home_goals": int(score_match.group(1)) if score_match else None,
             "away_goals": int(score_match.group(2)) if score_match else None,
@@ -292,7 +271,13 @@ def _parse_fixtures(
             "referee_id": referee_id,
             "referee_url": referee_url,
             "source_row_index": row_index,
-        })
+        }
+        match_status = assess_match_status(fixture, captured_at_utc=captured_at_utc)
+        fixture["fixture_status"] = match_status["state"]
+        fixture["match_state"] = match_status["state"]
+        fixture["match_state_issues"] = match_status["issues"]
+        fixture["match_state_evidence"] = match_status["evidence"]
+        fixtures.append(fixture)
     return fixtures
 
 
@@ -326,7 +311,7 @@ def parse_competition_html(
     for team in standings:
         team_by_name.setdefault(str(team["team_name"]), []).append(team)
     fixtures = _parse_fixtures(
-        soup, source_url, group, team_by_name, issues, _captured_date(captured_at_utc)
+        soup, source_url, group, team_by_name, issues, captured_at_utc,
     )
     return {
         "competition": competition,

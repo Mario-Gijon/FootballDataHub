@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from typing import Any
 
+from football_data_hub.parsers.match_status import normalized_match_state
 from football_data_hub.providers.bdfutbol.competition import PARSER_VERSION
 
 EXPECTED_GROUPS = ("I", "II")
@@ -61,20 +62,22 @@ def _group_report(parsed: dict[str, Any], metadata: dict[str, Any]) -> dict[str,
         for match in matches
     )
     missing_match_ids = sum(match_id is None for match_id in match_ids)
-    played_count = sum(match.get("fixture_status") == "played" for match in matches)
-    scheduled_count = sum(match.get("fixture_status") == "scheduled" for match in matches)
-    unresolved_count = sum(match.get("fixture_status") == "unresolved" for match in matches)
+    states = [normalized_match_state(match) for match in matches]
+    played_count = sum(state == "played" for state in states)
+    scheduled_count = sum(state == "scheduled" for state in states)
+    unresolved_count = sum(state == "unresolved" for state in states)
+    inconsistent_count = sum(state == "inconsistent" for state in states)
     unconfirmed_count = sum(match.get("fixture_status") == "unconfirmed" for match in matches)
     played_missing_match_ids = sum(
-        match.get("fixture_status") == "played" and match.get("match_id") is None
+        normalized_match_state(match) == "played" and not match.get("match_id")
         for match in matches
     )
     scheduled_without_published_id = sum(
-        match.get("fixture_status") == "scheduled" and match.get("match_id") is None
+        normalized_match_state(match) == "scheduled" and not match.get("match_id")
         for match in matches
     )
     unresolved_without_published_id = sum(
-        match.get("fixture_status") == "unresolved" and match.get("match_id") is None
+        normalized_match_state(match) == "unresolved" and not match.get("match_id")
         for match in matches
     )
     unknown_result_count = sum(match.get("result_status") == "unknown" for match in matches)
@@ -122,6 +125,7 @@ def _group_report(parsed: dict[str, Any], metadata: dict[str, Any]) -> dict[str,
         "fixture_team_references_resolved": unresolved_team_refs == 0,
         "fixtures_not_mixed_between_groups": group_mismatch_count == 0,
         "no_unparsed_results": unknown_result_count == 0,
+        "no_inconsistent_match_evidence": inconsistent_count == 0,
         "no_unexpected_parser_diagnostics": not parser_issues,
     }
     return {
@@ -137,6 +141,7 @@ def _group_report(parsed: dict[str, Any], metadata: dict[str, Any]) -> dict[str,
             "played_matches": played_count,
             "scheduled_matches": scheduled_count,
             "unresolved_matches": unresolved_count,
+            "inconsistent_matches": inconsistent_count,
             "unconfirmed_not_played_matches": unconfirmed_count,
             "unknown_result_matches": unknown_result_count,
             "results_not_available": sum(match.get("result_status") == "not_available" for match in matches),
@@ -172,9 +177,7 @@ def _group_report(parsed: dict[str, Any], metadata: dict[str, Any]) -> dict[str,
             "stadium_ids_available": sum(match.get("stadium_id") is not None for match in matches),
             "referee_ids_available": sum(match.get("referee_id") is not None for match in matches),
             "results_available": played_count,
-            "results_not_yet_available": sum(
-                match.get("result_status") == "not_available" for match in matches
-            ),
+            "results_not_yet_available": scheduled_count + unresolved_count,
         },
         "parser_diagnostics": parser_issues,
     }

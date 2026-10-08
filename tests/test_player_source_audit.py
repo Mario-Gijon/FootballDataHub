@@ -9,6 +9,7 @@ from football_data_hub.parsers.player_source_audit import (
     audit_caceres_scope,
     audit_competition_exports,
 )
+from football_data_hub.providers.bdfutbol.competition import COMPETITION_URLS
 
 
 def _write_json(path: Path, value: object) -> None:
@@ -27,8 +28,8 @@ def _write_competition_candidate(root: Path, key: str, status_version: int, minu
         sha = hashlib.sha256(html.encode()).hexdigest()
         captured = f"2026-10-08T12:{minute:02d}:00+00:00"
         raw_metadata = {
-            "requested_url": f"https://www.bdfutbol.com/es/t/t2026-271rf{suffix}.html",
-            "final_url": f"https://www.bdfutbol.com/es/t/t2026-271rf{suffix}.html",
+            "requested_url": COMPETITION_URLS[group],
+            "final_url": COMPETITION_URLS[group],
             "captured_at_utc": captured,
             "access_status": "VALID",
             "http_status": 200,
@@ -45,15 +46,15 @@ def _write_competition_candidate(root: Path, key: str, status_version: int, minu
             "path": raw_dir.as_posix(),
         }
 
-    _write_json(export_dir / "dataset_metadata.json", {
+    export_metadata = {
         "extraction_key": key,
         "parser_version": "1.0.0",
-        "schema_version": "fixture-export-test",
+        "schema_version": "football_data_hub.competition_export.v1",
         "season": "2026/27",
         "source_snapshots": metadata_sources,
-    })
+    }
+    _write_json(export_dir / "dataset_metadata.json", export_metadata)
     for group, suffix in (("I", "i"), ("II", "ii")):
-        source = metadata_sources[group]
         rows = []
         for row_index in range(380):
             played = row_index == 0
@@ -84,8 +85,9 @@ def _write_competition_candidate(root: Path, key: str, status_version: int, minu
                 item["fixture_status"] = "played" if played else "scheduled"
             rows.append(item)
         _write_json(export_dir / f"matches_group_{suffix}.json", {
+            **export_metadata,
+            "group": group,
             "items": rows,
-            "source_snapshots": {group: source},
         })
 
 

@@ -224,7 +224,8 @@ def test_matches_from_both_clubs_are_deduplicated_and_timestamp_variance_is_temp
     competition = [{
         "match_id": "272516", "date": "2026-10-01", "home_team_name": "Home", "away_team_name": "Away",
         "home_team_season_id": "t2026-1", "away_team_season_id": "t2026-2", "home_goals": 2, "away_goals": 1,
-        "result_status": "played", "group": "I", "_captured_at_utc": "2026-10-08T10:00:00+00:00",
+        "result_status": "played", "fixture_status": "played", "result_raw": "2 1",
+        "group": "I", "_captured_at_utc": "2026-10-08T10:00:00+00:00",
     }]
     data = build_club_team_sports_data(_base_pages(), competition)
     assert data["summary"]["unique_played_matches"] == 1
@@ -281,7 +282,8 @@ def test_competition_match_ids_can_confirm_scope_difference_in_season_aggregate(
     competition = [{
         "match_id": "272516", "date": "2026-10-01", "home_team_name": "Home", "away_team_name": "Away",
         "home_team_season_id": "t2026-1", "away_team_season_id": "t2026-2", "home_goals": 2, "away_goals": 1,
-        "result_status": "played", "group": "I", "_captured_at_utc": "2026-10-08T10:00:00+00:00",
+        "result_status": "played", "fixture_status": "played", "result_raw": "2 1",
+        "group": "I", "_captured_at_utc": "2026-10-08T10:00:00+00:00",
     }]
     data = build_club_team_sports_data(pages, competition)
     home = next(row for row in data["coverage_by_club"] if row["club_id"] == "e1")
@@ -302,6 +304,11 @@ def test_compact_exports_are_gzip_readable_and_keep_normalized_provenance(tmp_pa
         output_root=tmp_path,
         compact=True,
         competition_matches=[],
+        competition_selection={
+            "selection_status": "SELECTED",
+            "selection_mode": "explicit",
+            "selected_extraction_key": "hito1b-test",
+        },
     )
     with gzip.open(output / "sports/player_statistics.json.gz", "rt", encoding="utf-8") as stream:
         statistics = json.load(stream)
@@ -309,6 +316,8 @@ def test_compact_exports_are_gzip_readable_and_keep_normalized_provenance(tmp_pa
         matches = json.load(stream)
     with gzip.open(output / "sports/tracking_player_rows.json.gz", "rt", encoding="utf-8") as stream:
         tracking = json.load(stream)
+    with gzip.open(output / "dataset_metadata.json.gz", "rt", encoding="utf-8") as stream:
+        metadata = json.load(stream)
     assert len(statistics["items"]) == 4
     assert len(statistics["items"][0]["columns"]) == 22
     assert statistics["items"][0]["snapshot_sha256"].startswith("sha-")
@@ -316,3 +325,9 @@ def test_compact_exports_are_gzip_readable_and_keep_normalized_provenance(tmp_pa
     assert len(matches["items"][0]["source_observations"]) == 2
     assert len(tracking["items"]) == 2
     assert (output / "sports/player_statistics.csv.gz").is_file()
+    competition_selection = metadata["competition_crosscheck_source"]
+    assert competition_selection["selection"]["selected_extraction_key"] == "hito1b-test"
+    assert competition_selection["played_fixtures_loaded"] == 0
+    assert competition_selection["normalized_state_counts"] == {
+        "played": 0, "scheduled": 0, "unresolved": 0, "inconsistent": 0,
+    }

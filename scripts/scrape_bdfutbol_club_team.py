@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import gzip
 import json
 import sys
 import time
@@ -18,6 +17,7 @@ from football_data_hub.collectors.bdfutbol_club_team import (
     capture_club_team_snapshots,
     discover_latest_snapshots,
 )
+from football_data_hub.collectors.bdfutbol_competition import load_competition_export
 from football_data_hub.parsers.club_team_coverage import build_club_team_coverage
 from football_data_hub.providers.bdfutbol.club_team import (
     PARSER_VERSION,
@@ -31,6 +31,7 @@ from football_data_hub.storage.club_team_exports import write_club_team_exports
 DEFAULT_RAW_ROOT = Path("data/raw/bdfutbol")
 DEFAULT_OUTPUT_ROOT = Path("data/parsed/bdfutbol/club_team_2026_27")
 DEFAULT_ANALYSIS_ROOT = Path("data/analysis/bdfutbol/club_team")
+DEFAULT_COMPETITION_ROOT = Path("data/parsed/bdfutbol/primera_federacion_2026_27")
 
 
 def _add_team_ids(parser: argparse.ArgumentParser) -> None:
@@ -50,6 +51,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     _add_team_ids(offline)
     offline.add_argument("--raw-root", type=Path, default=DEFAULT_RAW_ROOT)
     offline.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT)
+    offline.add_argument("--competition-root", type=Path, default=DEFAULT_COMPETITION_ROOT)
+    offline.add_argument("--competition-extraction-key", help="Selecciona explícitamente una extracción Hito 1B validada.")
     offline.add_argument("--compact-export", action="store_true", help="Escribe gzip lossless bajo compact/; omite CSV redundante de filas.")
     offline.add_argument("--include-table-csv", action="store_true", help="Añade table_rows.csv.gz al export compacto.")
 
@@ -57,6 +60,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     _add_team_ids(live)
     live.add_argument("--raw-root", type=Path, default=DEFAULT_RAW_ROOT)
     live.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT)
+    live.add_argument("--competition-root", type=Path, default=DEFAULT_COMPETITION_ROOT)
+    live.add_argument("--competition-extraction-key", help="Selecciona explícitamente una extracción Hito 1B validada.")
     live.add_argument("--analysis-root", type=Path, default=DEFAULT_ANALYSIS_ROOT)
     live.add_argument(
         "--profile",
@@ -187,6 +192,7 @@ def _process_snapshots(
     compact_export: bool = False,
     include_table_csv: bool = False,
     competition_matches: list[dict[str, Any]] | None = None,
+    competition_selection: dict[str, Any] | None = None,
 ) -> tuple[Path, dict[str, Any], list[dict[str, Any]], list[dict[str, Any]]]:
     started = time.perf_counter()
     snapshots = discover_latest_snapshots(raw_root, team_season_ids=set(team_season_ids))
@@ -232,6 +238,7 @@ def _process_snapshots(
         processing_seconds=time.perf_counter() - started,
         include_table_csv=include_table_csv if compact_export else None,
         competition_matches=competition_matches,
+        competition_selection=competition_selection,
     )
     return output_dir, coverage, parsed_pages, variant_pages
 
@@ -242,53 +249,38 @@ def _write_live_status(path: Path, value: dict[str, Any]) -> None:
 
 
 def _load_competition_matches(
-    root: Path = Path("data/parsed/bdfutbol/primera_federacion_2026_27"),
+    root: Path = DEFAULT_COMPETITION_ROOT,
+    *,
+    extraction_key: str | None = None,
 ) -> list[dict[str, Any]] | None:
-    """Read the strongest complete local Hito 1B export; never accesses the network."""
-    candidates = list(root.glob("snapshot-*/dataset_metadata.json"))
-    if not candidates:
-        return None
-    ranked: list[tuple[int, int, float, str, list[dict[str, Any]]]] = []
-    for metadata_path in candidates:
-        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-        export_dir = metadata_path.parent
-        export_matches: list[dict[str, Any]] = []
-        groups_complete = True
-        for group, suffix in (("I", "i"), ("II", "ii")):
-            plain = export_dir / f"matches_group_{suffix}.json"
-            compressed = plain.with_name(f"{plain.name}.gz")
-            source_path = plain if plain.is_file() else compressed
-            if not source_path.is_file():
-                groups_complete = False
-                break
-            opener = gzip.open if source_path.suffix == ".gz" else open
-            with opener(source_path, "rt", encoding="utf-8") as stream:
-                payload = json.load(stream)
-            captured_at = payload.get("source_snapshots", {}).get(group, {}).get("captured_at_utc")
-            export_matches.extend({
-                **item,
-                "_captured_at_utc": captured_at,
-                "_competition_extraction_key": metadata.get("extraction_key"),
-            } for item in payload.get("items", []))
-        if groups_complete and export_matches:
-            played_count = sum(item.get("result_status") == "played" for item in export_matches)
-            linked_id_count = sum(item.get("match_id") is not None for item in export_matches)
-            ranked.append((played_count, linked_id_count, metadata_path.stat().st_mtime,
-                           str(metadata.get("extraction_key") or ""), export_matches))
-    return max(ranked, key=lambda item: item[:4])[4] if ranked else None
+    """Return one local Hito 1B extraction selected by integrity and recency."""
+    return load_competition_export(root, extraction_key=extraction_key)["matches"]
+
+
+def _load_competition_selection(
+    root: Path = DEFAULT_COMPETITION_ROOT,
+    *,
+    extraction_key: str | None = None,
+) -> dict[str, Any]:
+    return load_competition_export(root, extraction_key=extraction_key)
 
 
 def run(args: argparse.Namespace) -> int:
     team_ids = list(dict.fromkeys(args.team_id))
     if args.mode == "offline":
         try:
+            competition_selection = _load_competition_selection(
+                args.competition_root,
+                extraction_key=args.competition_extraction_key,
+            )
             output_dir, coverage, parsed_pages, variant_pages = _process_snapshots(
                 team_season_ids=team_ids,
                 raw_root=args.raw_root,
                 output_root=args.output_root,
                 compact_export=args.compact_export,
                 include_table_csv=args.include_table_csv,
-                competition_matches=_load_competition_matches(),
+                competition_matches=competition_selection["matches"],
+                competition_selection=competition_selection["selection"],
             )
         except (OSError, ValueError, RuntimeError) as exc:
             print(f"ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
@@ -370,13 +362,18 @@ def run(args: argparse.Namespace) -> int:
     status_path = args.analysis_root / timestamp_utc() / "capture_status.json"
     _write_live_status(status_path, capture_status)
     try:
+        competition_selection = _load_competition_selection(
+            args.competition_root,
+            extraction_key=args.competition_extraction_key,
+        )
         output_dir, coverage, parsed_pages, variant_pages = _process_snapshots(
             team_season_ids=team_ids,
             raw_root=args.raw_root,
             output_root=args.output_root,
             compact_export=args.compact_export,
             include_table_csv=args.include_table_csv,
-            competition_matches=_load_competition_matches(),
+            competition_matches=competition_selection["matches"],
+            competition_selection=competition_selection["selection"],
         )
     except (OSError, ValueError, RuntimeError) as exc:
         print(f"ERROR al procesar snapshots preservados: {type(exc).__name__}: {exc}", file=sys.stderr)

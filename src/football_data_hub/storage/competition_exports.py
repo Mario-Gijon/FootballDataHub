@@ -27,7 +27,8 @@ _MATCH_CSV_FIELDS = (
     "group", "season", "round", "date", "date_raw", "home_team_name",
     "home_team_season_id", "home_team_season_url", "home_team_reference_method",
     "away_team_name", "away_team_season_id", "away_team_season_url",
-    "away_team_reference_method", "fixture_status", "result_status", "result_raw", "home_goals",
+    "away_team_reference_method", "fixture_status", "match_state", "match_state_issues",
+    "match_state_evidence", "result_status", "result_raw", "home_goals",
     "away_goals", "match_link_status", "match_id", "match_url", "stadium_name", "stadium_id",
     "stadium_url", "referee_name", "referee_id", "referee_url",
     "source_row_index", "_snapshot_sha256", "_captured_at_utc", "_parser_version",
@@ -106,6 +107,7 @@ def _flatten_quality(quality: dict[str, Any]) -> list[dict[str, Any]]:
             "played_matches": observed["played_matches"],
             "scheduled_matches": observed["scheduled_matches"],
             "unresolved_matches": observed["unresolved_matches"],
+            "inconsistent_matches": observed["inconsistent_matches"],
             "scheduled_without_published_id": observed["scheduled_matches_without_published_id"],
             "unresolved_without_published_id": observed["unresolved_matches_without_published_id"],
             "missing_dates": observed["missing_match_dates"],
@@ -131,6 +133,7 @@ def _flatten_quality(quality: dict[str, Any]) -> list[dict[str, Any]]:
         "played_matches": sum(group["observed"]["played_matches"] for group in quality["groups"]),
         "scheduled_matches": sum(group["observed"]["scheduled_matches"] for group in quality["groups"]),
         "unresolved_matches": sum(group["observed"]["unresolved_matches"] for group in quality["groups"]),
+        "inconsistent_matches": sum(group["observed"]["inconsistent_matches"] for group in quality["groups"]),
         "scheduled_without_published_id": sum(
             group["observed"]["scheduled_matches_without_published_id"]
             for group in quality["groups"]
@@ -241,7 +244,7 @@ def write_competition_exports(
         "scope", "group", "access_status", "teams_observed", "teams_expected",
         "rounds_observed", "rounds_expected", "matches_observed", "matches_expected",
         "played_matches", "scheduled_matches", "scheduled_without_published_id",
-        "unresolved_matches", "unresolved_without_published_id", "missing_dates",
+        "unresolved_matches", "inconsistent_matches", "unresolved_without_published_id", "missing_dates",
         "duplicate_match_ids",
         "unresolved_team_refs", "fixture_coverage_complete", "source_snapshot_sha256",
         "source_captured_at_utc", "parser_version",

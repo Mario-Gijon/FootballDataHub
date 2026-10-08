@@ -198,6 +198,7 @@ def build_player_exports(
             })
     statistics = _rows_by_page(parsed_pages, "statistics", "statistics_rows")
     matches = _rows_by_page(parsed_pages, "matches", "match_summary_rows")
+    individual_matches = _rows_by_page(parsed_pages, "matches", "individual_match_rows")
     rivals = _rows_by_page(parsed_pages, "rivals", "rival_records")
     relationships = [
         {"source": page["source"], **relation}
@@ -222,6 +223,7 @@ def build_player_exports(
         "membership_count": len(memberships),
         "player_view_rows_expected": len(coverage),
         "player_views_captured": sum(row["snapshot_status"] == "CAPTURED_VALID" for row in coverage),
+        "player_views_pending": sum(row["snapshot_status"] != "CAPTURED_VALID" for row in coverage),
         "player_views_parsed": sum(row["parse_status"] == "PARSED" for row in coverage),
         "parsed_player_count": len({page["player_id"] for page in parsed_pages}),
         "players_with_all_four_views": sum(
@@ -229,12 +231,13 @@ def build_player_exports(
                 for view in ("profile", "statistics", "matches", "rivals"))
             for player in players
         ),
-        "match_fixture_rows_parsed": 0,
+        "match_fixture_rows_parsed": len(individual_matches),
         "match_aggregate_rows_parsed": len(matches),
         "rival_records_parsed": len(rivals),
         "trajectory_rows_parsed": len([item for item in trajectories if item.get("record_type") != "TOTAL_ROW"]),
         "statistics_rows_parsed": len(statistics),
         "source_snapshot_pages_parsed": len(parsed_pages),
+        "future_pilot_candidates_prepared": len(inventory.get("player_pilot_candidates", [])),
         "career_completeness_certified": False,
     }
     metadata = {
@@ -259,10 +262,12 @@ def build_player_exports(
         "trajectory": trajectories,
         "statistics": statistics,
         "matches": matches,
+        "individual_matches": individual_matches,
         "rivals": rivals,
         "relationships": relationships,
         "coverage": coverage,
         "acquisition_manifest": inventory["acquisition_manifest"],
+        "player_pilot_candidates": inventory.get("player_pilot_candidates", []),
         "source_audit": [source_audit],
     }
     source_digest = hashlib.sha256(json.dumps(
@@ -270,8 +275,14 @@ def build_player_exports(
             "sources": sorted((
                 page["player_id"], page["view"], page["source"].get("rendered_html_sha256")
             ) for page in parsed_pages),
-            "players": [item["player_id"] for item in players],
-            "memberships": [(item.get("team_season_id"), item.get("player_id")) for item in memberships],
+            "inventory": {
+                "players": players,
+                "memberships": memberships,
+                "coverage": coverage,
+                "acquisition_manifest": inventory["acquisition_manifest"],
+                "player_pilot_candidates": inventory.get("player_pilot_candidates", []),
+            },
+            "source_audit": source_audit,
             "parser": PLAYER_PARSER_VERSION,
         },
         ensure_ascii=False, sort_keys=True, separators=(",", ":"),

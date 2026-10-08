@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from football_data_hub.providers.bdfutbol.club_team import PARSER_VERSION
+from football_data_hub.parsers.match_status import normalized_match_state
 from football_data_hub.parsers.club_team_sports import build_club_team_sports_data
 
 
@@ -239,6 +240,7 @@ def write_club_team_exports(
     processing_seconds: float | None = None,
     include_table_csv: bool | None = None,
     competition_matches: list[dict[str, Any]] | None = None,
+    competition_selection: dict[str, Any] | None = None,
 ) -> Path:
     """Write lossless JSON/CSV exports; compact mode uses deterministic gzip files."""
     write_started = time.perf_counter()
@@ -255,9 +257,12 @@ def write_club_team_exports(
         ))
         for item in (competition_matches or [])
     ))
+    competition_selection_key = json.dumps(
+        competition_selection or {}, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
     storage_profile = f"gzip-table-csv-{include_table_csv}" if compact else "legacy"
     key = hashlib.sha256(
-        f"{source_key}|competition:{competition_source_key}|parser:{PARSER_VERSION}|coverage:{coverage.get('schema_version')}|storage:{storage_profile}".encode("utf-8")
+        f"{source_key}|competition:{competition_source_key}|selection:{competition_selection_key}|parser:{PARSER_VERSION}|coverage:{coverage.get('schema_version')}|storage:{storage_profile}".encode("utf-8")
     ).hexdigest()[:20]
     base_output = output_root.expanduser().resolve()
     if compact:
@@ -298,6 +303,7 @@ def write_club_team_exports(
         "season_scope": "2026/27",
         "source_snapshots": sources,
         "competition_crosscheck_source": {
+            "selection": competition_selection,
             "extraction_keys": sorted({
                 str(item["_competition_extraction_key"])
                 for item in (competition_matches or []) if item.get("_competition_extraction_key")
@@ -306,9 +312,19 @@ def write_club_team_exports(
                 str(item["_captured_at_utc"])
                 for item in (competition_matches or []) if item.get("_captured_at_utc")
             }),
+            "multiple_extractions_detected": len({
+                str(item.get("_competition_extraction_key"))
+                for item in (competition_matches or []) if item.get("_competition_extraction_key")
+            }) > 1,
             "fixtures_loaded": len(competition_matches or []),
-            "played_fixtures_loaded": sum(item.get("result_status") == "played" for item in (competition_matches or [])),
-        } if competition_matches is not None else None,
+            "played_fixtures_loaded": sum(
+                normalized_match_state(item) == "played" for item in (competition_matches or [])
+            ),
+            "normalized_state_counts": {
+                state: sum(normalized_match_state(item) == state for item in (competition_matches or []))
+                for state in ("played", "scheduled", "unresolved", "inconsistent")
+            },
+        } if competition_matches is not None or competition_selection is not None else None,
         "coverage_summary": coverage.get("summary"),
         "storage_format": {
             "compression": "gzip" if compact else "none",

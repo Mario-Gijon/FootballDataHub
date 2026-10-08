@@ -16,6 +16,7 @@ from football_data_hub.collectors.bdfutbol_club_team import (
     discover_latest_snapshots,
     load_club_team_snapshot,
 )
+from football_data_hub.collectors.bdfutbol_competition import InvalidCompetitionExport
 from football_data_hub.parsers.club_team_coverage import build_club_team_coverage
 from football_data_hub.providers.bdfutbol.club_team import (
     InvalidClubTeamPage,
@@ -626,7 +627,7 @@ def test_zero_match_result_filter_validates_against_zero_aggregate() -> None:
     assert validation["validated"] is True
 
 
-def test_competition_crosscheck_loader_prefers_the_export_with_played_results(tmp_path: Path) -> None:
+def test_competition_crosscheck_loader_rejects_partial_exports_instead_of_ranking_labels(tmp_path: Path) -> None:
     poorer = tmp_path / "snapshot-newer"
     richer = tmp_path / "snapshot-richer"
     poorer.mkdir()
@@ -648,12 +649,9 @@ def test_competition_crosscheck_loader_prefers_the_export_with_played_results(tm
                 }],
             }), encoding="utf-8")
 
-    matches = club_team_cli._load_competition_matches(tmp_path)
-
-    assert matches is not None
-    assert len(matches) == 2
-    assert {item["result_status"] for item in matches} == {"played"}
-    assert {item["_competition_extraction_key"] for item in matches} == {"older-played"}
+    assert club_team_cli._load_competition_matches(tmp_path) is None
+    with pytest.raises(InvalidCompetitionExport, match="older-played"):
+        club_team_cli._load_competition_matches(tmp_path, extraction_key="older-played")
 
 
 def test_entity_capture_state_changes_when_all_base_snapshots_are_present() -> None:
