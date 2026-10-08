@@ -231,6 +231,13 @@ def _value_at(table: dict[str, Any], row: dict[str, Any], header: str) -> str | 
     return None
 
 
+def _integer_value(raw_value: str | None) -> int | None:
+    try:
+        return int(str(raw_value))
+    except (TypeError, ValueError):
+        return None
+
+
 def _validated_filtered_match_variant(
     page: dict[str, Any],
     canonical_page: dict[str, Any] | None,
@@ -291,6 +298,18 @@ def _validated_filtered_match_variant(
     ) if outcome_filter else len(scored) == outcome_count
     scored_ids = [row_ids.get(int(row["row_index"])) for row, _, _, _ in scored]
     unique_scored_ids = [match_id for match_id in scored_ids if match_id is not None]
+    outcome_match_ids = {
+        outcome: [
+            row_ids.get(int(row["row_index"]))
+            for row, _, _, row_outcome in scored
+            if row_outcome == outcome
+        ]
+        for outcome in ("pg", "pe", "pp")
+    }
+    aggregate_counts = {
+        outcome: _integer_value(_value_at(aggregate, season_row, column))
+        for outcome, column in (("all", "PJ"), ("pg", "PG"), ("pe", "PE"), ("pp", "PP"))
+    }
     validated = (
         outcome_count == expected_count
         and filter_match
@@ -310,6 +329,8 @@ def _validated_filtered_match_variant(
         "all_rows_match_query": filter_match,
         "all_rows_match_result_filter": rows_match_outcome,
         "match_ids": unique_scored_ids,
+        "outcome_match_ids": outcome_match_ids,
+        "aggregate_counts": aggregate_counts,
         "match_ids_unique": len(unique_scored_ids) == len(set(unique_scored_ids)),
         "all_played_rows_have_match_ids": len(unique_scored_ids) == len(scored),
         "total_rows": sum(row.get("row_role") == "total" for row in filtered.get("rows", [])),
@@ -767,7 +788,7 @@ def build_club_team_coverage(
 def _match_result_coverage(
     variants: list[dict[str, Any]], club_ids: list[str]
 ) -> list[dict[str, Any]]:
-    """Require all-results plus each outcome and reconcile unique played match IDs."""
+    """Validate the all-results view; treat per-outcome filters as optional cross-checks."""
     expected_filters = {"all", "pg", "pe", "pp"}
     result = []
     for club_id in club_ids:
@@ -793,6 +814,11 @@ def _match_result_coverage(
             name: (observed.get(name, {}).get("validation") or {}).get("aggregate_expected")
             for name in ("pg", "pe", "pp", "all")
         }
+        all_validation = (observed.get("all", {}).get("validation") or {})
+        validated_aggregate_counts = all_validation.get("aggregate_counts") or {}
+        for name in expected_counts:
+            if validated_aggregate_counts.get(name) is not None:
+                expected_counts[name] = validated_aggregate_counts[name]
         outcomes_sum = (
             sum(expected_counts[name] for name in ("pg", "pe", "pp"))
             if all(isinstance(expected_counts[name], int) for name in ("pg", "pe", "pp"))
@@ -802,12 +828,30 @@ def _match_result_coverage(
             name in observed and observed[name].get("coverage_status") == "COMPLETE"
             for name in expected_filters
         )
-        reconciled = bool(
+        all_valid = "all" in observed and observed["all"].get("coverage_status") == "COMPLETE"
+        all_outcome_ids = all_validation.get("outcome_match_ids") or {}
+        classified_union = set(
+            match_id for outcome in ("pg", "pe", "pp")
+            for match_id in all_outcome_ids.get(outcome, []) if match_id is not None
+        )
+        all_ids_unique = len(all_ids) == len(set(all_ids))
+        primary_reconciled = bool(
+            all_valid
+            and all_ids_unique
+            and classified_union == all_ids
+            and {
+                outcome: len(all_outcome_ids.get(outcome, []))
+                for outcome in ("pg", "pe", "pp")
+            } == {outcome: expected_counts.get(outcome) for outcome in ("pg", "pe", "pp")}
+            and len(all_ids) == expected_counts.get("all")
+        )
+        optional_reconciled = bool(
             all_variants_valid
             and not duplicate_ids
             and outcomes_union == all_ids
             and outcomes_sum == expected_counts["all"] == len(all_ids)
         )
+        reconciled = primary_reconciled and (not all_variants_valid or optional_reconciled)
         result.append({
             "club_id": club_id,
             "scope": f"club={club_id};cat=1rf;temp=2026-27;result=all,pg,pe,pp",
@@ -815,11 +859,21 @@ def _match_result_coverage(
             "expected_result_views": sorted(expected_filters),
             "observed_result_views": sorted(observed),
             "missing_result_views": sorted(expected_filters - set(observed)),
+            "required_result_views": ["all"],
+            "missing_required_result_views": ["all"] if not all_valid else [],
+            "optional_outcome_filter_views_pending": sorted({"pg", "pe", "pp"} - set(observed)),
+            "all_view_outcomes_match_aggregates": primary_reconciled,
             "aggregate_counts": expected_counts,
             "outcome_match_ids": {name: sorted(ids_by_filter.get(name, set())) for name in ("pg", "pe", "pp")},
             "all_result_match_ids": sorted(all_ids),
             "duplicate_ids_across_outcomes": duplicate_ids,
-            "outcome_union_equals_all_view": bool(all_variants_valid and outcomes_union == all_ids),
-            "reason": "El conjunto de victorias/empates/derrotas se reconcilia con PJ y la vista general." if reconciled else "Faltan variantes o la unión de IDs/resultados no coincide con los agregados.",
+            "outcome_union_equals_all_view": bool(primary_reconciled and (not all_variants_valid or outcomes_union == all_ids)),
+            "reason": (
+                "La vista all contiene IDs únicos y sus resultados coinciden con PG/PE/PP; los filtros de resultado son opcionales."
+                if primary_reconciled and not all_variants_valid
+                else "Las variantes all y por resultado se reconcilian por ID con PJ/PG/PE/PP."
+                if reconciled
+                else "Falta la vista all o sus partidos/outcomes no se reconcilian con los agregados."
+            ),
         })
     return result

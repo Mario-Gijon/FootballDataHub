@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from football_data_hub.providers.bdfutbol.club_team import PARSER_VERSION
+from football_data_hub.parsers.club_team_sports import build_club_team_sports_data
 
 
 def _atomic_write(path: Path, data: bytes) -> None:
@@ -237,6 +238,7 @@ def write_club_team_exports(
     compact: bool = False,
     processing_seconds: float | None = None,
     include_table_csv: bool | None = None,
+    competition_matches: list[dict[str, Any]] | None = None,
 ) -> Path:
     """Write lossless JSON/CSV exports; compact mode uses deterministic gzip files."""
     write_started = time.perf_counter()
@@ -246,9 +248,16 @@ def write_club_team_exports(
         f"{page['url']}:{page.get('source', {}).get('rendered_html_sha256')}"
         for page in all_pages
     ))
+    competition_source_key = "|".join(sorted(
+        ":".join(str(item.get(field) or "") for field in (
+            "_competition_extraction_key", "match_id", "result_status", "date", "home_goals", "away_goals",
+            "_captured_at_utc",
+        ))
+        for item in (competition_matches or [])
+    ))
     storage_profile = f"gzip-table-csv-{include_table_csv}" if compact else "legacy"
     key = hashlib.sha256(
-        f"{source_key}|parser:{PARSER_VERSION}|coverage:{coverage.get('schema_version')}|storage:{storage_profile}".encode("utf-8")
+        f"{source_key}|competition:{competition_source_key}|parser:{PARSER_VERSION}|coverage:{coverage.get('schema_version')}|storage:{storage_profile}".encode("utf-8")
     ).hexdigest()[:20]
     base_output = output_root.expanduser().resolve()
     if compact:
@@ -288,6 +297,18 @@ def write_club_team_exports(
         "provider": "BDFutbol",
         "season_scope": "2026/27",
         "source_snapshots": sources,
+        "competition_crosscheck_source": {
+            "extraction_keys": sorted({
+                str(item["_competition_extraction_key"])
+                for item in (competition_matches or []) if item.get("_competition_extraction_key")
+            }),
+            "snapshot_timestamps_utc": sorted({
+                str(item["_captured_at_utc"])
+                for item in (competition_matches or []) if item.get("_captured_at_utc")
+            }),
+            "fixtures_loaded": len(competition_matches or []),
+            "played_fixtures_loaded": sum(item.get("result_status") == "played" for item in (competition_matches or [])),
+        } if competition_matches is not None else None,
         "coverage_summary": coverage.get("summary"),
         "storage_format": {
             "compression": "gzip" if compact else "none",
@@ -419,4 +440,106 @@ def write_club_team_exports(
         "table_rows_csv_included": include_table_csv,
         "processing_seconds": (processing_seconds or 0.0) + (time.perf_counter() - write_started),
     })
+
+    sports = build_club_team_sports_data(all_pages, competition_matches)
+    sports_dir = output_dir / "sports"
+    sports_metadata = {
+        "schema_version": sports["schema_version"],
+        "extraction_key": key,
+        "parser_version": PARSER_VERSION,
+        "season_scope": "2026/27",
+        "source_export": output_dir.as_posix(),
+    }
+
+    def write_sports_json(name: str, items: Any) -> None:
+        write_json(sports_dir / f"{name}.json", {**sports_metadata, "items": items})
+
+    def write_sports_csv(name: str, items: list[dict[str, Any]], fields: tuple[str, ...]) -> None:
+        csv_items = [
+            {
+                **item,
+                "columns_json": _json_cell(item.get("columns")),
+                "source_observations_json": _json_cell(item.get("source_observations")),
+                "aggregate_expected_json": _json_cell(item.get("aggregate_expected")),
+                "outcomes_observed_json": _json_cell(item.get("outcomes_observed")),
+                "checks_json": _json_cell(item.get("checks")),
+                "fields_json": _json_cell(item.get("fields")),
+                "different_fields_json": _json_cell(item.get("different_fields")),
+                "headers_original_json": _json_cell(item.get("headers_original")),
+                "match_variant_snapshot_timestamps_utc_json": _json_cell(item.get("match_variant_snapshot_timestamps_utc")),
+                "competition_match_ids_expected_json": _json_cell(item.get("competition_match_ids_expected")),
+                "competition_match_ids_observed_json": _json_cell(item.get("competition_match_ids_observed")),
+                "nonempty_cells_by_header_json": _json_cell(item.get("nonempty_cells_by_header")),
+                "occurrences_json": _json_cell(item.get("occurrences")),
+                "record_json": _json_cell(item.get("record")),
+                "explanation": item.get("explanation"),
+            }
+            for item in items
+        ]
+        write_csv(sports_dir / f"{name}.csv", csv_items, fields)
+
+    write_sports_json("rosters", sports["rosters"])
+    write_sports_csv(
+        "rosters", sports["rosters"],
+        ("team_season_id", "club_id", "player_id", "player_url", "name_raw", "shirt_number_raw", "position_raw",
+         "birth_date_raw", "birth_place_raw", "birth_province_raw", "statistics_present", "appearances_raw",
+         "appearances", "zero_appearances", "source_row_index", "url", "snapshot_directory", "snapshot_sha256", "captured_at_utc"),
+    )
+    write_sports_json("player_statistics", sports["player_statistics"])
+    write_sports_csv(
+        "player_statistics", sports["player_statistics"],
+        ("team_season_id", "player_id", "player_url", "source_row_index", "appearances_raw", "appearances",
+         "zero_appearances", "url", "snapshot_directory", "snapshot_sha256", "captured_at_utc", "headers_original", "columns_json"),
+    )
+    write_sports_json("coaches_current", sports["coaches_current"])
+    write_sports_csv(
+        "coaches_current", sports["coaches_current"],
+        ("team_season_id", "club_id", "coach_id", "coach_url", "name_raw", "birth_date_raw", "birth_place_raw",
+         "birth_province_raw", "source_row_index", "url", "snapshot_directory", "snapshot_sha256", "captured_at_utc"),
+    )
+    write_sports_json("movement_references", sports["movement_references"])
+    write_sports_csv(
+        "movement_references", sports["movement_references"],
+        ("team_season_id", "entity_type", "entity_id", "name_raw", "url", "source_table_id", "source_row_index",
+         "occurrences_json", "snapshot_directory", "snapshot_sha256", "captured_at_utc"),
+    )
+    write_sports_json("matches_played", sports["matches_played"])
+    write_sports_csv(
+        "matches_played", sports["matches_played"],
+        ("match_id", "match_url", "group", "date", "date_raw", "home_team_season_id", "away_team_season_id",
+         "home_team_name_raw", "away_team_name_raw", "home_goals", "away_goals", "score_raw", "round_raw",
+         "competition_match_present", "source_observation_count", "source_club_ids", "source_team_season_ids",
+         "source_snapshot_sha256", "captured_at_utc", "competition_comparison"),
+    )
+    write_sports_json("match_observations", sports["match_observations"])
+    write_sports_json("coverage_by_club", sports["coverage_by_club"])
+    write_sports_csv(
+        "coverage_by_club", sports["coverage_by_club"],
+        ("club_id", "team_season_id", "all_match_variant_captured", "matches_played_observed", "matches_unscored_observed",
+         "match_rows_observed", "aggregate_expected_json", "aggregate_snapshot_captured_at_utc",
+         "match_variant_snapshot_timestamps_utc_json", "outcomes_observed_json", "competition_matches_expected",
+         "competition_match_sets_equal", "checks_json", "status"),
+    )
+    write_sports_json("coverage_by_team", sports["coverage_by_team"])
+    write_sports_csv(
+        "coverage_by_team", sports["coverage_by_team"],
+        ("team_season_id", "roster_players", "statistics_players", "roster_without_statistics", "statistics_without_roster",
+         "zero_appearance_players", "all_statistics_columns_preserved"),
+    )
+    write_sports_json("tracking_variants", sports["tracking_variants"])
+    write_sports_json("tracking_player_rows", sports["tracking_player_rows"])
+    write_sports_csv(
+        "tracking_player_rows", sports["tracking_player_rows"],
+        ("team_season_id", "player_id", "player_name_raw", "source_row_index", "columns_json", "url",
+         "snapshot_directory", "snapshot_sha256", "captured_at_utc"),
+    )
+    write_sports_json("duplicate_matches", sports["duplicate_matches"])
+    write_sports_json("duplicate_player_memberships", sports["duplicate_player_memberships"])
+    write_sports_json("multi_coach_teams", sports["multi_coach_teams"])
+    write_sports_json("incidents", sports["incidents"])
+    write_sports_csv(
+        "incidents", sports["incidents"],
+        ("code", "severity", "match_id", "club_id", "team_season_id", "fields", "fields_json", "different_fields_json", "captured_at_utc", "explanation", "checks_json"),
+    )
+    write_sports_json("summary", sports["summary"])
     return output_dir

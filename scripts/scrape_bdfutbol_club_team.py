@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import gzip
 import json
 import sys
 import time
@@ -185,6 +186,7 @@ def _process_snapshots(
     output_root: Path,
     compact_export: bool = False,
     include_table_csv: bool = False,
+    competition_matches: list[dict[str, Any]] | None = None,
 ) -> tuple[Path, dict[str, Any], list[dict[str, Any]], list[dict[str, Any]]]:
     started = time.perf_counter()
     snapshots = discover_latest_snapshots(raw_root, team_season_ids=set(team_season_ids))
@@ -229,6 +231,7 @@ def _process_snapshots(
         compact=compact_export,
         processing_seconds=time.perf_counter() - started,
         include_table_csv=include_table_csv if compact_export else None,
+        competition_matches=competition_matches,
     )
     return output_dir, coverage, parsed_pages, variant_pages
 
@@ -236,6 +239,43 @@ def _process_snapshots(
 def _write_live_status(path: Path, value: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def _load_competition_matches(
+    root: Path = Path("data/parsed/bdfutbol/primera_federacion_2026_27"),
+) -> list[dict[str, Any]] | None:
+    """Read the strongest complete local Hito 1B export; never accesses the network."""
+    candidates = list(root.glob("snapshot-*/dataset_metadata.json"))
+    if not candidates:
+        return None
+    ranked: list[tuple[int, int, float, str, list[dict[str, Any]]]] = []
+    for metadata_path in candidates:
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        export_dir = metadata_path.parent
+        export_matches: list[dict[str, Any]] = []
+        groups_complete = True
+        for group, suffix in (("I", "i"), ("II", "ii")):
+            plain = export_dir / f"matches_group_{suffix}.json"
+            compressed = plain.with_name(f"{plain.name}.gz")
+            source_path = plain if plain.is_file() else compressed
+            if not source_path.is_file():
+                groups_complete = False
+                break
+            opener = gzip.open if source_path.suffix == ".gz" else open
+            with opener(source_path, "rt", encoding="utf-8") as stream:
+                payload = json.load(stream)
+            captured_at = payload.get("source_snapshots", {}).get(group, {}).get("captured_at_utc")
+            export_matches.extend({
+                **item,
+                "_captured_at_utc": captured_at,
+                "_competition_extraction_key": metadata.get("extraction_key"),
+            } for item in payload.get("items", []))
+        if groups_complete and export_matches:
+            played_count = sum(item.get("result_status") == "played" for item in export_matches)
+            linked_id_count = sum(item.get("match_id") is not None for item in export_matches)
+            ranked.append((played_count, linked_id_count, metadata_path.stat().st_mtime,
+                           str(metadata.get("extraction_key") or ""), export_matches))
+    return max(ranked, key=lambda item: item[:4])[4] if ranked else None
 
 
 def run(args: argparse.Namespace) -> int:
@@ -248,6 +288,7 @@ def run(args: argparse.Namespace) -> int:
                 output_root=args.output_root,
                 compact_export=args.compact_export,
                 include_table_csv=args.include_table_csv,
+                competition_matches=_load_competition_matches(),
             )
         except (OSError, ValueError, RuntimeError) as exc:
             print(f"ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
@@ -335,6 +376,7 @@ def run(args: argparse.Namespace) -> int:
             output_root=args.output_root,
             compact_export=args.compact_export,
             include_table_csv=args.include_table_csv,
+            competition_matches=_load_competition_matches(),
         )
     except (OSError, ValueError, RuntimeError) as exc:
         print(f"ERROR al procesar snapshots preservados: {type(exc).__name__}: {exc}", file=sys.stderr)

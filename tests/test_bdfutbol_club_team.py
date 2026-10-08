@@ -589,6 +589,21 @@ def test_all_current_result_filters_reconcile_against_aggregates_and_unique_ids(
     assert coverage["entity_coverage"][0]["status"] == "INCOMPLETE"
 
 
+def test_all_results_variant_alone_closes_primary_scope_against_pj_pg_pe_pp() -> None:
+    canonical, _ = _filtered_match_pages()
+    all_results = _match_variant_for_filter(None)
+    coverage = build_club_team_coverage([canonical], variant_pages=[all_results])
+
+    result_scope = coverage["match_result_coverage"][0]
+    assert result_scope["status"] == "COMPLETE"
+    assert result_scope["required_result_views"] == ["all"]
+    assert result_scope["missing_required_result_views"] == []
+    assert result_scope["optional_outcome_filter_views_pending"] == ["pe", "pg", "pp"]
+    assert result_scope["all_view_outcomes_match_aggregates"] is True
+    assert result_scope["aggregate_counts"] == {"pg": 3, "pe": 2, "pp": 1, "all": 6}
+    assert result_scope["outcome_union_equals_all_view"] is True
+
+
 def test_zero_match_result_filter_validates_against_zero_aggregate() -> None:
     source_results = (("pg", "0", "3"), ("pg", "0", "1"), ("pg", "1", "2"),
         ("pg", "0", "2"), ("pg", "1", "3"), ("pe", "1", "1"))
@@ -609,6 +624,36 @@ def test_zero_match_result_filter_validates_against_zero_aggregate() -> None:
     assert validation["aggregate_expected"] == 0
     assert validation["played_match_rows"] == 0
     assert validation["validated"] is True
+
+
+def test_competition_crosscheck_loader_prefers_the_export_with_played_results(tmp_path: Path) -> None:
+    poorer = tmp_path / "snapshot-newer"
+    richer = tmp_path / "snapshot-richer"
+    poorer.mkdir()
+    richer.mkdir()
+    for directory, extraction_key, result_status in (
+        (poorer, "newer-empty", "scheduled"),
+        (richer, "older-played", "played"),
+    ):
+        (directory / "dataset_metadata.json").write_text(
+            json.dumps({"extraction_key": extraction_key}), encoding="utf-8",
+        )
+        for group, suffix in (("I", "i"), ("II", "ii")):
+            (directory / f"matches_group_{suffix}.json").write_text(json.dumps({
+                "source_snapshots": {group: {"captured_at_utc": f"2026-10-08T1{0 if result_status == 'played' else 2}:00:00+00:00"}},
+                "items": [{
+                    "match_id": f"{group}-1", "result_status": result_status,
+                    "date": "2026-10-01", "home_goals": 1 if result_status == "played" else None,
+                    "away_goals": 0 if result_status == "played" else None,
+                }],
+            }), encoding="utf-8")
+
+    matches = club_team_cli._load_competition_matches(tmp_path)
+
+    assert matches is not None
+    assert len(matches) == 2
+    assert {item["result_status"] for item in matches} == {"played"}
+    assert {item["_competition_extraction_key"] for item in matches} == {"older-played"}
 
 
 def test_entity_capture_state_changes_when_all_base_snapshots_are_present() -> None:
