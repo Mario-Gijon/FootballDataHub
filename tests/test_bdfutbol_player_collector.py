@@ -3,6 +3,7 @@ from __future__ import annotations
 import gzip
 import hashlib
 import json
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -25,9 +26,13 @@ def _assessment(url: str, status: AccessStatus = AccessStatus.VALID) -> AccessAs
         status=status,
         requested_url=url,
         final_url=url,
-        http_status=200 if status is AccessStatus.VALID else 403,
+        http_status=403 if status is AccessStatus.CHALLENGE_REQUIRED else 200,
         page_title="Synthetic offline response",
-        reason=None if status is AccessStatus.VALID else "challenge simulated by test",
+        reason=(
+            None if status is AccessStatus.VALID
+            else "challenge simulated by test" if status is AccessStatus.CHALLENGE_REQUIRED
+            else "semantic marker missing in test"
+        ),
     )
 
 
@@ -46,7 +51,12 @@ def _write_valid_snapshot(directory: Path, url: str) -> None:
     }), encoding="utf-8")
 
 
-def _install_fake_browser(monkeypatch: pytest.MonkeyPatch, statuses: list[AccessStatus]) -> list[str]:
+def _install_fake_browser(
+    monkeypatch: pytest.MonkeyPatch,
+    statuses: list[AccessStatus],
+    *,
+    final_urls: list[str] | None = None,
+) -> list[str]:
     from football_data_hub.core import browser_session
     from football_data_hub.providers.bdfutbol import access as access_module
     from football_data_hub.providers.bdfutbol import discovery
@@ -81,8 +91,12 @@ def _install_fake_browser(monkeypatch: pytest.MonkeyPatch, statuses: list[Access
         def open(self, url: str, **_kwargs: object) -> VisitContext:
             calls.append(url)
             status = statuses[self.index]
+            index = self.index
             self.index += 1
-            return VisitContext(_assessment(url, status))
+            assessment = _assessment(url, status)
+            if final_urls is not None:
+                assessment = replace(assessment, final_url=final_urls[index])
+            return VisitContext(assessment)
 
     def capture(*, assessment: AccessAssessment, output_dir: Path, **_kwargs: object) -> dict:
         _write_valid_snapshot(output_dir, assessment.requested_url)
@@ -235,6 +249,50 @@ def test_challenge_stops_immediately_and_persists_attempt_state(tmp_path: Path, 
     assert len(state_files) == 1
     state = json.loads(state_files[0].read_text(encoding="utf-8"))
     assert state["records"][0]["status"] == "CHALLENGE_REQUIRED"
+
+
+def test_invalid_content_http_200_stops_without_writing_a_snapshot(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    raw_root = tmp_path / "raw"
+    calls = _install_fake_browser(monkeypatch, [AccessStatus.INVALID_CONTENT])
+
+    with pytest.raises(PlayerAcquisitionStopped) as exc_info:
+        capture_player_snapshots(
+            player_ids=["j123"], raw_root=raw_root, profile_dir=tmp_path / "profile",
+        )
+
+    assert exc_info.value.status == "INVALID_CONTENT"
+    assert calls == [player_view_url("j123", "profile")]
+    run_root = next(raw_root.iterdir())
+    state = json.loads((run_root / "acquisition_state.json").read_text(encoding="utf-8"))
+    assert state["records"][0]["status"] == "INVALID_CONTENT"
+    assert state["records"][0]["http_status"] == 200
+    assert not list(raw_root.rglob("rendered.html"))
+    assert not (run_root / "j123" / "profile").exists()
+
+
+def test_wrong_final_player_identity_is_rejected_before_snapshot_write(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    raw_root = tmp_path / "raw"
+    requested_url = player_view_url("j123", "profile")
+    calls = _install_fake_browser(
+        monkeypatch,
+        [AccessStatus.VALID],
+        final_urls=[player_view_url("j999", "profile")],
+    )
+
+    with pytest.raises(PlayerAcquisitionStopped) as exc_info:
+        capture_player_snapshots(
+            player_ids=["j123"], raw_root=raw_root, profile_dir=tmp_path / "profile",
+        )
+
+    assert calls == [requested_url]
+    assert exc_info.value.status == "RAW_INTEGRITY_ERROR"
+    assert "no identifica el jugador y vista solicitados" in (exc_info.value.reason or "")
+    assert not list(raw_root.rglob("rendered.html"))
+    assert not (next(raw_root.iterdir()) / "j123" / "profile").exists()
 
 
 def test_interruption_retains_prior_views_and_next_run_resumes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

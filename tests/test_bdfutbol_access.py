@@ -50,6 +50,17 @@ def test_missing_marker():
     assert result.missing_markers == ("Demarcación",)
 
 
+def test_http_200_profile_without_its_required_marker_is_incomplete_content():
+    result = assess(
+        page_title="j23751 | BDFutbol",
+        body_text="Página sin contenido deportivo de perfil",
+        required_markers=("Futbolista",),
+    )
+    assert result.http_status == 200
+    assert result.status is mod.AccessStatus.INVALID_CONTENT
+    assert result.missing_markers == ("Futbolista",)
+
+
 def test_bad_path():
     assert assess(final_url="https://www.bdfutbol.com/es/").status is mod.AccessStatus.INVALID_URL
 
