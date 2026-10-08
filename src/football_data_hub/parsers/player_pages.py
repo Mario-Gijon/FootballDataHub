@@ -12,7 +12,7 @@ from urllib.parse import parse_qs, urljoin, urlsplit
 
 from bs4 import BeautifulSoup, Tag
 
-PLAYER_PARSER_VERSION = "0.2.0"
+PLAYER_PARSER_VERSION = "0.2.1"
 PLAYER_SCHEMA_VERSION = "football_data_hub.bdfutbol.player_pages.v2"
 PLAYER_VIEWS = ("profile", "statistics", "matches", "rivals")
 _PLAYER_URL = re.compile(r"/es/(?:j/j|p/jr?|p/j)(\d+)\.html$")
@@ -1093,7 +1093,7 @@ def build_player_pilot_candidates(
     for row in sorted(memberships, key=lambda item: (str(item.get("player_id")), str(item.get("team_season_id")))):
         position = str(row.get("position_raw") or "").strip()
         player_id = str(row.get("player_id"))
-        if position and player_id not in first_by_position:
+        if position and position not in first_by_position:
             first_by_position[position] = player_id
     for position, player_id in sorted(first_by_position.items()):
         reasons[player_id].add(f"REPRESENTATIVE_RAW_POSITION_CODE:{position}")

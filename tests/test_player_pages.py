@@ -11,6 +11,7 @@ from football_data_hub.parsers.player_pages import (
     PlayerSnapshotError,
     PLAYER_VIEWS,
     build_player_acquisition_inventory,
+    build_player_pilot_candidates,
     classify_player_view,
     discover_player_snapshots,
     parse_player_html,
@@ -382,6 +383,25 @@ def test_filtered_snapshot_stays_a_variant_and_leaves_base_view_pending() -> Non
     assert matches["selected_snapshot_directory"] is None
 
 
+def test_pilot_position_representative_uses_raw_position_as_unique_key() -> None:
+    memberships = [
+        {"player_id": "j101", "team_season_id": "t2026-1", "position_raw": "4"},
+        {"player_id": "j102", "team_season_id": "t2026-2", "position_raw": "4"},
+        {"player_id": "j103", "team_season_id": "t2026-3", "position_raw": "1"},
+    ]
+    players = [
+        {"player_id": row["player_id"], "profile_url": f"https://www.bdfutbol.com/es/j/{row['player_id']}.html"}
+        for row in memberships
+    ]
+
+    candidates = build_player_pilot_candidates(memberships, players, {})
+    reasons = {row["player_id"]: row["selection_reasons"] for row in candidates}
+
+    assert reasons["j101"] == ["REPRESENTATIVE_RAW_POSITION_CODE:4"]
+    assert reasons["j103"] == ["REPRESENTATIVE_RAW_POSITION_CODE:1"]
+    assert "j102" not in reasons
+
+
 def test_player_view_classification_handles_all_four_urls() -> None:
     assert classify_player_view("https://www.bdfutbol.com/es/j/j123.html") == ("j123", "profile")
     assert classify_player_view("https://www.bdfutbol.com/es/j/j123.html?p=stats") == ("j123", "statistics")
@@ -426,7 +446,7 @@ def test_compact_exports_are_repeatable_and_do_not_embed_raw_html(tmp_path: Path
         output_root=tmp_path / "exports",
     )
     assert first == second
-    assert first.name.endswith("parser-0.2.0")
+    assert first.name.endswith("parser-0.2.1")
     assert sentinel.read_text(encoding="utf-8") == "previous immutable export"
     profiles = json.load(gzip.open(first / "profiles.json.gz", "rt", encoding="utf-8"))
     assert profiles["items"][0]["player_id"] == "j123"
