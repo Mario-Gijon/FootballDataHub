@@ -1,0 +1,366 @@
+{
+  "schema_version": "football-data-hub.bdfutbol.audit-catalog.v1",
+  "audit_date": "2026-10-08",
+  "scope": {
+    "competition": "Primera Federación española 2026/27",
+    "groups": ["I", "II"],
+    "provider": "BDFutbol",
+    "purpose": "Discovery técnico representativo; no scraper implementado",
+    "navigation_budget": 30,
+    "direct_target_page_navigations": 20
+  },
+  "verification_states": {
+    "VERIFIED": "Comprobado directamente en una navegación real de esta auditoría.",
+    "ARTIFACT_ONLY": "Solo aparece en artefactos existentes de ejecuciones anteriores.",
+    "INFERRED": "Hipótesis o estimación no confirmada directamente.",
+    "NOT_TESTED": "Pendiente; no se visitó ni interactuó directamente.",
+    "BLOCKED": "El recurso no fue accesible en la comprobación que lo reporta."
+  },
+  "access_proof": {
+    "status": "VERIFIED",
+    "browser": "Brave externo",
+    "virtual_display": "Xvfb",
+    "automation": "Playwright sync API conectado por CDP mediante BrowserSessionManager",
+    "access_validation": "BDFutbolAccess; assessment VALID basado en HTTP, URL, título y marcadores deportivos",
+    "persistent_profile": "~/.football-data-hub-v2-probe (usado sin inspeccionar/copiar/exportar cookies ni credenciales)",
+    "smoke_evidence": "data/analysis/bdfutbol/session_smoke/20261008T120931.289334Z/summary.json",
+    "smoke_target": {
+      "url": "https://www.bdfutbol.com/es/j/j209629.html",
+      "http_status": 200,
+      "title": "Morillas, Jaime Morillas Giménez - Futbolista | BDFutbol",
+      "status": "VALID",
+      "diagnostic_table_count": 58
+    },
+    "sandbox_note": "El primer intento terminó antes de abrir navegador porque no pudo crear el lock del perfil en HOME; la repetición autorizada con acceso al perfil fue válida.",
+    "no_challenge_bypass": true
+  },
+  "previous_artifacts": [
+    {
+      "status": "ARTIFACT_ONLY",
+      "assessment_status": "CHALLENGE_REQUIRED",
+      "path": "data/analysis/bdfutbol/headless_probe/20261008T103331.853564Z/summary.json",
+      "note": "Ejecución previa HTTP/headless; no es navegación de esta auditoría."
+    },
+    {
+      "status": "ARTIFACT_ONLY",
+      "assessment_status": "CHALLENGE_REQUIRED",
+      "path": "data/analysis/bdfutbol/headless_probe/20261008T103340.009489Z/summary.json",
+      "note": "Incluía Morillas, Real Jaén, temporada Jaén 2026/27 y partido Real Jaén; no se reutilizó como evidencia VERIFIED."
+    },
+    {
+      "status": "ARTIFACT_ONLY",
+      "assessment_status": "CHALLENGE_REQUIRED",
+      "path": "data/analysis/bdfutbol/discovery_0a/20261008T113427.602554Z/summary.json",
+      "note": "Morillas: HTTP 403, título Just a moment."
+    },
+    {
+      "status": "ARTIFACT_ONLY",
+      "assessment_status": "VALID",
+      "path": "data/analysis/bdfutbol/discovery_0a/20261008T114243.890449Z/summary.json",
+      "snapshot": "data/raw/bdfutbol/discovery_0a/20261008T114243.890449Z/morillas",
+      "note": "Morillas HTTP 200; 10,541 links (truncated), 58 tables, 7 selects, 4 tabs."
+    }
+  ],
+  "navigation_log": [
+    {"index": 1, "url": "https://www.bdfutbol.com/es/j/j209629.html", "resource": "player-profile-smoke", "status": "VERIFIED", "http_status": 200, "evidence": "data/analysis/bdfutbol/session_smoke/20261008T120931.289334Z/summary.json"},
+    {"index": 2, "url": "https://www.bdfutbol.com/es/t/t2026-271rf1.html", "resource": "competition-group-i-classification", "status": "VERIFIED", "http_status": 200, "evidence": "data/raw/bdfutbol/luna_audit/20261008T121024.595861Z/competition_group_i/metadata.json"},
+    {"index": 3, "url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html", "resource": "competition-group-ii-classification", "status": "VERIFIED", "http_status": 200, "evidence": "data/raw/bdfutbol/luna_audit/20261008T121024.595861Z/competition_group_ii/metadata.json"},
+    {"index": 4, "url": "https://www.bdfutbol.com/es/t/t2026-271rf1.html", "resource": "competition-group-i-filter-interaction", "status": "VERIFIED", "http_status": 200, "evidence": "data/analysis/bdfutbol/luna_audit/20261008T121144.726760Z/interaction_probe.json"},
+    {"index": 5, "url": "https://www.bdfutbol.com/es/t/t2026-271rf1.html?tab=results", "resource": "competition-group-i-results", "status": "VERIFIED", "http_status": 200, "evidence": "data/raw/bdfutbol/luna_audit/20261008T121144.726760Z/results/metadata.json"},
+    {"index": 6, "url": "https://www.bdfutbol.com/es/t/t2026-271rf1.html?tab=top", "resource": "competition-group-i-featured", "status": "VERIFIED", "http_status": 200, "evidence": "data/raw/bdfutbol/luna_audit/20261008T121144.726760Z/top/metadata.json"},
+    {"index": 7, "url": "https://www.bdfutbol.com/es/t/t2026-271rf1.html?tab=referees", "resource": "competition-group-i-referees", "status": "VERIFIED", "http_status": 200, "evidence": "data/raw/bdfutbol/luna_audit/20261008T121144.726760Z/referees/metadata.json"},
+    {"index": 8, "url": "https://www.bdfutbol.com/es/t/t2026-271rf1.html?tab=stats", "resource": "competition-group-i-statistics", "status": "VERIFIED", "http_status": 200, "evidence": "data/raw/bdfutbol/luna_audit/20261008T121144.726760Z/stats/metadata.json"},
+    {"index": 9, "url": "https://www.bdfutbol.com/es/t/t2026-2749.html", "resource": "team-season-jaen", "status": "VERIFIED", "http_status": 200, "evidence": "data/raw/bdfutbol/luna_audit/20261008T121250.991672Z/team_season_jaen/metadata.json"},
+    {"index": 10, "url": "https://www.bdfutbol.com/es/e/e49.html", "resource": "club-jaen", "status": "VERIFIED", "http_status": 200, "evidence": "data/raw/bdfutbol/luna_audit/20261008T121250.991672Z/club_profile_jaen/metadata.json"},
+    {"index": 11, "url": "https://www.bdfutbol.com/es/j/j209629.html", "resource": "player-morillas-trajectory", "status": "VERIFIED", "http_status": 200, "evidence": "data/raw/bdfutbol/luna_audit/20261008T121250.991672Z/player_profile_morillas/metadata.json"},
+    {"index": 12, "url": "https://www.bdfutbol.com/es/j/j209629.html?p=stats", "resource": "player-morillas-statistics", "status": "VERIFIED", "http_status": 200, "evidence": "data/raw/bdfutbol/luna_audit/20261008T121250.991672Z/player_stats_morillas/metadata.json"},
+    {"index": 13, "url": "https://www.bdfutbol.com/es/p/j209629.html", "resource": "player-morillas-matches", "status": "VERIFIED", "http_status": 200, "evidence": "data/raw/bdfutbol/luna_audit/20261008T121250.991672Z/player_matches_morillas/metadata.json"},
+    {"index": 14, "url": "https://www.bdfutbol.com/es/p/jr209629.html", "resource": "player-morillas-rivals", "status": "VERIFIED", "http_status": 200, "evidence": "data/raw/bdfutbol/luna_audit/20261008T121250.991672Z/player_rivals_morillas/metadata.json"},
+    {"index": 15, "url": "https://www.bdfutbol.com/es/p/p.php?id=269462", "resource": "match-269462", "status": "VERIFIED", "http_status": 200, "evidence": "data/raw/bdfutbol/luna_audit/20261008T121346.469132Z/match_269462/metadata.json"},
+    {"index": 16, "url": "https://www.bdfutbol.com/es/l/l1835.html", "resource": "coach-manolo-herrero", "status": "VERIFIED", "http_status": 200, "evidence": "data/raw/bdfutbol/luna_audit/20261008T121419.346588Z/coach_manolo_herrero/metadata.json"},
+    {"index": 17, "url": "https://www.bdfutbol.com/es/r/r602267.html", "resource": "referee-pacheco-cotero", "status": "VERIFIED", "http_status": 200, "evidence": "data/raw/bdfutbol/luna_audit/20261008T121419.346588Z/referee_pacheco_cotero/metadata.json"},
+    {"index": 18, "url": "https://www.bdfutbol.com/es/s/81.html", "resource": "stadium-suarez-puerta", "status": "VERIFIED", "http_status": 200, "evidence": "data/raw/bdfutbol/luna_audit/20261008T121419.346588Z/stadium_suarez_puerta/metadata.json"},
+    {"index": 19, "url": "https://www.bdfutbol.com/es/t/t2026-2749.html", "resource": "team-columns-disclosure", "status": "VERIFIED", "http_status": 200, "evidence": "data/analysis/bdfutbol/luna_audit/20261008T121519.382702Z/column_panel_interaction.json"},
+    {"index": 20, "url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=lista", "resource": "team-season-player-statistics", "status": "VERIFIED", "http_status": 200, "evidence": "data/raw/bdfutbol/luna_audit/20261008T121519.382702Z/team_season_statistics/metadata.json"}
+  ],
+  "resources": [
+    {
+      "id": "competition-group-i-classification",
+      "entity_type": "competition",
+      "view": "classification",
+      "status": "VERIFIED",
+      "url": "https://www.bdfutbol.com/es/t/t2026-271rf1.html",
+      "title": "Clasificación 1ª RFEF Grupo I 2026-27 | BDFutbol",
+      "http_status": 200,
+      "fields": ["season", "group", "position", "team", "points", "played", "wins", "draws", "losses", "goals_for", "goals_against", "yellow_cards", "red_cards"],
+      "observed_structure": {"team_rows_including_header": 21, "teams": 20, "rounds": 38, "fixture_rows_hidden_in_initial_html": 380, "large_hidden_table_rows_including_round_and_column_headers": 456},
+      "controls": ["group 1/group 2 selector", "home/away/overall table", "round selector 1-38", "postponed matches included/excluded", "all/date/round date filter", "chart selector: position/points/goals_for/goals_against"],
+      "interactions_tested": ["home table selection changed classification rows locally", "date filter revealed date1/date2 fields", "chart metric redrew SVG client-side"],
+      "interaction_network_result": "No URL change, main-frame navigation, fetch or XHR observed for tested controls.",
+      "evidence": ["data/raw/bdfutbol/luna_audit/20261008T121024.595861Z/competition_group_i/", "data/analysis/bdfutbol/luna_audit/20261008T121144.726760Z/interaction_probe.json"],
+      "difficulty_estimate": "medium",
+      "pending": ["group I all rounds and postponement edge cases not exercised", "all table semantics not mapped", "other group tabs not opened"]
+    },
+    {
+      "id": "competition-group-ii-classification",
+      "entity_type": "competition",
+      "view": "classification",
+      "status": "VERIFIED",
+      "url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html",
+      "title": "Clasificación 1ª RFEF Grupo II 2026-27 | BDFutbol",
+      "http_status": 200,
+      "fields": ["season", "group", "position", "team", "points", "played", "wins", "draws", "losses", "goals_for", "goals_against", "yellow_cards", "red_cards"],
+      "observed_structure": {"team_rows_including_header": 21, "teams": 20, "rounds": 38, "fixture_rows_hidden_in_initial_html": 380, "large_hidden_table_rows_including_round_and_column_headers": 456},
+      "controls": ["home/away/overall", "rounds", "postponed matches", "date/round filtering", "chart metric"],
+      "evidence": ["data/raw/bdfutbol/luna_audit/20261008T121024.595861Z/competition_group_ii/"],
+      "difficulty_estimate": "medium",
+      "pending": ["tabs, selectors and alternate views on Group II were not activated"]
+    },
+    {
+      "id": "competition-group-i-results",
+      "entity_type": "competition",
+      "view": "results",
+      "status": "VERIFIED",
+      "url": "https://www.bdfutbol.com/es/t/t2026-271rf1.html?tab=results",
+      "fields": ["round", "date", "home_team", "score", "away_team", "stadium", "referee", "team-versus-team results matrix"],
+      "controls": ["round selector with Todas and Jornadas 1-38", "group selector"],
+      "evidence": ["data/raw/bdfutbol/luna_audit/20261008T121144.726760Z/results/"],
+      "difficulty_estimate": "medium",
+      "pending": ["individual result filters and postponed match variations not tested"]
+    },
+    {
+      "id": "competition-group-i-featured",
+      "entity_type": "competition",
+      "view": "featured-player-leaders",
+      "status": "VERIFIED",
+      "url": "https://www.bdfutbol.com/es/t/t2026-271rf1.html?tab=top",
+      "fields": ["player", "country", "position", "age", "goals", "club", "minutes", "yellow_cards", "red_cards"],
+      "controls": ["metric: goals/minutes/yellow/red/youngest/oldest", "country selector"],
+      "evidence": ["data/raw/bdfutbol/luna_audit/20261008T121144.726760Z/top/"],
+      "difficulty_estimate": "medium",
+      "pending": ["global Rankings section not visited", "other category behavior not exercised"]
+    },
+    {
+      "id": "competition-group-i-referees-tab",
+      "entity_type": "competition",
+      "view": "referee-leaderboard",
+      "status": "VERIFIED",
+      "url": "https://www.bdfutbol.com/es/t/t2026-271rf1.html?tab=referees",
+      "fields": ["referee_name", "age", "birth_date", "birth_place", "province", "matches", "yellow_cards", "red_cards"],
+      "controls": ["season selector with 96 listed seasons", "group selector: all/group I/group II"],
+      "evidence": ["data/raw/bdfutbol/luna_audit/20261008T121144.726760Z/referees/"],
+      "difficulty_estimate": "medium",
+      "pending": ["group II ref view and season filter not selected"]
+    },
+    {
+      "id": "competition-group-i-statistics",
+      "entity_type": "competition",
+      "view": "season-statistics",
+      "status": "VERIFIED",
+      "url": "https://www.bdfutbol.com/es/t/t2026-271rf1.html?tab=stats",
+      "fields": ["teams", "matches", "home_wins", "away_wins", "draws", "goals", "goal_average", "yellow_cards", "red_cards", "penalties", "streaks", "largest_home_win", "largest_away_win"],
+      "evidence": ["data/raw/bdfutbol/luna_audit/20261008T121144.726760Z/stats/"],
+      "difficulty_estimate": "low-medium",
+      "pending": ["group II stats not opened", "visual chart data extraction not tested"]
+    },
+    {
+      "id": "club-jaen",
+      "entity_type": "club",
+      "view": "general-and-trajectory",
+      "status": "VERIFIED",
+      "url": "https://www.bdfutbol.com/es/e/e49.html",
+      "fields": ["short_name", "full_name", "foundation_date", "locality", "province", "country", "stadium", "capacity", "historical_seasons", "competition_honours"],
+      "controls": ["table/list view", "competition filter", "compare club selector (947 options; inventory option list truncated)"],
+      "verified_tab_links_not_opened": [
+        {"view": "statistics", "url": "https://www.bdfutbol.com/es/e/e49.html?p=stats", "status": "NOT_TESTED"},
+        {"view": "players", "url": "https://www.bdfutbol.com/es/e/egols49.html", "status": "NOT_TESTED"},
+        {"view": "coaches", "url": "https://www.bdfutbol.com/es/e/eentr49.html", "status": "NOT_TESTED"},
+        {"view": "matches", "url": "https://www.bdfutbol.com/es/p/e49.html", "status": "NOT_TESTED"},
+        {"view": "rivals", "url": "https://www.bdfutbol.com/es/p/er49.html", "status": "NOT_TESTED"}
+      ],
+      "evidence": ["data/raw/bdfutbol/luna_audit/20261008T121250.991672Z/club_profile_jaen/"],
+      "difficulty_estimate": "medium",
+      "pending": ["tab pages, media, complete seasonal history and comparison not opened"]
+    },
+    {
+      "id": "team-season-jaen-2026-27",
+      "entity_type": "team_season",
+      "view": "squad-and-lineup",
+      "status": "VERIFIED",
+      "url": "https://www.bdfutbol.com/es/t/t2026-2749.html",
+      "fields": ["season", "competition", "matches_played", "win_percentage", "coach", "shirt_number", "player_name", "position", "age", "played", "started", "completed", "substitute", "unused_callup", "minutes", "yellow_cards", "red_cards", "goals"],
+      "controls": ["70-season selector", "view selector: Alineación/Plantilla/Estadísticas", "competition selector", "column disclosure with 15 checkboxes", "Recordar/Restablecer preference controls"],
+      "column_panel_interaction": {"status": "VERIFIED", "opened": true, "saved_or_reset": false, "evidence": "data/analysis/bdfutbol/luna_audit/20261008T121519.382702Z/column_panel_interaction.json"},
+      "verified_tab_links_not_opened": [
+        {"view": "tracking", "url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=seg", "status": "NOT_TESTED"},
+        {"view": "transfers", "url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=altas", "status": "NOT_TESTED"},
+        {"view": "matches", "url": "https://www.bdfutbol.com/es/t/t2026-2749.html?tab=partits", "status": "NOT_TESTED"}
+      ],
+      "evidence": ["data/raw/bdfutbol/luna_audit/20261008T121250.991672Z/team_season_jaen/", "data/analysis/bdfutbol/luna_audit/20261008T121519.382702Z/column_panel_interaction.json"],
+      "difficulty_estimate": "medium-high",
+      "pending": ["all player roster rows not independently reconciled", "season selector not activated", "preference persistence not tested"]
+    },
+    {
+      "id": "team-season-jaen-player-statistics",
+      "entity_type": "team_season",
+      "view": "player-statistics-list",
+      "status": "VERIFIED",
+      "url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=lista",
+      "fields": ["player", "position", "played", "started", "completed", "substitute", "unused_callup", "minutes", "yellow_cards", "red_cards", "goals", "minutes_per_goal", "goals_types", "wins", "draws", "losses"],
+      "evidence": ["data/raw/bdfutbol/luna_audit/20261008T121519.382702Z/team_season_statistics/"],
+      "difficulty_estimate": "medium",
+      "pending": ["alternate Plantilla view not directly opened"]
+    },
+    {
+      "id": "player-morillas-profile",
+      "entity_type": "player",
+      "view": "trajectory",
+      "status": "VERIFIED",
+      "url": "https://www.bdfutbol.com/es/j/j209629.html",
+      "fields": ["full_name", "birth_date", "birth_place", "birth_country", "position", "height", "season", "team", "division", "age", "played", "started", "completed", "substitute", "minutes", "yellow_cards", "red_cards", "goals", "own_goals", "wins", "draws", "losses"],
+      "controls": ["team filter: all/Atlético Baleares/Jaén", "country filter: all/Spain", "trajectory chart controls", "column disclosure"],
+      "media": {"status": "VERIFIED", "profile_carousel_images": 1, "community_photos_label": "Fotos (0)", "additional_gallery": "NOT_TESTED"},
+      "cross_view_observation": "Trajectory view displayed total PJ 29; statistics view showed 23 + 6 + 1 PJ by competition. Definitions/overlap unresolved; do not assume additive agreement.",
+      "evidence": ["data/raw/bdfutbol/luna_audit/20261008T121250.991672Z/player_profile_morillas/"],
+      "difficulty_estimate": "medium-high",
+      "pending": ["all career-history completeness not independently checked", "photo zoom/additional gallery not tested"]
+    },
+    {
+      "id": "player-morillas-statistics",
+      "entity_type": "player",
+      "view": "statistics",
+      "status": "VERIFIED",
+      "url": "https://www.bdfutbol.com/es/j/j209629.html?p=stats",
+      "fields": ["competition", "seasons", "consecutive_seasons", "teams", "played", "complete", "started", "substitute", "unused_callup", "wins", "draws", "losses", "minutes", "goals", "goals_per_game", "clean_sheets", "goals_conceded", "cards", "age_first_last_appearance"],
+      "controls": ["competition selector: Segunda División B/1ª RFEF/Copa del Rey", "Top 250 link observed but not opened"],
+      "evidence": ["data/raw/bdfutbol/luna_audit/20261008T121250.991672Z/player_stats_morillas/"],
+      "difficulty_estimate": "medium",
+      "pending": ["all optional columns and milestone interactions not tested"]
+    },
+    {
+      "id": "player-morillas-matches",
+      "entity_type": "player",
+      "view": "matches-summary",
+      "status": "VERIFIED",
+      "url": "https://www.bdfutbol.com/es/p/j209629.html",
+      "fields": ["match_count", "goals", "wins", "draws", "losses", "competition", "season", "team", "opponent", "cards", "goals", "win_draw_loss_percentage"],
+      "controls": ["competition", "season", "team", "opponent", "national-team filter", "country"],
+      "evidence": ["data/raw/bdfutbol/luna_audit/20261008T121250.991672Z/player_matches_morillas/"],
+      "difficulty_estimate": "medium-high",
+      "pending": ["individual match-by-match completeness, filters and pagination not verified"]
+    },
+    {
+      "id": "player-morillas-rivals",
+      "entity_type": "player",
+      "view": "rivals",
+      "status": "VERIFIED",
+      "url": "https://www.bdfutbol.com/es/p/jr209629.html",
+      "fields": ["opponent_player", "opponent_position", "played", "wins", "draws", "losses", "percentage", "goals", "conceded", "yellow_cards", "red_cards"],
+      "controls": ["competition", "season", "position"],
+      "evidence": ["data/raw/bdfutbol/luna_audit/20261008T121250.991672Z/player_rivals_morillas/"],
+      "difficulty_estimate": "high",
+      "pending": ["full 476-row table meaning and filters not exercised", "table sorting/pagination not tested"]
+    },
+    {
+      "id": "match-269462",
+      "entity_type": "match",
+      "view": "match-detail",
+      "status": "VERIFIED",
+      "url": "https://www.bdfutbol.com/es/p/p.php?id=269462",
+      "title": "Avilés Industrial - Lugo (1 - 2) 02/10/2026 | BDFutbol",
+      "fields": ["competition", "round", "stadium", "date", "kickoff_time", "home_team", "away_team", "score", "goal_scorer", "goal_minute", "starting_players", "substitutes", "substitution_minute", "coaches", "referee"],
+      "relationships": ["teams Avilés Industrial and Lugo", "stadium Suárez Puerta", "referee Pacheco Cotero", "coaches Yago Iglesias and Borja"],
+      "evidence": ["data/raw/bdfutbol/luna_audit/20261008T121346.469132Z/match_269462/"],
+      "difficulty_estimate": "high",
+      "pending": ["cards absent in this sample", "match tabs/other event cases and all match IDs not tested"]
+    },
+    {
+      "id": "coach-manolo-herrero",
+      "entity_type": "coach",
+      "view": "trajectory",
+      "status": "VERIFIED",
+      "url": "https://www.bdfutbol.com/es/l/l1835.html",
+      "fields": ["full_name", "birth_date", "birth_place", "country", "height", "season", "club", "division", "age", "matches_managed", "wins", "draws", "losses", "cards"],
+      "controls": ["team filter", "country filter", "trajectory/statistics/matches/rivals tabs"],
+      "evidence": ["data/raw/bdfutbol/luna_audit/20261008T121419.346588Z/coach_manolo_herrero/"],
+      "difficulty_estimate": "medium-high",
+      "pending": ["statistics, matches and rivals tabs not opened", "career completeness not reconciled"]
+    },
+    {
+      "id": "referee-pacheco-cotero",
+      "entity_type": "referee",
+      "view": "trajectory",
+      "status": "VERIFIED",
+      "url": "https://www.bdfutbol.com/es/r/r602267.html",
+      "fields": ["full_name", "birth_date", "birth_place", "country", "season", "division", "matches", "home_wins", "draws", "away_wins", "yellow_cards", "yellow_cards_per_match", "red_cards", "red_cards_per_match"],
+      "controls": ["country filter", "trajectory/statistics/matches tabs"],
+      "evidence": ["data/raw/bdfutbol/luna_audit/20261008T121419.346588Z/referee_pacheco_cotero/"],
+      "difficulty_estimate": "medium",
+      "pending": ["match-designation tab not opened", "complete appointments not reconciled"]
+    },
+    {
+      "id": "stadium-suarez-puerta",
+      "entity_type": "stadium",
+      "view": "profile-and-aggregates",
+      "status": "VERIFIED",
+      "url": "https://www.bdfutbol.com/es/s/81.html",
+      "fields": ["official_name", "capacity", "opening_date", "architect", "dimensions", "locality", "matches", "teams", "seasons", "competitions", "home_team", "visiting_teams", "competition_totals"],
+      "evidence": ["data/raw/bdfutbol/luna_audit/20261008T121419.346588Z/stadium_suarez_puerta/"],
+      "difficulty_estimate": "medium",
+      "pending": ["stadium photographs and match listing not tested"]
+    }
+  ],
+  "network_observations": [
+    {
+      "status": "VERIFIED",
+      "observation_window": "Page-load tail and a read-only disclosure interaction on the Jaén team-season page; causality with the click is unknown.",
+      "requests": [
+        {"method": "POST", "host": "www.bdfutbol.com", "path_prefix": "/cdn-cgi/challenge-platform/h/g/jsd/oneshot/", "response_status": 200, "classification": "Cloudflare JavaScript Detection/background verification candidate"},
+        {"method": "GET", "host": "www.google.com", "path_prefix": "/recaptcha/api2/anchor", "response_status": 200, "classification": "reCAPTCHA resource loaded; no CAPTCHA interacted with"},
+        {"method": "GET", "host": "www.google.com", "path_prefix": "/recaptcha/api2/bframe", "response_status": 200, "classification": "reCAPTCHA resource loaded; no CAPTCHA interacted with"},
+        {"method": "POST", "host": "umami.optispai.com", "path_prefix": "/api/send", "response_status": 200, "classification": "analytics/telemetry candidate"},
+        {"method": "GET", "host": "www.bdfutbol.com", "path_prefix": "/manifest.json", "response_status": 403, "classification": "secondary resource; main sports document remained VALID/200"}
+      ],
+      "payloads_or_headers_inspected": false
+    },
+    {
+      "status": "VERIFIED",
+      "observation_window": "Competition group I controls: classification mode, date-filter mode and chart metric.",
+      "result": "URL unchanged; no main-frame navigation and no fetch/XHR request observed for these controls.",
+      "evidence": "data/analysis/bdfutbol/luna_audit/20261008T121144.726760Z/interaction_probe.json"
+    },
+    {
+      "status": "ARTIFACT_ONLY",
+      "result": "Discovery DOM inventory records 0-1 Resource Timing fetch/XHR entries depending on page; this is not a HAR and may omit requests.",
+      "evidence": "data/raw/bdfutbol/luna_audit/20261008T121024.595861Z/competition_group_i/inventory.json"
+    }
+  ],
+  "relationships": [
+    {"from": "competition-group", "to": "team-season", "evidence": "team links in standings and group II Jaén season URL", "status": "VERIFIED"},
+    {"from": "competition-group", "to": "match", "evidence": "fixture-table match hrefs", "status": "VERIFIED"},
+    {"from": "match", "to": "stadium", "evidence": "Suárez Puerta link on match 269462", "status": "VERIFIED"},
+    {"from": "match", "to": "referee", "evidence": "Pacheco Cotero link on match 269462", "status": "VERIFIED"},
+    {"from": "match", "to": "coach", "evidence": "Yago Iglesias and Borja links on match 269462", "status": "VERIFIED"},
+    {"from": "team-season", "to": "club", "evidence": "Jaén link to e49", "status": "VERIFIED"},
+    {"from": "team-season", "to": "player", "evidence": "Morillas row/link in Jaén 2026/27 roster", "status": "VERIFIED"},
+    {"from": "team-season", "to": "coach", "evidence": "Manolo Herrero profile link", "status": "VERIFIED"}
+  ],
+  "not_tested": [
+    {"resource": "global Rankings section", "status": "NOT_TESTED"},
+    {"resource": "all clubs and all player/coach histories", "status": "NOT_TESTED"},
+    {"resource": "group II results/top/referee/statistics views", "status": "NOT_TESTED"},
+    {"resource": "pagination and every table sort/column combination", "status": "NOT_TESTED"},
+    {"resource": "all gallery/photo pages, lazy images and carousel variants", "status": "NOT_TESTED"},
+    {"resource": "coach/referee matches/statistics sub-tabs", "status": "NOT_TESTED"},
+    {"resource": "club stats/players/coaches/matches/rivals tabs", "status": "NOT_TESTED"},
+    {"resource": "official data/photo API linked in site footer", "status": "NOT_TESTED"},
+    {"resource": "all event/card/stadium edge cases across matches", "status": "NOT_TESTED"},
+    {"resource": "complete final-season coverage and historical completeness", "status": "NOT_TESTED"}
+  ],
+  "technical_feasibility": {
+    "assessment": "INFERRED",
+    "conclusion": "Python parsers using preserved HTML/DOM plus allowlisted Playwright interactions are technically viable. Fully unattended full-season acquisition is conditional on authorized access and subsequent coverage discovery.",
+    "evidence": ["20 target-page navigations validated by BDFutbolAccess", "large raw snapshots retained", "client-side filters/charts observed", "historical Cloudflare blocks also retained"],
+    "estimated_effort": "medium-high; page families are deterministic but DOMs are large, multi-view, season-sensitive and have access volatility"
+  }
+}

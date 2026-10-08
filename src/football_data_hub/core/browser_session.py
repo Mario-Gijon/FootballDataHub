@@ -103,6 +103,26 @@ class BrowserSessionManager:
             raise BrowserSessionError("Llama a start() antes de navegar")
         assert self._context is not None
         page = self._context.new_page()
+        visit = PageVisit(page=page, requested_url=url, response_status=None)
+
+        def observe_document_response(response: Any) -> None:
+            """Record the last actual main-document response, including auto-navigation.
+
+            An initial challenge can return 403 and later navigate to the real
+            page with 200. Keeping only page.goto()'s original response would
+            incorrectly describe the final document as a 403.
+            """
+            try:
+                if (
+                    response.request.is_navigation_request()
+                    and response.frame == page.main_frame
+                ):
+                    visit.response_status = response.status
+            except PlaywrightError:
+                # Diagnostic observation must not interrupt normal navigation.
+                return
+
+        page.on("response", observe_document_response)
         try:
             page.set_default_navigation_timeout(self.navigation_timeout_ms)
             response = page.goto(
@@ -110,6 +130,8 @@ class BrowserSessionManager:
                 wait_until="domcontentloaded",
                 timeout=self.navigation_timeout_ms,
             )
+            if visit.response_status is None and response is not None:
+                visit.response_status = response.status
         except Exception as exc:
             try:
                 page.close()
@@ -118,11 +140,6 @@ class BrowserSessionManager:
             raise BrowserNavigationError(
                 f"No se pudo navegar a {url}: {type(exc).__name__}: {exc}"
             ) from exc
-        visit = PageVisit(
-            page=page,
-            requested_url=url,
-            response_status=response.status if response is not None else None,
-        )
         self._visits.append(visit)
         return visit
 

@@ -16,14 +16,29 @@ class FakePage:
         self.closed = False
         self.fail = fail
         self.timeout = None
+        self.listeners = {}
+        self.main_frame = object()
 
     def set_default_navigation_timeout(self, timeout):
         self.timeout = timeout
+
+    def on(self, name, callback):
+        self.listeners.setdefault(name, []).append(callback)
+
+    def emit_main_document_response(self, status):
+        response = SimpleNamespace(
+            request=SimpleNamespace(is_navigation_request=lambda: True),
+            frame=self.main_frame,
+            status=status,
+        )
+        for callback in self.listeners.get("response", []):
+            callback(response)
 
     def goto(self, url, **kwargs):
         if self.fail:
             raise RuntimeError("falló conexión")
         self.url = url
+        self.emit_main_document_response(200)
         return SimpleNamespace(status=200)
 
     def close(self):
@@ -137,3 +152,28 @@ def test_missing_context_rolls_back(monkeypatch, tmp_path):
 def test_invalid_timeouts(tmp_path):
     with pytest.raises(ValueError):
         mod.BrowserSessionManager(BrowserRuntimeConfig(tmp_path / "p"), cdp_timeout_ms=0)
+
+
+def test_main_frame_navigation_updates_http_status(monkeypatch, tmp_path):
+    session, _, playwright = manager(monkeypatch, tmp_path)
+    with session:
+        with session.open_page("https://www.bdfutbol.com/es/j/j209629.html") as visit:
+            assert visit.response_status == 200
+            visit.page.emit_main_document_response(403)
+            assert visit.response_status == 403
+            visit.page.emit_main_document_response(200)
+            assert visit.response_status == 200
+
+
+def test_subresource_response_does_not_change_status(monkeypatch, tmp_path):
+    session, _, _ = manager(monkeypatch, tmp_path)
+    with session:
+        with session.open_page("https://www.bdfutbol.com/es/j/j209629.html") as visit:
+            response = SimpleNamespace(
+                request=SimpleNamespace(is_navigation_request=lambda: False),
+                frame=visit.page.main_frame,
+                status=403,
+            )
+            for callback in visit.page.listeners["response"]:
+                callback(response)
+            assert visit.response_status == 200

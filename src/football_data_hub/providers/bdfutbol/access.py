@@ -150,7 +150,7 @@ class BDFutbolAccess:
         *,
         required_markers: tuple[str, ...],
         settle_ms: int = 750,
-        max_wait_seconds: float = 5.0,
+        max_wait_seconds: float = 12.0,
     ) -> BDFutbolVisit:
         if not is_bdfutbol_https_url(url):
             raise ValueError("Solo se permiten URLs HTTPS de bdfutbol.com")
@@ -184,9 +184,13 @@ class BDFutbolAccess:
             except Exception:
                 visit.close()
                 raise
-            if (
-                assessment.status is not AccessStatus.INVALID_CONTENT
-                or time.monotonic() >= deadline
-            ):
+            # Cloudflare can show an intermediate challenge which the browser
+            # completes on its own. Observe briefly; never click CAPTCHA,
+            # reload the challenge, or attempt to bypass it.
+            waiting = assessment.status in {
+                AccessStatus.INVALID_CONTENT,
+                AccessStatus.CHALLENGE_REQUIRED,
+            }
+            if not waiting or time.monotonic() >= deadline:
                 return BDFutbolVisit(assessment=assessment, visit=visit)
             page.wait_for_timeout(400)

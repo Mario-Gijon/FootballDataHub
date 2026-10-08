@@ -26,6 +26,13 @@ dist/
 /data/analysis/*
 !/data/analysis/.gitkeep
 
+# Requested audit catalog is versionable; timestamped capture runs stay ignored.
+!/data/analysis/bdfutbol/
+/data/analysis/bdfutbol/*
+!/data/analysis/bdfutbol/luna_audit/
+/data/analysis/bdfutbol/luna_audit/*
+!/data/analysis/bdfutbol/luna_audit/resource_catalog.json
+
 # Browser profiles and Playwright state
 .football-data-hub-browser/
 **/_browser_profile/

@@ -148,3 +148,46 @@ def test_access_rejects_other_sites_before_navigating():
 def test_access_invalid_timings():
     with pytest.raises(ValueError):
         mod.BDFutbolAccess(FakeSession()).open(URL, required_markers=MARKERS, settle_ms=-1)
+
+
+def test_access_waits_for_transient_challenge_to_clear():
+    class TransientPage(FakePage):
+        def __init__(self):
+            super().__init__(title="Un momento…", body="Verificación de seguridad en curso")
+            self.visit = None
+
+        def wait_for_timeout(self, milliseconds):
+            super().wait_for_timeout(milliseconds)
+            if milliseconds == 400:
+                self._title = "Morillas - Futbolista | BDFutbol"
+                self._body = VALID_BODY
+                self.visit.response_status = 200
+
+    class TransientSession(FakeSession):
+        def open_page(self, url):
+            visit = SimpleNamespace(
+                page=self.page, final_url=url, response_status=403,
+                close=lambda: self.page.close(),
+            )
+            self.page.visit = visit
+            return visit
+
+    page = TransientPage()
+    session = TransientSession(page)
+    # This fake moves directly to valid content on the next wait, no real time.
+    with mod.BDFutbolAccess(session).open(
+        URL, required_markers=MARKERS, max_wait_seconds=2.0,
+    ) as result:
+        assert result.assessment.status is mod.AccessStatus.VALID
+        assert result.assessment.http_status == 200
+        assert page.waits == [750, 400]
+
+
+def test_access_still_reports_persistent_challenge_without_retrying():
+    page = FakePage(title="Un momento…", body="Verificación de seguridad en curso")
+    session = FakeSession(page, response_status=403)
+    with mod.BDFutbolAccess(session).open(
+        URL, required_markers=MARKERS, max_wait_seconds=0,
+    ) as result:
+        assert result.assessment.status is mod.AccessStatus.CHALLENGE_REQUIRED
+        assert session.calls == [URL]
