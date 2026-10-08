@@ -1,30 +1,29 @@
-# Dev Explorer V1
+# Preview deportiva local
 
-El Dev Explorer es una interfaz Streamlit local, de solo lectura, para inspeccionar los exports parsed existentes de Primera Federación 2026/27. No inicia adquisiciones, no visita BDFutbol y no modifica archivos. Detecta los directorios de export automáticamente y selecciona por defecto el dataset válido con la captura de origen más reciente. Se pueden seleccionar datasets anteriores para comparar su contenido.
+La preview es una aplicación Streamlit local, deportiva y de solo lectura para los exports parsed de Primera Federación 2026/27. Funciona con los JSON ya creados por Hito 1B; no visita BDFutbol, no inicia scrapers y no modifica snapshots ni exports.
 
 ## Instalación y ejecución
 
-Desde la raíz del repositorio, instala el extra opcional en el entorno virtual actual y ejecuta:
+Desde la raíz del repositorio, instala las dependencias opcionales y arranca la aplicación:
 
 ```bash
 .venv/bin/python -m pip install -e '.[dev-explorer]'
 .venv/bin/streamlit run scripts/run_dev_explorer.py
 ```
 
-La configuración de Streamlit liga el servidor a `127.0.0.1` y desactiva las métricas de uso. Abre <http://127.0.0.1:8501>. Para detenerlo, usa `Ctrl+C` en esa terminal.
+Abre <http://127.0.0.1:8502>. Streamlit queda ligado a `127.0.0.1` y sus métricas de uso están desactivadas. Detén el servidor con `Ctrl+C`.
 
-## Secciones
+## Navegación
 
-- **Resumen:** recuentos de estructura y resultados, estado de acceso, fecha, URLs y hash de snapshots de origen.
-- **Clasificaciones:** tabla de posiciones y ficha breve del equipo elegido.
-- **Calendario:** filtros de grupo, jornada, equipo, estado y búsqueda; el resultado ausente se muestra como `—`.
-- **Visor de partidos:** campos parsed completos de un partido.
-- **Equipos:** participante, clasificación relacionada y partidos del equipo.
-- **Calidad y cobertura:** cobertura estructural, disponibilidad de resultados, diagnósticos y comprobaciones de parser por separado. No se reduce a una puntuación agregada.
-- **Explorador de datos:** archivos JSON del export, filtro textual, valores null y registros completos.
+- **Inicio:** cifras del grupo elegido, resultados recientes, próximos encuentros y cinco primeros puestos.
+- **Clasificación:** tabla completa con estadísticas de posición, puntos, partidos, goles y tarjetas; incluye un resumen del equipo seleccionado.
+- **Calendario:** filtro por grupo y jornada, estado en español, fecha, marcador y campos de estadio y árbitro cuando existen.
+- **Equipos:** posición, estadísticas y los últimos resultados y próximos partidos del equipo seleccionado.
+- **Partidos:** ficha deportiva con equipos, marcador, jornada, fecha, estado, estadio, árbitro y enlace de origen cuando está publicado.
+- **Calidad y procedencia:** acceso secundario desde el final de la barra lateral. Conserva los checks del parser, los diagnósticos, los registros sin ID, la validez de acceso, las URLs de origen y el hash del snapshot.
 
-El cargador tolera la diferencia conocida entre exports antiguos y recientes: cuando un registro antiguo carece de `fixture_status`, deriva `scheduled`, `unresolved` o `unconfirmed` a partir de `result_status`, la fecha del partido y la fecha de captura. Esta presentación no reescribe los JSON. Los directorios ausentes, incompletos o corruptos se informan en el selector y no sustituyen al último dataset válido.
+El selector detecta automáticamente los exports, permite elegir una captura anterior y selecciona por defecto la captura válida más reciente según sus metadatos. Las capturas incompletas se identifican sin mostrar rutas internas en las vistas deportivas.
 
-## Limitaciones conocidas
+## Limitaciones
 
-La V1 refleja solo los campos que exporta Hito 1B: competición, participantes, clasificaciones y calendario/resultados con la procedencia y calidad disponibles. No contiene fichas completas de clubes, plantillas, jugadores ni alineaciones de partidos. Los estados calculados para exports antiguos son una ayuda de inspección, no una corrección del dataset ni una nueva evaluación del proveedor.
+La V1 representa solo la información que exporta Hito 1B: competición, participantes, clasificaciones y calendario/resultados. No incluye fichas completas de clubes, plantillas, jugadores, alineaciones o estadísticas individuales. Los resultados y estadísticas se muestran únicamente cuando están presentes en el export. Para datos antiguos sin `fixture_status`, la capa de presentación deriva estados a partir de `result_status`, fecha y captura; no reescribe el dataset.

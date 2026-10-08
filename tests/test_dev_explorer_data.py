@@ -19,9 +19,11 @@ from football_data_hub.dev_explorer.data import (
     latest_valid_dataset,
     load_dataset,
     null_counts,
+    recent_results,
     score_label,
     search_records,
     team_records,
+    upcoming_matches,
 )
 
 
@@ -212,6 +214,40 @@ def test_team_joins_and_calendar_filters_use_ids_and_selected_dimensions(tmp_pat
     assert [match["match_id"] for match in filtered] == ["m-2"]
     assert filtered[0]["_display_fixture_status"] == "scheduled"
     assert filter_matches(dataset, group="I", team_season_id="not-present") == []
+
+
+def test_dashboard_match_lists_sort_real_statuses_and_limit_results(tmp_path: Path) -> None:
+    matches = [
+        _match(
+            match_id="older-result",
+            date="2026-09-01",
+            status="available",
+            fixture="played",
+            home_goals=1,
+            away_goals=0,
+        ),
+        _match(
+            match_id="newer-result",
+            date="2026-09-04",
+            round_number=2,
+            status="available",
+            fixture="played",
+            home_goals=2,
+            away_goals=1,
+        ),
+        _match(match_id=None, date="2026-10-11", round_number=3, fixture="scheduled"),
+        _match(match_id=None, date="2026-10-09", round_number=4, fixture="scheduled"),
+        _match(match_id=None, date="2026-10-07", round_number=5, fixture="unresolved"),
+    ]
+    dataset = load_dataset(_write_dataset(tmp_path, "dashboard", matches_i=matches))
+
+    assert [match["match_id"] for match in recent_results(dataset, group="I", limit=1)] == [
+        "newer-result"
+    ]
+    assert [match["date"] for match in upcoming_matches(dataset, group="I", limit=2)] == [
+        "2026-10-09",
+        "2026-10-11",
+    ]
 
 
 def test_quality_reports_structural_coverage_results_and_integrity_separately(tmp_path: Path) -> None:

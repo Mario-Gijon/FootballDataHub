@@ -328,6 +328,37 @@ def filter_matches(
     return output
 
 
+def recent_results(
+    dataset: ExplorerDataset, *, group: str | None = None, limit: int = 5
+) -> list[dict[str, Any]]:
+    """Partidos con resultado, ordenados del más reciente al más antiguo."""
+    matches = [
+        match
+        for match in filter_matches(dataset, group=group, statuses={"played"})
+        if has_result(match)
+    ]
+    matches.sort(
+        key=lambda match: (str(match.get("date") or ""), int(match.get("round") or 0)),
+        reverse=True,
+    )
+    return matches[: max(0, limit)]
+
+
+def upcoming_matches(
+    dataset: ExplorerDataset, *, group: str | None = None, limit: int = 5
+) -> list[dict[str, Any]]:
+    """Partidos programados futuros, ordenados por fecha ascendente."""
+    matches = [
+        match
+        for match in filter_matches(dataset, group=group, statuses={"scheduled"})
+        if isinstance(match.get("date"), str) and match.get("date")
+    ]
+    matches.sort(
+        key=lambda match: (str(match.get("date")), int(match.get("round") or 0))
+    )
+    return matches[: max(0, limit)]
+
+
 def team_records(dataset: ExplorerDataset, team_season_id: str) -> dict[str, Any] | None:
     participants = [
         team for team in dataset.participants if team.get("team_season_id") == team_season_id
