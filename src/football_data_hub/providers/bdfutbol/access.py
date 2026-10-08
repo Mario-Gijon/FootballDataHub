@@ -36,6 +36,8 @@ class AccessAssessment:
     page_title: str
     missing_markers: tuple[str, ...] = ()
     reason: str | None = None
+    missing_title_markers: tuple[str, ...] = ()
+    missing_selectors: tuple[str, ...] = ()
 
     @property
     def accessible(self) -> bool:
@@ -97,9 +99,15 @@ def assess_bdfutbol_access(
     page_title: str,
     body_text: str,
     required_markers: tuple[str, ...],
+    required_title_markers: tuple[str, ...] = (),
+    required_selectors: tuple[str, ...] = (),
+    present_selectors: tuple[str, ...] = (),
 ) -> AccessAssessment:
-    if not required_markers or any(not m.strip() for m in required_markers):
+    markers = (*required_markers, *required_title_markers)
+    if not required_markers or any(not marker.strip() for marker in markers):
         raise ValueError("Es obligatorio proporcionar marcadores semánticos no vacíos")
+    if any(not selector.strip() for selector in required_selectors):
+        raise ValueError("Los selectores estructurales no pueden estar vacíos")
     if not is_bdfutbol_https_url(requested_url):
         return AccessAssessment(
             AccessStatus.INVALID_URL, requested_url, final_url, http_status,
@@ -123,17 +131,23 @@ def assess_bdfutbol_access(
             AccessStatus.INVALID_URL, requested_url, final_url,
             http_status, page_title, reason="La URL final no coincide con la solicitada",
         )
-    if http_status is not None and not (200 <= http_status < 300):
+    if http_status is None or not (200 <= http_status < 300):
+        reason = "No se recibió un estado HTTP" if http_status is None else f"HTTP {http_status}"
         return AccessAssessment(
             AccessStatus.HTTP_ERROR, requested_url, final_url,
-            http_status, page_title, reason=f"HTTP {http_status}",
+            http_status, page_title, reason=reason,
         )
     missing = tuple(m for m in required_markers if m.casefold() not in body)
-    if missing:
+    missing_title = tuple(m for m in required_title_markers if m.casefold() not in title)
+    present = set(present_selectors)
+    missing_selectors = tuple(selector for selector in required_selectors if selector not in present)
+    if missing or missing_title or missing_selectors:
         return AccessAssessment(
             AccessStatus.INVALID_CONTENT, requested_url, final_url,
             http_status, page_title, missing,
-            "No aparecen todos los marcadores del recurso",
+            "Faltan marcadores semánticos o estructura del recurso",
+            missing_title_markers=missing_title,
+            missing_selectors=missing_selectors,
         )
     return AccessAssessment(
         AccessStatus.VALID, requested_url, final_url, http_status, page_title,
@@ -149,6 +163,8 @@ class BDFutbolAccess:
         url: str,
         *,
         required_markers: tuple[str, ...],
+        required_title_markers: tuple[str, ...] = (),
+        required_selectors: tuple[str, ...] = (),
         settle_ms: int = 750,
         max_wait_seconds: float = 12.0,
     ) -> BDFutbolVisit:
@@ -156,6 +172,10 @@ class BDFutbolAccess:
             raise ValueError("Solo se permiten URLs HTTPS de bdfutbol.com")
         if not required_markers or any(not m.strip() for m in required_markers):
             raise ValueError("Indica marcadores semánticos específicos del recurso")
+        if any(not marker.strip() for marker in required_title_markers):
+            raise ValueError("Los marcadores de título no pueden estar vacíos")
+        if any(not selector.strip() for selector in required_selectors):
+            raise ValueError("Los selectores estructurales no pueden estar vacíos")
         if settle_ms < 0 or max_wait_seconds < 0:
             raise ValueError("Los tiempos no pueden ser negativos")
         try:
@@ -173,6 +193,10 @@ class BDFutbolAccess:
             try:
                 title = page.title()
                 body_text = page.locator("body").inner_text(timeout=3000)
+                present_selectors = tuple(
+                    selector for selector in required_selectors
+                    if page.locator(selector).count() > 0
+                )
                 assessment = assess_bdfutbol_access(
                     requested_url=url,
                     final_url=visit.final_url,
@@ -180,6 +204,9 @@ class BDFutbolAccess:
                     page_title=title,
                     body_text=body_text,
                     required_markers=required_markers,
+                    required_title_markers=required_title_markers,
+                    required_selectors=required_selectors,
+                    present_selectors=present_selectors,
                 )
             except Exception:
                 visit.close()

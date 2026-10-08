@@ -1,15 +1,26 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from bs4 import BeautifulSoup
 
+from football_data_hub.collectors.bdfutbol_player import (
+    _VIEW_MARKERS,
+    _VIEW_REQUIRED_SELECTORS,
+    _VIEW_TITLE_MARKERS,
+)
 from football_data_hub.core.browser_session import BrowserNavigationError
 from football_data_hub.providers.bdfutbol import access as mod
 
 URL = "https://www.bdfutbol.com/es/j/j209629.html"
 MARKERS = ("Morillas", "Nombre completo", "Demarcación")
 VALID_BODY = "Morillas | Nombre completo | Jaime Morillas | Demarcación | Portero"
+PROFILE_BODY_MARKERS = ("Nombre completo", "Demarcación")
+PROFILE_TITLE_MARKERS = ("Futbolista",)
+PROFILE_SELECTORS = ("h1", ".traject")
 
 
 def assess(**overrides):
@@ -44,21 +55,136 @@ def test_different_403_not_mislabelled():
     assert assess(http_status=403).status is mod.AccessStatus.HTTP_ERROR
 
 
+def test_missing_http_status_is_not_accepted_as_valid():
+    result = assess(http_status=None)
+    assert result.status is mod.AccessStatus.HTTP_ERROR
+    assert result.reason == "No se recibió un estado HTTP"
+
+
 def test_missing_marker():
     result = assess(body_text="Morillas | Nombre completo")
     assert result.status is mod.AccessStatus.INVALID_CONTENT
     assert result.missing_markers == ("Demarcación",)
 
 
-def test_http_200_profile_without_its_required_marker_is_incomplete_content():
+def test_profile_title_marker_with_error_content_is_incomplete():
+    # Fixture sintético de contrato; no representa HTML observado de j23751.
     result = assess(
-        page_title="j23751 | BDFutbol",
-        body_text="Página sin contenido deportivo de perfil",
-        required_markers=("Futbolista",),
+        page_title="Manu Pedreño - Futbolista | BDFutbol",
+        body_text="Página de error sin datos de jugador",
+        required_markers=PROFILE_BODY_MARKERS,
+        required_title_markers=PROFILE_TITLE_MARKERS,
+        required_selectors=PROFILE_SELECTORS,
+        present_selectors=(),
     )
     assert result.http_status == 200
     assert result.status is mod.AccessStatus.INVALID_CONTENT
-    assert result.missing_markers == ("Futbolista",)
+    assert result.missing_markers == PROFILE_BODY_MARKERS
+    assert result.missing_title_markers == ()
+    assert result.missing_selectors == PROFILE_SELECTORS
+
+
+def test_synthetic_profile_accepts_futbolista_in_title_but_not_body() -> None:
+    # Fixture sintético basado en el contrato y la evidencia manual aportada;
+    # no se usa como evidencia de la estructura real de j23751.
+    body = "Nombre completo Antonio Manuel Moñino Pedreño. Demarcación Delantero."
+    assert "Futbolista" not in body
+    result = assess(
+        page_title="Manu Pedreño, Antonio Manuel Moñino Pedreño - Futbolista | BDFutbol",
+        body_text=body,
+        required_markers=PROFILE_BODY_MARKERS,
+        required_title_markers=PROFILE_TITLE_MARKERS,
+        required_selectors=PROFILE_SELECTORS,
+        present_selectors=PROFILE_SELECTORS,
+    )
+    assert result.status is mod.AccessStatus.VALID
+    assert result.missing_markers == ()
+    assert result.missing_title_markers == ()
+    assert result.missing_selectors == ()
+
+
+def test_profile_title_alone_does_not_accept_incorrect_http_200_content() -> None:
+    result = assess(
+        page_title="Manu Pedreño - Futbolista | BDFutbol",
+        body_text="Página no encontrada",
+        required_markers=PROFILE_BODY_MARKERS,
+        required_title_markers=PROFILE_TITLE_MARKERS,
+        required_selectors=PROFILE_SELECTORS,
+        present_selectors=(),
+    )
+    assert result.status is mod.AccessStatus.INVALID_CONTENT
+    assert result.missing_markers == PROFILE_BODY_MARKERS
+    assert result.missing_selectors == PROFILE_SELECTORS
+
+
+def test_profile_with_fields_but_without_trajectory_structure_is_incomplete() -> None:
+    result = assess(
+        page_title="Manu Pedreño - Futbolista | BDFutbol",
+        body_text="Nombre completo Antonio Manuel Moñino Pedreño. Demarcación Delantero.",
+        required_markers=PROFILE_BODY_MARKERS,
+        required_title_markers=PROFILE_TITLE_MARKERS,
+        required_selectors=PROFILE_SELECTORS,
+        present_selectors=("h1",),
+    )
+    assert result.status is mod.AccessStatus.INVALID_CONTENT
+    assert result.missing_markers == ()
+    assert result.missing_selectors == (".traject",)
+
+
+def test_profile_challenge_is_rejected_before_semantic_content() -> None:
+    result = assess(
+        page_title="Just a moment...",
+        body_text="Checking your browser",
+        http_status=403,
+        required_markers=PROFILE_BODY_MARKERS,
+        required_title_markers=PROFILE_TITLE_MARKERS,
+        required_selectors=PROFILE_SELECTORS,
+    )
+    assert result.status is mod.AccessStatus.CHALLENGE_REQUIRED
+
+
+def test_profile_final_url_for_another_player_is_rejected() -> None:
+    result = assess(
+        final_url="https://www.bdfutbol.com/es/j/j100160.html",
+        required_markers=PROFILE_BODY_MARKERS,
+        required_title_markers=PROFILE_TITLE_MARKERS,
+        required_selectors=PROFILE_SELECTORS,
+        present_selectors=PROFILE_SELECTORS,
+    )
+    assert result.status is mod.AccessStatus.INVALID_URL
+
+
+def test_real_morillas_snapshots_pass_all_four_view_access_contracts() -> None:
+    raw_root = Path(__file__).resolve().parents[1] / "data/raw/bdfutbol/luna_audit/20261008T121250.991672Z"
+    snapshot_names = {
+        "profile": "player_profile_morillas",
+        "statistics": "player_stats_morillas",
+        "matches": "player_matches_morillas",
+        "rivals": "player_rivals_morillas",
+    }
+    if any(not (raw_root / name / "rendered.html").is_file() for name in snapshot_names.values()):
+        pytest.skip("Los snapshots offline de Morillas no están disponibles")
+
+    for view, snapshot_name in snapshot_names.items():
+        snapshot = raw_root / snapshot_name
+        metadata = json.loads((snapshot / "metadata.json").read_text(encoding="utf-8"))
+        soup = BeautifulSoup((snapshot / "rendered.html").read_text(encoding="utf-8"), "lxml")
+        present = tuple(
+            selector for selector in _VIEW_REQUIRED_SELECTORS.get(view, ())
+            if soup.select_one(selector) is not None
+        )
+        assessment = mod.assess_bdfutbol_access(
+            requested_url=metadata["requested_url"],
+            final_url=metadata["final_url"],
+            http_status=metadata["http_status"],
+            page_title=soup.title.get_text(" ", strip=True) if soup.title else "",
+            body_text=soup.get_text(" ", strip=True),
+            required_markers=_VIEW_MARKERS[view],
+            required_title_markers=_VIEW_TITLE_MARKERS.get(view, ()),
+            required_selectors=_VIEW_REQUIRED_SELECTORS.get(view, ()),
+            present_selectors=present,
+        )
+        assert assessment.status is mod.AccessStatus.VALID, view
 
 
 def test_bad_path():
@@ -133,6 +259,32 @@ def test_access_open_success():
         assert result.assessment.accessible
     assert session.page.closed
     assert session.page.waits == [750]
+
+
+def test_access_open_profile_checks_title_body_and_dom_structure():
+    class ProfilePage(FakePage):
+        def __init__(self):
+            super().__init__(
+                title="Manu Pedreño - Futbolista | BDFutbol",
+                body="Nombre completo Antonio Manuel Moñino Pedreño. Demarcación Delantero.",
+            )
+
+        def locator(self, selector):
+            if selector == "body":
+                return SimpleNamespace(inner_text=lambda **kwargs: self._body)
+            if selector in PROFILE_SELECTORS:
+                return SimpleNamespace(count=lambda: 1)
+            raise AssertionError(f"Selector inesperado: {selector}")
+
+    session = FakeSession(ProfilePage())
+    with mod.BDFutbolAccess(session).open(
+        URL,
+        required_markers=PROFILE_BODY_MARKERS,
+        required_title_markers=PROFILE_TITLE_MARKERS,
+        required_selectors=PROFILE_SELECTORS,
+        max_wait_seconds=0,
+    ) as result:
+        assert result.assessment.status is mod.AccessStatus.VALID
 
 
 def test_access_open_challenge():

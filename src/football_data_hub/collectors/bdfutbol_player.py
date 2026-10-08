@@ -20,11 +20,13 @@ from football_data_hub.parsers.player_pages import discover_player_snapshots
 
 _PLAYER_ID = re.compile(r"^j\d+$")
 _VIEW_MARKERS = {
-    "profile": ("Futbolista",),
+    "profile": ("Nombre completo", "Demarcación"),
     "statistics": ("Estadísticas",),
     "matches": ("Partidos",),
     "rivals": ("Rivales",),
 }
+_VIEW_TITLE_MARKERS = {"profile": ("Futbolista",)}
+_VIEW_REQUIRED_SELECTORS = {"profile": ("h1", ".traject")}
 _BASE_URL = "https://www.bdfutbol.com/es"
 
 
@@ -310,6 +312,8 @@ def capture_player_snapshots(
                     with access.open(
                         url,
                         required_markers=_VIEW_MARKERS[view],
+                        required_title_markers=_VIEW_TITLE_MARKERS.get(view, ()),
+                        required_selectors=_VIEW_REQUIRED_SELECTORS.get(view, ()),
                         settle_ms=settle_ms,
                     ) as result:
                         assessment = result.assessment
@@ -382,6 +386,9 @@ def _failed_record(
         "status": assessment.status.value,
         "http_status": assessment.http_status,
         "final_url": assessment.final_url,
+        "missing_markers": list(assessment.missing_markers),
+        "missing_title_markers": list(assessment.missing_title_markers),
+        "missing_selectors": list(assessment.missing_selectors),
         "reason": assessment.reason,
     }
 
