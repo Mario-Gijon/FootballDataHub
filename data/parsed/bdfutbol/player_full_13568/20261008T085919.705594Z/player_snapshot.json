@@ -1,0 +1,5038 @@
+{
+  "identity": {
+    "provider": "bdfutbol",
+    "provider_id": 13568,
+    "display_name": "Eric",
+    "full_name": "Eric Gómez Alcón",
+    "birth_date": "24/02/2004",
+    "age_displayed": 22,
+    "birth_place": "Alcorcón",
+    "birth_region": "Madrid",
+    "position": "Centrocampista",
+    "height_cm": 174,
+    "source_url": "https://www.bdfutbol.com/es/j/j13568.html"
+  },
+  "canonical_career": [
+    {
+      "season": "2022-23",
+      "team_name": "Real Madrid Castilla",
+      "team_provider_id": 61,
+      "country": null,
+      "division": "1ªRf",
+      "age": 18,
+      "appearances": 0,
+      "starts": 0,
+      "complete_matches": 0,
+      "substitute_appearances": 0,
+      "substituted": 0,
+      "incomplete_matches": 0,
+      "callups_without_playing": 1,
+      "total_callups": 1,
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "minutes": 0,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 39,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/j/j13568.html",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2022-23",
+          "Real Madrid Castilla",
+          "",
+          "",
+          "1ªRf",
+          "18",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "1",
+          "1",
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "39",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2022-23",
+          "data-temporadalink": "2022-23",
+          "data-temporadaid": "0",
+          "data-idclub": "61",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2023-24",
+      "team_name": "Alcorcón",
+      "team_provider_id": 107,
+      "country": null,
+      "division": "2ª",
+      "age": 19,
+      "appearances": 0,
+      "starts": 0,
+      "complete_matches": 0,
+      "substitute_appearances": 0,
+      "substituted": 0,
+      "incomplete_matches": 0,
+      "callups_without_playing": 2,
+      "total_callups": 2,
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "minutes": 0,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 27,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/j/j13568.html",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2023-24",
+          "Alcorcón",
+          "",
+          "Descenso",
+          "2ª",
+          "19",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "2",
+          "2",
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "27",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2023-24",
+          "data-temporadalink": "2023-24",
+          "data-temporadaid": "0",
+          "data-idclub": "107",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2024-25",
+      "team_name": "Estepona",
+      "team_provider_id": 491,
+      "country": null,
+      "division": "2ªRf",
+      "age": 20,
+      "appearances": 22,
+      "starts": 16,
+      "complete_matches": 2,
+      "substitute_appearances": 6,
+      "substituted": 13,
+      "incomplete_matches": 19,
+      "callups_without_playing": 1,
+      "total_callups": 23,
+      "wins": 11,
+      "draws": 8,
+      "losses": 3,
+      "minutes": 1354,
+      "yellow_cards": 5,
+      "red_cards": 1,
+      "goals": 2,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 20,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/j/j13568.html",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2024-25",
+          "Estepona",
+          "",
+          "",
+          "2ªRf",
+          "20",
+          "22",
+          "16",
+          "2",
+          "6",
+          "13",
+          "19",
+          "1",
+          "23",
+          "11",
+          "8",
+          "3",
+          "1354",
+          "5",
+          "1",
+          "2",
+          "-",
+          "-",
+          "-",
+          "20",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2024-25",
+          "data-temporadalink": "2024-25",
+          "data-temporadaid": "0",
+          "data-idclub": "491",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2025-26",
+      "team_name": "Real Madrid C",
+      "team_provider_id": 273,
+      "country": null,
+      "division": "2ªRf",
+      "age": 21,
+      "appearances": 14,
+      "starts": 6,
+      "complete_matches": 0,
+      "substitute_appearances": 8,
+      "substituted": 6,
+      "incomplete_matches": 14,
+      "callups_without_playing": 6,
+      "total_callups": 20,
+      "wins": 3,
+      "draws": 1,
+      "losses": 10,
+      "minutes": 539,
+      "yellow_cards": 2,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 20,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/j/j13568.html",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2025-26",
+          "Real Madrid C",
+          "",
+          "",
+          "2ªRf",
+          "21",
+          "14",
+          "6",
+          "0",
+          "8",
+          "6",
+          "14",
+          "6",
+          "20",
+          "3",
+          "1",
+          "10",
+          "539",
+          "2",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "20",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2025-26",
+          "data-temporadalink": "2025-26",
+          "data-temporadaid": "0",
+          "data-idclub": "273",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2026-27",
+      "team_name": "Zamora",
+      "team_provider_id": 95,
+      "country": null,
+      "division": "1ªRf",
+      "age": 22,
+      "appearances": 2,
+      "starts": 0,
+      "complete_matches": 0,
+      "substitute_appearances": 2,
+      "substituted": 0,
+      "incomplete_matches": 2,
+      "callups_without_playing": 4,
+      "total_callups": 6,
+      "wins": 0,
+      "draws": 0,
+      "losses": 2,
+      "minutes": 45,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 24,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/j/j13568.html",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2026-27",
+          "Zamora",
+          "",
+          "",
+          "1ªRf",
+          "22",
+          "2",
+          "0",
+          "0",
+          "2",
+          "0",
+          "2",
+          "4",
+          "6",
+          "0",
+          "0",
+          "2",
+          "45",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "24",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2026-27",
+          "data-temporadalink": "2026-27",
+          "data-temporadaid": "0",
+          "data-idclub": "95",
+          "data-idjug": "0"
+        }
+      }
+    }
+  ],
+  "manager_career": [
+    {
+      "season": "2022-23",
+      "team_name": "Real Madrid Castilla",
+      "team_provider_id": 61,
+      "country": null,
+      "division": "1ªRf",
+      "age": 18,
+      "appearances": 0,
+      "starts": 0,
+      "complete_matches": 0,
+      "substitute_appearances": 0,
+      "substituted": 0,
+      "incomplete_matches": 0,
+      "callups_without_playing": 1,
+      "total_callups": 1,
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "minutes": 0,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 39,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j13568.html?manager=1",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2022-23",
+          "Real Madrid Castilla",
+          "",
+          "",
+          "1ªRf",
+          "18",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "1",
+          "1",
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "39",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2022-23",
+          "data-temporadalink": "2022-23",
+          "data-temporadaid": "0",
+          "data-idclub": "61",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2023-24",
+      "team_name": "Alcorcón B",
+      "team_provider_id": 489,
+      "country": null,
+      "division": "3ª",
+      "age": 19,
+      "appearances": 17,
+      "starts": 12,
+      "complete_matches": 6,
+      "substitute_appearances": 5,
+      "substituted": 6,
+      "incomplete_matches": 11,
+      "callups_without_playing": 1,
+      "total_callups": 18,
+      "wins": 5,
+      "draws": 4,
+      "losses": 8,
+      "minutes": 1049,
+      "yellow_cards": 2,
+      "red_cards": null,
+      "goals": 2,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 19,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j13568.html?manager=1",
+      "provider_season_id": 3706,
+      "provider_player_alias_id": 98019,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2023-24",
+          "Alcorcón B",
+          "",
+          "",
+          "3ª",
+          "19",
+          "17",
+          "12",
+          "6",
+          "5",
+          "6",
+          "11",
+          "1",
+          "18",
+          "5",
+          "4",
+          "8",
+          "1049",
+          "2",
+          "-",
+          "2",
+          "-",
+          "-",
+          "-",
+          "19",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2023-24",
+          "data-temporadalink": "2023-24",
+          "data-temporadaid": "3706",
+          "data-idclub": "489",
+          "data-idjug": "98019"
+        }
+      }
+    },
+    {
+      "season": "2023-24",
+      "team_name": "Alcorcón",
+      "team_provider_id": 107,
+      "country": null,
+      "division": "2ª",
+      "age": 19,
+      "appearances": 0,
+      "starts": 0,
+      "complete_matches": 0,
+      "substitute_appearances": 0,
+      "substituted": 0,
+      "incomplete_matches": 0,
+      "callups_without_playing": 2,
+      "total_callups": 2,
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "minutes": 0,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 27,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j13568.html?manager=1",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2023-24",
+          "Alcorcón",
+          "",
+          "Descenso",
+          "2ª",
+          "19",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "2",
+          "2",
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "27",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2023-24",
+          "data-temporadalink": "2023-24",
+          "data-temporadaid": "0",
+          "data-idclub": "107",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2024-25",
+      "team_name": "Estepona",
+      "team_provider_id": 491,
+      "country": null,
+      "division": "2ªRf",
+      "age": 20,
+      "appearances": 22,
+      "starts": 16,
+      "complete_matches": 2,
+      "substitute_appearances": 6,
+      "substituted": 13,
+      "incomplete_matches": 19,
+      "callups_without_playing": 1,
+      "total_callups": 23,
+      "wins": 11,
+      "draws": 8,
+      "losses": 3,
+      "minutes": 1354,
+      "yellow_cards": 5,
+      "red_cards": 1,
+      "goals": 2,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 20,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j13568.html?manager=1",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2024-25",
+          "Estepona",
+          "",
+          "",
+          "2ªRf",
+          "20",
+          "22",
+          "16",
+          "2",
+          "6",
+          "13",
+          "19",
+          "1",
+          "23",
+          "11",
+          "8",
+          "3",
+          "1354",
+          "5",
+          "1",
+          "2",
+          "-",
+          "-",
+          "-",
+          "20",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2024-25",
+          "data-temporadalink": "2024-25",
+          "data-temporadaid": "0",
+          "data-idclub": "491",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2025-26",
+      "team_name": "Real Madrid C",
+      "team_provider_id": 273,
+      "country": null,
+      "division": "2ªRf",
+      "age": 21,
+      "appearances": 14,
+      "starts": 6,
+      "complete_matches": 0,
+      "substitute_appearances": 8,
+      "substituted": 6,
+      "incomplete_matches": 14,
+      "callups_without_playing": 6,
+      "total_callups": 20,
+      "wins": 3,
+      "draws": 1,
+      "losses": 10,
+      "minutes": 539,
+      "yellow_cards": 2,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 20,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j13568.html?manager=1",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2025-26",
+          "Real Madrid C",
+          "",
+          "",
+          "2ªRf",
+          "21",
+          "14",
+          "6",
+          "0",
+          "8",
+          "6",
+          "14",
+          "6",
+          "20",
+          "3",
+          "1",
+          "10",
+          "539",
+          "2",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "20",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2025-26",
+          "data-temporadalink": "2025-26",
+          "data-temporadaid": "0",
+          "data-idclub": "273",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2026-27",
+      "team_name": "Zamora",
+      "team_provider_id": 95,
+      "country": null,
+      "division": "1ªRf",
+      "age": 22,
+      "appearances": 2,
+      "starts": 0,
+      "complete_matches": 0,
+      "substitute_appearances": 2,
+      "substituted": 0,
+      "incomplete_matches": 2,
+      "callups_without_playing": 4,
+      "total_callups": 6,
+      "wins": 0,
+      "draws": 0,
+      "losses": 2,
+      "minutes": 45,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 24,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j13568.html?manager=1",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2026-27",
+          "Zamora",
+          "",
+          "",
+          "1ªRf",
+          "22",
+          "2",
+          "0",
+          "0",
+          "2",
+          "0",
+          "2",
+          "4",
+          "6",
+          "0",
+          "0",
+          "2",
+          "45",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "24",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2026-27",
+          "data-temporadalink": "2026-27",
+          "data-temporadaid": "0",
+          "data-idclub": "95",
+          "data-idjug": "0"
+        }
+      }
+    }
+  ],
+  "competition_stats": {
+    "scope": "competition",
+    "headers": [
+      "Tipo",
+      "2ª",
+      "2ªB",
+      "1ªRf",
+      "1ª + 2ª + 1ªRf + 2ªRf",
+      "COP"
+    ],
+    "header_titles": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    "rows": [
+      {
+        "metric": "Temporadas",
+        "values": [
+          "0",
+          "2",
+          "1",
+          "2",
+          "2"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Temporadas seguidas en el mismo equipo",
+        "values": [
+          "-",
+          "-",
+          "-",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Equipos",
+        "values": [
+          "0",
+          "2",
+          "1",
+          "2",
+          "2"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos Jugados",
+        "values": [
+          "0",
+          "36",
+          "2",
+          "36",
+          "2"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2a&pj=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2aB&pj=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=1a-2a-2aB&pj=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=COP&pj=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Partidos completos",
+        "values": [
+          "0",
+          "2",
+          "0",
+          "2",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2a&pc=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2aB&pc=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=1a-2a-2aB&pc=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=COP&pc=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Partidos titular",
+        "values": [
+          "0",
+          "22",
+          "0",
+          "22",
+          "1"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2a&pt=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2aB&pt=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=1a-2a-2aB&pt=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=COP&pt=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Partidos suplente",
+        "values": [
+          "0",
+          "14",
+          "2",
+          "14",
+          "1"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2a&ps=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2aB&ps=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=1a-2a-2aB&ps=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=COP&ps=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Partidos sustituido",
+        "values": [
+          "0",
+          "19",
+          "0",
+          "19",
+          "1"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2a&px=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2aB&px=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=1a-2a-2aB&px=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=COP&px=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Partidos incompletos",
+        "values": [
+          "0",
+          "33",
+          "2",
+          "33",
+          "2"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2a&pinc=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2aB&pinc=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=1a-2a-2aB&pinc=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=COP&pinc=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Partidos convocado",
+        "values": [
+          "2",
+          "7",
+          "5",
+          "9",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2a&pv=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2aB&pv=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=1a-2a-2aB&pv=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=COP&pv=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Partidos convocado total",
+        "values": [
+          "2",
+          "43",
+          "7",
+          "45",
+          "2"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2a&pv=1&jug=si-no"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2aB&pv=1&jug=si-no"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=1a-2a-2aB&pv=1&jug=si-no"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=COP&pv=1&jug=si-no"
+          ]
+        ]
+      },
+      {
+        "metric": "Ganados",
+        "values": [
+          "0",
+          "14",
+          "0",
+          "14",
+          "2"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2a&pg=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2aB&pg=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=1a-2a-2aB&pg=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=COP&pg=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Empatados",
+        "values": [
+          "0",
+          "9",
+          "0",
+          "9",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2a&pe=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2aB&pe=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=1a-2a-2aB&pe=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=COP&pe=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Perdidos",
+        "values": [
+          "0",
+          "13",
+          "2",
+          "13",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2a&pp=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2aB&pp=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=1a-2a-2aB&pp=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=COP&pp=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Minutos",
+        "values": [
+          "0",
+          "1893",
+          "45",
+          "1893",
+          "121"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2a&pj=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2aB&pj=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=1a-2a-2aB&pj=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=COP&pj=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Goles",
+        "values": [
+          "0",
+          "2",
+          "0",
+          "2",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2a&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2aB&g=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=1a-2a-2aB&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=COP&g=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Goles de suplente",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2a&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2aB&g=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=1a-2a-2aB&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=COP&g=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Partidos Marcando algún Gol",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2a&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2aB&g=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=1a-2a-2aB&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=COP&g=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Promedio goleador",
+        "values": [
+          "0,00",
+          "0,06",
+          "0,00",
+          "0,06",
+          "0,00"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2a&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2aB&g=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=1a-2a-2aB&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=COP&g=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Dobletes",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2a&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2aB&g=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=1a-2a-2aB&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=COP&g=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Goles propia puerta",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2a&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2aB&g=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=1a-2a-2aB&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=COP&g=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Tarjetas amarillas",
+        "values": [
+          "0",
+          "7",
+          "0",
+          "7",
+          "1"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2a&tg=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2aB&tg=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=1a-2a-2aB&tg=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=COP&tg=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Tarjetas rojas",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2a&tv=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2aB&tv=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=1a-2a-2aB&tv=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=COP&tv=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Edad primer partido",
+        "values": [
+          "-",
+          "20",
+          "22",
+          "20",
+          "19"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Edad último partido",
+        "values": [
+          "-",
+          "22",
+          "22",
+          "22",
+          "20"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Edad primer partido en marcar",
+        "values": [
+          "-",
+          "21",
+          "-",
+          "21",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Edad último partido en marcar",
+        "values": [
+          "-",
+          "21",
+          "-",
+          "21",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Enfrentamiento a más equipos",
+        "values": [
+          "0",
+          "27",
+          "2",
+          "27",
+          "2"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Goles a más equipos",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Goles con más equipos",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Goles en una temporada",
+        "values": [
+          "0",
+          "2",
+          "0",
+          "2",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2a&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2aB&g=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=1a-2a-2aB&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=COP&g=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Promedio goleador en una temporada",
+        "values": [
+          "0,00",
+          "0,09",
+          "0,00",
+          "0,09",
+          "0,00"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2a&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2aB&g=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=1a-2a-2aB&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=COP&g=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Amonestaciones en una temporada",
+        "values": [
+          "0",
+          "5",
+          "0",
+          "5",
+          "1"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2a&tg=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2aB&tg=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=1a-2a-2aB&tg=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=COP&tg=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Partidos sustituido en una temporada",
+        "values": [
+          "0",
+          "13",
+          "0",
+          "13",
+          "1"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2a&px=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2aB&px=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=1a-2a-2aB&px=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=COP&px=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Partidos suplente en una temporada",
+        "values": [
+          "0",
+          "8",
+          "2",
+          "8",
+          "1"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2a&ps=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2aB&ps=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=1a-2a-2aB&ps=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=COP&ps=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Partidos incompletos en una temporada",
+        "values": [
+          "0",
+          "19",
+          "2",
+          "19",
+          "1"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2a&pinc=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=2aB&pinc=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=1a-2a-2aB&pinc=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13568.html?cat=COP&pinc=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Descensos",
+        "values": [
+          "1",
+          "0",
+          "0",
+          "1",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Jugando",
+        "values": [
+          "0",
+          "9",
+          "1",
+          "9",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Titular",
+        "values": [
+          "0",
+          "6",
+          "0",
+          "6",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Completo",
+        "values": [
+          "0",
+          "2",
+          "0",
+          "2",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Suplente",
+        "values": [
+          "0",
+          "3",
+          "1",
+          "3",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Sustituido",
+        "values": [
+          "0",
+          "4",
+          "0",
+          "4",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Partido Incompleto",
+        "values": [
+          "0",
+          "9",
+          "1",
+          "9",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Ganando",
+        "values": [
+          "0",
+          "3",
+          "0",
+          "3",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Empatando",
+        "values": [
+          "0",
+          "2",
+          "0",
+          "2",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Perdiendo",
+        "values": [
+          "0",
+          "3",
+          "1",
+          "3",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas No Ganando",
+        "values": [
+          "0",
+          "4",
+          "1",
+          "4",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas No Empatando",
+        "values": [
+          "0",
+          "5",
+          "1",
+          "5",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas No Perdiendo",
+        "values": [
+          "0",
+          "8",
+          "0",
+          "8",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Marcando",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Sin Marcar",
+        "values": [
+          "0",
+          "9",
+          "1",
+          "9",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Jugados",
+        "values": [
+          "0",
+          "9",
+          "1",
+          "9",
+          "2"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Titular",
+        "values": [
+          "0",
+          "8",
+          "0",
+          "8",
+          "1"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Completo",
+        "values": [
+          "0",
+          "2",
+          "0",
+          "2",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Suplente",
+        "values": [
+          "0",
+          "4",
+          "2",
+          "4",
+          "1"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Sustituido",
+        "values": [
+          "0",
+          "4",
+          "0",
+          "4",
+          "1"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Partido Incompleto",
+        "values": [
+          "0",
+          "18",
+          "2",
+          "18",
+          "2"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Ganando",
+        "values": [
+          "0",
+          "3",
+          "0",
+          "3",
+          "2"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Empatando",
+        "values": [
+          "0",
+          "2",
+          "0",
+          "2",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Perdiendo",
+        "values": [
+          "0",
+          "5",
+          "2",
+          "5",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos No Ganando",
+        "values": [
+          "0",
+          "8",
+          "2",
+          "8",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos No Empatando",
+        "values": [
+          "0",
+          "7",
+          "2",
+          "7",
+          "2"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos No Perdiendo",
+        "values": [
+          "0",
+          "13",
+          "0",
+          "13",
+          "2"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Marcando",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Sin Marcar",
+        "values": [
+          "0",
+          "20",
+          "2",
+          "20",
+          "2"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      }
+    ],
+    "provenance": "bdfutbol",
+    "source_url": "https://www.bdfutbol.com/es/j/j13568.html?p=stats"
+  },
+  "team_stats": {
+    "scope": "team",
+    "headers": [
+      "Tipo",
+      "REA",
+      "ALC",
+      "EST",
+      "REL",
+      "ZAM"
+    ],
+    "header_titles": [
+      null,
+      "Real Madrid Castilla",
+      "Alcorcón",
+      "Estepona",
+      "Real Madrid C",
+      "Zamora"
+    ],
+    "rows": [
+      {
+        "metric": "Temporadas",
+        "values": [
+          "0",
+          "1",
+          "1 (#40)",
+          "1 (#143)",
+          "1"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols491.html?col=temp&sort=desc"
+          ],
+          [
+            "https://www.bdfutbol.com/es/e/egols273.html?col=temp&sort=desc"
+          ],
+          []
+        ]
+      },
+      {
+        "metric": "Temporadas seguidas en el mismo equipo",
+        "values": [
+          "0",
+          "1",
+          "1 (#40)",
+          "1 (#143)",
+          "1"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols491.html"
+          ],
+          [
+            "https://www.bdfutbol.com/es/e/egols273.html"
+          ],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos Jugados",
+        "values": [
+          "0",
+          "1",
+          "27 (#32)",
+          "14 (#119)",
+          "2"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols491.html?col=pj&sort=desc"
+          ],
+          [
+            "https://www.bdfutbol.com/es/e/egols273.html?col=pj&sort=desc"
+          ],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos completos",
+        "values": [
+          "0",
+          "0",
+          "4 (#50)",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols491.html?col=pc&sort=desc"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos titular",
+        "values": [
+          "0",
+          "1",
+          "20 (#30)",
+          "6 (#136)",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols491.html?col=pt&sort=desc"
+          ],
+          [
+            "https://www.bdfutbol.com/es/e/egols273.html?col=pt&sort=desc"
+          ],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos suplente",
+        "values": [
+          "0",
+          "0",
+          "7 (#41)",
+          "8 (#49)",
+          "2"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols491.html?col=ps&sort=desc"
+          ],
+          [
+            "https://www.bdfutbol.com/es/e/egols273.html?col=ps&sort=desc"
+          ],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos sustituido",
+        "values": [
+          "0",
+          "1",
+          "13 (#13)",
+          "6 (#62)",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols491.html?col=px&sort=desc"
+          ],
+          [
+            "https://www.bdfutbol.com/es/e/egols273.html?col=px&sort=desc"
+          ],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos incompletos",
+        "values": [
+          "0",
+          "1",
+          "23 (#17)",
+          "14 (#50)",
+          "2"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols491.html?col=pinc&sort=desc"
+          ],
+          [
+            "https://www.bdfutbol.com/es/e/egols273.html?col=pinc&sort=desc"
+          ],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos convocado",
+        "values": [
+          "1",
+          "2",
+          "1 (#70)",
+          "6 (#22)",
+          "4 (#122)"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols491.html?col=pv&sort=desc"
+          ],
+          [
+            "https://www.bdfutbol.com/es/e/egols273.html?col=pv&sort=desc"
+          ],
+          [
+            "https://www.bdfutbol.com/es/e/egols95.html?col=pv&sort=desc"
+          ]
+        ]
+      },
+      {
+        "metric": "Partidos convocado total",
+        "values": [
+          "1",
+          "3",
+          "28 (#41)",
+          "20 (#108)",
+          "6"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols491.html?col=tc&sort=desc"
+          ],
+          [
+            "https://www.bdfutbol.com/es/e/egols273.html?col=tc&sort=desc"
+          ],
+          []
+        ]
+      },
+      {
+        "metric": "Ganados",
+        "values": [
+          "0",
+          "1",
+          "12 (#26)",
+          "3 (#138)",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols491.html?col=pg&sort=desc"
+          ],
+          [
+            "https://www.bdfutbol.com/es/e/egols273.html?col=pg&sort=desc"
+          ],
+          []
+        ]
+      },
+      {
+        "metric": "Empatados",
+        "values": [
+          "0",
+          "0",
+          "8 (#39)",
+          "1 (#154)",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols491.html?col=pe&sort=desc"
+          ],
+          [
+            "https://www.bdfutbol.com/es/e/egols273.html?col=pe&sort=desc"
+          ],
+          []
+        ]
+      },
+      {
+        "metric": "Perdidos",
+        "values": [
+          "0",
+          "0",
+          "3 (#67)",
+          "10 (#78)",
+          "2"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols491.html?col=pp&sort=desc"
+          ],
+          [
+            "https://www.bdfutbol.com/es/e/egols273.html?col=pp&sort=desc"
+          ],
+          []
+        ]
+      },
+      {
+        "metric": "Minutos",
+        "values": [
+          "0",
+          "82",
+          "1736 (#30)",
+          "539 (#142)",
+          "45"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols491.html?col=mins&sort=desc"
+          ],
+          [
+            "https://www.bdfutbol.com/es/e/egols273.html?col=mins&sort=desc"
+          ],
+          []
+        ]
+      },
+      {
+        "metric": "Goles",
+        "values": [
+          "0",
+          "0",
+          "3 (#20)",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols491.html?col=gols&sort=desc"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Goles de suplente",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos Marcando algún Gol",
+        "values": [
+          "0",
+          "0",
+          "1 (#40)",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols491.html?col=pgols&sort=desc"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Promedio goleador",
+        "values": [
+          "0,00",
+          "0,00",
+          "0,11 (#22)",
+          "0,00",
+          "0,00"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols491.html?col=gols_partit&sort=desc"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Dobletes",
+        "values": [
+          "0",
+          "0",
+          "1 (#6)",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols491.html?col=hd&sort=desc"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Goles propia puerta",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Tarjetas amarillas",
+        "values": [
+          "0",
+          "1",
+          "5 (#36)",
+          "2 (#116)",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols491.html?col=tg&sort=desc"
+          ],
+          [
+            "https://www.bdfutbol.com/es/e/egols273.html?col=tg&sort=desc"
+          ],
+          []
+        ]
+      },
+      {
+        "metric": "Tarjetas rojas",
+        "values": [
+          "0",
+          "0",
+          "1 (#11)",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols491.html?col=tv&sort=desc"
+          ],
+          [],
+          []
+        ]
+      }
+    ],
+    "provenance": "bdfutbol",
+    "source_url": "https://www.bdfutbol.com/es/j/j13568.html?p=stats"
+  },
+  "match_appearances": [
+    {
+      "match_provider_id": 505233,
+      "match_provider_key": "bdfutbol:match:505233",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=505233",
+      "date": "01/11/2023",
+      "season": "2023-24",
+      "competition": "COP",
+      "round_or_type": "R1",
+      "home_team": "Navalcarnero",
+      "score_text": "0 1",
+      "home_goals": 0,
+      "away_goals": 1,
+      "away_team": "Alcorcón",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 82,
+      "yellow_cards_raw": "'81",
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2023-24",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=505233\">1</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=505233\">01/11/2023</a></td>",
+        "Temporada": "<td data-temp=\"2023-24\"><a href=\"p.php?id=505233\">2023-24</a></td>",
+        "Competición": "<td><a href=\"p.php?id=505233\">COP</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=505233\" title=\"Ronda 1\">R1</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=505233\">Navalcarnero</a></td>",
+        "col_6": "<td><a href=\"p.php?id=505233\"><div class=\"resultat-gols resultat-resultat-1\">0</div><div class=\"resultat-gols resultat-resultat-1\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=505233\">Alcorcón</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=505233\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=505233\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=505233\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=505233\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=505233\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=505233\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=505233\">82</a></td>",
+        "TA": "<td class=\"GR resp_off\"><a href=\"p.php?id=505233\"><span class=\"\" title=\"\">'81</span></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=505233\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=505233\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=505233\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 266541,
+      "match_provider_key": "bdfutbol:match:266541",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=266541",
+      "date": "21/09/2024",
+      "season": "2024-25",
+      "competition": "2aB",
+      "round_or_type": "4",
+      "home_team": "Estepona",
+      "score_text": "3 3",
+      "home_goals": 3,
+      "away_goals": 3,
+      "away_team": "Juventud de Torremolinos",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 57,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2024-25",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=266541\">1</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=266541\">21/09/2024</a></td>",
+        "Temporada": "<td data-temp=\"2024-25\"><a href=\"p.php?id=266541\">2024-25</a></td>",
+        "Competición": "<td><a href=\"p.php?id=266541\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=266541\" title=\"Jornada 4\">4</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=266541\">Estepona</a></td>",
+        "col_6": "<td><a href=\"p.php?id=266541\"><div class=\"resultat-gols resultat-resultat-0\">3</div><div class=\"resultat-gols resultat-resultat-0\">3</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=266541\">Juventud de Torremolinos</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=266541\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=266541\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=266541\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=266541\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=266541\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=266541\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=266541\">57</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=266541\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=266541\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=266541\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=266541\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 266549,
+      "match_provider_key": "bdfutbol:match:266549",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=266549",
+      "date": "28/09/2024",
+      "season": "2024-25",
+      "competition": "2aB",
+      "round_or_type": "5",
+      "home_team": "Cádiz Mirandilla",
+      "score_text": "0 4",
+      "home_goals": 0,
+      "away_goals": 4,
+      "away_team": "Estepona",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 70,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2024-25",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=266549\">2</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=266549\">28/09/2024</a></td>",
+        "Temporada": "<td data-temp=\"2024-25\"><a href=\"p.php?id=266549\">2024-25</a></td>",
+        "Competición": "<td><a href=\"p.php?id=266549\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=266549\" title=\"Jornada 5\">5</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=266549\">Cádiz Mirandilla</a></td>",
+        "col_6": "<td><a href=\"p.php?id=266549\"><div class=\"resultat-gols resultat-resultat-1\">0</div><div class=\"resultat-gols resultat-resultat-1\">4</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=266549\">Estepona</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=266549\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=266549\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=266549\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=266549\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=266549\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=266549\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=266549\">70</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=266549\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=266549\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=266549\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=266549\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 266558,
+      "match_provider_key": "bdfutbol:match:266558",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=266558",
+      "date": "06/10/2024",
+      "season": "2024-25",
+      "competition": "2aB",
+      "round_or_type": "6",
+      "home_team": "Estepona",
+      "score_text": "0 0",
+      "home_goals": 0,
+      "away_goals": 0,
+      "away_team": "Orihuela CF",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 79,
+      "yellow_cards_raw": "'72",
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2024-25",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=266558\">3</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=266558\">06/10/2024</a></td>",
+        "Temporada": "<td data-temp=\"2024-25\"><a href=\"p.php?id=266558\">2024-25</a></td>",
+        "Competición": "<td><a href=\"p.php?id=266558\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=266558\" title=\"Jornada 6\">6</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=266558\">Estepona</a></td>",
+        "col_6": "<td><a href=\"p.php?id=266558\"><div class=\"resultat-gols resultat-resultat-0\">0</div><div class=\"resultat-gols resultat-resultat-0\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=266558\">Orihuela CF</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=266558\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=266558\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=266558\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=266558\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=266558\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=266558\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=266558\">79</a></td>",
+        "TA": "<td class=\"GR resp_off\"><a href=\"p.php?id=266558\"><span class=\"\" title=\"\">'72</span></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=266558\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=266558\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=266558\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 266566,
+      "match_provider_key": "bdfutbol:match:266566",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=266566",
+      "date": "13/10/2024",
+      "season": "2024-25",
+      "competition": "2aB",
+      "round_or_type": "7",
+      "home_team": "Águilas FC",
+      "score_text": "0 0",
+      "home_goals": 0,
+      "away_goals": 0,
+      "away_team": "Estepona",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 77,
+      "yellow_cards_raw": "'25",
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2024-25",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=266566\">4</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=266566\">13/10/2024</a></td>",
+        "Temporada": "<td data-temp=\"2024-25\"><a href=\"p.php?id=266566\">2024-25</a></td>",
+        "Competición": "<td><a href=\"p.php?id=266566\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=266566\" title=\"Jornada 7\">7</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=266566\">Águilas FC</a></td>",
+        "col_6": "<td><a href=\"p.php?id=266566\"><div class=\"resultat-gols resultat-resultat-0\">0</div><div class=\"resultat-gols resultat-resultat-0\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=266566\">Estepona</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=266566\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=266566\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=266566\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=266566\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=266566\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=266566\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=266566\">77</a></td>",
+        "TA": "<td class=\"GR resp_off\"><a href=\"p.php?id=266566\"><span class=\"\" title=\"\">'25</span></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=266566\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=266566\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=266566\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 266575,
+      "match_provider_key": "bdfutbol:match:266575",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=266575",
+      "date": "20/10/2024",
+      "season": "2024-25",
+      "competition": "2aB",
+      "round_or_type": "8",
+      "home_team": "Estepona",
+      "score_text": "4 0",
+      "home_goals": 4,
+      "away_goals": 0,
+      "away_team": "Balompédica Linense",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2024-25",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=266575\">5</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=266575\">20/10/2024</a></td>",
+        "Temporada": "<td data-temp=\"2024-25\"><a href=\"p.php?id=266575\">2024-25</a></td>",
+        "Competición": "<td><a href=\"p.php?id=266575\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=266575\" title=\"Jornada 8\">8</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=266575\">Estepona</a></td>",
+        "col_6": "<td><a href=\"p.php?id=266575\"><div class=\"resultat-gols resultat-resultat-1\">4</div><div class=\"resultat-gols resultat-resultat-1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=266575\">Balompédica Linense</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=266575\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"p.php?id=266575\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=266575\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=266575\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=266575\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=266575\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=266575\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=266575\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=266575\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=266575\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=266575\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 266583,
+      "match_provider_key": "bdfutbol:match:266583",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=266583",
+      "date": "27/10/2024",
+      "season": "2024-25",
+      "competition": "2aB",
+      "round_or_type": "9",
+      "home_team": "Villanovense",
+      "score_text": "0 1",
+      "home_goals": 0,
+      "away_goals": 1,
+      "away_team": "Estepona",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2024-25",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=266583\">6</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=266583\">27/10/2024</a></td>",
+        "Temporada": "<td data-temp=\"2024-25\"><a href=\"p.php?id=266583\">2024-25</a></td>",
+        "Competición": "<td><a href=\"p.php?id=266583\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=266583\" title=\"Jornada 9\">9</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=266583\">Villanovense</a></td>",
+        "col_6": "<td><a href=\"p.php?id=266583\"><div class=\"resultat-gols resultat-resultat-1\">0</div><div class=\"resultat-gols resultat-resultat-1\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=266583\">Estepona</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=266583\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"p.php?id=266583\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=266583\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=266583\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=266583\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=266583\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=266583\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=266583\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=266583\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=266583\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=266583\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 505362,
+      "match_provider_key": "bdfutbol:match:505362",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=505362",
+      "date": "31/10/2024",
+      "season": "2024-25",
+      "competition": "COP",
+      "round_or_type": "R1",
+      "home_team": "Estepona",
+      "score_text": "3 2",
+      "home_goals": 3,
+      "away_goals": 2,
+      "away_team": "Málaga",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 39,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2024-25",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=505362\">7</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=505362\">31/10/2024</a></td>",
+        "Temporada": "<td data-temp=\"2024-25\"><a href=\"p.php?id=505362\">2024-25</a></td>",
+        "Competición": "<td><a href=\"p.php?id=505362\">COP</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=505362\" title=\"Ronda 1\">R1</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=505362\">Estepona</a></td>",
+        "col_6": "<td><a href=\"p.php?id=505362\"><div class=\"resultat-gols resultat-resultat-1\">3</div><div class=\"resultat-gols resultat-resultat-1\">2</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=505362\">Málaga</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=505362\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=505362\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=505362\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=505362\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=505362\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=505362\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=505362\">39</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=505362\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=505362\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=505362\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=505362\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 266592,
+      "match_provider_key": "bdfutbol:match:266592",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=266592",
+      "date": "03/11/2024",
+      "season": "2024-25",
+      "competition": "2aB",
+      "round_or_type": "10",
+      "home_team": "Estepona",
+      "score_text": "1 1",
+      "home_goals": 1,
+      "away_goals": 1,
+      "away_team": "Linares",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2024-25",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=266592\">8</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=266592\">03/11/2024</a></td>",
+        "Temporada": "<td data-temp=\"2024-25\"><a href=\"p.php?id=266592\">2024-25</a></td>",
+        "Competición": "<td><a href=\"p.php?id=266592\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=266592\" title=\"Jornada 10\">10</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=266592\">Estepona</a></td>",
+        "col_6": "<td><a href=\"p.php?id=266592\"><div class=\"resultat-gols resultat-resultat-0\">1</div><div class=\"resultat-gols resultat-resultat-0\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=266592\">Linares</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=266592\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=266592\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=266592\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=266592\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=266592\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=266592\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=266592\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=266592\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=266592\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=266592\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=266592\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 266600,
+      "match_provider_key": "bdfutbol:match:266600",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=266600",
+      "date": "10/11/2024",
+      "season": "2024-25",
+      "competition": "2aB",
+      "round_or_type": "11",
+      "home_team": "Recreativo Granada",
+      "score_text": "0 1",
+      "home_goals": 0,
+      "away_goals": 1,
+      "away_team": "Estepona",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 6,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2024-25",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=266600\">9</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=266600\">10/11/2024</a></td>",
+        "Temporada": "<td data-temp=\"2024-25\"><a href=\"p.php?id=266600\">2024-25</a></td>",
+        "Competición": "<td><a href=\"p.php?id=266600\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=266600\" title=\"Jornada 11\">11</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=266600\">Recreativo Granada</a></td>",
+        "col_6": "<td><a href=\"p.php?id=266600\"><div class=\"resultat-gols resultat-resultat-1\">0</div><div class=\"resultat-gols resultat-resultat-1\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=266600\">Estepona</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=266600\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=266600\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=266600\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=266600\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=266600\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=266600\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=266600\">6</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=266600\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=266600\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=266600\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=266600\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 266617,
+      "match_provider_key": "bdfutbol:match:266617",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=266617",
+      "date": "24/11/2024",
+      "season": "2024-25",
+      "competition": "2aB",
+      "round_or_type": "13",
+      "home_team": "Antoniano",
+      "score_text": "2 1",
+      "home_goals": 2,
+      "away_goals": 1,
+      "away_team": "Estepona",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 20,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2024-25",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=266617\">10</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=266617\">24/11/2024</a></td>",
+        "Temporada": "<td data-temp=\"2024-25\"><a href=\"p.php?id=266617\">2024-25</a></td>",
+        "Competición": "<td><a href=\"p.php?id=266617\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=266617\" title=\"Jornada 13\">13</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=266617\">Antoniano</a></td>",
+        "col_6": "<td><a href=\"p.php?id=266617\"><div class=\"resultat-gols resultat-resultat--1\">2</div><div class=\"resultat-gols resultat-resultat--1\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=266617\">Estepona</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=266617\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=266617\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=266617\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=266617\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=266617\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=266617\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=266617\">20</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=266617\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=266617\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=266617\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=266617\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 266626,
+      "match_provider_key": "bdfutbol:match:266626",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=266626",
+      "date": "30/11/2024",
+      "season": "2024-25",
+      "competition": "2aB",
+      "round_or_type": "14",
+      "home_team": "Estepona",
+      "score_text": "0 1",
+      "home_goals": 0,
+      "away_goals": 1,
+      "away_team": "Almería B",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 14,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2024-25",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=266626\">11</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=266626\">30/11/2024</a></td>",
+        "Temporada": "<td data-temp=\"2024-25\"><a href=\"p.php?id=266626\">2024-25</a></td>",
+        "Competición": "<td><a href=\"p.php?id=266626\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=266626\" title=\"Jornada 14\">14</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=266626\">Estepona</a></td>",
+        "col_6": "<td><a href=\"p.php?id=266626\"><div class=\"resultat-gols resultat-resultat--1\">0</div><div class=\"resultat-gols resultat-resultat--1\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=266626\">Almería B</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=266626\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=266626\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=266626\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=266626\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=266626\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=266626\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=266626\">14</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=266626\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=266626\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=266626\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=266626\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 266634,
+      "match_provider_key": "bdfutbol:match:266634",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=266634",
+      "date": "08/12/2024",
+      "season": "2024-25",
+      "competition": "2aB",
+      "round_or_type": "15",
+      "home_team": "San Fernando CD",
+      "score_text": "1 0",
+      "home_goals": 1,
+      "away_goals": 0,
+      "away_team": "Estepona",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 5,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2024-25",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=266634\">12</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=266634\">08/12/2024</a></td>",
+        "Temporada": "<td data-temp=\"2024-25\"><a href=\"p.php?id=266634\">2024-25</a></td>",
+        "Competición": "<td><a href=\"p.php?id=266634\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=266634\" title=\"Jornada 15\">15</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=266634\">San Fernando CD</a></td>",
+        "col_6": "<td><a href=\"p.php?id=266634\"><div class=\"resultat-gols resultat-resultat--1\">1</div><div class=\"resultat-gols resultat-resultat--1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=266634\">Estepona</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=266634\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=266634\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=266634\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=266634\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=266634\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=266634\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=266634\">5</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=266634\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=266634\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=266634\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=266634\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 266643,
+      "match_provider_key": "bdfutbol:match:266643",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=266643",
+      "date": "15/12/2024",
+      "season": "2024-25",
+      "competition": "2aB",
+      "round_or_type": "16",
+      "home_team": "Estepona",
+      "score_text": "1 1",
+      "home_goals": 1,
+      "away_goals": 1,
+      "away_team": "Deportiva Minera",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 73,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2024-25",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=266643\">13</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=266643\">15/12/2024</a></td>",
+        "Temporada": "<td data-temp=\"2024-25\"><a href=\"p.php?id=266643\">2024-25</a></td>",
+        "Competición": "<td><a href=\"p.php?id=266643\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=266643\" title=\"Jornada 16\">16</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=266643\">Estepona</a></td>",
+        "col_6": "<td><a href=\"p.php?id=266643\"><div class=\"resultat-gols resultat-resultat-0\">1</div><div class=\"resultat-gols resultat-resultat-0\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=266643\">Deportiva Minera</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=266643\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=266643\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=266643\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=266643\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=266643\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=266643\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=266643\">73</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=266643\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=266643\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=266643\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=266643\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 266651,
+      "match_provider_key": "bdfutbol:match:266651",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=266651",
+      "date": "22/12/2024",
+      "season": "2024-25",
+      "competition": "2aB",
+      "round_or_type": "17",
+      "home_team": "Don Benito",
+      "score_text": "1 2",
+      "home_goals": 1,
+      "away_goals": 2,
+      "away_team": "Estepona",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 70,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2024-25",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=266651\">14</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=266651\">22/12/2024</a></td>",
+        "Temporada": "<td data-temp=\"2024-25\"><a href=\"p.php?id=266651\">2024-25</a></td>",
+        "Competición": "<td><a href=\"p.php?id=266651\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=266651\" title=\"Jornada 17\">17</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=266651\">Don Benito</a></td>",
+        "col_6": "<td><a href=\"p.php?id=266651\"><div class=\"resultat-gols resultat-resultat-1\">1</div><div class=\"resultat-gols resultat-resultat-1\">2</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=266651\">Estepona</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=266651\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=266651\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=266651\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=266651\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=266651\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=266651\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=266651\">70</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=266651\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=266651\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=266651\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=266651\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 266666,
+      "match_provider_key": "bdfutbol:match:266666",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=266666",
+      "date": "12/01/2025",
+      "season": "2024-25",
+      "competition": "2aB",
+      "round_or_type": "18",
+      "home_team": "Xerez Deportivo",
+      "score_text": "0 0",
+      "home_goals": 0,
+      "away_goals": 0,
+      "away_team": "Estepona",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 4,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2024-25",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=266666\">15</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=266666\">12/01/2025</a></td>",
+        "Temporada": "<td data-temp=\"2024-25\"><a href=\"p.php?id=266666\">2024-25</a></td>",
+        "Competición": "<td><a href=\"p.php?id=266666\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=266666\" title=\"Jornada 18\">18</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=266666\">Xerez Deportivo</a></td>",
+        "col_6": "<td><a href=\"p.php?id=266666\"><div class=\"resultat-gols resultat-resultat-0\">0</div><div class=\"resultat-gols resultat-resultat-0\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=266666\">Estepona</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=266666\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=266666\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=266666\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=266666\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=266666\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=266666\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=266666\">4</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=266666\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=266666\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=266666\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=266666\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 266736,
+      "match_provider_key": "bdfutbol:match:266736",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=266736",
+      "date": "09/03/2025",
+      "season": "2024-25",
+      "competition": "2aB",
+      "round_or_type": "26",
+      "home_team": "Estepona",
+      "score_text": "1 0",
+      "home_goals": 1,
+      "away_goals": 0,
+      "away_team": "Villanovense",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 82,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2024-25",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=266736\">16</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=266736\">09/03/2025</a></td>",
+        "Temporada": "<td data-temp=\"2024-25\"><a href=\"p.php?id=266736\">2024-25</a></td>",
+        "Competición": "<td><a href=\"p.php?id=266736\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=266736\" title=\"Jornada 26\">26</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=266736\">Estepona</a></td>",
+        "col_6": "<td><a href=\"p.php?id=266736\"><div class=\"resultat-gols resultat-resultat-1\">1</div><div class=\"resultat-gols resultat-resultat-1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=266736\">Villanovense</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=266736\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=266736\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=266736\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=266736\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=266736\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=266736\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=266736\">82</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=266736\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=266736\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=266736\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=266736\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 266745,
+      "match_provider_key": "bdfutbol:match:266745",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=266745",
+      "date": "16/03/2025",
+      "season": "2024-25",
+      "competition": "2aB",
+      "round_or_type": "27",
+      "home_team": "Linares",
+      "score_text": "1 2",
+      "home_goals": 1,
+      "away_goals": 2,
+      "away_team": "Estepona",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 70,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": "'56 '64",
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2024-25",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=266745\">17</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=266745\">16/03/2025</a></td>",
+        "Temporada": "<td data-temp=\"2024-25\"><a href=\"p.php?id=266745\">2024-25</a></td>",
+        "Competición": "<td><a href=\"p.php?id=266745\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=266745\" title=\"Jornada 27\">27</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=266745\">Linares</a></td>",
+        "col_6": "<td><a href=\"p.php?id=266745\"><div class=\"resultat-gols resultat-resultat-1\">1</div><div class=\"resultat-gols resultat-resultat-1\">2</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=266745\">Estepona</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=266745\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=266745\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=266745\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=266745\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=266745\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=266745\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=266745\">70</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=266745\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=266745\"></a></td>",
+        "G": "<td class=\"GO\"><a href=\"p.php?id=266745\"><span class=\"\" title=\"\">'56</span><span class=\"\" title=\"\">'64</span></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=266745\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 266753,
+      "match_provider_key": "bdfutbol:match:266753",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=266753",
+      "date": "22/03/2025",
+      "season": "2024-25",
+      "competition": "2aB",
+      "round_or_type": "28",
+      "home_team": "Estepona",
+      "score_text": "1 0",
+      "home_goals": 1,
+      "away_goals": 0,
+      "away_team": "Recreativo Granada",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 71,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2024-25",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=266753\">18</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=266753\">22/03/2025</a></td>",
+        "Temporada": "<td data-temp=\"2024-25\"><a href=\"p.php?id=266753\">2024-25</a></td>",
+        "Competición": "<td><a href=\"p.php?id=266753\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=266753\" title=\"Jornada 28\">28</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=266753\">Estepona</a></td>",
+        "col_6": "<td><a href=\"p.php?id=266753\"><div class=\"resultat-gols resultat-resultat-1\">1</div><div class=\"resultat-gols resultat-resultat-1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=266753\">Recreativo Granada</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=266753\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=266753\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=266753\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=266753\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=266753\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=266753\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=266753\">71</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=266753\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=266753\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=266753\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=266753\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 266762,
+      "match_provider_key": "bdfutbol:match:266762",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=266762",
+      "date": "30/03/2025",
+      "season": "2024-25",
+      "competition": "2aB",
+      "round_or_type": "29",
+      "home_team": "La Unión Atlético",
+      "score_text": "1 1",
+      "home_goals": 1,
+      "away_goals": 1,
+      "away_team": "Estepona",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 79,
+      "yellow_cards_raw": "'45",
+      "red_cards_raw": "'79",
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2024-25",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=266762\">19</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=266762\">30/03/2025</a></td>",
+        "Temporada": "<td data-temp=\"2024-25\"><a href=\"p.php?id=266762\">2024-25</a></td>",
+        "Competición": "<td><a href=\"p.php?id=266762\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=266762\" title=\"Jornada 29\">29</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=266762\">La Unión Atlético</a></td>",
+        "col_6": "<td><a href=\"p.php?id=266762\"><div class=\"resultat-gols resultat-resultat-0\">1</div><div class=\"resultat-gols resultat-resultat-0\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=266762\">Estepona</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=266762\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=266762\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=266762\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=266762\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=266762\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=266762\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=266762\">79</a></td>",
+        "TA": "<td class=\"GR resp_off\"><a href=\"p.php?id=266762\"><span class=\"\" title=\"\">'45</span></a></td>",
+        "TR": "<td class=\"VE resp_off\"><a href=\"p.php?id=266762\"><span class=\"\" title=\"\">'79</span></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=266762\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=266762\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 266779,
+      "match_provider_key": "bdfutbol:match:266779",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=266779",
+      "date": "13/04/2025",
+      "season": "2024-25",
+      "competition": "2aB",
+      "round_or_type": "31",
+      "home_team": "Almería B",
+      "score_text": "1 2",
+      "home_goals": 1,
+      "away_goals": 2,
+      "away_team": "Estepona",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 77,
+      "yellow_cards_raw": "'8",
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2024-25",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=266779\">20</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=266779\">13/04/2025</a></td>",
+        "Temporada": "<td data-temp=\"2024-25\"><a href=\"p.php?id=266779\">2024-25</a></td>",
+        "Competición": "<td><a href=\"p.php?id=266779\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=266779\" title=\"Jornada 31\">31</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=266779\">Almería B</a></td>",
+        "col_6": "<td><a href=\"p.php?id=266779\"><div class=\"resultat-gols resultat-resultat-1\">1</div><div class=\"resultat-gols resultat-resultat-1\">2</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=266779\">Estepona</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=266779\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=266779\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=266779\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=266779\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=266779\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=266779\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=266779\">77</a></td>",
+        "TA": "<td class=\"GR resp_off\"><a href=\"p.php?id=266779\"><span class=\"\" title=\"\">'8</span></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=266779\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=266779\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=266779\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 266787,
+      "match_provider_key": "bdfutbol:match:266787",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=266787",
+      "date": "19/04/2025",
+      "season": "2024-25",
+      "competition": "2aB",
+      "round_or_type": "32",
+      "home_team": "Estepona",
+      "score_text": "2 0",
+      "home_goals": 2,
+      "away_goals": 0,
+      "away_team": "San Fernando CD",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 88,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2024-25",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=266787\">21</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=266787\">19/04/2025</a></td>",
+        "Temporada": "<td data-temp=\"2024-25\"><a href=\"p.php?id=266787\">2024-25</a></td>",
+        "Competición": "<td><a href=\"p.php?id=266787\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=266787\" title=\"Jornada 32\">32</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=266787\">Estepona</a></td>",
+        "col_6": "<td><a href=\"p.php?id=266787\"><div class=\"resultat-gols resultat-resultat-1\">2</div><div class=\"resultat-gols resultat-resultat-1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=266787\">San Fernando CD</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=266787\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=266787\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=266787\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=266787\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=266787\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=266787\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=266787\">88</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=266787\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=266787\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=266787\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=266787\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 266796,
+      "match_provider_key": "bdfutbol:match:266796",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=266796",
+      "date": "27/04/2025",
+      "season": "2024-25",
+      "competition": "2aB",
+      "round_or_type": "33",
+      "home_team": "Deportiva Minera",
+      "score_text": "0 1",
+      "home_goals": 0,
+      "away_goals": 1,
+      "away_team": "Estepona",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 81,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2024-25",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=266796\">22</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=266796\">27/04/2025</a></td>",
+        "Temporada": "<td data-temp=\"2024-25\"><a href=\"p.php?id=266796\">2024-25</a></td>",
+        "Competición": "<td><a href=\"p.php?id=266796\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=266796\" title=\"Jornada 33\">33</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=266796\">Deportiva Minera</a></td>",
+        "col_6": "<td><a href=\"p.php?id=266796\"><div class=\"resultat-gols resultat-resultat-1\">0</div><div class=\"resultat-gols resultat-resultat-1\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=266796\">Estepona</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=266796\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=266796\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=266796\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=266796\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=266796\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=266796\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=266796\">81</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=266796\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=266796\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=266796\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=266796\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 266804,
+      "match_provider_key": "bdfutbol:match:266804",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=266804",
+      "date": "04/05/2025",
+      "season": "2024-25",
+      "competition": "2aB",
+      "round_or_type": "34",
+      "home_team": "Estepona",
+      "score_text": "1 1",
+      "home_goals": 1,
+      "away_goals": 1,
+      "away_team": "Don Benito",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 61,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2024-25",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=266804\">23</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=266804\">04/05/2025</a></td>",
+        "Temporada": "<td data-temp=\"2024-25\"><a href=\"p.php?id=266804\">2024-25</a></td>",
+        "Competición": "<td><a href=\"p.php?id=266804\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=266804\" title=\"Jornada 34\">34</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=266804\">Estepona</a></td>",
+        "col_6": "<td><a href=\"p.php?id=266804\"><div class=\"resultat-gols resultat-resultat-0\">1</div><div class=\"resultat-gols resultat-resultat-0\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=266804\">Don Benito</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=266804\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=266804\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=266804\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=266804\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=266804\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=266804\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=266804\">61</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=266804\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=266804\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=266804\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=266804\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 461964,
+      "match_provider_key": "bdfutbol:match:461964",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=461964",
+      "date": "10/05/2025",
+      "season": "2024-25",
+      "competition": "PRF",
+      "round_or_type": "SF-1",
+      "home_team": "Estepona",
+      "score_text": "1 1",
+      "home_goals": 1,
+      "away_goals": 1,
+      "away_team": "SD Logroñés",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 77,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2024-25",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=461964\">24</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=461964\">10/05/2025</a></td>",
+        "Temporada": "<td data-temp=\"2024-25\"><a href=\"p.php?id=461964\">2024-25</a></td>",
+        "Competición": "<td><a href=\"p.php?id=461964\">PRF</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=461964\" title=\"Semifinal (ida)\">SF-1</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=461964\">Estepona</a></td>",
+        "col_6": "<td><a href=\"p.php?id=461964\"><div class=\"resultat-gols resultat-resultat-0\">1</div><div class=\"resultat-gols resultat-resultat-0\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=461964\">SD Logroñés</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=461964\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=461964\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=461964\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=461964\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=461964\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=461964\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=461964\">77</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=461964\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=461964\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=461964\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=461964\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 461974,
+      "match_provider_key": "bdfutbol:match:461974",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=461974",
+      "date": "18/05/2025",
+      "season": "2024-25",
+      "competition": "PRF",
+      "round_or_type": "SF-2",
+      "home_team": "SD Logroñés",
+      "score_text": "1 2",
+      "home_goals": 1,
+      "away_goals": 2,
+      "away_team": "Estepona",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 86,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": "'58",
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2024-25",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=461974\">25</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=461974\">18/05/2025</a></td>",
+        "Temporada": "<td data-temp=\"2024-25\"><a href=\"p.php?id=461974\">2024-25</a></td>",
+        "Competición": "<td><a href=\"p.php?id=461974\">PRF</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=461974\" title=\"Semifinal (vuelta)\">SF-2</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=461974\">SD Logroñés</a></td>",
+        "col_6": "<td><a href=\"p.php?id=461974\"><div class=\"resultat-gols resultat-resultat-1\">1</div><div class=\"resultat-gols resultat-resultat-1\">2</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=461974\">Estepona</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=461974\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=461974\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=461974\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=461974\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=461974\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=461974\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=461974\">86</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=461974\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=461974\"></a></td>",
+        "G": "<td class=\"GO\"><a href=\"p.php?id=461974\"><span class=\"\" title=\"\">'58</span></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=461974\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 461980,
+      "match_provider_key": "bdfutbol:match:461980",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=461980",
+      "date": "26/05/2025",
+      "season": "2024-25",
+      "competition": "PRF",
+      "round_or_type": "F-1",
+      "home_team": "Estepona",
+      "score_text": "1 0",
+      "home_goals": 1,
+      "away_goals": 0,
+      "away_team": "Cacereño",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2024-25",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=461980\">26</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=461980\">26/05/2025</a></td>",
+        "Temporada": "<td data-temp=\"2024-25\"><a href=\"p.php?id=461980\">2024-25</a></td>",
+        "Competición": "<td><a href=\"p.php?id=461980\">PRF</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=461980\" title=\"Final (ida)\">F-1</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=461980\">Estepona</a></td>",
+        "col_6": "<td><a href=\"p.php?id=461980\"><div class=\"resultat-gols resultat-resultat-1\">1</div><div class=\"resultat-gols resultat-resultat-1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=461980\">Cacereño</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=461980\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"p.php?id=461980\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=461980\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=461980\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=461980\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=461980\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=461980\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=461980\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=461980\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=461980\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=461980\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 461985,
+      "match_provider_key": "bdfutbol:match:461985",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=461985",
+      "date": "31/05/2025",
+      "season": "2024-25",
+      "competition": "PRF",
+      "round_or_type": "F-2",
+      "home_team": "Cacereño",
+      "score_text": "5 2",
+      "home_goals": 5,
+      "away_goals": 2,
+      "away_team": "Estepona",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2024-25",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=461985\">27</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=461985\">31/05/2025</a></td>",
+        "Temporada": "<td data-temp=\"2024-25\"><a href=\"p.php?id=461985\">2024-25</a></td>",
+        "Competición": "<td><a href=\"p.php?id=461985\">PRF</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=461985\" title=\"Final (vuelta)\">F-2</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=461985\">Cacereño</a></td>",
+        "col_6": "<td><a href=\"p.php?id=461985\"><div class=\"resultat-gols resultat-resultat--1\">5</div><div class=\"resultat-gols resultat-resultat--1\">2</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=461985\">Estepona</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=461985\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"p.php?id=461985\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=461985\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=461985\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=461985\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=461985\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=461985\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=461985\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=461985\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=461985\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=461985\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 269102,
+      "match_provider_key": "bdfutbol:match:269102",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=269102",
+      "date": "06/09/2025",
+      "season": "2025-26",
+      "competition": "2aB",
+      "round_or_type": "1",
+      "home_team": "Moscardó",
+      "score_text": "1 2",
+      "home_goals": 1,
+      "away_goals": 2,
+      "away_team": "Real Madrid C",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 24,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=269102\">1</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=269102\">06/09/2025</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=269102\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=269102\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=269102\" title=\"Jornada 1\">1</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=269102\">Moscardó</a></td>",
+        "col_6": "<td><a href=\"p.php?id=269102\"><div class=\"resultat-gols resultat-resultat-1\">1</div><div class=\"resultat-gols resultat-resultat-1\">2</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=269102\">Real Madrid C</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=269102\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=269102\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=269102\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=269102\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=269102\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=269102\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=269102\">24</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=269102\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=269102\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=269102\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=269102\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 269117,
+      "match_provider_key": "bdfutbol:match:269117",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=269117",
+      "date": "14/09/2025",
+      "season": "2025-26",
+      "competition": "2aB",
+      "round_or_type": "2",
+      "home_team": "Real Madrid C",
+      "score_text": "2 0",
+      "home_goals": 2,
+      "away_goals": 0,
+      "away_team": "Las Palmas Atlético",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 20,
+      "yellow_cards_raw": "'74",
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=269117\">2</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=269117\">14/09/2025</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=269117\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=269117\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=269117\" title=\"Jornada 2\">2</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=269117\">Real Madrid C</a></td>",
+        "col_6": "<td><a href=\"p.php?id=269117\"><div class=\"resultat-gols resultat-resultat-1\">2</div><div class=\"resultat-gols resultat-resultat-1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=269117\">Las Palmas Atlético</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=269117\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=269117\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=269117\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=269117\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=269117\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=269117\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=269117\">20</a></td>",
+        "TA": "<td class=\"GR resp_off\"><a href=\"p.php?id=269117\"><span class=\"\" title=\"\">'74</span></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=269117\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=269117\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=269117\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 269125,
+      "match_provider_key": "bdfutbol:match:269125",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=269125",
+      "date": "20/09/2025",
+      "season": "2025-26",
+      "competition": "2aB",
+      "round_or_type": "3",
+      "home_team": "Rayo Vallecano B",
+      "score_text": "3 2",
+      "home_goals": 3,
+      "away_goals": 2,
+      "away_team": "Real Madrid C",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 53,
+      "yellow_cards_raw": "'45",
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=269125\">3</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=269125\">20/09/2025</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=269125\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=269125\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=269125\" title=\"Jornada 3\">3</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=269125\">Rayo Vallecano B</a></td>",
+        "col_6": "<td><a href=\"p.php?id=269125\"><div class=\"resultat-gols resultat-resultat--1\">3</div><div class=\"resultat-gols resultat-resultat--1\">2</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=269125\">Real Madrid C</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=269125\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=269125\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=269125\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=269125\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=269125\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=269125\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=269125\">53</a></td>",
+        "TA": "<td class=\"GR resp_off\"><a href=\"p.php?id=269125\"><span class=\"\" title=\"\">'45</span></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=269125\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=269125\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=269125\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 269135,
+      "match_provider_key": "bdfutbol:match:269135",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=269135",
+      "date": "27/09/2025",
+      "season": "2025-26",
+      "competition": "2aB",
+      "round_or_type": "4",
+      "home_team": "Real Madrid C",
+      "score_text": "0 1",
+      "home_goals": 0,
+      "away_goals": 1,
+      "away_team": "Elche Ilicitano",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 56,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=269135\">4</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=269135\">27/09/2025</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=269135\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=269135\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=269135\" title=\"Jornada 4\">4</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=269135\">Real Madrid C</a></td>",
+        "col_6": "<td><a href=\"p.php?id=269135\"><div class=\"resultat-gols resultat-resultat--1\">0</div><div class=\"resultat-gols resultat-resultat--1\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=269135\">Elche Ilicitano</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=269135\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=269135\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=269135\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=269135\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=269135\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=269135\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=269135\">56</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=269135\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=269135\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=269135\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=269135\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 269145,
+      "match_provider_key": "bdfutbol:match:269145",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=269145",
+      "date": "05/10/2025",
+      "season": "2025-26",
+      "competition": "2aB",
+      "round_or_type": "5",
+      "home_team": "Conquense",
+      "score_text": "1 0",
+      "home_goals": 1,
+      "away_goals": 0,
+      "away_team": "Real Madrid C",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 23,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=269145\">5</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=269145\">05/10/2025</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=269145\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=269145\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=269145\" title=\"Jornada 5\">5</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=269145\">Conquense</a></td>",
+        "col_6": "<td><a href=\"p.php?id=269145\"><div class=\"resultat-gols resultat-resultat--1\">1</div><div class=\"resultat-gols resultat-resultat--1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=269145\">Real Madrid C</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=269145\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=269145\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=269145\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=269145\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=269145\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=269145\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=269145\">23</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=269145\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=269145\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=269145\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=269145\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 269206,
+      "match_provider_key": "bdfutbol:match:269206",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=269206",
+      "date": "23/11/2025",
+      "season": "2025-26",
+      "competition": "2aB",
+      "round_or_type": "12",
+      "home_team": "Real Madrid C",
+      "score_text": "0 1",
+      "home_goals": 0,
+      "away_goals": 1,
+      "away_team": "Quintanar del Rey",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 33,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=269206\">6</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=269206\">23/11/2025</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=269206\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=269206\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=269206\" title=\"Jornada 12\">12</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=269206\">Real Madrid C</a></td>",
+        "col_6": "<td><a href=\"p.php?id=269206\"><div class=\"resultat-gols resultat-resultat--1\">0</div><div class=\"resultat-gols resultat-resultat--1\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=269206\">Quintanar del Rey</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=269206\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=269206\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=269206\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=269206\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=269206\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=269206\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=269206\">33</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=269206\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=269206\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=269206\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=269206\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 269235,
+      "match_provider_key": "bdfutbol:match:269235",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=269235",
+      "date": "14/12/2025",
+      "season": "2025-26",
+      "competition": "2aB",
+      "round_or_type": "15",
+      "home_team": "RSD Alcalá",
+      "score_text": "1 0",
+      "home_goals": 1,
+      "away_goals": 0,
+      "away_team": "Real Madrid C",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 62,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=269235\">7</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=269235\">14/12/2025</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=269235\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=269235\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=269235\" title=\"Jornada 15\">15</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=269235\">RSD Alcalá</a></td>",
+        "col_6": "<td><a href=\"p.php?id=269235\"><div class=\"resultat-gols resultat-resultat--1\">1</div><div class=\"resultat-gols resultat-resultat--1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=269235\">Real Madrid C</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=269235\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=269235\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=269235\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=269235\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=269235\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=269235\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=269235\">62</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=269235\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=269235\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=269235\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=269235\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 269242,
+      "match_provider_key": "bdfutbol:match:269242",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=269242",
+      "date": "21/12/2025",
+      "season": "2025-26",
+      "competition": "2aB",
+      "round_or_type": "16",
+      "home_team": "Real Madrid C",
+      "score_text": "1 1",
+      "home_goals": 1,
+      "away_goals": 1,
+      "away_team": "Navalcarnero",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 71,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=269242\">8</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=269242\">21/12/2025</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=269242\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=269242\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=269242\" title=\"Jornada 16\">16</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=269242\">Real Madrid C</a></td>",
+        "col_6": "<td><a href=\"p.php?id=269242\"><div class=\"resultat-gols resultat-resultat-0\">1</div><div class=\"resultat-gols resultat-resultat-0\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=269242\">Navalcarnero</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=269242\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=269242\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=269242\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=269242\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=269242\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=269242\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=269242\">71</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=269242\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=269242\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=269242\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=269242\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 269252,
+      "match_provider_key": "bdfutbol:match:269252",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=269252",
+      "date": "04/01/2026",
+      "season": "2025-26",
+      "competition": "2aB",
+      "round_or_type": "17",
+      "home_team": "Real Madrid C",
+      "score_text": "1 2",
+      "home_goals": 1,
+      "away_goals": 2,
+      "away_team": "San Sebastián de los Reyes",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 25,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=269252\">9</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=269252\">04/01/2026</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=269252\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=269252\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=269252\" title=\"Jornada 17\">17</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=269252\">Real Madrid C</a></td>",
+        "col_6": "<td><a href=\"p.php?id=269252\"><div class=\"resultat-gols resultat-resultat--1\">1</div><div class=\"resultat-gols resultat-resultat--1\">2</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=269252\">San Sebastián de los Reyes</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=269252\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=269252\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=269252\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=269252\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=269252\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=269252\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=269252\">25</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=269252\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=269252\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=269252\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=269252\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 269258,
+      "match_provider_key": "bdfutbol:match:269258",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=269258",
+      "date": "11/01/2026",
+      "season": "2025-26",
+      "competition": "2aB",
+      "round_or_type": "18",
+      "home_team": "Getafe B",
+      "score_text": "2 1",
+      "home_goals": 2,
+      "away_goals": 1,
+      "away_team": "Real Madrid C",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 19,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=269258\">10</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=269258\">11/01/2026</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=269258\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=269258\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=269258\" title=\"Jornada 18\">18</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=269258\">Getafe B</a></td>",
+        "col_6": "<td><a href=\"p.php?id=269258\"><div class=\"resultat-gols resultat-resultat--1\">2</div><div class=\"resultat-gols resultat-resultat--1\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=269258\">Real Madrid C</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=269258\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=269258\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=269258\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=269258\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=269258\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=269258\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=269258\">19</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=269258\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=269258\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=269258\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=269258\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 269274,
+      "match_provider_key": "bdfutbol:match:269274",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=269274",
+      "date": "25/01/2026",
+      "season": "2025-26",
+      "competition": "2aB",
+      "round_or_type": "20",
+      "home_team": "Intercity",
+      "score_text": "1 2",
+      "home_goals": 1,
+      "away_goals": 2,
+      "away_team": "Real Madrid C",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 79,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=269274\">11</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=269274\">25/01/2026</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=269274\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=269274\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=269274\" title=\"Jornada 20\">20</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=269274\">Intercity</a></td>",
+        "col_6": "<td><a href=\"p.php?id=269274\"><div class=\"resultat-gols resultat-resultat-1\">1</div><div class=\"resultat-gols resultat-resultat-1\">2</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=269274\">Real Madrid C</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=269274\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=269274\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=269274\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=269274\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=269274\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=269274\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=269274\">79</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=269274\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=269274\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=269274\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=269274\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 269285,
+      "match_provider_key": "bdfutbol:match:269285",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=269285",
+      "date": "01/02/2026",
+      "season": "2025-26",
+      "competition": "2aB",
+      "round_or_type": "21",
+      "home_team": "Elche Ilicitano",
+      "score_text": "2 0",
+      "home_goals": 2,
+      "away_goals": 0,
+      "away_team": "Real Madrid C",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 60,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=269285\">12</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=269285\">01/02/2026</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=269285\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=269285\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=269285\" title=\"Jornada 21\">21</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=269285\">Elche Ilicitano</a></td>",
+        "col_6": "<td><a href=\"p.php?id=269285\"><div class=\"resultat-gols resultat-resultat--1\">2</div><div class=\"resultat-gols resultat-resultat--1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=269285\">Real Madrid C</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=269285\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=269285\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=269285\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=269285\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=269285\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=269285\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=269285\">60</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=269285\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=269285\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=269285\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=269285\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 269369,
+      "match_provider_key": "bdfutbol:match:269369",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=269369",
+      "date": "05/04/2026",
+      "season": "2025-26",
+      "competition": "2aB",
+      "round_or_type": "30",
+      "home_team": "Real Madrid C",
+      "score_text": "2 3",
+      "home_goals": 2,
+      "away_goals": 3,
+      "away_team": "CD Coria",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 3,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=269369\">13</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=269369\">05/04/2026</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=269369\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=269369\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=269369\" title=\"Jornada 30\">30</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=269369\">Real Madrid C</a></td>",
+        "col_6": "<td><a href=\"p.php?id=269369\"><div class=\"resultat-gols resultat-resultat--1\">2</div><div class=\"resultat-gols resultat-resultat--1\">3</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=269369\">CD Coria</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=269369\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=269369\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=269369\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=269369\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=269369\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=269369\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=269369\">3</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=269369\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=269369\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=269369\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=269369\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 269405,
+      "match_provider_key": "bdfutbol:match:269405",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=269405",
+      "date": "03/05/2026",
+      "season": "2025-26",
+      "competition": "2aB",
+      "round_or_type": "34",
+      "home_team": "Real Madrid C",
+      "score_text": "0 1",
+      "home_goals": 0,
+      "away_goals": 1,
+      "away_team": "Conquense",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 11,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=269405\">14</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=269405\">03/05/2026</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=269405\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=269405\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=269405\" title=\"Jornada 34\">34</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=269405\">Real Madrid C</a></td>",
+        "col_6": "<td><a href=\"p.php?id=269405\"><div class=\"resultat-gols resultat-resultat--1\">0</div><div class=\"resultat-gols resultat-resultat--1\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=269405\">Conquense</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=269405\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=269405\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=269405\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=269405\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=269405\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=269405\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=269405\">11</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=269405\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=269405\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=269405\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=269405\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 269427,
+      "match_provider_key": "bdfutbol:match:269427",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=269427",
+      "date": "06/09/2026",
+      "season": "2026-27",
+      "competition": "1rf",
+      "round_or_type": "2",
+      "home_team": "Zamora",
+      "score_text": "1 2",
+      "home_goals": 1,
+      "away_goals": 2,
+      "away_team": "UD Logroñés",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 13,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2026-27",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=269427\">1</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=269427\">06/09/2026</a></td>",
+        "Temporada": "<td data-temp=\"2026-27\"><a href=\"p.php?id=269427\">2026-27</a></td>",
+        "Competición": "<td><a href=\"p.php?id=269427\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=269427\" title=\"Jornada 2\">2</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=269427\">Zamora</a></td>",
+        "col_6": "<td><a href=\"p.php?id=269427\"><div class=\"resultat-gols resultat-resultat--1\">1</div><div class=\"resultat-gols resultat-resultat--1\">2</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=269427\">UD Logroñés</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=269427\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=269427\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=269427\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=269427\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=269427\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=269427\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=269427\">13</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=269427\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=269427\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=269427\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=269427\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 269447,
+      "match_provider_key": "bdfutbol:match:269447",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=269447",
+      "date": "20/09/2026",
+      "season": "2026-27",
+      "competition": "1rf",
+      "round_or_type": "4",
+      "home_team": "Zamora",
+      "score_text": "1 2",
+      "home_goals": 1,
+      "away_goals": 2,
+      "away_team": "Lugo",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 32,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13568.html?temp=2026-27",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=269447\">2</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=269447\">20/09/2026</a></td>",
+        "Temporada": "<td data-temp=\"2026-27\"><a href=\"p.php?id=269447\">2026-27</a></td>",
+        "Competición": "<td><a href=\"p.php?id=269447\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=269447\" title=\"Jornada 4\">4</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=269447\">Zamora</a></td>",
+        "col_6": "<td><a href=\"p.php?id=269447\"><div class=\"resultat-gols resultat-resultat--1\">1</div><div class=\"resultat-gols resultat-resultat--1\">2</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=269447\">Lugo</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=269447\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=269447\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=269447\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=269447\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=269447\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=269447\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=269447\">32</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=269447\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=269447\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=269447\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=269447\"></a></td>"
+      }
+    }
+  ],
+  "source_run": "/home/mario/Documents/Trabalo/Proyectos/RealJaen/FootballDataHub/data/raw/bdfutbol/player_full_13568/20261008T085919.705594Z",
+  "warnings": []
+}

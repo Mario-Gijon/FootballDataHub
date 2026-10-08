@@ -1,0 +1,4879 @@
+{
+  "identity": {
+    "provider": "bdfutbol",
+    "provider_id": 11148,
+    "display_name": "Germán",
+    "full_name": "Germán García Fernández",
+    "birth_date": "01/02/2004",
+    "age_displayed": 22,
+    "birth_place": "Alcalá de Guadaíra",
+    "birth_region": "Sevilla",
+    "position": "Portero",
+    "height_cm": 185,
+    "source_url": "https://www.bdfutbol.com/es/j/j11148.html"
+  },
+  "canonical_career": [
+    {
+      "season": "2022-23",
+      "team_name": "Betis",
+      "team_provider_id": 8,
+      "country": null,
+      "division": "1ª",
+      "age": 18,
+      "appearances": 0,
+      "starts": 0,
+      "complete_matches": 0,
+      "substitute_appearances": 0,
+      "substituted": 0,
+      "incomplete_matches": 0,
+      "callups_without_playing": 0,
+      "total_callups": 0,
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "minutes": 0,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 31,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/j/j11148.html",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2022-23",
+          "Betis",
+          "",
+          "",
+          "1ª",
+          "18",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "31",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2022-23",
+          "data-temporadalink": "2022-23",
+          "data-temporadaid": "0",
+          "data-idclub": "8",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2022-23",
+      "team_name": "Betis Deportivo",
+      "team_provider_id": 137,
+      "country": null,
+      "division": "2ªRf",
+      "age": 18,
+      "appearances": 0,
+      "starts": 0,
+      "complete_matches": 0,
+      "substitute_appearances": 0,
+      "substituted": 0,
+      "incomplete_matches": 0,
+      "callups_without_playing": 15,
+      "total_callups": 15,
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "minutes": 0,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 30,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/j/j11148.html",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2022-23",
+          "Betis Deportivo",
+          "",
+          "",
+          "2ªRf",
+          "18",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "15",
+          "15",
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "30",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2022-23",
+          "data-temporadalink": "2022-23",
+          "data-temporadaid": "0",
+          "data-idclub": "137",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2023-24",
+      "team_name": "Betis",
+      "team_provider_id": 8,
+      "country": null,
+      "division": "1ª",
+      "age": 19,
+      "appearances": 0,
+      "starts": 0,
+      "complete_matches": 0,
+      "substitute_appearances": 0,
+      "substituted": 0,
+      "incomplete_matches": 0,
+      "callups_without_playing": 0,
+      "total_callups": 0,
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "minutes": 0,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 50,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/j/j11148.html",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2023-24",
+          "Betis",
+          "",
+          "",
+          "1ª",
+          "19",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "50",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2023-24",
+          "data-temporadalink": "2023-24",
+          "data-temporadaid": "0",
+          "data-idclub": "8",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2023-24",
+      "team_name": "Betis Deportivo",
+      "team_provider_id": 137,
+      "country": null,
+      "division": "2ªRf",
+      "age": 19,
+      "appearances": 7,
+      "starts": 7,
+      "complete_matches": 7,
+      "substitute_appearances": 0,
+      "substituted": 0,
+      "incomplete_matches": 0,
+      "callups_without_playing": 13,
+      "total_callups": 20,
+      "wins": 3,
+      "draws": 4,
+      "losses": 0,
+      "minutes": 630,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": 3,
+      "squad_number": 30,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/j/j11148.html",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2023-24",
+          "Betis Deportivo",
+          "",
+          "Ascenso",
+          "2ªRf",
+          "19",
+          "7",
+          "7",
+          "7",
+          "0",
+          "0",
+          "0",
+          "13",
+          "20",
+          "3",
+          "4",
+          "0",
+          "630",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "3",
+          "30",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2023-24",
+          "data-temporadalink": "2023-24",
+          "data-temporadaid": "0",
+          "data-idclub": "137",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2024-25",
+      "team_name": "Betis Deportivo",
+      "team_provider_id": 137,
+      "country": null,
+      "division": "1ªRf",
+      "age": 20,
+      "appearances": 3,
+      "starts": 3,
+      "complete_matches": 3,
+      "substitute_appearances": 0,
+      "substituted": 0,
+      "incomplete_matches": 0,
+      "callups_without_playing": 29,
+      "total_callups": 32,
+      "wins": 0,
+      "draws": 0,
+      "losses": 3,
+      "minutes": 270,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": 9,
+      "squad_number": 13,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/j/j11148.html",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2024-25",
+          "Betis Deportivo",
+          "",
+          "",
+          "1ªRf",
+          "20",
+          "3",
+          "3",
+          "3",
+          "0",
+          "0",
+          "0",
+          "29",
+          "32",
+          "0",
+          "0",
+          "3",
+          "270",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "9",
+          "13",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2024-25",
+          "data-temporadalink": "2024-25",
+          "data-temporadaid": "0",
+          "data-idclub": "137",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2024-25",
+      "team_name": "Betis",
+      "team_provider_id": 8,
+      "country": null,
+      "division": "1ª",
+      "age": 20,
+      "appearances": 0,
+      "starts": 0,
+      "complete_matches": 0,
+      "substitute_appearances": 0,
+      "substituted": 0,
+      "incomplete_matches": 0,
+      "callups_without_playing": 6,
+      "total_callups": 6,
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "minutes": 0,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 30,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/j/j11148.html",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2024-25",
+          "Betis",
+          "",
+          "",
+          "1ª",
+          "20",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "6",
+          "6",
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "30",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2024-25",
+          "data-temporadalink": "2024-25",
+          "data-temporadaid": "0",
+          "data-idclub": "8",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2025-26",
+      "team_name": "Betis",
+      "team_provider_id": 8,
+      "country": null,
+      "division": "1ª",
+      "age": 21,
+      "appearances": 0,
+      "starts": 0,
+      "complete_matches": 0,
+      "substitute_appearances": 0,
+      "substituted": 0,
+      "incomplete_matches": 0,
+      "callups_without_playing": 2,
+      "total_callups": 2,
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "minutes": 0,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 30,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/j/j11148.html",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2025-26",
+          "Betis",
+          "",
+          "",
+          "1ª",
+          "21",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "2",
+          "2",
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "30",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2025-26",
+          "data-temporadalink": "2025-26",
+          "data-temporadaid": "0",
+          "data-idclub": "8",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2025-26",
+      "team_name": "Betis Deportivo",
+      "team_provider_id": 137,
+      "country": null,
+      "division": "1ªRf",
+      "age": 21,
+      "appearances": 5,
+      "starts": 5,
+      "complete_matches": 5,
+      "substitute_appearances": 0,
+      "substituted": 0,
+      "incomplete_matches": 0,
+      "callups_without_playing": 24,
+      "total_callups": 29,
+      "wins": 0,
+      "draws": 2,
+      "losses": 3,
+      "minutes": 450,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": 16,
+      "squad_number": 1,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/j/j11148.html",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2025-26",
+          "Betis Deportivo",
+          "",
+          "Descenso",
+          "1ªRf",
+          "21",
+          "5",
+          "5",
+          "5",
+          "0",
+          "0",
+          "0",
+          "24",
+          "29",
+          "0",
+          "2",
+          "3",
+          "450",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "16",
+          "1",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2025-26",
+          "data-temporadalink": "2025-26",
+          "data-temporadaid": "0",
+          "data-idclub": "137",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2026-27",
+      "team_name": "Cacereño",
+      "team_provider_id": 149,
+      "country": null,
+      "division": "1ªRf",
+      "age": 22,
+      "appearances": 0,
+      "starts": 0,
+      "complete_matches": 0,
+      "substitute_appearances": 0,
+      "substituted": 0,
+      "incomplete_matches": 0,
+      "callups_without_playing": 6,
+      "total_callups": 6,
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "minutes": 0,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 13,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/j/j11148.html",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2026-27",
+          "Cacereño",
+          "",
+          "",
+          "1ªRf",
+          "22",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "6",
+          "6",
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "13",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2026-27",
+          "data-temporadalink": "2026-27",
+          "data-temporadaid": "0",
+          "data-idclub": "149",
+          "data-idjug": "0"
+        }
+      }
+    }
+  ],
+  "manager_career": [
+    {
+      "season": "2022-23",
+      "team_name": "Betis",
+      "team_provider_id": 8,
+      "country": null,
+      "division": "1ª",
+      "age": 18,
+      "appearances": 0,
+      "starts": 0,
+      "complete_matches": 0,
+      "substitute_appearances": 0,
+      "substituted": 0,
+      "incomplete_matches": 0,
+      "callups_without_playing": 0,
+      "total_callups": 0,
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "minutes": 0,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 31,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j11148.html?manager=1",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2022-23",
+          "Betis",
+          "",
+          "",
+          "1ª",
+          "18",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "31",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2022-23",
+          "data-temporadalink": "2022-23",
+          "data-temporadaid": "0",
+          "data-idclub": "8",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2022-23",
+      "team_name": "Betis Deportivo",
+      "team_provider_id": 137,
+      "country": null,
+      "division": "2ªRf",
+      "age": 18,
+      "appearances": 0,
+      "starts": 0,
+      "complete_matches": 0,
+      "substitute_appearances": 0,
+      "substituted": 0,
+      "incomplete_matches": 0,
+      "callups_without_playing": 15,
+      "total_callups": 15,
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "minutes": 0,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 30,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j11148.html?manager=1",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2022-23",
+          "Betis Deportivo",
+          "",
+          "",
+          "2ªRf",
+          "18",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "15",
+          "15",
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "30",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2022-23",
+          "data-temporadalink": "2022-23",
+          "data-temporadaid": "0",
+          "data-idclub": "137",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2023-24",
+      "team_name": "Betis",
+      "team_provider_id": 8,
+      "country": null,
+      "division": "1ª",
+      "age": 19,
+      "appearances": 0,
+      "starts": 0,
+      "complete_matches": 0,
+      "substitute_appearances": 0,
+      "substituted": 0,
+      "incomplete_matches": 0,
+      "callups_without_playing": 0,
+      "total_callups": 0,
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "minutes": 0,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 50,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j11148.html?manager=1",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2023-24",
+          "Betis",
+          "",
+          "",
+          "1ª",
+          "19",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "50",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2023-24",
+          "data-temporadalink": "2023-24",
+          "data-temporadaid": "0",
+          "data-idclub": "8",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2023-24",
+      "team_name": "Betis Deportivo",
+      "team_provider_id": 137,
+      "country": null,
+      "division": "2ªRf",
+      "age": 19,
+      "appearances": 7,
+      "starts": 7,
+      "complete_matches": 7,
+      "substitute_appearances": 0,
+      "substituted": 0,
+      "incomplete_matches": 0,
+      "callups_without_playing": 13,
+      "total_callups": 20,
+      "wins": 3,
+      "draws": 4,
+      "losses": 0,
+      "minutes": 630,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": 3,
+      "squad_number": 30,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j11148.html?manager=1",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2023-24",
+          "Betis Deportivo",
+          "",
+          "Ascenso",
+          "2ªRf",
+          "19",
+          "7",
+          "7",
+          "7",
+          "0",
+          "0",
+          "0",
+          "13",
+          "20",
+          "3",
+          "4",
+          "0",
+          "630",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "3",
+          "30",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2023-24",
+          "data-temporadalink": "2023-24",
+          "data-temporadaid": "0",
+          "data-idclub": "137",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2024-25",
+      "team_name": "Betis Deportivo",
+      "team_provider_id": 137,
+      "country": null,
+      "division": "1ªRf",
+      "age": 20,
+      "appearances": 3,
+      "starts": 3,
+      "complete_matches": 3,
+      "substitute_appearances": 0,
+      "substituted": 0,
+      "incomplete_matches": 0,
+      "callups_without_playing": 29,
+      "total_callups": 32,
+      "wins": 0,
+      "draws": 0,
+      "losses": 3,
+      "minutes": 270,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": 9,
+      "squad_number": 13,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j11148.html?manager=1",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2024-25",
+          "Betis Deportivo",
+          "",
+          "",
+          "1ªRf",
+          "20",
+          "3",
+          "3",
+          "3",
+          "0",
+          "0",
+          "0",
+          "29",
+          "32",
+          "0",
+          "0",
+          "3",
+          "270",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "9",
+          "13",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2024-25",
+          "data-temporadalink": "2024-25",
+          "data-temporadaid": "0",
+          "data-idclub": "137",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2024-25",
+      "team_name": "Betis",
+      "team_provider_id": 8,
+      "country": null,
+      "division": "1ª",
+      "age": 20,
+      "appearances": 0,
+      "starts": 0,
+      "complete_matches": 0,
+      "substitute_appearances": 0,
+      "substituted": 0,
+      "incomplete_matches": 0,
+      "callups_without_playing": 6,
+      "total_callups": 6,
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "minutes": 0,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 30,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j11148.html?manager=1",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2024-25",
+          "Betis",
+          "",
+          "",
+          "1ª",
+          "20",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "6",
+          "6",
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "30",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2024-25",
+          "data-temporadalink": "2024-25",
+          "data-temporadaid": "0",
+          "data-idclub": "8",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2025-26",
+      "team_name": "Betis",
+      "team_provider_id": 8,
+      "country": null,
+      "division": "1ª",
+      "age": 21,
+      "appearances": 0,
+      "starts": 0,
+      "complete_matches": 0,
+      "substitute_appearances": 0,
+      "substituted": 0,
+      "incomplete_matches": 0,
+      "callups_without_playing": 2,
+      "total_callups": 2,
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "minutes": 0,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 30,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j11148.html?manager=1",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2025-26",
+          "Betis",
+          "",
+          "",
+          "1ª",
+          "21",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "2",
+          "2",
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "30",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2025-26",
+          "data-temporadalink": "2025-26",
+          "data-temporadaid": "0",
+          "data-idclub": "8",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2025-26",
+      "team_name": "Betis Deportivo",
+      "team_provider_id": 137,
+      "country": null,
+      "division": "1ªRf",
+      "age": 21,
+      "appearances": 5,
+      "starts": 5,
+      "complete_matches": 5,
+      "substitute_appearances": 0,
+      "substituted": 0,
+      "incomplete_matches": 0,
+      "callups_without_playing": 24,
+      "total_callups": 29,
+      "wins": 0,
+      "draws": 2,
+      "losses": 3,
+      "minutes": 450,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": 16,
+      "squad_number": 1,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j11148.html?manager=1",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2025-26",
+          "Betis Deportivo",
+          "",
+          "Descenso",
+          "1ªRf",
+          "21",
+          "5",
+          "5",
+          "5",
+          "0",
+          "0",
+          "0",
+          "24",
+          "29",
+          "0",
+          "2",
+          "3",
+          "450",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "16",
+          "1",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2025-26",
+          "data-temporadalink": "2025-26",
+          "data-temporadaid": "0",
+          "data-idclub": "137",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2026-27",
+      "team_name": "Cacereño",
+      "team_provider_id": 149,
+      "country": null,
+      "division": "1ªRf",
+      "age": 22,
+      "appearances": 0,
+      "starts": 0,
+      "complete_matches": 0,
+      "substitute_appearances": 0,
+      "substituted": 0,
+      "incomplete_matches": 0,
+      "callups_without_playing": 6,
+      "total_callups": 6,
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "minutes": 0,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 13,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j11148.html?manager=1",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2026-27",
+          "Cacereño",
+          "",
+          "",
+          "1ªRf",
+          "22",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "6",
+          "6",
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "13",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2026-27",
+          "data-temporadalink": "2026-27",
+          "data-temporadaid": "0",
+          "data-idclub": "149",
+          "data-idjug": "0"
+        }
+      }
+    }
+  ],
+  "competition_stats": {
+    "scope": "competition",
+    "headers": [
+      "Tipo",
+      "1ª",
+      "2ªB",
+      "1ªRf",
+      "1ª + 2ª + 1ªRf + 2ªRf",
+      "COP",
+      "FED",
+      "G5",
+      "EURO"
+    ],
+    "header_titles": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    "rows": [
+      {
+        "metric": "Temporadas",
+        "values": [
+          "0",
+          "1",
+          "2",
+          "1",
+          "0",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Temporadas seguidas en el mismo equipo",
+        "values": [
+          "-",
+          "-",
+          "2",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Equipos",
+        "values": [
+          "0",
+          "1",
+          "1",
+          "1",
+          "0",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos Jugados",
+        "values": [
+          "0",
+          "7",
+          "8",
+          "7",
+          "0",
+          "2",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a&pj=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=2aB&pj=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a-2a-2aB&pj=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=COP&pj=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=FED&pj=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos completos",
+        "values": [
+          "0",
+          "7",
+          "8",
+          "7",
+          "0",
+          "2",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a&pc=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=2aB&pc=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a-2a-2aB&pc=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=COP&pc=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=FED&pc=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos titular",
+        "values": [
+          "0",
+          "7",
+          "8",
+          "7",
+          "0",
+          "2",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a&pt=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=2aB&pt=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a-2a-2aB&pt=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=COP&pt=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=FED&pt=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos suplente",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a&ps=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=2aB&ps=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a-2a-2aB&ps=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=COP&ps=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=FED&ps=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos sustituido",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a&px=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=2aB&px=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a-2a-2aB&px=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=COP&px=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=FED&px=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos incompletos",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a&pinc=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=2aB&pinc=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a-2a-2aB&pinc=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=COP&pinc=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=FED&pinc=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos convocado",
+        "values": [
+          "8",
+          "28",
+          "59 (#46)",
+          "36",
+          "4",
+          "0",
+          "8",
+          "14"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a&pv=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=2aB&pv=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/c/rankingPV9.html"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a-2a-2aB&pv=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=COP&pv=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=FED&pv=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos convocado total",
+        "values": [
+          "8",
+          "35",
+          "67",
+          "43",
+          "4",
+          "2",
+          "8",
+          "14"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a&pv=1&jug=si-no"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=2aB&pv=1&jug=si-no"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a-2a-2aB&pv=1&jug=si-no"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=COP&pv=1&jug=si-no"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=FED&pv=1&jug=si-no"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Ganados",
+        "values": [
+          "0",
+          "3",
+          "0",
+          "3",
+          "0",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a&pg=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=2aB&pg=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a-2a-2aB&pg=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=COP&pg=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=FED&pg=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Empatados",
+        "values": [
+          "0",
+          "4",
+          "2",
+          "4",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a&pe=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=2aB&pe=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a-2a-2aB&pe=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=COP&pe=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=FED&pe=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Perdidos",
+        "values": [
+          "0",
+          "0",
+          "6",
+          "0",
+          "0",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a&pp=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=2aB&pp=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a-2a-2aB&pp=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=COP&pp=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=FED&pp=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Minutos",
+        "values": [
+          "0",
+          "630",
+          "720",
+          "630",
+          "0",
+          "180",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a&pj=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=2aB&pj=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a-2a-2aB&pj=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=COP&pj=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=FED&pj=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Goles",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=2aB&g=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a-2a-2aB&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=COP&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=FED&g=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Goles de suplente",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=2aB&g=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a-2a-2aB&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=COP&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=FED&g=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos Marcando algún Gol",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=2aB&g=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a-2a-2aB&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=COP&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=FED&g=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Promedio goleador",
+        "values": [
+          "0,00",
+          "0,00",
+          "0,00",
+          "0,00",
+          "0,00",
+          "0,00",
+          "0,00",
+          "0,00"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=2aB&g=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a-2a-2aB&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=COP&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=FED&g=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Goles propia puerta",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=2aB&g=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a-2a-2aB&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=COP&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=FED&g=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos sin Encajar Gol",
+        "values": [
+          "0",
+          "4",
+          "0",
+          "4",
+          "0",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Goles encajados",
+        "values": [
+          "0",
+          "3",
+          "25",
+          "3",
+          "0",
+          "2",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a&genc=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=2aB&genc=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a-2a-2aB&genc=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=COP&genc=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=FED&genc=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Tarjetas amarillas",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a&tg=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=2aB&tg=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a-2a-2aB&tg=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=COP&tg=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=FED&tg=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Tarjetas rojas",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a&tv=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=2aB&tv=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a-2a-2aB&tv=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=COP&tv=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=FED&tv=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Edad primer partido",
+        "values": [
+          "-",
+          "19",
+          "21",
+          "19",
+          "-",
+          "22",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Edad último partido",
+        "values": [
+          "-",
+          "20",
+          "22",
+          "20",
+          "-",
+          "22",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Edad primer partido en marcar",
+        "values": [
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Edad último partido en marcar",
+        "values": [
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Enfrentamiento a más equipos",
+        "values": [
+          "0",
+          "7",
+          "6",
+          "7",
+          "0",
+          "2",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Goles a más equipos",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Goles con más equipos",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Goles en una temporada",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=2aB&g=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a-2a-2aB&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=COP&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=FED&g=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Promedio goleador en una temporada",
+        "values": [
+          "0,00",
+          "0,00",
+          "0,00",
+          "0,00",
+          "0,00",
+          "0,00",
+          "0,00",
+          "0,00"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=2aB&g=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a-2a-2aB&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=COP&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=FED&g=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Amonestaciones en una temporada",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a&tg=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=2aB&tg=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a-2a-2aB&tg=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=COP&tg=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=FED&tg=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos sustituido en una temporada",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a&px=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=2aB&px=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a-2a-2aB&px=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=COP&px=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=FED&px=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos suplente en una temporada",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a&ps=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=2aB&ps=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a-2a-2aB&ps=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=COP&ps=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=FED&ps=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos incompletos en una temporada",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a&pinc=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=2aB&pinc=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=1a-2a-2aB&pinc=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=COP&pinc=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j11148.html?cat=FED&pinc=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Ascensos",
+        "values": [
+          "-",
+          "1",
+          "0",
+          "1",
+          "-",
+          "-",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Descensos",
+        "values": [
+          "0",
+          "0",
+          "1",
+          "1",
+          "-",
+          "-",
+          "0",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Jugando",
+        "values": [
+          "0",
+          "4",
+          "3",
+          "4",
+          "-",
+          "-",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Titular",
+        "values": [
+          "0",
+          "4",
+          "3",
+          "4",
+          "-",
+          "-",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Completo",
+        "values": [
+          "0",
+          "4",
+          "3",
+          "4",
+          "-",
+          "-",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Suplente",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Sustituido",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Partido Incompleto",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Ganando",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "-",
+          "-",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Empatando",
+        "values": [
+          "0",
+          "2",
+          "1",
+          "2",
+          "-",
+          "-",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Perdiendo",
+        "values": [
+          "0",
+          "0",
+          "3",
+          "0",
+          "-",
+          "-",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas No Ganando",
+        "values": [
+          "0",
+          "2",
+          "3",
+          "2",
+          "-",
+          "-",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas No Empatando",
+        "values": [
+          "0",
+          "1",
+          "3",
+          "1",
+          "-",
+          "-",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas No Perdiendo",
+        "values": [
+          "0",
+          "4",
+          "1",
+          "4",
+          "-",
+          "-",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Marcando",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Sin Marcar",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Encajando",
+        "values": [
+          "0",
+          "2",
+          "3",
+          "2",
+          "-",
+          "-",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Sin Encajar más de 1 gol",
+        "values": [
+          "0",
+          "4",
+          "0",
+          "4",
+          "-",
+          "-",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Sin Encajar",
+        "values": [
+          "0",
+          "2",
+          "0",
+          "2",
+          "-",
+          "-",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Jugados",
+        "values": [
+          "0",
+          "4",
+          "3",
+          "4",
+          "0",
+          "2",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Titular",
+        "values": [
+          "0",
+          "7",
+          "8",
+          "7",
+          "0",
+          "2",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Completo",
+        "values": [
+          "0",
+          "7",
+          "8",
+          "7",
+          "0",
+          "2",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Suplente",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Sustituido",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Partido Incompleto",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Ganando",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "0",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Empatando",
+        "values": [
+          "0",
+          "2",
+          "2",
+          "2",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Perdiendo",
+        "values": [
+          "0",
+          "0",
+          "3",
+          "0",
+          "0",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos No Ganando",
+        "values": [
+          "0",
+          "2",
+          "8",
+          "2",
+          "0",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos No Empatando",
+        "values": [
+          "0",
+          "1",
+          "3",
+          "1",
+          "0",
+          "2",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos No Perdiendo",
+        "values": [
+          "0",
+          "7",
+          "2",
+          "7",
+          "0",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Marcando",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Sin Marcar",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Encajando",
+        "values": [
+          "0",
+          "2",
+          "8 (#88)",
+          "2",
+          "0",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [
+            "https://www.bdfutbol.com/es/c/rankingRatxaEncSeg9.html"
+          ],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Sin Encajar más de 1 gol",
+        "values": [
+          "0",
+          "7",
+          "0",
+          "7",
+          "0",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Sin Encajar",
+        "values": [
+          "0",
+          "2",
+          "0",
+          "2",
+          "0",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      }
+    ],
+    "provenance": "bdfutbol",
+    "source_url": "https://www.bdfutbol.com/es/j/j11148.html?p=stats"
+  },
+  "team_stats": {
+    "scope": "team",
+    "headers": [
+      "Tipo",
+      "BET",
+      "BEI",
+      "CAC"
+    ],
+    "header_titles": [
+      null,
+      "Betis",
+      "Betis Deportivo",
+      "Cacereño"
+    ],
+    "rows": [
+      {
+        "metric": "Temporadas",
+        "values": [
+          "0",
+          "3 (#130)",
+          "1"
+        ],
+        "raw_links": [
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols137.html?col=temp&sort=desc"
+          ],
+          []
+        ]
+      },
+      {
+        "metric": "Temporadas seguidas en el mismo equipo",
+        "values": [
+          "0",
+          "3 (#70)",
+          "1"
+        ],
+        "raw_links": [
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols137.html"
+          ],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos Jugados",
+        "values": [
+          "0",
+          "15",
+          "2"
+        ],
+        "raw_links": [
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos completos",
+        "values": [
+          "0",
+          "15 (#206)",
+          "2"
+        ],
+        "raw_links": [
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols137.html?col=pc&sort=desc"
+          ],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos titular",
+        "values": [
+          "0",
+          "15",
+          "2"
+        ],
+        "raw_links": [
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos suplente",
+        "values": [
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos sustituido",
+        "values": [
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos incompletos",
+        "values": [
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos convocado",
+        "values": [
+          "26 (#92)",
+          "81 (#1)",
+          "6 (#74)"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/e/egols8.html?col=pv&sort=desc"
+          ],
+          [
+            "https://www.bdfutbol.com/es/e/egols137.html?col=pv&sort=desc"
+          ],
+          [
+            "https://www.bdfutbol.com/es/e/egols149.html?col=pv&sort=desc"
+          ]
+        ]
+      },
+      {
+        "metric": "Partidos convocado total",
+        "values": [
+          "26",
+          "96 (#22)",
+          "8"
+        ],
+        "raw_links": [
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols137.html?col=tc&sort=desc"
+          ],
+          []
+        ]
+      },
+      {
+        "metric": "Ganados",
+        "values": [
+          "0",
+          "3",
+          "1"
+        ],
+        "raw_links": [
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Empatados",
+        "values": [
+          "0",
+          "6",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Perdidos",
+        "values": [
+          "0",
+          "6",
+          "1"
+        ],
+        "raw_links": [
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Minutos",
+        "values": [
+          "0",
+          "1350",
+          "180"
+        ],
+        "raw_links": [
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Goles",
+        "values": [
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Goles de suplente",
+        "values": [
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos Marcando algún Gol",
+        "values": [
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Promedio goleador",
+        "values": [
+          "0,00",
+          "0,00",
+          "0,00"
+        ],
+        "raw_links": [
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Goles propia puerta",
+        "values": [
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Goles encajados",
+        "values": [
+          "0",
+          "28 (#23)",
+          "2 (#47)"
+        ],
+        "raw_links": [
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols137.html?col=gols_enc&sort=desc"
+          ],
+          [
+            "https://www.bdfutbol.com/es/e/egols149.html?col=gols_enc&sort=desc"
+          ]
+        ]
+      },
+      {
+        "metric": "Tarjetas amarillas",
+        "values": [
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Tarjetas rojas",
+        "values": [
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          []
+        ]
+      }
+    ],
+    "provenance": "bdfutbol",
+    "source_url": "https://www.bdfutbol.com/es/j/j11148.html?p=stats"
+  },
+  "match_appearances": [
+    {
+      "match_provider_id": 263714,
+      "match_provider_key": "bdfutbol:match:263714",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=263714",
+      "date": "26/11/2023",
+      "season": "2023-24",
+      "competition": "2aB",
+      "round_or_type": "13",
+      "home_team": "Marbella",
+      "score_text": "0 2",
+      "home_goals": 0,
+      "away_goals": 2,
+      "away_team": "Betis Deportivo",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j11148.html?temp=2023-24",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=263714\">1</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=263714\">26/11/2023</a></td>",
+        "Temporada": "<td data-temp=\"2023-24\"><a href=\"p.php?id=263714\">2023-24</a></td>",
+        "Competición": "<td><a href=\"p.php?id=263714\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=263714\" title=\"Jornada 13\">13</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=263714\">Marbella</a></td>",
+        "col_6": "<td><a href=\"p.php?id=263714\"><div class=\"resultat-gols resultat-resultat-1\">0</div><div class=\"resultat-gols resultat-resultat-1\">2</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=263714\">Betis Deportivo</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=263714\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"p.php?id=263714\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=263714\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=263714\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=263714\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=263714\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=263714\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=263714\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=263714\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=263714\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=263714\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 263718,
+      "match_provider_key": "bdfutbol:match:263718",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=263718",
+      "date": "02/12/2023",
+      "season": "2023-24",
+      "competition": "2aB",
+      "round_or_type": "14",
+      "home_team": "Betis Deportivo",
+      "score_text": "0 0",
+      "home_goals": 0,
+      "away_goals": 0,
+      "away_team": "Yeclano Deportivo",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j11148.html?temp=2023-24",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=263718\">2</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=263718\">02/12/2023</a></td>",
+        "Temporada": "<td data-temp=\"2023-24\"><a href=\"p.php?id=263718\">2023-24</a></td>",
+        "Competición": "<td><a href=\"p.php?id=263718\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=263718\" title=\"Jornada 14\">14</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=263718\">Betis Deportivo</a></td>",
+        "col_6": "<td><a href=\"p.php?id=263718\"><div class=\"resultat-gols resultat-resultat-0\">0</div><div class=\"resultat-gols resultat-resultat-0\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=263718\">Yeclano Deportivo</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=263718\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"p.php?id=263718\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=263718\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=263718\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=263718\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=263718\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=263718\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=263718\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=263718\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=263718\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=263718\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 263726,
+      "match_provider_key": "bdfutbol:match:263726",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=263726",
+      "date": "09/12/2023",
+      "season": "2023-24",
+      "competition": "2aB",
+      "round_or_type": "15",
+      "home_team": "Águilas FC",
+      "score_text": "1 1",
+      "home_goals": 1,
+      "away_goals": 1,
+      "away_team": "Betis Deportivo",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": 1,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j11148.html?temp=2023-24",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=263726\">3</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=263726\">09/12/2023</a></td>",
+        "Temporada": "<td data-temp=\"2023-24\"><a href=\"p.php?id=263726\">2023-24</a></td>",
+        "Competición": "<td><a href=\"p.php?id=263726\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=263726\" title=\"Jornada 15\">15</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=263726\">Águilas FC</a></td>",
+        "col_6": "<td><a href=\"p.php?id=263726\"><div class=\"resultat-gols resultat-resultat-0\">1</div><div class=\"resultat-gols resultat-resultat-0\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=263726\">Betis Deportivo</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=263726\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"p.php?id=263726\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=263726\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=263726\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=263726\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=263726\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=263726\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=263726\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=263726\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=263726\"></a></td>",
+        "GE": "<td><a href=\"p.php?id=263726\">1</a></td>"
+      }
+    },
+    {
+      "match_provider_id": 263736,
+      "match_provider_key": "bdfutbol:match:263736",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=263736",
+      "date": "16/12/2023",
+      "season": "2023-24",
+      "competition": "2aB",
+      "round_or_type": "16",
+      "home_team": "Betis Deportivo",
+      "score_text": "3 1",
+      "home_goals": 3,
+      "away_goals": 1,
+      "away_team": "CD Manchego",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": 1,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j11148.html?temp=2023-24",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=263736\">4</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=263736\">16/12/2023</a></td>",
+        "Temporada": "<td data-temp=\"2023-24\"><a href=\"p.php?id=263736\">2023-24</a></td>",
+        "Competición": "<td><a href=\"p.php?id=263736\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=263736\" title=\"Jornada 16\">16</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=263736\">Betis Deportivo</a></td>",
+        "col_6": "<td><a href=\"p.php?id=263736\"><div class=\"resultat-gols resultat-resultat-1\">3</div><div class=\"resultat-gols resultat-resultat-1\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=263736\">CD Manchego</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=263736\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"p.php?id=263736\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=263736\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=263736\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=263736\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=263736\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=263736\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=263736\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=263736\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=263736\"></a></td>",
+        "GE": "<td><a href=\"p.php?id=263736\">1</a></td>"
+      }
+    },
+    {
+      "match_provider_id": 263830,
+      "match_provider_key": "bdfutbol:match:263830",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=263830",
+      "date": "10/03/2024",
+      "season": "2023-24",
+      "competition": "2aB",
+      "round_or_type": "26",
+      "home_team": "Orihuela CF",
+      "score_text": "0 0",
+      "home_goals": 0,
+      "away_goals": 0,
+      "away_team": "Betis Deportivo",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j11148.html?temp=2023-24",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=263830\">5</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=263830\">10/03/2024</a></td>",
+        "Temporada": "<td data-temp=\"2023-24\"><a href=\"p.php?id=263830\">2023-24</a></td>",
+        "Competición": "<td><a href=\"p.php?id=263830\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=263830\" title=\"Jornada 26\">26</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=263830\">Orihuela CF</a></td>",
+        "col_6": "<td><a href=\"p.php?id=263830\"><div class=\"resultat-gols resultat-resultat-0\">0</div><div class=\"resultat-gols resultat-resultat-0\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=263830\">Betis Deportivo</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=263830\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"p.php?id=263830\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=263830\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=263830\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=263830\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=263830\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=263830\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=263830\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=263830\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=263830\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=263830\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 263835,
+      "match_provider_key": "bdfutbol:match:263835",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=263835",
+      "date": "17/03/2024",
+      "season": "2023-24",
+      "competition": "2aB",
+      "round_or_type": "27",
+      "home_team": "Betis Deportivo",
+      "score_text": "1 0",
+      "home_goals": 1,
+      "away_goals": 0,
+      "away_team": "FC Cartagena B",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j11148.html?temp=2023-24",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=263835\">6</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=263835\">17/03/2024</a></td>",
+        "Temporada": "<td data-temp=\"2023-24\"><a href=\"p.php?id=263835\">2023-24</a></td>",
+        "Competición": "<td><a href=\"p.php?id=263835\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=263835\" title=\"Jornada 27\">27</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=263835\">Betis Deportivo</a></td>",
+        "col_6": "<td><a href=\"p.php?id=263835\"><div class=\"resultat-gols resultat-resultat-1\">1</div><div class=\"resultat-gols resultat-resultat-1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=263835\">FC Cartagena B</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=263835\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"p.php?id=263835\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=263835\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=263835\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=263835\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=263835\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=263835\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=263835\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=263835\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=263835\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=263835\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 263898,
+      "match_provider_key": "bdfutbol:match:263898",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=263898",
+      "date": "05/05/2024",
+      "season": "2023-24",
+      "competition": "2aB",
+      "round_or_type": "34",
+      "home_team": "Betis Deportivo",
+      "score_text": "1 1",
+      "home_goals": 1,
+      "away_goals": 1,
+      "away_team": "Estepona",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": 1,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j11148.html?temp=2023-24",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=263898\">7</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=263898\">05/05/2024</a></td>",
+        "Temporada": "<td data-temp=\"2023-24\"><a href=\"p.php?id=263898\">2023-24</a></td>",
+        "Competición": "<td><a href=\"p.php?id=263898\">2aB</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=263898\" title=\"Jornada 34\">34</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=263898\">Betis Deportivo</a></td>",
+        "col_6": "<td><a href=\"p.php?id=263898\"><div class=\"resultat-gols resultat-resultat-0\">1</div><div class=\"resultat-gols resultat-resultat-0\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=263898\">Estepona</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=263898\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"p.php?id=263898\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=263898\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=263898\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=263898\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=263898\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=263898\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=263898\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=263898\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=263898\"></a></td>",
+        "GE": "<td><a href=\"p.php?id=263898\">1</a></td>"
+      }
+    },
+    {
+      "match_provider_id": 265559,
+      "match_provider_key": "bdfutbol:match:265559",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=265559",
+      "date": "10/05/2025",
+      "season": "2024-25",
+      "competition": "1rf",
+      "round_or_type": "36",
+      "home_team": "Betis Deportivo",
+      "score_text": "0 2",
+      "home_goals": 0,
+      "away_goals": 2,
+      "away_team": "Atlético Sanluqueño",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": 2,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j11148.html?temp=2024-25",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=265559\">1</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=265559\">10/05/2025</a></td>",
+        "Temporada": "<td data-temp=\"2024-25\"><a href=\"p.php?id=265559\">2024-25</a></td>",
+        "Competición": "<td><a href=\"p.php?id=265559\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=265559\" title=\"Jornada 36\">36</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=265559\">Betis Deportivo</a></td>",
+        "col_6": "<td><a href=\"p.php?id=265559\"><div class=\"resultat-gols resultat-resultat--1\">0</div><div class=\"resultat-gols resultat-resultat--1\">2</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=265559\">Atlético Sanluqueño</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=265559\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"p.php?id=265559\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=265559\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=265559\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=265559\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=265559\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=265559\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=265559\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=265559\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=265559\"></a></td>",
+        "GE": "<td><a href=\"p.php?id=265559\">2</a></td>"
+      }
+    },
+    {
+      "match_provider_id": 265572,
+      "match_provider_key": "bdfutbol:match:265572",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=265572",
+      "date": "17/05/2025",
+      "season": "2024-25",
+      "competition": "1rf",
+      "round_or_type": "37",
+      "home_team": "Antequera",
+      "score_text": "4 1",
+      "home_goals": 4,
+      "away_goals": 1,
+      "away_team": "Betis Deportivo",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": 4,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j11148.html?temp=2024-25",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=265572\">2</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=265572\">17/05/2025</a></td>",
+        "Temporada": "<td data-temp=\"2024-25\"><a href=\"p.php?id=265572\">2024-25</a></td>",
+        "Competición": "<td><a href=\"p.php?id=265572\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=265572\" title=\"Jornada 37\">37</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=265572\">Antequera</a></td>",
+        "col_6": "<td><a href=\"p.php?id=265572\"><div class=\"resultat-gols resultat-resultat--1\">4</div><div class=\"resultat-gols resultat-resultat--1\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=265572\">Betis Deportivo</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=265572\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"p.php?id=265572\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=265572\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=265572\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=265572\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=265572\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=265572\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=265572\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=265572\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=265572\"></a></td>",
+        "GE": "<td><a href=\"p.php?id=265572\">4</a></td>"
+      }
+    },
+    {
+      "match_provider_id": 265581,
+      "match_provider_key": "bdfutbol:match:265581",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=265581",
+      "date": "24/05/2025",
+      "season": "2024-25",
+      "competition": "1rf",
+      "round_or_type": "38",
+      "home_team": "Betis Deportivo",
+      "score_text": "0 3",
+      "home_goals": 0,
+      "away_goals": 3,
+      "away_team": "Villarreal B",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": 3,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j11148.html?temp=2024-25",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=265581\">3</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=265581\">24/05/2025</a></td>",
+        "Temporada": "<td data-temp=\"2024-25\"><a href=\"p.php?id=265581\">2024-25</a></td>",
+        "Competición": "<td><a href=\"p.php?id=265581\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=265581\" title=\"Jornada 38\">38</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=265581\">Betis Deportivo</a></td>",
+        "col_6": "<td><a href=\"p.php?id=265581\"><div class=\"resultat-gols resultat-resultat--1\">0</div><div class=\"resultat-gols resultat-resultat--1\">3</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=265581\">Villarreal B</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=265581\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"p.php?id=265581\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=265581\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=265581\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=265581\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=265581\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=265581\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=265581\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=265581\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=265581\"></a></td>",
+        "GE": "<td><a href=\"p.php?id=265581\">3</a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267513,
+      "match_provider_key": "bdfutbol:match:267513",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267513",
+      "date": "05/09/2025",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "2",
+      "home_team": "Betis Deportivo",
+      "score_text": "2 2",
+      "home_goals": 2,
+      "away_goals": 2,
+      "away_team": "Gimnàstic de Tarragona",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": 2,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j11148.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267513\">1</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267513\">05/09/2025</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267513\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267513\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267513\" title=\"Jornada 2\">2</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=267513\">Betis Deportivo</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267513\"><div class=\"resultat-gols resultat-resultat-0\">2</div><div class=\"resultat-gols resultat-resultat-0\">2</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=267513\">Gimnàstic de Tarragona</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=267513\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"p.php?id=267513\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=267513\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267513\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267513\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267513\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267513\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=267513\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267513\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267513\"></a></td>",
+        "GE": "<td><a href=\"p.php?id=267513\">2</a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267737,
+      "match_provider_key": "bdfutbol:match:267737",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267737",
+      "date": "14/02/2026",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "24",
+      "home_team": "Gimnàstic de Tarragona",
+      "score_text": "2 2",
+      "home_goals": 2,
+      "away_goals": 2,
+      "away_team": "Betis Deportivo",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": 2,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j11148.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267737\">2</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267737\">14/02/2026</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267737\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267737\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267737\" title=\"Jornada 24\">24</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=267737\">Gimnàstic de Tarragona</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267737\"><div class=\"resultat-gols resultat-resultat-0\">2</div><div class=\"resultat-gols resultat-resultat-0\">2</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=267737\">Betis Deportivo</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=267737\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"p.php?id=267737\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=267737\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267737\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267737\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267737\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267737\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=267737\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267737\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267737\"></a></td>",
+        "GE": "<td><a href=\"p.php?id=267737\">2</a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267741,
+      "match_provider_key": "bdfutbol:match:267741",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267741",
+      "date": "20/02/2026",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "25",
+      "home_team": "Betis Deportivo",
+      "score_text": "1 4",
+      "home_goals": 1,
+      "away_goals": 4,
+      "away_team": "Villarreal B",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": 4,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j11148.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267741\">3</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267741\">20/02/2026</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267741\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267741\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267741\" title=\"Jornada 25\">25</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=267741\">Betis Deportivo</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267741\"><div class=\"resultat-gols resultat-resultat--1\">1</div><div class=\"resultat-gols resultat-resultat--1\">4</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=267741\">Villarreal B</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=267741\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"p.php?id=267741\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=267741\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267741\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267741\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267741\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267741\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=267741\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267741\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267741\"></a></td>",
+        "GE": "<td><a href=\"p.php?id=267741\">4</a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267748,
+      "match_provider_key": "bdfutbol:match:267748",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267748",
+      "date": "28/02/2026",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "26",
+      "home_team": "Alcorcón",
+      "score_text": "3 0",
+      "home_goals": 3,
+      "away_goals": 0,
+      "away_team": "Betis Deportivo",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": 3,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j11148.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267748\">4</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267748\">28/02/2026</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267748\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267748\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267748\" title=\"Jornada 26\">26</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=267748\">Alcorcón</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267748\"><div class=\"resultat-gols resultat-resultat--1\">3</div><div class=\"resultat-gols resultat-resultat--1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=267748\">Betis Deportivo</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=267748\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"p.php?id=267748\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=267748\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267748\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267748\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267748\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267748\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=267748\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267748\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267748\"></a></td>",
+        "GE": "<td><a href=\"p.php?id=267748\">3</a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267777,
+      "match_provider_key": "bdfutbol:match:267777",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267777",
+      "date": "14/03/2026",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "28",
+      "home_team": "Europa",
+      "score_text": "5 2",
+      "home_goals": 5,
+      "away_goals": 2,
+      "away_team": "Betis Deportivo",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": 5,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j11148.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267777\">5</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267777\">14/03/2026</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267777\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267777\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267777\" title=\"Jornada 28\">28</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=267777\">Europa</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267777\"><div class=\"resultat-gols resultat-resultat--1\">5</div><div class=\"resultat-gols resultat-resultat--1\">2</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=267777\">Betis Deportivo</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=267777\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"p.php?id=267777\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=267777\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267777\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267777\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267777\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267777\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=267777\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267777\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267777\"></a></td>",
+        "GE": "<td><a href=\"p.php?id=267777\">5</a></td>"
+      }
+    },
+    {
+      "match_provider_id": 427720,
+      "match_provider_key": "bdfutbol:match:427720",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=427720",
+      "date": "09/09/2026",
+      "season": "2026-27",
+      "competition": "FED",
+      "round_or_type": "1/16",
+      "home_team": "Cacereño",
+      "score_text": "2 0",
+      "home_goals": 2,
+      "away_goals": 0,
+      "away_team": "San Pedro",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j11148.html?temp=2026-27",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=427720\">1</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=427720\">09/09/2026</a></td>",
+        "Temporada": "<td data-temp=\"2026-27\"><a href=\"p.php?id=427720\">2026-27</a></td>",
+        "Competición": "<td><a href=\"p.php?id=427720\">FED</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=427720\" title=\"Dieciseisavos de final\">1/16</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=427720\">Cacereño</a></td>",
+        "col_6": "<td><a href=\"p.php?id=427720\"><div class=\"resultat-gols resultat-resultat-1\">2</div><div class=\"resultat-gols resultat-resultat-1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=427720\">San Pedro</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=427720\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"p.php?id=427720\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=427720\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=427720\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=427720\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=427720\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=427720\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=427720\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=427720\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=427720\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=427720\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 427726,
+      "match_provider_key": "bdfutbol:match:427726",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=427726",
+      "date": "16/09/2026",
+      "season": "2026-27",
+      "competition": "FED",
+      "round_or_type": "1/8",
+      "home_team": "Recreativo de Huelva",
+      "score_text": "2 1",
+      "home_goals": 2,
+      "away_goals": 1,
+      "away_team": "Cacereño",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": 2,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j11148.html?temp=2026-27",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=427726\">2</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=427726\">16/09/2026</a></td>",
+        "Temporada": "<td data-temp=\"2026-27\"><a href=\"p.php?id=427726\">2026-27</a></td>",
+        "Competición": "<td><a href=\"p.php?id=427726\">FED</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=427726\" title=\"Octavos de final\">1/8</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=427726\">Recreativo de Huelva</a></td>",
+        "col_6": "<td><a href=\"p.php?id=427726\"><div class=\"resultat-gols resultat-resultat--1\">2</div><div class=\"resultat-gols resultat-resultat--1\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=427726\">Cacereño</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=427726\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"p.php?id=427726\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=427726\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=427726\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=427726\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=427726\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=427726\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=427726\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=427726\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=427726\"></a></td>",
+        "GE": "<td><a href=\"p.php?id=427726\">2</a></td>"
+      }
+    }
+  ],
+  "source_run": "/home/mario/Documents/Trabalo/Proyectos/RealJaen/FootballDataHub/data/raw/bdfutbol/player_full_11148/20261008T083524.655296Z",
+  "warnings": []
+}

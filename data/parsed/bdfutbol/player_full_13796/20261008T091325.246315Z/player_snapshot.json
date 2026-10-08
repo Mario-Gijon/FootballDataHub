@@ -1,0 +1,4517 @@
+{
+  "identity": {
+    "provider": "bdfutbol",
+    "provider_id": 13796,
+    "display_name": "Aznar",
+    "full_name": "Marc Aznar Baides",
+    "birth_date": "10/01/2006",
+    "age_displayed": 20,
+    "birth_place": "Barcelona",
+    "birth_region": "Barcelona",
+    "position": null,
+    "height_cm": 188,
+    "source_url": "https://www.bdfutbol.com/es/j/j13796.html"
+  },
+  "canonical_career": [
+    {
+      "season": "2024-25",
+      "team_name": "Girona",
+      "team_provider_id": 78,
+      "country": null,
+      "division": "1ª",
+      "age": 18,
+      "appearances": 0,
+      "starts": 0,
+      "complete_matches": 0,
+      "substitute_appearances": 0,
+      "substituted": 0,
+      "incomplete_matches": 0,
+      "callups_without_playing": 0,
+      "total_callups": 0,
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "minutes": 0,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 33,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/j/j13796.html",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2024-25",
+          "Girona",
+          "",
+          "",
+          "1ª",
+          "18",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "33",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2024-25",
+          "data-temporadalink": "2024-25",
+          "data-temporadaid": "0",
+          "data-idclub": "78",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2025-26",
+      "team_name": "Huesca",
+      "team_provider_id": 79,
+      "country": null,
+      "division": "2ª",
+      "age": 19,
+      "appearances": 1,
+      "starts": 0,
+      "complete_matches": 0,
+      "substitute_appearances": 1,
+      "substituted": 0,
+      "incomplete_matches": 1,
+      "callups_without_playing": 6,
+      "total_callups": 7,
+      "wins": 0,
+      "draws": 1,
+      "losses": 0,
+      "minutes": 44,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 34,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/j/j13796.html",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2025-26",
+          "Huesca",
+          "",
+          "Descenso",
+          "2ª",
+          "19",
+          "1",
+          "0",
+          "0",
+          "1",
+          "0",
+          "1",
+          "6",
+          "7",
+          "0",
+          "1",
+          "0",
+          "44",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "34",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2025-26",
+          "data-temporadalink": "2025-26",
+          "data-temporadaid": "0",
+          "data-idclub": "79",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2026-27",
+      "team_name": "Huesca",
+      "team_provider_id": 79,
+      "country": null,
+      "division": "1ªRf",
+      "age": 20,
+      "appearances": 0,
+      "starts": 0,
+      "complete_matches": 0,
+      "substitute_appearances": 0,
+      "substituted": 0,
+      "incomplete_matches": 0,
+      "callups_without_playing": 5,
+      "total_callups": 5,
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "minutes": 0,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 20,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/j/j13796.html",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2026-27",
+          "Huesca",
+          "",
+          "",
+          "1ªRf",
+          "20",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "5",
+          "5",
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "20",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2026-27",
+          "data-temporadalink": "2026-27",
+          "data-temporadaid": "0",
+          "data-idclub": "79",
+          "data-idjug": "0"
+        }
+      }
+    }
+  ],
+  "manager_career": [
+    {
+      "season": "2022-23",
+      "team_name": "Girona B",
+      "team_provider_id": 3998,
+      "country": null,
+      "division": "3ª",
+      "age": 16,
+      "appearances": 7,
+      "starts": 5,
+      "complete_matches": 4,
+      "substitute_appearances": 2,
+      "substituted": 1,
+      "incomplete_matches": 3,
+      "callups_without_playing": 0,
+      "total_callups": 7,
+      "wins": 3,
+      "draws": 2,
+      "losses": 2,
+      "minutes": 457,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j13796.html?manager=1",
+      "provider_season_id": 3336,
+      "provider_player_alias_id": 137437,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2022-23",
+          "Girona B",
+          "",
+          "",
+          "3ª",
+          "16",
+          "7",
+          "5",
+          "4",
+          "2",
+          "1",
+          "3",
+          "0",
+          "7",
+          "3",
+          "2",
+          "2",
+          "457",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2022-23",
+          "data-temporadalink": "2022-23",
+          "data-temporadaid": "3336",
+          "data-idclub": "3998",
+          "data-idjug": "137437"
+        }
+      }
+    },
+    {
+      "season": "2022-23",
+      "team_name": "Girona",
+      "team_provider_id": 78,
+      "country": null,
+      "division": "Juv",
+      "age": 16,
+      "appearances": 23,
+      "starts": 19,
+      "complete_matches": 14,
+      "substitute_appearances": 4,
+      "substituted": 5,
+      "incomplete_matches": 9,
+      "callups_without_playing": 0,
+      "total_callups": 23,
+      "wins": 12,
+      "draws": 4,
+      "losses": 7,
+      "minutes": 1732,
+      "yellow_cards": 5,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": 4,
+      "squad_number": 12,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j13796.html?manager=1",
+      "provider_season_id": 5742,
+      "provider_player_alias_id": 137437,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2022-23",
+          "Girona",
+          "",
+          "",
+          "Juv",
+          "16",
+          "23",
+          "19",
+          "14",
+          "4",
+          "5",
+          "9",
+          "0",
+          "23",
+          "12",
+          "4",
+          "7",
+          "1732",
+          "5",
+          "-",
+          "-",
+          "-",
+          "-",
+          "4",
+          "12",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2022-23",
+          "data-temporadalink": "2022-23",
+          "data-temporadaid": "5742",
+          "data-idclub": "78",
+          "data-idjug": "137437"
+        }
+      }
+    },
+    {
+      "season": "2023-24",
+      "team_name": "Girona B",
+      "team_provider_id": 3998,
+      "country": null,
+      "division": "3ª",
+      "age": 17,
+      "appearances": 4,
+      "starts": 3,
+      "complete_matches": 1,
+      "substitute_appearances": 1,
+      "substituted": 2,
+      "incomplete_matches": 3,
+      "callups_without_playing": 0,
+      "total_callups": 4,
+      "wins": 1,
+      "draws": 2,
+      "losses": 1,
+      "minutes": 232,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j13796.html?manager=1",
+      "provider_season_id": 3704,
+      "provider_player_alias_id": 137437,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2023-24",
+          "Girona B",
+          "",
+          "",
+          "3ª",
+          "17",
+          "4",
+          "3",
+          "1",
+          "1",
+          "2",
+          "3",
+          "0",
+          "4",
+          "1",
+          "2",
+          "1",
+          "232",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2023-24",
+          "data-temporadalink": "2023-24",
+          "data-temporadaid": "3704",
+          "data-idclub": "3998",
+          "data-idjug": "137437"
+        }
+      }
+    },
+    {
+      "season": "2024-25",
+      "team_name": "Girona B",
+      "team_provider_id": 3998,
+      "country": null,
+      "division": "3ª",
+      "age": 18,
+      "appearances": 6,
+      "starts": 4,
+      "complete_matches": 2,
+      "substitute_appearances": 2,
+      "substituted": 2,
+      "incomplete_matches": 4,
+      "callups_without_playing": 3,
+      "total_callups": 9,
+      "wins": 4,
+      "draws": 1,
+      "losses": 1,
+      "minutes": 318,
+      "yellow_cards": 1,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j13796.html?manager=1",
+      "provider_season_id": 4588,
+      "provider_player_alias_id": 137437,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2024-25",
+          "Girona B",
+          "",
+          "",
+          "3ª",
+          "18",
+          "6",
+          "4",
+          "2",
+          "2",
+          "2",
+          "4",
+          "3",
+          "9",
+          "4",
+          "1",
+          "1",
+          "318",
+          "1",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2024-25",
+          "data-temporadalink": "2024-25",
+          "data-temporadaid": "4588",
+          "data-idclub": "3998",
+          "data-idjug": "137437"
+        }
+      }
+    },
+    {
+      "season": "2024-25",
+      "team_name": "Girona",
+      "team_provider_id": 78,
+      "country": null,
+      "division": "1ª",
+      "age": 18,
+      "appearances": 0,
+      "starts": 0,
+      "complete_matches": 0,
+      "substitute_appearances": 0,
+      "substituted": 0,
+      "incomplete_matches": 0,
+      "callups_without_playing": 0,
+      "total_callups": 0,
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "minutes": 0,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 33,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j13796.html?manager=1",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2024-25",
+          "Girona",
+          "",
+          "",
+          "1ª",
+          "18",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "33",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2024-25",
+          "data-temporadalink": "2024-25",
+          "data-temporadaid": "0",
+          "data-idclub": "78",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2025-26",
+      "team_name": "Huesca B",
+      "team_provider_id": 469,
+      "country": null,
+      "division": "3ª",
+      "age": 19,
+      "appearances": 26,
+      "starts": 23,
+      "complete_matches": 15,
+      "substitute_appearances": 3,
+      "substituted": 7,
+      "incomplete_matches": 10,
+      "callups_without_playing": 3,
+      "total_callups": 29,
+      "wins": 12,
+      "draws": 7,
+      "losses": 7,
+      "minutes": 1909,
+      "yellow_cards": 6,
+      "red_cards": 1,
+      "goals": 2,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 20,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j13796.html?manager=1",
+      "provider_season_id": 6298,
+      "provider_player_alias_id": 137437,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2025-26",
+          "Huesca B",
+          "",
+          "",
+          "3ª",
+          "19",
+          "26",
+          "23",
+          "15",
+          "3",
+          "7",
+          "10",
+          "3",
+          "29",
+          "12",
+          "7",
+          "7",
+          "1909",
+          "6",
+          "1",
+          "2",
+          "-",
+          "-",
+          "-",
+          "20",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2025-26",
+          "data-temporadalink": "2025-26",
+          "data-temporadaid": "6298",
+          "data-idclub": "469",
+          "data-idjug": "137437"
+        }
+      }
+    },
+    {
+      "season": "2025-26",
+      "team_name": "Huesca",
+      "team_provider_id": 79,
+      "country": null,
+      "division": "2ª",
+      "age": 19,
+      "appearances": 1,
+      "starts": 0,
+      "complete_matches": 0,
+      "substitute_appearances": 1,
+      "substituted": 0,
+      "incomplete_matches": 1,
+      "callups_without_playing": 6,
+      "total_callups": 7,
+      "wins": 0,
+      "draws": 1,
+      "losses": 0,
+      "minutes": 44,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 34,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j13796.html?manager=1",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2025-26",
+          "Huesca",
+          "",
+          "Descenso",
+          "2ª",
+          "19",
+          "1",
+          "0",
+          "0",
+          "1",
+          "0",
+          "1",
+          "6",
+          "7",
+          "0",
+          "1",
+          "0",
+          "44",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "34",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2025-26",
+          "data-temporadalink": "2025-26",
+          "data-temporadaid": "0",
+          "data-idclub": "79",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2026-27",
+      "team_name": "Huesca",
+      "team_provider_id": 79,
+      "country": null,
+      "division": "1ªRf",
+      "age": 20,
+      "appearances": 0,
+      "starts": 0,
+      "complete_matches": 0,
+      "substitute_appearances": 0,
+      "substituted": 0,
+      "incomplete_matches": 0,
+      "callups_without_playing": 5,
+      "total_callups": 5,
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "minutes": 0,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 20,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j13796.html?manager=1",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2026-27",
+          "Huesca",
+          "",
+          "",
+          "1ªRf",
+          "20",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "5",
+          "5",
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "20",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2026-27",
+          "data-temporadalink": "2026-27",
+          "data-temporadaid": "0",
+          "data-idclub": "79",
+          "data-idjug": "0"
+        }
+      }
+    }
+  ],
+  "competition_stats": {
+    "scope": "competition",
+    "headers": [
+      "Tipo",
+      "1ª",
+      "2ª",
+      "1ªRf",
+      "1ª + 2ª",
+      "1ª + 2ª + 1ªRf + 2ªRf",
+      "G5",
+      "EURO"
+    ],
+    "header_titles": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    "rows": [
+      {
+        "metric": "Temporadas",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Temporadas seguidas en el mismo equipo",
+        "values": [
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Equipos",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos Jugados",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a&pj=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=2a&pj=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a&pj=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a-2aB&pj=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos completos",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a&pc=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=2a&pc=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a&pc=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a-2aB&pc=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos titular",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a&pt=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=2a&pt=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a&pt=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a-2aB&pt=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos suplente",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a&ps=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=2a&ps=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a&ps=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a-2aB&ps=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos sustituido",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a&px=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=2a&px=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a&px=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a-2aB&px=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos incompletos",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a&pinc=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=2a&pinc=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a&pinc=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a-2aB&pinc=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos convocado",
+        "values": [
+          "0",
+          "6",
+          "5",
+          "6",
+          "6",
+          "0",
+          "1"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a&pv=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=2a&pv=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a&pv=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a-2aB&pv=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos convocado total",
+        "values": [
+          "0",
+          "7",
+          "5",
+          "7",
+          "7",
+          "0",
+          "1"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a&pv=1&jug=si-no"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=2a&pv=1&jug=si-no"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a&pv=1&jug=si-no"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a-2aB&pv=1&jug=si-no"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Ganados",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a&pg=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=2a&pg=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a&pg=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a-2aB&pg=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Empatados",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a&pe=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=2a&pe=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a&pe=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a-2aB&pe=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Perdidos",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a&pp=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=2a&pp=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a&pp=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a-2aB&pp=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Minutos",
+        "values": [
+          "0",
+          "44",
+          "0",
+          "44",
+          "44",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a&pj=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=2a&pj=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a&pj=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a-2aB&pj=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Goles",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=2a&g=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a-2aB&g=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Goles de suplente",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=2a&g=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a-2aB&g=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos Marcando algún Gol",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=2a&g=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a-2aB&g=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Promedio goleador",
+        "values": [
+          "0,00",
+          "0,00",
+          "0,00",
+          "0,00",
+          "0,00",
+          "0,00",
+          "0,00"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=2a&g=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a-2aB&g=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Goles propia puerta",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=2a&g=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a-2aB&g=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Tarjetas amarillas",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a&tg=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=2a&tg=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a&tg=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a-2aB&tg=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Tarjetas rojas",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a&tv=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=2a&tv=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a&tv=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a-2aB&tv=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Edad primer partido",
+        "values": [
+          "-",
+          "20",
+          "-",
+          "20",
+          "20",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Edad último partido",
+        "values": [
+          "-",
+          "20",
+          "-",
+          "20",
+          "20",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Edad primer partido en marcar",
+        "values": [
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Edad último partido en marcar",
+        "values": [
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Enfrentamiento a más equipos",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Goles a más equipos",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Goles con más equipos",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Goles en una temporada",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=2a&g=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a-2aB&g=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Promedio goleador en una temporada",
+        "values": [
+          "0,00",
+          "0,00",
+          "0,00",
+          "0,00",
+          "0,00",
+          "0,00",
+          "0,00"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=2a&g=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a-2aB&g=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Amonestaciones en una temporada",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a&tg=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=2a&tg=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a&tg=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a-2aB&tg=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos sustituido en una temporada",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a&px=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=2a&px=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a&px=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a-2aB&px=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos suplente en una temporada",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a&ps=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=2a&ps=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a&ps=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a-2aB&ps=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos incompletos en una temporada",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a&pinc=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=2a&pinc=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a&pinc=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13796.html?cat=1a-2a-2aB&pinc=1"
+          ],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Descensos",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "1",
+          "0",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Jugando",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "1",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Titular",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Completo",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Suplente",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "1",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Sustituido",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Partido Incompleto",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "1",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Ganando",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Empatando",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "1",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Perdiendo",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas No Ganando",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "1",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas No Empatando",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas No Perdiendo",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "1",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Marcando",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Sin Marcar",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "1",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Jugados",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Titular",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Completo",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Suplente",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Sustituido",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Partido Incompleto",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Ganando",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Empatando",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Perdiendo",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos No Ganando",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos No Empatando",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos No Perdiendo",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Marcando",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Sin Marcar",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "1",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ]
+      }
+    ],
+    "provenance": "bdfutbol",
+    "source_url": "https://www.bdfutbol.com/es/j/j13796.html?p=stats"
+  },
+  "team_stats": {
+    "scope": "team",
+    "headers": [
+      "Tipo",
+      "GIR",
+      "HUE"
+    ],
+    "header_titles": [
+      null,
+      "Girona",
+      "Huesca"
+    ],
+    "rows": [
+      {
+        "metric": "Temporadas",
+        "values": [
+          "0",
+          "1"
+        ],
+        "raw_links": [
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Temporadas seguidas en el mismo equipo",
+        "values": [
+          "0",
+          "1"
+        ],
+        "raw_links": [
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos Jugados",
+        "values": [
+          "0",
+          "1"
+        ],
+        "raw_links": [
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos completos",
+        "values": [
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos titular",
+        "values": [
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos suplente",
+        "values": [
+          "0",
+          "1"
+        ],
+        "raw_links": [
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos sustituido",
+        "values": [
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos incompletos",
+        "values": [
+          "0",
+          "1"
+        ],
+        "raw_links": [
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos convocado",
+        "values": [
+          "1",
+          "11 (#116)"
+        ],
+        "raw_links": [
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols79.html?col=pv&sort=desc"
+          ]
+        ]
+      },
+      {
+        "metric": "Partidos convocado total",
+        "values": [
+          "1",
+          "12"
+        ],
+        "raw_links": [
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Ganados",
+        "values": [
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Empatados",
+        "values": [
+          "0",
+          "1"
+        ],
+        "raw_links": [
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Perdidos",
+        "values": [
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Minutos",
+        "values": [
+          "0",
+          "44"
+        ],
+        "raw_links": [
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Goles",
+        "values": [
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Goles de suplente",
+        "values": [
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos Marcando algún Gol",
+        "values": [
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Promedio goleador",
+        "values": [
+          "0,00",
+          "0,00"
+        ],
+        "raw_links": [
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Goles propia puerta",
+        "values": [
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Tarjetas amarillas",
+        "values": [
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Tarjetas rojas",
+        "values": [
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          []
+        ]
+      }
+    ],
+    "provenance": "bdfutbol",
+    "source_url": "https://www.bdfutbol.com/es/j/j13796.html?p=stats"
+  },
+  "match_appearances": [
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=03%2F09%2F2022&id=5742&l=Girona&v=Mallorca",
+      "provider_season_id": 5742,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=03%2F09%2F2022&id=5742&l=Girona&v=Mallorca",
+      "date": "03/09/2022",
+      "season": "2022-23",
+      "competition": "Juv",
+      "round_or_type": "Jornada 1",
+      "home_team": "Girona",
+      "score_text": "0 0",
+      "home_goals": 0,
+      "away_goals": 0,
+      "away_team": "Mallorca",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2022-23&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Mallorca&amp;d=03/09/2022\">1</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Mallorca&amp;d=03/09/2022\">03/09/2022</a></td>",
+        "Temporada": "<td data-temp=\"2022-23\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Mallorca&amp;d=03/09/2022\">2022-23</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Mallorca&amp;d=03/09/2022\">Juv</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Mallorca&amp;d=03/09/2022\" title=\"Jornada 1\">Jornada 1</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Mallorca&amp;d=03/09/2022\">Girona</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Mallorca&amp;d=03/09/2022\"><div class=\"resultat-gols resultat-resultat-0\">0</div><div class=\"resultat-gols resultat-resultat-0\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Mallorca&amp;d=03/09/2022\">Mallorca</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Mallorca&amp;d=03/09/2022\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Mallorca&amp;d=03/09/2022\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Mallorca&amp;d=03/09/2022\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Mallorca&amp;d=03/09/2022\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Mallorca&amp;d=03/09/2022\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Mallorca&amp;d=03/09/2022\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Mallorca&amp;d=03/09/2022\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Mallorca&amp;d=03/09/2022\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Mallorca&amp;d=03/09/2022\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Mallorca&amp;d=03/09/2022\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Mallorca&amp;d=03/09/2022\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=10%2F09%2F2022&id=5742&l=Damm&v=Girona",
+      "provider_season_id": 5742,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=10%2F09%2F2022&id=5742&l=Damm&v=Girona",
+      "date": "10/09/2022",
+      "season": "2022-23",
+      "competition": "Juv",
+      "round_or_type": "Jornada 2",
+      "home_team": "Damm",
+      "score_text": "3 3",
+      "home_goals": 3,
+      "away_goals": 3,
+      "away_team": "Girona",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 22,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2022-23&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=5742&amp;l=Damm&amp;v=Girona&amp;d=10/09/2022\">2</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=5742&amp;l=Damm&amp;v=Girona&amp;d=10/09/2022\">10/09/2022</a></td>",
+        "Temporada": "<td data-temp=\"2022-23\"><a href=\"partido.html?id=5742&amp;l=Damm&amp;v=Girona&amp;d=10/09/2022\">2022-23</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=5742&amp;l=Damm&amp;v=Girona&amp;d=10/09/2022\">Juv</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=5742&amp;l=Damm&amp;v=Girona&amp;d=10/09/2022\" title=\"Jornada 2\">Jornada 2</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"partido.html?id=5742&amp;l=Damm&amp;v=Girona&amp;d=10/09/2022\">Damm</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=5742&amp;l=Damm&amp;v=Girona&amp;d=10/09/2022\"><div class=\"resultat-gols resultat-resultat-0\">3</div><div class=\"resultat-gols resultat-resultat-0\">3</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"partido.html?id=5742&amp;l=Damm&amp;v=Girona&amp;d=10/09/2022\">Girona</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Damm&amp;v=Girona&amp;d=10/09/2022\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Damm&amp;v=Girona&amp;d=10/09/2022\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"partido.html?id=5742&amp;l=Damm&amp;v=Girona&amp;d=10/09/2022\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Damm&amp;v=Girona&amp;d=10/09/2022\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Damm&amp;v=Girona&amp;d=10/09/2022\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Damm&amp;v=Girona&amp;d=10/09/2022\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=5742&amp;l=Damm&amp;v=Girona&amp;d=10/09/2022\">22</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Damm&amp;v=Girona&amp;d=10/09/2022\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Damm&amp;v=Girona&amp;d=10/09/2022\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Damm&amp;v=Girona&amp;d=10/09/2022\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Damm&amp;v=Girona&amp;d=10/09/2022\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=17%2F09%2F2022&id=5742&l=Girona&v=Espanyol",
+      "provider_season_id": 5742,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=17%2F09%2F2022&id=5742&l=Girona&v=Espanyol",
+      "date": "17/09/2022",
+      "season": "2022-23",
+      "competition": "Juv",
+      "round_or_type": "Jornada 3",
+      "home_team": "Girona",
+      "score_text": "0 3",
+      "home_goals": 0,
+      "away_goals": 3,
+      "away_team": "Espanyol",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 25,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2022-23&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Espanyol&amp;d=17/09/2022\">3</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Espanyol&amp;d=17/09/2022\">17/09/2022</a></td>",
+        "Temporada": "<td data-temp=\"2022-23\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Espanyol&amp;d=17/09/2022\">2022-23</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Espanyol&amp;d=17/09/2022\">Juv</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Espanyol&amp;d=17/09/2022\" title=\"Jornada 3\">Jornada 3</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Espanyol&amp;d=17/09/2022\">Girona</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Espanyol&amp;d=17/09/2022\"><div class=\"resultat-gols resultat-resultat--1\">0</div><div class=\"resultat-gols resultat-resultat--1\">3</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Espanyol&amp;d=17/09/2022\">Espanyol</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Espanyol&amp;d=17/09/2022\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Espanyol&amp;d=17/09/2022\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Espanyol&amp;d=17/09/2022\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Espanyol&amp;d=17/09/2022\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Espanyol&amp;d=17/09/2022\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Espanyol&amp;d=17/09/2022\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Espanyol&amp;d=17/09/2022\">25</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Espanyol&amp;d=17/09/2022\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Espanyol&amp;d=17/09/2022\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Espanyol&amp;d=17/09/2022\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Espanyol&amp;d=17/09/2022\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=01%2F10%2F2022&id=5742&l=Badalona&v=Girona",
+      "provider_season_id": 5742,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=01%2F10%2F2022&id=5742&l=Badalona&v=Girona",
+      "date": "01/10/2022",
+      "season": "2022-23",
+      "competition": "Juv",
+      "round_or_type": "Jornada 4",
+      "home_team": "Badalona",
+      "score_text": "3 0",
+      "home_goals": 3,
+      "away_goals": 0,
+      "away_team": "Girona",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": "'85",
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2022-23&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=5742&amp;l=Badalona&amp;v=Girona&amp;d=01/10/2022\">4</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=5742&amp;l=Badalona&amp;v=Girona&amp;d=01/10/2022\">01/10/2022</a></td>",
+        "Temporada": "<td data-temp=\"2022-23\"><a href=\"partido.html?id=5742&amp;l=Badalona&amp;v=Girona&amp;d=01/10/2022\">2022-23</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=5742&amp;l=Badalona&amp;v=Girona&amp;d=01/10/2022\">Juv</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=5742&amp;l=Badalona&amp;v=Girona&amp;d=01/10/2022\" title=\"Jornada 4\">Jornada 4</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"partido.html?id=5742&amp;l=Badalona&amp;v=Girona&amp;d=01/10/2022\">Badalona</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=5742&amp;l=Badalona&amp;v=Girona&amp;d=01/10/2022\"><div class=\"resultat-gols resultat-resultat--1\">3</div><div class=\"resultat-gols resultat-resultat--1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"partido.html?id=5742&amp;l=Badalona&amp;v=Girona&amp;d=01/10/2022\">Girona</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"partido.html?id=5742&amp;l=Badalona&amp;v=Girona&amp;d=01/10/2022\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"partido.html?id=5742&amp;l=Badalona&amp;v=Girona&amp;d=01/10/2022\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Badalona&amp;v=Girona&amp;d=01/10/2022\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Badalona&amp;v=Girona&amp;d=01/10/2022\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Badalona&amp;v=Girona&amp;d=01/10/2022\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Badalona&amp;v=Girona&amp;d=01/10/2022\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=5742&amp;l=Badalona&amp;v=Girona&amp;d=01/10/2022\">90</a></td>",
+        "TA": "<td class=\"GR resp_off\"><a href=\"partido.html?id=5742&amp;l=Badalona&amp;v=Girona&amp;d=01/10/2022\"><span class=\"\" title=\"\">'85</span></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Badalona&amp;v=Girona&amp;d=01/10/2022\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Badalona&amp;v=Girona&amp;d=01/10/2022\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Badalona&amp;v=Girona&amp;d=01/10/2022\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=08%2F10%2F2022&id=5742&l=Girona&v=Cornell%C3%A0",
+      "provider_season_id": 5742,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=08%2F10%2F2022&id=5742&l=Girona&v=Cornell%C3%A0",
+      "date": "08/10/2022",
+      "season": "2022-23",
+      "competition": "Juv",
+      "round_or_type": "Jornada 5",
+      "home_team": "Girona",
+      "score_text": "1 0",
+      "home_goals": 1,
+      "away_goals": 0,
+      "away_team": "Cornellà",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": "'87",
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2022-23&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Cornellà&amp;d=08/10/2022\">5</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Cornellà&amp;d=08/10/2022\">08/10/2022</a></td>",
+        "Temporada": "<td data-temp=\"2022-23\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Cornellà&amp;d=08/10/2022\">2022-23</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Cornellà&amp;d=08/10/2022\">Juv</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Cornellà&amp;d=08/10/2022\" title=\"Jornada 5\">Jornada 5</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Cornellà&amp;d=08/10/2022\">Girona</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Cornellà&amp;d=08/10/2022\"><div class=\"resultat-gols resultat-resultat-1\">1</div><div class=\"resultat-gols resultat-resultat-1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Cornellà&amp;d=08/10/2022\">Cornellà</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Cornellà&amp;d=08/10/2022\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Cornellà&amp;d=08/10/2022\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Cornellà&amp;d=08/10/2022\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Cornellà&amp;d=08/10/2022\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Cornellà&amp;d=08/10/2022\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Cornellà&amp;d=08/10/2022\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Cornellà&amp;d=08/10/2022\">90</a></td>",
+        "TA": "<td class=\"GR resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Cornellà&amp;d=08/10/2022\"><span class=\"\" title=\"\">'87</span></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Cornellà&amp;d=08/10/2022\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Cornellà&amp;d=08/10/2022\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Cornellà&amp;d=08/10/2022\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=15%2F10%2F2022&id=5742&l=Huesca&v=Girona",
+      "provider_season_id": 5742,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=15%2F10%2F2022&id=5742&l=Huesca&v=Girona",
+      "date": "15/10/2022",
+      "season": "2022-23",
+      "competition": "Juv",
+      "round_or_type": "Jornada 6",
+      "home_team": "Huesca",
+      "score_text": "2 0",
+      "home_goals": 2,
+      "away_goals": 0,
+      "away_team": "Girona",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 79,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2022-23&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=5742&amp;l=Huesca&amp;v=Girona&amp;d=15/10/2022\">6</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=5742&amp;l=Huesca&amp;v=Girona&amp;d=15/10/2022\">15/10/2022</a></td>",
+        "Temporada": "<td data-temp=\"2022-23\"><a href=\"partido.html?id=5742&amp;l=Huesca&amp;v=Girona&amp;d=15/10/2022\">2022-23</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=5742&amp;l=Huesca&amp;v=Girona&amp;d=15/10/2022\">Juv</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=5742&amp;l=Huesca&amp;v=Girona&amp;d=15/10/2022\" title=\"Jornada 6\">Jornada 6</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"partido.html?id=5742&amp;l=Huesca&amp;v=Girona&amp;d=15/10/2022\">Huesca</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=5742&amp;l=Huesca&amp;v=Girona&amp;d=15/10/2022\"><div class=\"resultat-gols resultat-resultat--1\">2</div><div class=\"resultat-gols resultat-resultat--1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"partido.html?id=5742&amp;l=Huesca&amp;v=Girona&amp;d=15/10/2022\">Girona</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"partido.html?id=5742&amp;l=Huesca&amp;v=Girona&amp;d=15/10/2022\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Huesca&amp;v=Girona&amp;d=15/10/2022\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Huesca&amp;v=Girona&amp;d=15/10/2022\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Huesca&amp;v=Girona&amp;d=15/10/2022\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Huesca&amp;v=Girona&amp;d=15/10/2022\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Huesca&amp;v=Girona&amp;d=15/10/2022\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=5742&amp;l=Huesca&amp;v=Girona&amp;d=15/10/2022\">79</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Huesca&amp;v=Girona&amp;d=15/10/2022\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Huesca&amp;v=Girona&amp;d=15/10/2022\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Huesca&amp;v=Girona&amp;d=15/10/2022\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Huesca&amp;v=Girona&amp;d=15/10/2022\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=22%2F10%2F2022&id=5742&l=Girona&v=San+Francisco",
+      "provider_season_id": 5742,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=22%2F10%2F2022&id=5742&l=Girona&v=San+Francisco",
+      "date": "22/10/2022",
+      "season": "2022-23",
+      "competition": "Juv",
+      "round_or_type": "Jornada 7",
+      "home_team": "Girona",
+      "score_text": "0 1",
+      "home_goals": 0,
+      "away_goals": 1,
+      "away_team": "San Francisco",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2022-23&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=San Francisco&amp;d=22/10/2022\">7</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=San Francisco&amp;d=22/10/2022\">22/10/2022</a></td>",
+        "Temporada": "<td data-temp=\"2022-23\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=San Francisco&amp;d=22/10/2022\">2022-23</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=San Francisco&amp;d=22/10/2022\">Juv</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=San Francisco&amp;d=22/10/2022\" title=\"Jornada 7\">Jornada 7</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=San Francisco&amp;d=22/10/2022\">Girona</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=San Francisco&amp;d=22/10/2022\"><div class=\"resultat-gols resultat-resultat--1\">0</div><div class=\"resultat-gols resultat-resultat--1\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=San Francisco&amp;d=22/10/2022\">San Francisco</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=San Francisco&amp;d=22/10/2022\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=San Francisco&amp;d=22/10/2022\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=San Francisco&amp;d=22/10/2022\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=San Francisco&amp;d=22/10/2022\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=San Francisco&amp;d=22/10/2022\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=San Francisco&amp;d=22/10/2022\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=San Francisco&amp;d=22/10/2022\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=San Francisco&amp;d=22/10/2022\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=San Francisco&amp;d=22/10/2022\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=San Francisco&amp;d=22/10/2022\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=San Francisco&amp;d=22/10/2022\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=30%2F10%2F2022&id=5742&l=Barcelona&v=Girona",
+      "provider_season_id": 5742,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=30%2F10%2F2022&id=5742&l=Barcelona&v=Girona",
+      "date": "30/10/2022",
+      "season": "2022-23",
+      "competition": "Juv",
+      "round_or_type": "Jornada 8",
+      "home_team": "Barcelona",
+      "score_text": "3 1",
+      "home_goals": 3,
+      "away_goals": 1,
+      "away_team": "Girona",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 89,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2022-23&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=5742&amp;l=Barcelona&amp;v=Girona&amp;d=30/10/2022\">8</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=5742&amp;l=Barcelona&amp;v=Girona&amp;d=30/10/2022\">30/10/2022</a></td>",
+        "Temporada": "<td data-temp=\"2022-23\"><a href=\"partido.html?id=5742&amp;l=Barcelona&amp;v=Girona&amp;d=30/10/2022\">2022-23</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=5742&amp;l=Barcelona&amp;v=Girona&amp;d=30/10/2022\">Juv</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=5742&amp;l=Barcelona&amp;v=Girona&amp;d=30/10/2022\" title=\"Jornada 8\">Jornada 8</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"partido.html?id=5742&amp;l=Barcelona&amp;v=Girona&amp;d=30/10/2022\">Barcelona</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=5742&amp;l=Barcelona&amp;v=Girona&amp;d=30/10/2022\"><div class=\"resultat-gols resultat-resultat--1\">3</div><div class=\"resultat-gols resultat-resultat--1\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"partido.html?id=5742&amp;l=Barcelona&amp;v=Girona&amp;d=30/10/2022\">Girona</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"partido.html?id=5742&amp;l=Barcelona&amp;v=Girona&amp;d=30/10/2022\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Barcelona&amp;v=Girona&amp;d=30/10/2022\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Barcelona&amp;v=Girona&amp;d=30/10/2022\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Barcelona&amp;v=Girona&amp;d=30/10/2022\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Barcelona&amp;v=Girona&amp;d=30/10/2022\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Barcelona&amp;v=Girona&amp;d=30/10/2022\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=5742&amp;l=Barcelona&amp;v=Girona&amp;d=30/10/2022\">89</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Barcelona&amp;v=Girona&amp;d=30/10/2022\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Barcelona&amp;v=Girona&amp;d=30/10/2022\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Barcelona&amp;v=Girona&amp;d=30/10/2022\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Barcelona&amp;v=Girona&amp;d=30/10/2022\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=06%2F11%2F2022&id=3336&l=Rapitenca&v=Girona+B",
+      "provider_season_id": 3336,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=06%2F11%2F2022&id=3336&l=Rapitenca&v=Girona+B",
+      "date": "06/11/2022",
+      "season": "2022-23",
+      "competition": "3ª",
+      "round_or_type": "Jornada 9",
+      "home_team": "Rapitenca",
+      "score_text": "0 0",
+      "home_goals": 0,
+      "away_goals": 0,
+      "away_team": "Girona B",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2022-23&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=3336&amp;l=Rapitenca&amp;v=Girona B&amp;d=06/11/2022\">24</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=3336&amp;l=Rapitenca&amp;v=Girona B&amp;d=06/11/2022\">06/11/2022</a></td>",
+        "Temporada": "<td data-temp=\"2022-23\"><a href=\"partido.html?id=3336&amp;l=Rapitenca&amp;v=Girona B&amp;d=06/11/2022\">2022-23</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=3336&amp;l=Rapitenca&amp;v=Girona B&amp;d=06/11/2022\">3ª</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=3336&amp;l=Rapitenca&amp;v=Girona B&amp;d=06/11/2022\" title=\"Jornada 9\">Jornada 9</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"partido.html?id=3336&amp;l=Rapitenca&amp;v=Girona B&amp;d=06/11/2022\">Rapitenca</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=3336&amp;l=Rapitenca&amp;v=Girona B&amp;d=06/11/2022\"><div class=\"resultat-gols resultat-resultat-0\">0</div><div class=\"resultat-gols resultat-resultat-0\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"partido.html?id=3336&amp;l=Rapitenca&amp;v=Girona B&amp;d=06/11/2022\">Girona B</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"partido.html?id=3336&amp;l=Rapitenca&amp;v=Girona B&amp;d=06/11/2022\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"partido.html?id=3336&amp;l=Rapitenca&amp;v=Girona B&amp;d=06/11/2022\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Rapitenca&amp;v=Girona B&amp;d=06/11/2022\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=3336&amp;l=Rapitenca&amp;v=Girona B&amp;d=06/11/2022\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=3336&amp;l=Rapitenca&amp;v=Girona B&amp;d=06/11/2022\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Rapitenca&amp;v=Girona B&amp;d=06/11/2022\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=3336&amp;l=Rapitenca&amp;v=Girona B&amp;d=06/11/2022\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Rapitenca&amp;v=Girona B&amp;d=06/11/2022\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Rapitenca&amp;v=Girona B&amp;d=06/11/2022\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Rapitenca&amp;v=Girona B&amp;d=06/11/2022\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Rapitenca&amp;v=Girona B&amp;d=06/11/2022\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=13%2F11%2F2022&id=3336&l=Girona+B&v=Sants",
+      "provider_season_id": 3336,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=13%2F11%2F2022&id=3336&l=Girona+B&v=Sants",
+      "date": "13/11/2022",
+      "season": "2022-23",
+      "competition": "3ª",
+      "round_or_type": "Jornada 10",
+      "home_team": "Girona B",
+      "score_text": "2 0",
+      "home_goals": 2,
+      "away_goals": 0,
+      "away_team": "Sants",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 11,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2022-23&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Sants&amp;d=13/11/2022\">25</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Sants&amp;d=13/11/2022\">13/11/2022</a></td>",
+        "Temporada": "<td data-temp=\"2022-23\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Sants&amp;d=13/11/2022\">2022-23</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Sants&amp;d=13/11/2022\">3ª</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Sants&amp;d=13/11/2022\" title=\"Jornada 10\">Jornada 10</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Sants&amp;d=13/11/2022\">Girona B</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Sants&amp;d=13/11/2022\"><div class=\"resultat-gols resultat-resultat-1\">2</div><div class=\"resultat-gols resultat-resultat-1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Sants&amp;d=13/11/2022\">Sants</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Sants&amp;d=13/11/2022\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Sants&amp;d=13/11/2022\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Sants&amp;d=13/11/2022\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Sants&amp;d=13/11/2022\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Sants&amp;d=13/11/2022\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Sants&amp;d=13/11/2022\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Sants&amp;d=13/11/2022\">11</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Sants&amp;d=13/11/2022\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Sants&amp;d=13/11/2022\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Sants&amp;d=13/11/2022\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Sants&amp;d=13/11/2022\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=19%2F11%2F2022&id=5742&l=Girona&v=Ebro",
+      "provider_season_id": 5742,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=19%2F11%2F2022&id=5742&l=Girona&v=Ebro",
+      "date": "19/11/2022",
+      "season": "2022-23",
+      "competition": "Juv",
+      "round_or_type": "Jornada 11",
+      "home_team": "Girona",
+      "score_text": "2 0",
+      "home_goals": 2,
+      "away_goals": 0,
+      "away_team": "Ebro",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 76,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2022-23&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Ebro&amp;d=19/11/2022\">9</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Ebro&amp;d=19/11/2022\">19/11/2022</a></td>",
+        "Temporada": "<td data-temp=\"2022-23\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Ebro&amp;d=19/11/2022\">2022-23</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Ebro&amp;d=19/11/2022\">Juv</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Ebro&amp;d=19/11/2022\" title=\"Jornada 11\">Jornada 11</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Ebro&amp;d=19/11/2022\">Girona</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Ebro&amp;d=19/11/2022\"><div class=\"resultat-gols resultat-resultat-1\">2</div><div class=\"resultat-gols resultat-resultat-1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Ebro&amp;d=19/11/2022\">Ebro</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Ebro&amp;d=19/11/2022\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Ebro&amp;d=19/11/2022\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Ebro&amp;d=19/11/2022\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Ebro&amp;d=19/11/2022\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Ebro&amp;d=19/11/2022\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Ebro&amp;d=19/11/2022\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Ebro&amp;d=19/11/2022\">76</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Ebro&amp;d=19/11/2022\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Ebro&amp;d=19/11/2022\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Ebro&amp;d=19/11/2022\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Ebro&amp;d=19/11/2022\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=26%2F11%2F2022&id=5742&l=Constancia&v=Girona",
+      "provider_season_id": 5742,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=26%2F11%2F2022&id=5742&l=Constancia&v=Girona",
+      "date": "26/11/2022",
+      "season": "2022-23",
+      "competition": "Juv",
+      "round_or_type": "Jornada 12",
+      "home_team": "Constancia",
+      "score_text": "1 1",
+      "home_goals": 1,
+      "away_goals": 1,
+      "away_team": "Girona",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 74,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2022-23&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=5742&amp;l=Constancia&amp;v=Girona&amp;d=26/11/2022\">10</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=5742&amp;l=Constancia&amp;v=Girona&amp;d=26/11/2022\">26/11/2022</a></td>",
+        "Temporada": "<td data-temp=\"2022-23\"><a href=\"partido.html?id=5742&amp;l=Constancia&amp;v=Girona&amp;d=26/11/2022\">2022-23</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=5742&amp;l=Constancia&amp;v=Girona&amp;d=26/11/2022\">Juv</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=5742&amp;l=Constancia&amp;v=Girona&amp;d=26/11/2022\" title=\"Jornada 12\">Jornada 12</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"partido.html?id=5742&amp;l=Constancia&amp;v=Girona&amp;d=26/11/2022\">Constancia</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=5742&amp;l=Constancia&amp;v=Girona&amp;d=26/11/2022\"><div class=\"resultat-gols resultat-resultat-0\">1</div><div class=\"resultat-gols resultat-resultat-0\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"partido.html?id=5742&amp;l=Constancia&amp;v=Girona&amp;d=26/11/2022\">Girona</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"partido.html?id=5742&amp;l=Constancia&amp;v=Girona&amp;d=26/11/2022\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Constancia&amp;v=Girona&amp;d=26/11/2022\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Constancia&amp;v=Girona&amp;d=26/11/2022\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Constancia&amp;v=Girona&amp;d=26/11/2022\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Constancia&amp;v=Girona&amp;d=26/11/2022\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Constancia&amp;v=Girona&amp;d=26/11/2022\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=5742&amp;l=Constancia&amp;v=Girona&amp;d=26/11/2022\">74</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Constancia&amp;v=Girona&amp;d=26/11/2022\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Constancia&amp;v=Girona&amp;d=26/11/2022\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Constancia&amp;v=Girona&amp;d=26/11/2022\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Constancia&amp;v=Girona&amp;d=26/11/2022\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=03%2F12%2F2022&id=5742&l=Girona&v=Grama",
+      "provider_season_id": 5742,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=03%2F12%2F2022&id=5742&l=Girona&v=Grama",
+      "date": "03/12/2022",
+      "season": "2022-23",
+      "competition": "Juv",
+      "round_or_type": "Jornada 13",
+      "home_team": "Girona",
+      "score_text": "2 0",
+      "home_goals": 2,
+      "away_goals": 0,
+      "away_team": "Grama",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 31,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2022-23&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Grama&amp;d=03/12/2022\">11</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Grama&amp;d=03/12/2022\">03/12/2022</a></td>",
+        "Temporada": "<td data-temp=\"2022-23\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Grama&amp;d=03/12/2022\">2022-23</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Grama&amp;d=03/12/2022\">Juv</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Grama&amp;d=03/12/2022\" title=\"Jornada 13\">Jornada 13</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Grama&amp;d=03/12/2022\">Girona</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Grama&amp;d=03/12/2022\"><div class=\"resultat-gols resultat-resultat-1\">2</div><div class=\"resultat-gols resultat-resultat-1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Grama&amp;d=03/12/2022\">Grama</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Grama&amp;d=03/12/2022\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Grama&amp;d=03/12/2022\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Grama&amp;d=03/12/2022\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Grama&amp;d=03/12/2022\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Grama&amp;d=03/12/2022\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Grama&amp;d=03/12/2022\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Grama&amp;d=03/12/2022\">31</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Grama&amp;d=03/12/2022\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Grama&amp;d=03/12/2022\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Grama&amp;d=03/12/2022\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Grama&amp;d=03/12/2022\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=18%2F12%2F2022&id=3336&l=Vilassar+Mar&v=Girona+B",
+      "provider_season_id": 3336,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=18%2F12%2F2022&id=3336&l=Vilassar+Mar&v=Girona+B",
+      "date": "18/12/2022",
+      "season": "2022-23",
+      "competition": "3ª",
+      "round_or_type": "Jornada 15",
+      "home_team": "Vilassar Mar",
+      "score_text": "3 4",
+      "home_goals": 3,
+      "away_goals": 4,
+      "away_team": "Girona B",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2022-23&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=3336&amp;l=Vilassar Mar&amp;v=Girona B&amp;d=18/12/2022\">27</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=3336&amp;l=Vilassar Mar&amp;v=Girona B&amp;d=18/12/2022\">18/12/2022</a></td>",
+        "Temporada": "<td data-temp=\"2022-23\"><a href=\"partido.html?id=3336&amp;l=Vilassar Mar&amp;v=Girona B&amp;d=18/12/2022\">2022-23</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=3336&amp;l=Vilassar Mar&amp;v=Girona B&amp;d=18/12/2022\">3ª</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=3336&amp;l=Vilassar Mar&amp;v=Girona B&amp;d=18/12/2022\" title=\"Jornada 15\">Jornada 15</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"partido.html?id=3336&amp;l=Vilassar Mar&amp;v=Girona B&amp;d=18/12/2022\">Vilassar Mar</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=3336&amp;l=Vilassar Mar&amp;v=Girona B&amp;d=18/12/2022\"><div class=\"resultat-gols resultat-resultat-1\">3</div><div class=\"resultat-gols resultat-resultat-1\">4</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"partido.html?id=3336&amp;l=Vilassar Mar&amp;v=Girona B&amp;d=18/12/2022\">Girona B</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"partido.html?id=3336&amp;l=Vilassar Mar&amp;v=Girona B&amp;d=18/12/2022\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"partido.html?id=3336&amp;l=Vilassar Mar&amp;v=Girona B&amp;d=18/12/2022\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Vilassar Mar&amp;v=Girona B&amp;d=18/12/2022\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=3336&amp;l=Vilassar Mar&amp;v=Girona B&amp;d=18/12/2022\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=3336&amp;l=Vilassar Mar&amp;v=Girona B&amp;d=18/12/2022\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Vilassar Mar&amp;v=Girona B&amp;d=18/12/2022\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=3336&amp;l=Vilassar Mar&amp;v=Girona B&amp;d=18/12/2022\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Vilassar Mar&amp;v=Girona B&amp;d=18/12/2022\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Vilassar Mar&amp;v=Girona B&amp;d=18/12/2022\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Vilassar Mar&amp;v=Girona B&amp;d=18/12/2022\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Vilassar Mar&amp;v=Girona B&amp;d=18/12/2022\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=08%2F01%2F2023&id=3336&l=Monta%C3%B1esa&v=Girona+B",
+      "provider_season_id": 3336,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=08%2F01%2F2023&id=3336&l=Monta%C3%B1esa&v=Girona+B",
+      "date": "08/01/2023",
+      "season": "2022-23",
+      "competition": "3ª",
+      "round_or_type": "Jornada 16",
+      "home_team": "Montañesa",
+      "score_text": "2 1",
+      "home_goals": 2,
+      "away_goals": 1,
+      "away_team": "Girona B",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 67,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2022-23&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=3336&amp;l=Montañesa&amp;v=Girona B&amp;d=08/01/2023\">28</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=3336&amp;l=Montañesa&amp;v=Girona B&amp;d=08/01/2023\">08/01/2023</a></td>",
+        "Temporada": "<td data-temp=\"2022-23\"><a href=\"partido.html?id=3336&amp;l=Montañesa&amp;v=Girona B&amp;d=08/01/2023\">2022-23</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=3336&amp;l=Montañesa&amp;v=Girona B&amp;d=08/01/2023\">3ª</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=3336&amp;l=Montañesa&amp;v=Girona B&amp;d=08/01/2023\" title=\"Jornada 16\">Jornada 16</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"partido.html?id=3336&amp;l=Montañesa&amp;v=Girona B&amp;d=08/01/2023\">Montañesa</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=3336&amp;l=Montañesa&amp;v=Girona B&amp;d=08/01/2023\"><div class=\"resultat-gols resultat-resultat--1\">2</div><div class=\"resultat-gols resultat-resultat--1\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"partido.html?id=3336&amp;l=Montañesa&amp;v=Girona B&amp;d=08/01/2023\">Girona B</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"partido.html?id=3336&amp;l=Montañesa&amp;v=Girona B&amp;d=08/01/2023\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Montañesa&amp;v=Girona B&amp;d=08/01/2023\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Montañesa&amp;v=Girona B&amp;d=08/01/2023\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=3336&amp;l=Montañesa&amp;v=Girona B&amp;d=08/01/2023\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=3336&amp;l=Montañesa&amp;v=Girona B&amp;d=08/01/2023\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Montañesa&amp;v=Girona B&amp;d=08/01/2023\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=3336&amp;l=Montañesa&amp;v=Girona B&amp;d=08/01/2023\">67</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Montañesa&amp;v=Girona B&amp;d=08/01/2023\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Montañesa&amp;v=Girona B&amp;d=08/01/2023\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Montañesa&amp;v=Girona B&amp;d=08/01/2023\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Montañesa&amp;v=Girona B&amp;d=08/01/2023\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=15%2F01%2F2023&id=5742&l=Mallorca&v=Girona",
+      "provider_season_id": 5742,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=15%2F01%2F2023&id=5742&l=Mallorca&v=Girona",
+      "date": "15/01/2023",
+      "season": "2022-23",
+      "competition": "Juv",
+      "round_or_type": "Jornada 16",
+      "home_team": "Mallorca",
+      "score_text": "3 2",
+      "home_goals": 3,
+      "away_goals": 2,
+      "away_team": "Girona",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 67,
+      "yellow_cards_raw": "'45",
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2022-23&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=5742&amp;l=Mallorca&amp;v=Girona&amp;d=15/01/2023\">12</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=5742&amp;l=Mallorca&amp;v=Girona&amp;d=15/01/2023\">15/01/2023</a></td>",
+        "Temporada": "<td data-temp=\"2022-23\"><a href=\"partido.html?id=5742&amp;l=Mallorca&amp;v=Girona&amp;d=15/01/2023\">2022-23</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=5742&amp;l=Mallorca&amp;v=Girona&amp;d=15/01/2023\">Juv</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=5742&amp;l=Mallorca&amp;v=Girona&amp;d=15/01/2023\" title=\"Jornada 16\">Jornada 16</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"partido.html?id=5742&amp;l=Mallorca&amp;v=Girona&amp;d=15/01/2023\">Mallorca</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=5742&amp;l=Mallorca&amp;v=Girona&amp;d=15/01/2023\"><div class=\"resultat-gols resultat-resultat--1\">3</div><div class=\"resultat-gols resultat-resultat--1\">2</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"partido.html?id=5742&amp;l=Mallorca&amp;v=Girona&amp;d=15/01/2023\">Girona</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"partido.html?id=5742&amp;l=Mallorca&amp;v=Girona&amp;d=15/01/2023\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Mallorca&amp;v=Girona&amp;d=15/01/2023\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Mallorca&amp;v=Girona&amp;d=15/01/2023\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Mallorca&amp;v=Girona&amp;d=15/01/2023\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Mallorca&amp;v=Girona&amp;d=15/01/2023\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Mallorca&amp;v=Girona&amp;d=15/01/2023\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=5742&amp;l=Mallorca&amp;v=Girona&amp;d=15/01/2023\">67</a></td>",
+        "TA": "<td class=\"GR resp_off\"><a href=\"partido.html?id=5742&amp;l=Mallorca&amp;v=Girona&amp;d=15/01/2023\"><span class=\"\" title=\"\">'45</span></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Mallorca&amp;v=Girona&amp;d=15/01/2023\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Mallorca&amp;v=Girona&amp;d=15/01/2023\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Mallorca&amp;v=Girona&amp;d=15/01/2023\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=22%2F01%2F2023&id=3336&l=Girona+B&v=Castelldefels",
+      "provider_season_id": 3336,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=22%2F01%2F2023&id=3336&l=Girona+B&v=Castelldefels",
+      "date": "22/01/2023",
+      "season": "2022-23",
+      "competition": "3ª",
+      "round_or_type": "Jornada 18",
+      "home_team": "Girona B",
+      "score_text": "0 1",
+      "home_goals": 0,
+      "away_goals": 1,
+      "away_team": "Castelldefels",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 19,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2022-23&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Castelldefels&amp;d=22/01/2023\">29</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Castelldefels&amp;d=22/01/2023\">22/01/2023</a></td>",
+        "Temporada": "<td data-temp=\"2022-23\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Castelldefels&amp;d=22/01/2023\">2022-23</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Castelldefels&amp;d=22/01/2023\">3ª</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Castelldefels&amp;d=22/01/2023\" title=\"Jornada 18\">Jornada 18</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Castelldefels&amp;d=22/01/2023\">Girona B</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Castelldefels&amp;d=22/01/2023\"><div class=\"resultat-gols resultat-resultat--1\">0</div><div class=\"resultat-gols resultat-resultat--1\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Castelldefels&amp;d=22/01/2023\">Castelldefels</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Castelldefels&amp;d=22/01/2023\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Castelldefels&amp;d=22/01/2023\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Castelldefels&amp;d=22/01/2023\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Castelldefels&amp;d=22/01/2023\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Castelldefels&amp;d=22/01/2023\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Castelldefels&amp;d=22/01/2023\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Castelldefels&amp;d=22/01/2023\">19</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Castelldefels&amp;d=22/01/2023\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Castelldefels&amp;d=22/01/2023\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Castelldefels&amp;d=22/01/2023\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Castelldefels&amp;d=22/01/2023\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=28%2F01%2F2023&id=5742&l=Espanyol&v=Girona",
+      "provider_season_id": 5742,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=28%2F01%2F2023&id=5742&l=Espanyol&v=Girona",
+      "date": "28/01/2023",
+      "season": "2022-23",
+      "competition": "Juv",
+      "round_or_type": "Jornada 18",
+      "home_team": "Espanyol",
+      "score_text": "1 3",
+      "home_goals": 1,
+      "away_goals": 3,
+      "away_team": "Girona",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": "'86",
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2022-23&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=5742&amp;l=Espanyol&amp;v=Girona&amp;d=28/01/2023\">13</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=5742&amp;l=Espanyol&amp;v=Girona&amp;d=28/01/2023\">28/01/2023</a></td>",
+        "Temporada": "<td data-temp=\"2022-23\"><a href=\"partido.html?id=5742&amp;l=Espanyol&amp;v=Girona&amp;d=28/01/2023\">2022-23</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=5742&amp;l=Espanyol&amp;v=Girona&amp;d=28/01/2023\">Juv</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=5742&amp;l=Espanyol&amp;v=Girona&amp;d=28/01/2023\" title=\"Jornada 18\">Jornada 18</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"partido.html?id=5742&amp;l=Espanyol&amp;v=Girona&amp;d=28/01/2023\">Espanyol</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=5742&amp;l=Espanyol&amp;v=Girona&amp;d=28/01/2023\"><div class=\"resultat-gols resultat-resultat-1\">1</div><div class=\"resultat-gols resultat-resultat-1\">3</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"partido.html?id=5742&amp;l=Espanyol&amp;v=Girona&amp;d=28/01/2023\">Girona</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"partido.html?id=5742&amp;l=Espanyol&amp;v=Girona&amp;d=28/01/2023\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"partido.html?id=5742&amp;l=Espanyol&amp;v=Girona&amp;d=28/01/2023\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Espanyol&amp;v=Girona&amp;d=28/01/2023\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Espanyol&amp;v=Girona&amp;d=28/01/2023\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Espanyol&amp;v=Girona&amp;d=28/01/2023\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Espanyol&amp;v=Girona&amp;d=28/01/2023\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=5742&amp;l=Espanyol&amp;v=Girona&amp;d=28/01/2023\">90</a></td>",
+        "TA": "<td class=\"GR resp_off\"><a href=\"partido.html?id=5742&amp;l=Espanyol&amp;v=Girona&amp;d=28/01/2023\"><span class=\"\" title=\"\">'86</span></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Espanyol&amp;v=Girona&amp;d=28/01/2023\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Espanyol&amp;v=Girona&amp;d=28/01/2023\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Espanyol&amp;v=Girona&amp;d=28/01/2023\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=04%2F02%2F2023&id=5742&l=Girona&v=Badalona",
+      "provider_season_id": 5742,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=04%2F02%2F2023&id=5742&l=Girona&v=Badalona",
+      "date": "04/02/2023",
+      "season": "2022-23",
+      "competition": "Juv",
+      "round_or_type": "Jornada 19",
+      "home_team": "Girona",
+      "score_text": "1 0",
+      "home_goals": 1,
+      "away_goals": 0,
+      "away_team": "Badalona",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2022-23&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Badalona&amp;d=04/02/2023\">14</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Badalona&amp;d=04/02/2023\">04/02/2023</a></td>",
+        "Temporada": "<td data-temp=\"2022-23\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Badalona&amp;d=04/02/2023\">2022-23</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Badalona&amp;d=04/02/2023\">Juv</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Badalona&amp;d=04/02/2023\" title=\"Jornada 19\">Jornada 19</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Badalona&amp;d=04/02/2023\">Girona</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Badalona&amp;d=04/02/2023\"><div class=\"resultat-gols resultat-resultat-1\">1</div><div class=\"resultat-gols resultat-resultat-1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Badalona&amp;d=04/02/2023\">Badalona</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Badalona&amp;d=04/02/2023\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Badalona&amp;d=04/02/2023\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Badalona&amp;d=04/02/2023\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Badalona&amp;d=04/02/2023\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Badalona&amp;d=04/02/2023\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Badalona&amp;d=04/02/2023\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Badalona&amp;d=04/02/2023\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Badalona&amp;d=04/02/2023\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Badalona&amp;d=04/02/2023\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Badalona&amp;d=04/02/2023\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Badalona&amp;d=04/02/2023\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=11%2F02%2F2023&id=5742&l=Cornell%C3%A0&v=Girona",
+      "provider_season_id": 5742,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=11%2F02%2F2023&id=5742&l=Cornell%C3%A0&v=Girona",
+      "date": "11/02/2023",
+      "season": "2022-23",
+      "competition": "Juv",
+      "round_or_type": "Jornada 20",
+      "home_team": "Cornellà",
+      "score_text": "1 3",
+      "home_goals": 1,
+      "away_goals": 3,
+      "away_team": "Girona",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2022-23&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=5742&amp;l=Cornellà&amp;v=Girona&amp;d=11/02/2023\">15</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=5742&amp;l=Cornellà&amp;v=Girona&amp;d=11/02/2023\">11/02/2023</a></td>",
+        "Temporada": "<td data-temp=\"2022-23\"><a href=\"partido.html?id=5742&amp;l=Cornellà&amp;v=Girona&amp;d=11/02/2023\">2022-23</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=5742&amp;l=Cornellà&amp;v=Girona&amp;d=11/02/2023\">Juv</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=5742&amp;l=Cornellà&amp;v=Girona&amp;d=11/02/2023\" title=\"Jornada 20\">Jornada 20</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"partido.html?id=5742&amp;l=Cornellà&amp;v=Girona&amp;d=11/02/2023\">Cornellà</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=5742&amp;l=Cornellà&amp;v=Girona&amp;d=11/02/2023\"><div class=\"resultat-gols resultat-resultat-1\">1</div><div class=\"resultat-gols resultat-resultat-1\">3</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"partido.html?id=5742&amp;l=Cornellà&amp;v=Girona&amp;d=11/02/2023\">Girona</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"partido.html?id=5742&amp;l=Cornellà&amp;v=Girona&amp;d=11/02/2023\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"partido.html?id=5742&amp;l=Cornellà&amp;v=Girona&amp;d=11/02/2023\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Cornellà&amp;v=Girona&amp;d=11/02/2023\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Cornellà&amp;v=Girona&amp;d=11/02/2023\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Cornellà&amp;v=Girona&amp;d=11/02/2023\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Cornellà&amp;v=Girona&amp;d=11/02/2023\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=5742&amp;l=Cornellà&amp;v=Girona&amp;d=11/02/2023\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Cornellà&amp;v=Girona&amp;d=11/02/2023\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Cornellà&amp;v=Girona&amp;d=11/02/2023\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Cornellà&amp;v=Girona&amp;d=11/02/2023\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Cornellà&amp;v=Girona&amp;d=11/02/2023\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=18%2F02%2F2023&id=5742&l=Girona&v=Huesca",
+      "provider_season_id": 5742,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=18%2F02%2F2023&id=5742&l=Girona&v=Huesca",
+      "date": "18/02/2023",
+      "season": "2022-23",
+      "competition": "Juv",
+      "round_or_type": "Jornada 21",
+      "home_team": "Girona",
+      "score_text": "1 0",
+      "home_goals": 1,
+      "away_goals": 0,
+      "away_team": "Huesca",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2022-23&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Huesca&amp;d=18/02/2023\">16</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Huesca&amp;d=18/02/2023\">18/02/2023</a></td>",
+        "Temporada": "<td data-temp=\"2022-23\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Huesca&amp;d=18/02/2023\">2022-23</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Huesca&amp;d=18/02/2023\">Juv</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Huesca&amp;d=18/02/2023\" title=\"Jornada 21\">Jornada 21</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Huesca&amp;d=18/02/2023\">Girona</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Huesca&amp;d=18/02/2023\"><div class=\"resultat-gols resultat-resultat-1\">1</div><div class=\"resultat-gols resultat-resultat-1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Huesca&amp;d=18/02/2023\">Huesca</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Huesca&amp;d=18/02/2023\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Huesca&amp;d=18/02/2023\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Huesca&amp;d=18/02/2023\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Huesca&amp;d=18/02/2023\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Huesca&amp;d=18/02/2023\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Huesca&amp;d=18/02/2023\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Huesca&amp;d=18/02/2023\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Huesca&amp;d=18/02/2023\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Huesca&amp;d=18/02/2023\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Huesca&amp;d=18/02/2023\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Huesca&amp;d=18/02/2023\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=26%2F02%2F2023&id=3336&l=Girona+B&v=Pobla+Mafumet",
+      "provider_season_id": 3336,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=26%2F02%2F2023&id=3336&l=Girona+B&v=Pobla+Mafumet",
+      "date": "26/02/2023",
+      "season": "2022-23",
+      "competition": "3ª",
+      "round_or_type": "Jornada 22",
+      "home_team": "Girona B",
+      "score_text": "1 1",
+      "home_goals": 1,
+      "away_goals": 1,
+      "away_team": "Pobla Mafumet",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2022-23&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Pobla Mafumet&amp;d=26/02/2023\">30</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Pobla Mafumet&amp;d=26/02/2023\">26/02/2023</a></td>",
+        "Temporada": "<td data-temp=\"2022-23\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Pobla Mafumet&amp;d=26/02/2023\">2022-23</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Pobla Mafumet&amp;d=26/02/2023\">3ª</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Pobla Mafumet&amp;d=26/02/2023\" title=\"Jornada 22\">Jornada 22</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Pobla Mafumet&amp;d=26/02/2023\">Girona B</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Pobla Mafumet&amp;d=26/02/2023\"><div class=\"resultat-gols resultat-resultat-0\">1</div><div class=\"resultat-gols resultat-resultat-0\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Pobla Mafumet&amp;d=26/02/2023\">Pobla Mafumet</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Pobla Mafumet&amp;d=26/02/2023\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Pobla Mafumet&amp;d=26/02/2023\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Pobla Mafumet&amp;d=26/02/2023\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Pobla Mafumet&amp;d=26/02/2023\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Pobla Mafumet&amp;d=26/02/2023\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Pobla Mafumet&amp;d=26/02/2023\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Pobla Mafumet&amp;d=26/02/2023\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Pobla Mafumet&amp;d=26/02/2023\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Pobla Mafumet&amp;d=26/02/2023\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Pobla Mafumet&amp;d=26/02/2023\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=3336&amp;l=Girona B&amp;v=Pobla Mafumet&amp;d=26/02/2023\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=04%2F03%2F2023&id=5742&l=Girona&v=Barcelona",
+      "provider_season_id": 5742,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=04%2F03%2F2023&id=5742&l=Girona&v=Barcelona",
+      "date": "04/03/2023",
+      "season": "2022-23",
+      "competition": "Juv",
+      "round_or_type": "Jornada 23",
+      "home_team": "Girona",
+      "score_text": "2 0",
+      "home_goals": 2,
+      "away_goals": 0,
+      "away_team": "Barcelona",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": "'49",
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2022-23&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Barcelona&amp;d=04/03/2023\">17</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Barcelona&amp;d=04/03/2023\">04/03/2023</a></td>",
+        "Temporada": "<td data-temp=\"2022-23\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Barcelona&amp;d=04/03/2023\">2022-23</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Barcelona&amp;d=04/03/2023\">Juv</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Barcelona&amp;d=04/03/2023\" title=\"Jornada 23\">Jornada 23</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Barcelona&amp;d=04/03/2023\">Girona</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Barcelona&amp;d=04/03/2023\"><div class=\"resultat-gols resultat-resultat-1\">2</div><div class=\"resultat-gols resultat-resultat-1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Barcelona&amp;d=04/03/2023\">Barcelona</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Barcelona&amp;d=04/03/2023\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Barcelona&amp;d=04/03/2023\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Barcelona&amp;d=04/03/2023\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Barcelona&amp;d=04/03/2023\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Barcelona&amp;d=04/03/2023\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Barcelona&amp;d=04/03/2023\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Barcelona&amp;d=04/03/2023\">90</a></td>",
+        "TA": "<td class=\"GR resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Barcelona&amp;d=04/03/2023\"><span class=\"\" title=\"\">'49</span></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Barcelona&amp;d=04/03/2023\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Barcelona&amp;d=04/03/2023\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Barcelona&amp;d=04/03/2023\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=01%2F04%2F2023&id=5742&l=Girona&v=Zaragoza",
+      "provider_season_id": 5742,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=01%2F04%2F2023&id=5742&l=Girona&v=Zaragoza",
+      "date": "01/04/2023",
+      "season": "2022-23",
+      "competition": "Juv",
+      "round_or_type": "Jornada 25",
+      "home_team": "Girona",
+      "score_text": "2 1",
+      "home_goals": 2,
+      "away_goals": 1,
+      "away_team": "Zaragoza",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2022-23&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Zaragoza&amp;d=01/04/2023\">18</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Zaragoza&amp;d=01/04/2023\">01/04/2023</a></td>",
+        "Temporada": "<td data-temp=\"2022-23\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Zaragoza&amp;d=01/04/2023\">2022-23</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Zaragoza&amp;d=01/04/2023\">Juv</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Zaragoza&amp;d=01/04/2023\" title=\"Jornada 25\">Jornada 25</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Zaragoza&amp;d=01/04/2023\">Girona</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Zaragoza&amp;d=01/04/2023\"><div class=\"resultat-gols resultat-resultat-1\">2</div><div class=\"resultat-gols resultat-resultat-1\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Zaragoza&amp;d=01/04/2023\">Zaragoza</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Zaragoza&amp;d=01/04/2023\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Zaragoza&amp;d=01/04/2023\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Zaragoza&amp;d=01/04/2023\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Zaragoza&amp;d=01/04/2023\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Zaragoza&amp;d=01/04/2023\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Zaragoza&amp;d=01/04/2023\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Zaragoza&amp;d=01/04/2023\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Zaragoza&amp;d=01/04/2023\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Zaragoza&amp;d=01/04/2023\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Zaragoza&amp;d=01/04/2023\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Zaragoza&amp;d=01/04/2023\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=07%2F04%2F2023&id=5742&l=Ebro&v=Girona",
+      "provider_season_id": 5742,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=07%2F04%2F2023&id=5742&l=Ebro&v=Girona",
+      "date": "07/04/2023",
+      "season": "2022-23",
+      "competition": "Juv",
+      "round_or_type": "Jornada 26",
+      "home_team": "Ebro",
+      "score_text": "2 5",
+      "home_goals": 2,
+      "away_goals": 5,
+      "away_team": "Girona",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 9,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2022-23&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=5742&amp;l=Ebro&amp;v=Girona&amp;d=07/04/2023\">19</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=5742&amp;l=Ebro&amp;v=Girona&amp;d=07/04/2023\">07/04/2023</a></td>",
+        "Temporada": "<td data-temp=\"2022-23\"><a href=\"partido.html?id=5742&amp;l=Ebro&amp;v=Girona&amp;d=07/04/2023\">2022-23</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=5742&amp;l=Ebro&amp;v=Girona&amp;d=07/04/2023\">Juv</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=5742&amp;l=Ebro&amp;v=Girona&amp;d=07/04/2023\" title=\"Jornada 26\">Jornada 26</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"partido.html?id=5742&amp;l=Ebro&amp;v=Girona&amp;d=07/04/2023\">Ebro</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=5742&amp;l=Ebro&amp;v=Girona&amp;d=07/04/2023\"><div class=\"resultat-gols resultat-resultat-1\">2</div><div class=\"resultat-gols resultat-resultat-1\">5</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"partido.html?id=5742&amp;l=Ebro&amp;v=Girona&amp;d=07/04/2023\">Girona</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Ebro&amp;v=Girona&amp;d=07/04/2023\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Ebro&amp;v=Girona&amp;d=07/04/2023\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"partido.html?id=5742&amp;l=Ebro&amp;v=Girona&amp;d=07/04/2023\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Ebro&amp;v=Girona&amp;d=07/04/2023\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Ebro&amp;v=Girona&amp;d=07/04/2023\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Ebro&amp;v=Girona&amp;d=07/04/2023\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=5742&amp;l=Ebro&amp;v=Girona&amp;d=07/04/2023\">9</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Ebro&amp;v=Girona&amp;d=07/04/2023\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Ebro&amp;v=Girona&amp;d=07/04/2023\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Ebro&amp;v=Girona&amp;d=07/04/2023\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Ebro&amp;v=Girona&amp;d=07/04/2023\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=15%2F04%2F2023&id=5742&l=Girona&v=Constancia",
+      "provider_season_id": 5742,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=15%2F04%2F2023&id=5742&l=Girona&v=Constancia",
+      "date": "15/04/2023",
+      "season": "2022-23",
+      "competition": "Juv",
+      "round_or_type": "Jornada 27",
+      "home_team": "Girona",
+      "score_text": "0 0",
+      "home_goals": 0,
+      "away_goals": 0,
+      "away_team": "Constancia",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2022-23&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Constancia&amp;d=15/04/2023\">20</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Constancia&amp;d=15/04/2023\">15/04/2023</a></td>",
+        "Temporada": "<td data-temp=\"2022-23\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Constancia&amp;d=15/04/2023\">2022-23</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Constancia&amp;d=15/04/2023\">Juv</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Constancia&amp;d=15/04/2023\" title=\"Jornada 27\">Jornada 27</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Constancia&amp;d=15/04/2023\">Girona</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Constancia&amp;d=15/04/2023\"><div class=\"resultat-gols resultat-resultat-0\">0</div><div class=\"resultat-gols resultat-resultat-0\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Constancia&amp;d=15/04/2023\">Constancia</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Constancia&amp;d=15/04/2023\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Constancia&amp;d=15/04/2023\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Constancia&amp;d=15/04/2023\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Constancia&amp;d=15/04/2023\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Constancia&amp;d=15/04/2023\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Constancia&amp;d=15/04/2023\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Constancia&amp;d=15/04/2023\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Constancia&amp;d=15/04/2023\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Constancia&amp;d=15/04/2023\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Constancia&amp;d=15/04/2023\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Constancia&amp;d=15/04/2023\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=22%2F04%2F2023&id=5742&l=Grama&v=Girona",
+      "provider_season_id": 5742,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=22%2F04%2F2023&id=5742&l=Grama&v=Girona",
+      "date": "22/04/2023",
+      "season": "2022-23",
+      "competition": "Juv",
+      "round_or_type": "Jornada 28",
+      "home_team": "Grama",
+      "score_text": "0 2",
+      "home_goals": 0,
+      "away_goals": 2,
+      "away_team": "Girona",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2022-23&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=5742&amp;l=Grama&amp;v=Girona&amp;d=22/04/2023\">21</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=5742&amp;l=Grama&amp;v=Girona&amp;d=22/04/2023\">22/04/2023</a></td>",
+        "Temporada": "<td data-temp=\"2022-23\"><a href=\"partido.html?id=5742&amp;l=Grama&amp;v=Girona&amp;d=22/04/2023\">2022-23</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=5742&amp;l=Grama&amp;v=Girona&amp;d=22/04/2023\">Juv</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=5742&amp;l=Grama&amp;v=Girona&amp;d=22/04/2023\" title=\"Jornada 28\">Jornada 28</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"partido.html?id=5742&amp;l=Grama&amp;v=Girona&amp;d=22/04/2023\">Grama</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=5742&amp;l=Grama&amp;v=Girona&amp;d=22/04/2023\"><div class=\"resultat-gols resultat-resultat-1\">0</div><div class=\"resultat-gols resultat-resultat-1\">2</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"partido.html?id=5742&amp;l=Grama&amp;v=Girona&amp;d=22/04/2023\">Girona</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"partido.html?id=5742&amp;l=Grama&amp;v=Girona&amp;d=22/04/2023\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"partido.html?id=5742&amp;l=Grama&amp;v=Girona&amp;d=22/04/2023\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Grama&amp;v=Girona&amp;d=22/04/2023\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Grama&amp;v=Girona&amp;d=22/04/2023\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Grama&amp;v=Girona&amp;d=22/04/2023\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Grama&amp;v=Girona&amp;d=22/04/2023\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=5742&amp;l=Grama&amp;v=Girona&amp;d=22/04/2023\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Grama&amp;v=Girona&amp;d=22/04/2023\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Grama&amp;v=Girona&amp;d=22/04/2023\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Grama&amp;v=Girona&amp;d=22/04/2023\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Grama&amp;v=Girona&amp;d=22/04/2023\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=29%2F04%2F2023&id=5742&l=Gimn%C3%A0stic+de+Tarragona&v=Girona",
+      "provider_season_id": 5742,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=29%2F04%2F2023&id=5742&l=Gimn%C3%A0stic+de+Tarragona&v=Girona",
+      "date": "29/04/2023",
+      "season": "2022-23",
+      "competition": "Juv",
+      "round_or_type": "Jornada 29",
+      "home_team": "Gimnàstic de Tarragona",
+      "score_text": "2 1",
+      "home_goals": 2,
+      "away_goals": 1,
+      "away_team": "Girona",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2022-23&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=5742&amp;l=Gimnàstic de Tarragona&amp;v=Girona&amp;d=29/04/2023\">22</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=5742&amp;l=Gimnàstic de Tarragona&amp;v=Girona&amp;d=29/04/2023\">29/04/2023</a></td>",
+        "Temporada": "<td data-temp=\"2022-23\"><a href=\"partido.html?id=5742&amp;l=Gimnàstic de Tarragona&amp;v=Girona&amp;d=29/04/2023\">2022-23</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=5742&amp;l=Gimnàstic de Tarragona&amp;v=Girona&amp;d=29/04/2023\">Juv</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=5742&amp;l=Gimnàstic de Tarragona&amp;v=Girona&amp;d=29/04/2023\" title=\"Jornada 29\">Jornada 29</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"partido.html?id=5742&amp;l=Gimnàstic de Tarragona&amp;v=Girona&amp;d=29/04/2023\">Gimnàstic de Tarragona</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=5742&amp;l=Gimnàstic de Tarragona&amp;v=Girona&amp;d=29/04/2023\"><div class=\"resultat-gols resultat-resultat--1\">2</div><div class=\"resultat-gols resultat-resultat--1\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"partido.html?id=5742&amp;l=Gimnàstic de Tarragona&amp;v=Girona&amp;d=29/04/2023\">Girona</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"partido.html?id=5742&amp;l=Gimnàstic de Tarragona&amp;v=Girona&amp;d=29/04/2023\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"partido.html?id=5742&amp;l=Gimnàstic de Tarragona&amp;v=Girona&amp;d=29/04/2023\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Gimnàstic de Tarragona&amp;v=Girona&amp;d=29/04/2023\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Gimnàstic de Tarragona&amp;v=Girona&amp;d=29/04/2023\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Gimnàstic de Tarragona&amp;v=Girona&amp;d=29/04/2023\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Gimnàstic de Tarragona&amp;v=Girona&amp;d=29/04/2023\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=5742&amp;l=Gimnàstic de Tarragona&amp;v=Girona&amp;d=29/04/2023\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Gimnàstic de Tarragona&amp;v=Girona&amp;d=29/04/2023\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Gimnàstic de Tarragona&amp;v=Girona&amp;d=29/04/2023\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Gimnàstic de Tarragona&amp;v=Girona&amp;d=29/04/2023\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Gimnàstic de Tarragona&amp;v=Girona&amp;d=29/04/2023\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=06%2F05%2F2023&id=5742&l=Girona&v=Sabadell",
+      "provider_season_id": 5742,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=06%2F05%2F2023&id=5742&l=Girona&v=Sabadell",
+      "date": "06/05/2023",
+      "season": "2022-23",
+      "competition": "Juv",
+      "round_or_type": "Jornada 30",
+      "home_team": "Girona",
+      "score_text": "2 1",
+      "home_goals": 2,
+      "away_goals": 1,
+      "away_team": "Sabadell",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2022-23&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Sabadell&amp;d=06/05/2023\">23</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Sabadell&amp;d=06/05/2023\">06/05/2023</a></td>",
+        "Temporada": "<td data-temp=\"2022-23\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Sabadell&amp;d=06/05/2023\">2022-23</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Sabadell&amp;d=06/05/2023\">Juv</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Sabadell&amp;d=06/05/2023\" title=\"Jornada 30\">Jornada 30</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Sabadell&amp;d=06/05/2023\">Girona</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Sabadell&amp;d=06/05/2023\"><div class=\"resultat-gols resultat-resultat-1\">2</div><div class=\"resultat-gols resultat-resultat-1\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Sabadell&amp;d=06/05/2023\">Sabadell</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Sabadell&amp;d=06/05/2023\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Sabadell&amp;d=06/05/2023\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Sabadell&amp;d=06/05/2023\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Sabadell&amp;d=06/05/2023\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Sabadell&amp;d=06/05/2023\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Sabadell&amp;d=06/05/2023\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Sabadell&amp;d=06/05/2023\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Sabadell&amp;d=06/05/2023\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Sabadell&amp;d=06/05/2023\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Sabadell&amp;d=06/05/2023\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=5742&amp;l=Girona&amp;v=Sabadell&amp;d=06/05/2023\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=30%2F09%2F2023&id=3704&l=Vilafranca&v=Girona+B",
+      "provider_season_id": 3704,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=30%2F09%2F2023&id=3704&l=Vilafranca&v=Girona+B",
+      "date": "30/09/2023",
+      "season": "2023-24",
+      "competition": "3ª",
+      "round_or_type": "Jornada 4",
+      "home_team": "Vilafranca",
+      "score_text": "1 2",
+      "home_goals": 1,
+      "away_goals": 2,
+      "away_team": "Girona B",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 1,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2023-24&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=3704&amp;l=Vilafranca&amp;v=Girona B&amp;d=30/09/2023\">1</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=3704&amp;l=Vilafranca&amp;v=Girona B&amp;d=30/09/2023\">30/09/2023</a></td>",
+        "Temporada": "<td data-temp=\"2023-24\"><a href=\"partido.html?id=3704&amp;l=Vilafranca&amp;v=Girona B&amp;d=30/09/2023\">2023-24</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=3704&amp;l=Vilafranca&amp;v=Girona B&amp;d=30/09/2023\">3ª</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=3704&amp;l=Vilafranca&amp;v=Girona B&amp;d=30/09/2023\" title=\"Jornada 4\">Jornada 4</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"partido.html?id=3704&amp;l=Vilafranca&amp;v=Girona B&amp;d=30/09/2023\">Vilafranca</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=3704&amp;l=Vilafranca&amp;v=Girona B&amp;d=30/09/2023\"><div class=\"resultat-gols resultat-resultat-1\">1</div><div class=\"resultat-gols resultat-resultat-1\">2</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"partido.html?id=3704&amp;l=Vilafranca&amp;v=Girona B&amp;d=30/09/2023\">Girona B</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"partido.html?id=3704&amp;l=Vilafranca&amp;v=Girona B&amp;d=30/09/2023\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"partido.html?id=3704&amp;l=Vilafranca&amp;v=Girona B&amp;d=30/09/2023\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"partido.html?id=3704&amp;l=Vilafranca&amp;v=Girona B&amp;d=30/09/2023\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=3704&amp;l=Vilafranca&amp;v=Girona B&amp;d=30/09/2023\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"partido.html?id=3704&amp;l=Vilafranca&amp;v=Girona B&amp;d=30/09/2023\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=3704&amp;l=Vilafranca&amp;v=Girona B&amp;d=30/09/2023\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=3704&amp;l=Vilafranca&amp;v=Girona B&amp;d=30/09/2023\">1</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"partido.html?id=3704&amp;l=Vilafranca&amp;v=Girona B&amp;d=30/09/2023\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=3704&amp;l=Vilafranca&amp;v=Girona B&amp;d=30/09/2023\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=3704&amp;l=Vilafranca&amp;v=Girona B&amp;d=30/09/2023\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=3704&amp;l=Vilafranca&amp;v=Girona B&amp;d=30/09/2023\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=08%2F10%2F2023&id=3704&l=Girona+B&v=Monta%C3%B1esa",
+      "provider_season_id": 3704,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=08%2F10%2F2023&id=3704&l=Girona+B&v=Monta%C3%B1esa",
+      "date": "08/10/2023",
+      "season": "2023-24",
+      "competition": "3ª",
+      "round_or_type": "Jornada 5",
+      "home_team": "Girona B",
+      "score_text": "0 0",
+      "home_goals": 0,
+      "away_goals": 0,
+      "away_team": "Montañesa",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2023-24&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Montañesa&amp;d=08/10/2023\">2</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Montañesa&amp;d=08/10/2023\">08/10/2023</a></td>",
+        "Temporada": "<td data-temp=\"2023-24\"><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Montañesa&amp;d=08/10/2023\">2023-24</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Montañesa&amp;d=08/10/2023\">3ª</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Montañesa&amp;d=08/10/2023\" title=\"Jornada 5\">Jornada 5</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Montañesa&amp;d=08/10/2023\">Girona B</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Montañesa&amp;d=08/10/2023\"><div class=\"resultat-gols resultat-resultat-0\">0</div><div class=\"resultat-gols resultat-resultat-0\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Montañesa&amp;d=08/10/2023\">Montañesa</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Montañesa&amp;d=08/10/2023\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Montañesa&amp;d=08/10/2023\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Montañesa&amp;d=08/10/2023\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Montañesa&amp;d=08/10/2023\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Montañesa&amp;d=08/10/2023\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Montañesa&amp;d=08/10/2023\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Montañesa&amp;d=08/10/2023\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Montañesa&amp;d=08/10/2023\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Montañesa&amp;d=08/10/2023\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Montañesa&amp;d=08/10/2023\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Montañesa&amp;d=08/10/2023\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=27%2F04%2F2024&id=3704&l=Girona+B&v=Olot",
+      "provider_season_id": 3704,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=27%2F04%2F2024&id=3704&l=Girona+B&v=Olot",
+      "date": "27/04/2024",
+      "season": "2023-24",
+      "competition": "3ª",
+      "round_or_type": "Jornada 31",
+      "home_team": "Girona B",
+      "score_text": "1 1",
+      "home_goals": 1,
+      "away_goals": 1,
+      "away_team": "Olot",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 60,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2023-24&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Olot&amp;d=27/04/2024\">4</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Olot&amp;d=27/04/2024\">27/04/2024</a></td>",
+        "Temporada": "<td data-temp=\"2023-24\"><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Olot&amp;d=27/04/2024\">2023-24</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Olot&amp;d=27/04/2024\">3ª</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Olot&amp;d=27/04/2024\" title=\"Jornada 31\">Jornada 31</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Olot&amp;d=27/04/2024\">Girona B</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Olot&amp;d=27/04/2024\"><div class=\"resultat-gols resultat-resultat-0\">1</div><div class=\"resultat-gols resultat-resultat-0\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Olot&amp;d=27/04/2024\">Olot</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Olot&amp;d=27/04/2024\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Olot&amp;d=27/04/2024\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Olot&amp;d=27/04/2024\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Olot&amp;d=27/04/2024\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Olot&amp;d=27/04/2024\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Olot&amp;d=27/04/2024\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Olot&amp;d=27/04/2024\">60</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Olot&amp;d=27/04/2024\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Olot&amp;d=27/04/2024\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Olot&amp;d=27/04/2024\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=3704&amp;l=Girona B&amp;v=Olot&amp;d=27/04/2024\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 133958,
+      "match_provider_key": "bdfutbol:match:133958",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=133958",
+      "date": "31/05/2026",
+      "season": "2025-26",
+      "competition": "2a",
+      "round_or_type": "42",
+      "home_team": "Córdoba",
+      "score_text": "1 1",
+      "home_goals": 1,
+      "away_goals": 1,
+      "away_team": "Huesca",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 44,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13796.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=133958\">1</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=133958\">31/05/2026</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=133958\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=133958\">2a</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=133958\" title=\"Jornada 42\">42</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=133958\">Córdoba</a></td>",
+        "col_6": "<td><a href=\"p.php?id=133958\"><div class=\"resultat-gols resultat-resultat-0\">1</div><div class=\"resultat-gols resultat-resultat-0\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=133958\">Huesca</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=133958\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=133958\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=133958\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=133958\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=133958\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=133958\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=133958\">44</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=133958\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=133958\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=133958\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=133958\"></a></td>"
+      }
+    }
+  ],
+  "source_run": "/home/mario/Documents/Trabalo/Proyectos/RealJaen/FootballDataHub/data/raw/bdfutbol/player_full_13796/20261008T091325.246315Z",
+  "warnings": []
+}

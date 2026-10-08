@@ -1,0 +1,4925 @@
+{
+  "identity": {
+    "provider": "bdfutbol",
+    "provider_id": 13583,
+    "display_name": "Alcañiz",
+    "full_name": "Edgar Alcañiz Baldoví",
+    "birth_date": "18/03/2005",
+    "age_displayed": 21,
+    "birth_place": "Sueca",
+    "birth_region": "Valencia",
+    "position": "Centrocampista",
+    "height_cm": 175,
+    "source_url": "https://www.bdfutbol.com/es/j/j13583.html"
+  },
+  "canonical_career": [
+    {
+      "season": "2022-23",
+      "team_name": "Levante",
+      "team_provider_id": 20,
+      "country": null,
+      "division": "2ª",
+      "age": 17,
+      "appearances": 1,
+      "starts": 0,
+      "complete_matches": 0,
+      "substitute_appearances": 1,
+      "substituted": 0,
+      "incomplete_matches": 1,
+      "callups_without_playing": 6,
+      "total_callups": 7,
+      "wins": 1,
+      "draws": 0,
+      "losses": 0,
+      "minutes": 9,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 42,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/j/j13583.html",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2022-23",
+          "Levante",
+          "",
+          "",
+          "2ª",
+          "17",
+          "1",
+          "0",
+          "0",
+          "1",
+          "0",
+          "1",
+          "6",
+          "7",
+          "1",
+          "0",
+          "0",
+          "9",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "42",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2022-23",
+          "data-temporadalink": "2022-23",
+          "data-temporadaid": "0",
+          "data-idclub": "20",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2023-24",
+      "team_name": "Levante",
+      "team_provider_id": 20,
+      "country": null,
+      "division": "2ª",
+      "age": 18,
+      "appearances": 2,
+      "starts": 0,
+      "complete_matches": 0,
+      "substitute_appearances": 2,
+      "substituted": 0,
+      "incomplete_matches": 2,
+      "callups_without_playing": 16,
+      "total_callups": 18,
+      "wins": 0,
+      "draws": 2,
+      "losses": 0,
+      "minutes": 11,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 27,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/j/j13583.html",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2023-24",
+          "Levante",
+          "",
+          "",
+          "2ª",
+          "18",
+          "2",
+          "0",
+          "0",
+          "2",
+          "0",
+          "2",
+          "16",
+          "18",
+          "0",
+          "2",
+          "0",
+          "11",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "27",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2023-24",
+          "data-temporadalink": "2023-24",
+          "data-temporadaid": "0",
+          "data-idclub": "20",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2024-25",
+      "team_name": "Levante",
+      "team_provider_id": 20,
+      "country": null,
+      "division": "2ª",
+      "age": 19,
+      "appearances": 0,
+      "starts": 0,
+      "complete_matches": 0,
+      "substitute_appearances": 0,
+      "substituted": 0,
+      "incomplete_matches": 0,
+      "callups_without_playing": 5,
+      "total_callups": 5,
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "minutes": 0,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 27,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/j/j13583.html",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2024-25",
+          "Levante",
+          "",
+          "Ascenso",
+          "2ª",
+          "19",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "5",
+          "5",
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "27",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2024-25",
+          "data-temporadalink": "2024-25",
+          "data-temporadaid": "0",
+          "data-idclub": "20",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2025-26",
+      "team_name": "FC Cartagena",
+      "team_provider_id": 176,
+      "country": null,
+      "division": "1ªRf",
+      "age": 20,
+      "appearances": 29,
+      "starts": 9,
+      "complete_matches": 3,
+      "substitute_appearances": 20,
+      "substituted": 6,
+      "incomplete_matches": 26,
+      "callups_without_playing": 9,
+      "total_callups": 38,
+      "wins": 11,
+      "draws": 8,
+      "losses": 10,
+      "minutes": 1131,
+      "yellow_cards": 4,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 14,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/j/j13583.html",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2025-26",
+          "FC Cartagena",
+          "",
+          "",
+          "1ªRf",
+          "20",
+          "29",
+          "9",
+          "3",
+          "20",
+          "6",
+          "26",
+          "9",
+          "38",
+          "11",
+          "8",
+          "10",
+          "1131",
+          "4",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "14",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2025-26",
+          "data-temporadalink": "2025-26",
+          "data-temporadaid": "0",
+          "data-idclub": "176",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2026-27",
+      "team_name": "Atlético Madrileño",
+      "team_provider_id": 67,
+      "country": null,
+      "division": "1ªRf",
+      "age": 21,
+      "appearances": 6,
+      "starts": 6,
+      "complete_matches": 2,
+      "substitute_appearances": 0,
+      "substituted": 4,
+      "incomplete_matches": 4,
+      "callups_without_playing": 0,
+      "total_callups": 6,
+      "wins": 2,
+      "draws": 2,
+      "losses": 2,
+      "minutes": 449,
+      "yellow_cards": 1,
+      "red_cards": null,
+      "goals": 1,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 20,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/j/j13583.html",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2026-27",
+          "Atlético Madrileño",
+          "",
+          "",
+          "1ªRf",
+          "21",
+          "6",
+          "6",
+          "2",
+          "0",
+          "4",
+          "4",
+          "0",
+          "6",
+          "2",
+          "2",
+          "2",
+          "449",
+          "1",
+          "-",
+          "1",
+          "-",
+          "-",
+          "-",
+          "20",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2026-27",
+          "data-temporadalink": "2026-27",
+          "data-temporadaid": "0",
+          "data-idclub": "67",
+          "data-idjug": "0"
+        }
+      }
+    }
+  ],
+  "manager_career": [
+    {
+      "season": "2021-22",
+      "team_name": "Levante",
+      "team_provider_id": 20,
+      "country": null,
+      "division": "Juv",
+      "age": 16,
+      "appearances": 1,
+      "starts": 1,
+      "complete_matches": 1,
+      "substitute_appearances": 0,
+      "substituted": 0,
+      "incomplete_matches": 0,
+      "callups_without_playing": 0,
+      "total_callups": 1,
+      "wins": 0,
+      "draws": 1,
+      "losses": 0,
+      "minutes": 90,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j13583.html?manager=1",
+      "provider_season_id": 5827,
+      "provider_player_alias_id": 106346,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2021-22",
+          "Levante",
+          "",
+          "",
+          "Juv",
+          "16",
+          "1",
+          "1",
+          "1",
+          "0",
+          "0",
+          "0",
+          "0",
+          "1",
+          "0",
+          "1",
+          "0",
+          "90",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2021-22",
+          "data-temporadalink": "2021-22",
+          "data-temporadaid": "5827",
+          "data-idclub": "20",
+          "data-idjug": "106346"
+        }
+      }
+    },
+    {
+      "season": "2022-23",
+      "team_name": "Levante",
+      "team_provider_id": 20,
+      "country": null,
+      "division": "Juv",
+      "age": 17,
+      "appearances": 5,
+      "starts": 5,
+      "complete_matches": 5,
+      "substitute_appearances": 0,
+      "substituted": 0,
+      "incomplete_matches": 0,
+      "callups_without_playing": 0,
+      "total_callups": 5,
+      "wins": 2,
+      "draws": 2,
+      "losses": 1,
+      "minutes": 450,
+      "yellow_cards": 1,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 6,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j13583.html?manager=1",
+      "provider_season_id": 5783,
+      "provider_player_alias_id": 106346,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2022-23",
+          "Levante",
+          "",
+          "",
+          "Juv",
+          "17",
+          "5",
+          "5",
+          "5",
+          "0",
+          "0",
+          "0",
+          "0",
+          "5",
+          "2",
+          "2",
+          "1",
+          "450",
+          "1",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "6",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2022-23",
+          "data-temporadalink": "2022-23",
+          "data-temporadaid": "5783",
+          "data-idclub": "20",
+          "data-idjug": "106346"
+        }
+      }
+    },
+    {
+      "season": "2022-23",
+      "team_name": "Atlético Levante",
+      "team_provider_id": 162,
+      "country": null,
+      "division": "3ª",
+      "age": 17,
+      "appearances": 1,
+      "starts": 0,
+      "complete_matches": 0,
+      "substitute_appearances": 1,
+      "substituted": 0,
+      "incomplete_matches": 1,
+      "callups_without_playing": 1,
+      "total_callups": 2,
+      "wins": 0,
+      "draws": 0,
+      "losses": 1,
+      "minutes": 17,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 31,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j13583.html?manager=1",
+      "provider_season_id": 2557,
+      "provider_player_alias_id": 106346,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2022-23",
+          "Atlético Levante",
+          "",
+          "",
+          "3ª",
+          "17",
+          "1",
+          "0",
+          "0",
+          "1",
+          "0",
+          "1",
+          "1",
+          "2",
+          "0",
+          "0",
+          "1",
+          "17",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "31",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2022-23",
+          "data-temporadalink": "2022-23",
+          "data-temporadaid": "2557",
+          "data-idclub": "162",
+          "data-idjug": "106346"
+        }
+      }
+    },
+    {
+      "season": "2022-23",
+      "team_name": "Levante",
+      "team_provider_id": 20,
+      "country": null,
+      "division": "2ª",
+      "age": 17,
+      "appearances": 1,
+      "starts": 0,
+      "complete_matches": 0,
+      "substitute_appearances": 1,
+      "substituted": 0,
+      "incomplete_matches": 1,
+      "callups_without_playing": 6,
+      "total_callups": 7,
+      "wins": 1,
+      "draws": 0,
+      "losses": 0,
+      "minutes": 9,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 42,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j13583.html?manager=1",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2022-23",
+          "Levante",
+          "",
+          "",
+          "2ª",
+          "17",
+          "1",
+          "0",
+          "0",
+          "1",
+          "0",
+          "1",
+          "6",
+          "7",
+          "1",
+          "0",
+          "0",
+          "9",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "42",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2022-23",
+          "data-temporadalink": "2022-23",
+          "data-temporadaid": "0",
+          "data-idclub": "20",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2023-24",
+      "team_name": "Atlético Levante",
+      "team_provider_id": 162,
+      "country": null,
+      "division": "3ª",
+      "age": 18,
+      "appearances": 29,
+      "starts": 22,
+      "complete_matches": 12,
+      "substitute_appearances": 7,
+      "substituted": 10,
+      "incomplete_matches": 17,
+      "callups_without_playing": 1,
+      "total_callups": 30,
+      "wins": 11,
+      "draws": 10,
+      "losses": 8,
+      "minutes": 2063,
+      "yellow_cards": 9,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 18,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j13583.html?manager=1",
+      "provider_season_id": 3705,
+      "provider_player_alias_id": 106346,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2023-24",
+          "Atlético Levante",
+          "",
+          "",
+          "3ª",
+          "18",
+          "29",
+          "22",
+          "12",
+          "7",
+          "10",
+          "17",
+          "1",
+          "30",
+          "11",
+          "10",
+          "8",
+          "2063",
+          "9",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "18",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2023-24",
+          "data-temporadalink": "2023-24",
+          "data-temporadaid": "3705",
+          "data-idclub": "162",
+          "data-idjug": "106346"
+        }
+      }
+    },
+    {
+      "season": "2023-24",
+      "team_name": "Levante",
+      "team_provider_id": 20,
+      "country": null,
+      "division": "2ª",
+      "age": 18,
+      "appearances": 2,
+      "starts": 0,
+      "complete_matches": 0,
+      "substitute_appearances": 2,
+      "substituted": 0,
+      "incomplete_matches": 2,
+      "callups_without_playing": 16,
+      "total_callups": 18,
+      "wins": 0,
+      "draws": 2,
+      "losses": 0,
+      "minutes": 11,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 27,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j13583.html?manager=1",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2023-24",
+          "Levante",
+          "",
+          "",
+          "2ª",
+          "18",
+          "2",
+          "0",
+          "0",
+          "2",
+          "0",
+          "2",
+          "16",
+          "18",
+          "0",
+          "2",
+          "0",
+          "11",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "27",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2023-24",
+          "data-temporadalink": "2023-24",
+          "data-temporadaid": "0",
+          "data-idclub": "20",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2024-25",
+      "team_name": "Atlético Levante",
+      "team_provider_id": 162,
+      "country": null,
+      "division": "3ª",
+      "age": 19,
+      "appearances": 31,
+      "starts": 29,
+      "complete_matches": 20,
+      "substitute_appearances": 2,
+      "substituted": 9,
+      "incomplete_matches": 11,
+      "callups_without_playing": 0,
+      "total_callups": 31,
+      "wins": 12,
+      "draws": 4,
+      "losses": 15,
+      "minutes": 2531,
+      "yellow_cards": 5,
+      "red_cards": null,
+      "goals": 1,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 10,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j13583.html?manager=1",
+      "provider_season_id": 4457,
+      "provider_player_alias_id": 106346,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2024-25",
+          "Atlético Levante",
+          "",
+          "",
+          "3ª",
+          "19",
+          "31",
+          "29",
+          "20",
+          "2",
+          "9",
+          "11",
+          "0",
+          "31",
+          "12",
+          "4",
+          "15",
+          "2531",
+          "5",
+          "-",
+          "1",
+          "-",
+          "-",
+          "-",
+          "10",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2024-25",
+          "data-temporadalink": "2024-25",
+          "data-temporadaid": "4457",
+          "data-idclub": "162",
+          "data-idjug": "106346"
+        }
+      }
+    },
+    {
+      "season": "2024-25",
+      "team_name": "Levante",
+      "team_provider_id": 20,
+      "country": null,
+      "division": "2ª",
+      "age": 19,
+      "appearances": 0,
+      "starts": 0,
+      "complete_matches": 0,
+      "substitute_appearances": 0,
+      "substituted": 0,
+      "incomplete_matches": 0,
+      "callups_without_playing": 5,
+      "total_callups": 5,
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "minutes": 0,
+      "yellow_cards": null,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 27,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j13583.html?manager=1",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2024-25",
+          "Levante",
+          "",
+          "Ascenso",
+          "2ª",
+          "19",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "5",
+          "5",
+          "0",
+          "0",
+          "0",
+          "0",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "27",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2024-25",
+          "data-temporadalink": "2024-25",
+          "data-temporadaid": "0",
+          "data-idclub": "20",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2025-26",
+      "team_name": "FC Cartagena",
+      "team_provider_id": 176,
+      "country": null,
+      "division": "1ªRf",
+      "age": 20,
+      "appearances": 29,
+      "starts": 9,
+      "complete_matches": 3,
+      "substitute_appearances": 20,
+      "substituted": 6,
+      "incomplete_matches": 26,
+      "callups_without_playing": 9,
+      "total_callups": 38,
+      "wins": 11,
+      "draws": 8,
+      "losses": 10,
+      "minutes": 1131,
+      "yellow_cards": 4,
+      "red_cards": null,
+      "goals": null,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 14,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j13583.html?manager=1",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2025-26",
+          "FC Cartagena",
+          "",
+          "",
+          "1ªRf",
+          "20",
+          "29",
+          "9",
+          "3",
+          "20",
+          "6",
+          "26",
+          "9",
+          "38",
+          "11",
+          "8",
+          "10",
+          "1131",
+          "4",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "14",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2025-26",
+          "data-temporadalink": "2025-26",
+          "data-temporadaid": "0",
+          "data-idclub": "176",
+          "data-idjug": "0"
+        }
+      }
+    },
+    {
+      "season": "2026-27",
+      "team_name": "Atlético Madrileño",
+      "team_provider_id": 67,
+      "country": null,
+      "division": "1ªRf",
+      "age": 21,
+      "appearances": 6,
+      "starts": 6,
+      "complete_matches": 2,
+      "substitute_appearances": 0,
+      "substituted": 4,
+      "incomplete_matches": 4,
+      "callups_without_playing": 0,
+      "total_callups": 6,
+      "wins": 2,
+      "draws": 2,
+      "losses": 2,
+      "minutes": 449,
+      "yellow_cards": 1,
+      "red_cards": null,
+      "goals": 1,
+      "penalty_goals": null,
+      "own_goals": null,
+      "goals_conceded": null,
+      "squad_number": 20,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/j/j13583.html?manager=1",
+      "provider_season_id": null,
+      "provider_player_alias_id": null,
+      "raw": {
+        "headers": [
+          "Temp",
+          "Equipo",
+          "País",
+          "",
+          "Div",
+          "Edad",
+          "PJ",
+          "PT",
+          "PC",
+          "PS",
+          "PX",
+          "PI",
+          "C",
+          "TC",
+          "PG",
+          "PE",
+          "PP",
+          "Min",
+          "TA",
+          "TR",
+          "G",
+          "GP",
+          "GPP",
+          "GE",
+          "NR",
+          ""
+        ],
+        "values": [
+          "2026-27",
+          "Atlético Madrileño",
+          "",
+          "",
+          "1ªRf",
+          "21",
+          "6",
+          "6",
+          "2",
+          "0",
+          "4",
+          "4",
+          "0",
+          "6",
+          "2",
+          "2",
+          "2",
+          "449",
+          "1",
+          "-",
+          "1",
+          "-",
+          "-",
+          "-",
+          "20",
+          ""
+        ],
+        "first_cell_data": {
+          "data-temporada": "2026-27",
+          "data-temporadalink": "2026-27",
+          "data-temporadaid": "0",
+          "data-idclub": "67",
+          "data-idjug": "0"
+        }
+      }
+    }
+  ],
+  "competition_stats": {
+    "scope": "competition",
+    "headers": [
+      "Tipo",
+      "2ª",
+      "1ªRf",
+      "1ª + 2ª + 1ªRf + 2ªRf",
+      "COP"
+    ],
+    "header_titles": [
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    "rows": [
+      {
+        "metric": "Temporadas",
+        "values": [
+          "2",
+          "2",
+          "2",
+          "1"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Temporadas seguidas en el mismo equipo",
+        "values": [
+          "2",
+          "-",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Equipos",
+        "values": [
+          "1",
+          "2",
+          "1",
+          "1"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos Jugados",
+        "values": [
+          "3",
+          "35",
+          "3",
+          "2"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=2a&pj=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=1a-2a-2aB&pj=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=COP&pj=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Partidos completos",
+        "values": [
+          "0",
+          "5",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=2a&pc=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=1a-2a-2aB&pc=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=COP&pc=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Partidos titular",
+        "values": [
+          "0",
+          "15",
+          "0",
+          "2"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=2a&pt=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=1a-2a-2aB&pt=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=COP&pt=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Partidos suplente",
+        "values": [
+          "3",
+          "20",
+          "3",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=2a&ps=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=1a-2a-2aB&ps=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=COP&ps=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Partidos sustituido",
+        "values": [
+          "0",
+          "10",
+          "0",
+          "2"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=2a&px=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=1a-2a-2aB&px=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=COP&px=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Partidos incompletos",
+        "values": [
+          "3",
+          "30",
+          "3",
+          "2"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=2a&pinc=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=1a-2a-2aB&pinc=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=COP&pinc=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Partidos convocado",
+        "values": [
+          "27",
+          "9",
+          "27",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=2a&pv=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=1a-2a-2aB&pv=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=COP&pv=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Partidos convocado total",
+        "values": [
+          "30",
+          "44",
+          "30",
+          "2"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=2a&pv=1&jug=si-no"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=1a-2a-2aB&pv=1&jug=si-no"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=COP&pv=1&jug=si-no"
+          ]
+        ]
+      },
+      {
+        "metric": "Ganados",
+        "values": [
+          "1",
+          "13",
+          "1",
+          "1"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=2a&pg=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=1a-2a-2aB&pg=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=COP&pg=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Empatados",
+        "values": [
+          "2",
+          "10",
+          "2",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=2a&pe=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=1a-2a-2aB&pe=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=COP&pe=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Perdidos",
+        "values": [
+          "0",
+          "12",
+          "0",
+          "1"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=2a&pp=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=1a-2a-2aB&pp=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=COP&pp=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Minutos",
+        "values": [
+          "20",
+          "1580",
+          "20",
+          "163"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=2a&pj=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=1a-2a-2aB&pj=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=COP&pj=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Goles",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=2a&g=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=1a-2a-2aB&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=COP&g=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Goles de suplente",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=2a&g=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=1a-2a-2aB&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=COP&g=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Partidos Marcando algún Gol",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=2a&g=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=1a-2a-2aB&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=COP&g=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Promedio goleador",
+        "values": [
+          "0,00",
+          "0,03",
+          "0,00",
+          "0,00"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=2a&g=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=1a-2a-2aB&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=COP&g=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Goles propia puerta",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=2a&g=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=1a-2a-2aB&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=COP&g=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Tarjetas amarillas",
+        "values": [
+          "0",
+          "5",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=2a&tg=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=1a-2a-2aB&tg=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=COP&tg=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Tarjetas rojas",
+        "values": [
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=2a&tv=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=1a-2a-2aB&tv=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=COP&tv=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Edad primer partido",
+        "values": [
+          "18",
+          "20",
+          "18",
+          "20"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Edad último partido",
+        "values": [
+          "19",
+          "21",
+          "19",
+          "20"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Edad primer partido en marcar",
+        "values": [
+          "-",
+          "21",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Edad último partido en marcar",
+        "values": [
+          "-",
+          "21",
+          "-",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Enfrentamiento a más equipos",
+        "values": [
+          "3",
+          "21",
+          "3",
+          "2"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Goles a más equipos",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Goles con más equipos",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Goles en una temporada",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=2a&g=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=1a-2a-2aB&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=COP&g=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Promedio goleador en una temporada",
+        "values": [
+          "0,00",
+          "0,17",
+          "0,00",
+          "0,00"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=2a&g=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=1a-2a-2aB&g=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=COP&g=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Amonestaciones en una temporada",
+        "values": [
+          "0",
+          "4",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=2a&tg=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=1a-2a-2aB&tg=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=COP&tg=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Partidos sustituido en una temporada",
+        "values": [
+          "0",
+          "6",
+          "0",
+          "2"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=2a&px=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=1a-2a-2aB&px=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=COP&px=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Partidos suplente en una temporada",
+        "values": [
+          "2",
+          "20 (#145)",
+          "2",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=2a&ps=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/c/rankingTempPS9.html"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=1a-2a-2aB&ps=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=COP&ps=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Partidos incompletos en una temporada",
+        "values": [
+          "2",
+          "26",
+          "2",
+          "2"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=2a&pinc=1"
+          ],
+          [],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=1a-2a-2aB&pinc=1"
+          ],
+          [
+            "https://www.bdfutbol.com/es/p/j13583.html?cat=COP&pinc=1"
+          ]
+        ]
+      },
+      {
+        "metric": "Ascensos",
+        "values": [
+          "1",
+          "0",
+          "1",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Jugando",
+        "values": [
+          "2",
+          "12",
+          "2",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Titular",
+        "values": [
+          "0",
+          "6",
+          "0",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Completo",
+        "values": [
+          "0",
+          "2",
+          "0",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Suplente",
+        "values": [
+          "2",
+          "5",
+          "2",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Sustituido",
+        "values": [
+          "0",
+          "2",
+          "0",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Partido Incompleto",
+        "values": [
+          "2",
+          "9",
+          "2",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Ganando",
+        "values": [
+          "1",
+          "2",
+          "1",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Empatando",
+        "values": [
+          "1",
+          "2",
+          "1",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Perdiendo",
+        "values": [
+          "0",
+          "2",
+          "0",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas No Ganando",
+        "values": [
+          "1",
+          "5",
+          "1",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas No Empatando",
+        "values": [
+          "1",
+          "4",
+          "1",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas No Perdiendo",
+        "values": [
+          "2",
+          "5",
+          "2",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Marcando",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jornadas Consecutivas Sin Marcar",
+        "values": [
+          "2",
+          "12",
+          "2",
+          "-"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Jugados",
+        "values": [
+          "2",
+          "12",
+          "2",
+          "2"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Titular",
+        "values": [
+          "0",
+          "6",
+          "0",
+          "2"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Completo",
+        "values": [
+          "0",
+          "2",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Suplente",
+        "values": [
+          "3",
+          "5",
+          "3",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Sustituido",
+        "values": [
+          "0",
+          "2",
+          "0",
+          "2"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Partido Incompleto",
+        "values": [
+          "3",
+          "9",
+          "3",
+          "2"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Ganando",
+        "values": [
+          "1",
+          "2",
+          "1",
+          "1"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Empatando",
+        "values": [
+          "2",
+          "2",
+          "2",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Perdiendo",
+        "values": [
+          "0",
+          "2",
+          "0",
+          "1"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos No Ganando",
+        "values": [
+          "2",
+          "5",
+          "2",
+          "1"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos No Empatando",
+        "values": [
+          "1",
+          "8",
+          "1",
+          "2"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos No Perdiendo",
+        "values": [
+          "3",
+          "5",
+          "3",
+          "1"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Marcando",
+        "values": [
+          "0",
+          "1",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Jugados Consecutivos Sin Marcar",
+        "values": [
+          "3",
+          "31",
+          "3",
+          "2"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [],
+          []
+        ]
+      }
+    ],
+    "provenance": "bdfutbol",
+    "source_url": "https://www.bdfutbol.com/es/j/j13583.html?p=stats"
+  },
+  "team_stats": {
+    "scope": "team",
+    "headers": [
+      "Tipo",
+      "LEV",
+      "FC",
+      "ATL"
+    ],
+    "header_titles": [
+      null,
+      "Levante",
+      "FC Cartagena",
+      "Atlético Madrileño"
+    ],
+    "rows": [
+      {
+        "metric": "Temporadas",
+        "values": [
+          "2",
+          "1 (#237)",
+          "1"
+        ],
+        "raw_links": [
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols176.html?col=temp&sort=desc"
+          ],
+          []
+        ]
+      },
+      {
+        "metric": "Temporadas seguidas en el mismo equipo",
+        "values": [
+          "2",
+          "1 (#233)",
+          "1"
+        ],
+        "raw_links": [
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols176.html"
+          ],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos Jugados",
+        "values": [
+          "3",
+          "31 (#196)",
+          "6"
+        ],
+        "raw_links": [
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols176.html?col=pj&sort=desc"
+          ],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos completos",
+        "values": [
+          "0",
+          "3",
+          "2"
+        ],
+        "raw_links": [
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos titular",
+        "values": [
+          "0",
+          "11",
+          "6"
+        ],
+        "raw_links": [
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos suplente",
+        "values": [
+          "3",
+          "20 (#39)",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols176.html?col=ps&sort=desc"
+          ],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos sustituido",
+        "values": [
+          "0",
+          "8 (#162)",
+          "4"
+        ],
+        "raw_links": [
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols176.html?col=px&sort=desc"
+          ],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos incompletos",
+        "values": [
+          "3",
+          "28 (#81)",
+          "4"
+        ],
+        "raw_links": [
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols176.html?col=pinc&sort=desc"
+          ],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos convocado",
+        "values": [
+          "27 (#48)",
+          "9 (#119)",
+          "0"
+        ],
+        "raw_links": [
+          [
+            "https://www.bdfutbol.com/es/e/egols20.html?col=pv&sort=desc"
+          ],
+          [
+            "https://www.bdfutbol.com/es/e/egols176.html?col=pv&sort=desc"
+          ],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos convocado total",
+        "values": [
+          "30",
+          "40 (#169)",
+          "6"
+        ],
+        "raw_links": [
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols176.html?col=tc&sort=desc"
+          ],
+          []
+        ]
+      },
+      {
+        "metric": "Ganados",
+        "values": [
+          "1",
+          "12 (#181)",
+          "2"
+        ],
+        "raw_links": [
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols176.html?col=pg&sort=desc"
+          ],
+          []
+        ]
+      },
+      {
+        "metric": "Empatados",
+        "values": [
+          "2",
+          "8 (#220)",
+          "2"
+        ],
+        "raw_links": [
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols176.html?col=pe&sort=desc"
+          ],
+          []
+        ]
+      },
+      {
+        "metric": "Perdidos",
+        "values": [
+          "0",
+          "11 (#171)",
+          "2"
+        ],
+        "raw_links": [
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols176.html?col=pp&sort=desc"
+          ],
+          []
+        ]
+      },
+      {
+        "metric": "Minutos",
+        "values": [
+          "20",
+          "1294",
+          "449"
+        ],
+        "raw_links": [
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Goles",
+        "values": [
+          "0",
+          "0",
+          "1"
+        ],
+        "raw_links": [
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Goles de suplente",
+        "values": [
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Partidos Marcando algún Gol",
+        "values": [
+          "0",
+          "0",
+          "1"
+        ],
+        "raw_links": [
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Promedio goleador",
+        "values": [
+          "0,00",
+          "0,00",
+          "0,17 (#129)"
+        ],
+        "raw_links": [
+          [],
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols67.html?col=gols_partit&sort=desc"
+          ]
+        ]
+      },
+      {
+        "metric": "Goles propia puerta",
+        "values": [
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          []
+        ]
+      },
+      {
+        "metric": "Tarjetas amarillas",
+        "values": [
+          "0",
+          "4 (#248)",
+          "1"
+        ],
+        "raw_links": [
+          [],
+          [
+            "https://www.bdfutbol.com/es/e/egols176.html?col=tg&sort=desc"
+          ],
+          []
+        ]
+      },
+      {
+        "metric": "Tarjetas rojas",
+        "values": [
+          "0",
+          "0",
+          "0"
+        ],
+        "raw_links": [
+          [],
+          [],
+          []
+        ]
+      }
+    ],
+    "provenance": "bdfutbol",
+    "source_url": "https://www.bdfutbol.com/es/j/j13583.html?p=stats"
+  },
+  "match_appearances": [
+    {
+      "match_provider_id": null,
+      "match_provider_key": "bdfutbol_manager:/es/p/partido.html?d=04%2F09%2F2021&id=5827&l=Talavera+de+la+Reina&v=Levante",
+      "provider_season_id": 5827,
+      "match_url": "https://www.bdfutbol.com/es/p/partido.html?d=04%2F09%2F2021&id=5827&l=Talavera+de+la+Reina&v=Levante",
+      "date": "04/09/2021",
+      "season": "2021-22",
+      "competition": "Juv",
+      "round_or_type": "Jornada 1",
+      "home_team": "Talavera de la Reina",
+      "score_text": "2 2",
+      "home_goals": 2,
+      "away_goals": 2,
+      "away_team": "Levante",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol_manager",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2021-22&manager=1",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"partido.html?id=5827&amp;l=Talavera de la Reina&amp;v=Levante&amp;d=04/09/2021\">1</a></td>",
+        "Fecha": "<td><a href=\"partido.html?id=5827&amp;l=Talavera de la Reina&amp;v=Levante&amp;d=04/09/2021\">04/09/2021</a></td>",
+        "Temporada": "<td data-temp=\"2021-22\"><a href=\"partido.html?id=5827&amp;l=Talavera de la Reina&amp;v=Levante&amp;d=04/09/2021\">2021-22</a></td>",
+        "Competición": "<td><a href=\"partido.html?id=5827&amp;l=Talavera de la Reina&amp;v=Levante&amp;d=04/09/2021\">Juv</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"partido.html?id=5827&amp;l=Talavera de la Reina&amp;v=Levante&amp;d=04/09/2021\" title=\"Jornada 1\">Jornada 1</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"partido.html?id=5827&amp;l=Talavera de la Reina&amp;v=Levante&amp;d=04/09/2021\">Talavera de la Reina</a></td>",
+        "col_6": "<td><a href=\"partido.html?id=5827&amp;l=Talavera de la Reina&amp;v=Levante&amp;d=04/09/2021\"><div class=\"resultat-gols resultat-resultat-0\">2</div><div class=\"resultat-gols resultat-resultat-0\">2</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"partido.html?id=5827&amp;l=Talavera de la Reina&amp;v=Levante&amp;d=04/09/2021\">Levante</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"partido.html?id=5827&amp;l=Talavera de la Reina&amp;v=Levante&amp;d=04/09/2021\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"partido.html?id=5827&amp;l=Talavera de la Reina&amp;v=Levante&amp;d=04/09/2021\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"partido.html?id=5827&amp;l=Talavera de la Reina&amp;v=Levante&amp;d=04/09/2021\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5827&amp;l=Talavera de la Reina&amp;v=Levante&amp;d=04/09/2021\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"partido.html?id=5827&amp;l=Talavera de la Reina&amp;v=Levante&amp;d=04/09/2021\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"partido.html?id=5827&amp;l=Talavera de la Reina&amp;v=Levante&amp;d=04/09/2021\"> </a></td>",
+        "Min": "<td><a href=\"partido.html?id=5827&amp;l=Talavera de la Reina&amp;v=Levante&amp;d=04/09/2021\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"partido.html?id=5827&amp;l=Talavera de la Reina&amp;v=Levante&amp;d=04/09/2021\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"partido.html?id=5827&amp;l=Talavera de la Reina&amp;v=Levante&amp;d=04/09/2021\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"partido.html?id=5827&amp;l=Talavera de la Reina&amp;v=Levante&amp;d=04/09/2021\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"partido.html?id=5827&amp;l=Talavera de la Reina&amp;v=Levante&amp;d=04/09/2021\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 132574,
+      "match_provider_key": "bdfutbol:match:132574",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=132574",
+      "date": "27/05/2023",
+      "season": "2022-23",
+      "competition": "2a",
+      "round_or_type": "42",
+      "home_team": "Levante",
+      "score_text": "2 1",
+      "home_goals": 2,
+      "away_goals": 1,
+      "away_team": "Oviedo",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 9,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2022-23",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=132574\">1</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=132574\">27/05/2023</a></td>",
+        "Temporada": "<td data-temp=\"2022-23\"><a href=\"p.php?id=132574\">2022-23</a></td>",
+        "Competición": "<td><a href=\"p.php?id=132574\">2a</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=132574\" title=\"Jornada 42\">42</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=132574\">Levante</a></td>",
+        "col_6": "<td><a href=\"p.php?id=132574\"><div class=\"resultat-gols resultat-resultat-1\">2</div><div class=\"resultat-gols resultat-resultat-1\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=132574\">Oviedo</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=132574\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=132574\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=132574\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=132574\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=132574\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=132574\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=132574\">9</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=132574\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=132574\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=132574\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=132574\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 132582,
+      "match_provider_key": "bdfutbol:match:132582",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=132582",
+      "date": "11/08/2023",
+      "season": "2023-24",
+      "competition": "2a",
+      "round_or_type": "1",
+      "home_team": "Amorebieta",
+      "score_text": "1 1",
+      "home_goals": 1,
+      "away_goals": 1,
+      "away_team": "Levante",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 1,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2023-24",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=132582\">1</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=132582\">11/08/2023</a></td>",
+        "Temporada": "<td data-temp=\"2023-24\"><a href=\"p.php?id=132582\">2023-24</a></td>",
+        "Competición": "<td><a href=\"p.php?id=132582\">2a</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=132582\" title=\"Jornada 1\">1</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=132582\">Amorebieta</a></td>",
+        "col_6": "<td><a href=\"p.php?id=132582\"><div class=\"resultat-gols resultat-resultat-0\">1</div><div class=\"resultat-gols resultat-resultat-0\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=132582\">Levante</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=132582\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=132582\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=132582\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=132582\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=132582\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=132582\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=132582\">1</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=132582\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=132582\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=132582\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=132582\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 132942,
+      "match_provider_key": "bdfutbol:match:132942",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=132942",
+      "date": "30/03/2024",
+      "season": "2023-24",
+      "competition": "2a",
+      "round_or_type": "33",
+      "home_team": "Valladolid",
+      "score_text": "0 0",
+      "home_goals": 0,
+      "away_goals": 0,
+      "away_team": "Levante",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 10,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2023-24",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=132942\">2</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=132942\">30/03/2024</a></td>",
+        "Temporada": "<td data-temp=\"2023-24\"><a href=\"p.php?id=132942\">2023-24</a></td>",
+        "Competición": "<td><a href=\"p.php?id=132942\">2a</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=132942\" title=\"Jornada 33\">33</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=132942\">Valladolid</a></td>",
+        "col_6": "<td><a href=\"p.php?id=132942\"><div class=\"resultat-gols resultat-resultat-0\">0</div><div class=\"resultat-gols resultat-resultat-0\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=132942\">Levante</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=132942\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=132942\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=132942\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=132942\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=132942\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=132942\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=132942\">10</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=132942\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=132942\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=132942\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=132942\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267501,
+      "match_provider_key": "bdfutbol:match:267501",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267501",
+      "date": "31/08/2025",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "1",
+      "home_team": "Antequera",
+      "score_text": "0 0",
+      "home_goals": 0,
+      "away_goals": 0,
+      "away_team": "FC Cartagena",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 9,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267501\">1</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267501\">31/08/2025</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267501\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267501\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267501\" title=\"Jornada 1\">1</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=267501\">Antequera</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267501\"><div class=\"resultat-gols resultat-resultat-0\">0</div><div class=\"resultat-gols resultat-resultat-0\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=267501\">FC Cartagena</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=267501\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=267501\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=267501\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267501\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=267501\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267501\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267501\">9</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=267501\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267501\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267501\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=267501\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267514,
+      "match_provider_key": "bdfutbol:match:267514",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267514",
+      "date": "05/09/2025",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "2",
+      "home_team": "FC Cartagena",
+      "score_text": "3 2",
+      "home_goals": 3,
+      "away_goals": 2,
+      "away_team": "Atlético Madrileño",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 9,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267514\">2</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267514\">05/09/2025</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267514\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267514\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267514\" title=\"Jornada 2\">2</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=267514\">FC Cartagena</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267514\"><div class=\"resultat-gols resultat-resultat-1\">3</div><div class=\"resultat-gols resultat-resultat-1\">2</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=267514\">Atlético Madrileño</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=267514\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=267514\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=267514\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267514\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=267514\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267514\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267514\">9</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=267514\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267514\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267514\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=267514\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267523,
+      "match_provider_key": "bdfutbol:match:267523",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267523",
+      "date": "13/09/2025",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "3",
+      "home_team": "Sabadell",
+      "score_text": "0 0",
+      "home_goals": 0,
+      "away_goals": 0,
+      "away_team": "FC Cartagena",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 48,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267523\">3</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267523\">13/09/2025</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267523\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267523\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267523\" title=\"Jornada 3\">3</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=267523\">Sabadell</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267523\"><div class=\"resultat-gols resultat-resultat-0\">0</div><div class=\"resultat-gols resultat-resultat-0\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=267523\">FC Cartagena</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=267523\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=267523\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=267523\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267523\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=267523\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267523\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267523\">48</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=267523\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267523\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267523\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=267523\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267531,
+      "match_provider_key": "bdfutbol:match:267531",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267531",
+      "date": "21/09/2025",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "4",
+      "home_team": "FC Cartagena",
+      "score_text": "2 1",
+      "home_goals": 2,
+      "away_goals": 1,
+      "away_team": "Hércules",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 22,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267531\">4</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267531\">21/09/2025</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267531\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267531\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267531\" title=\"Jornada 4\">4</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=267531\">FC Cartagena</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267531\"><div class=\"resultat-gols resultat-resultat-1\">2</div><div class=\"resultat-gols resultat-resultat-1\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=267531\">Hércules</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=267531\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=267531\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=267531\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267531\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=267531\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267531\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267531\">22</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=267531\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267531\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267531\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=267531\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267544,
+      "match_provider_key": "bdfutbol:match:267544",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267544",
+      "date": "28/09/2025",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "5",
+      "home_team": "Atlético Sanluqueño",
+      "score_text": "3 0",
+      "home_goals": 3,
+      "away_goals": 0,
+      "away_team": "FC Cartagena",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 44,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267544\">5</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267544\">28/09/2025</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267544\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267544\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267544\" title=\"Jornada 5\">5</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=267544\">Atlético Sanluqueño</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267544\"><div class=\"resultat-gols resultat-resultat--1\">3</div><div class=\"resultat-gols resultat-resultat--1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=267544\">FC Cartagena</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=267544\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=267544\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=267544\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267544\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=267544\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267544\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267544\">44</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=267544\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267544\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267544\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=267544\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267552,
+      "match_provider_key": "bdfutbol:match:267552",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267552",
+      "date": "05/10/2025",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "6",
+      "home_team": "FC Cartagena",
+      "score_text": "3 0",
+      "home_goals": 3,
+      "away_goals": 0,
+      "away_team": "Tarazona",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 59,
+      "yellow_cards_raw": "'4",
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267552\">6</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267552\">05/10/2025</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267552\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267552\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267552\" title=\"Jornada 6\">6</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=267552\">FC Cartagena</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267552\"><div class=\"resultat-gols resultat-resultat-1\">3</div><div class=\"resultat-gols resultat-resultat-1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=267552\">Tarazona</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=267552\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=267552\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=267552\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=267552\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=267552\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267552\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267552\">59</a></td>",
+        "TA": "<td class=\"GR resp_off\"><a href=\"p.php?id=267552\"><span class=\"\" title=\"\">'4</span></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267552\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267552\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=267552\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267565,
+      "match_provider_key": "bdfutbol:match:267565",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267565",
+      "date": "12/10/2025",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "7",
+      "home_team": "Sevilla Atlético",
+      "score_text": "0 0",
+      "home_goals": 0,
+      "away_goals": 0,
+      "away_team": "FC Cartagena",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 15,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267565\">7</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267565\">12/10/2025</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267565\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267565\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267565\" title=\"Jornada 7\">7</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=267565\">Sevilla Atlético</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267565\"><div class=\"resultat-gols resultat-resultat-0\">0</div><div class=\"resultat-gols resultat-resultat-0\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=267565\">FC Cartagena</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=267565\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=267565\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=267565\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267565\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=267565\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267565\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267565\">15</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=267565\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267565\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267565\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=267565\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267576,
+      "match_provider_key": "bdfutbol:match:267576",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267576",
+      "date": "17/10/2025",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "8",
+      "home_team": "FC Cartagena",
+      "score_text": "2 0",
+      "home_goals": 2,
+      "away_goals": 0,
+      "away_team": "Algeciras",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 18,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267576\">8</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267576\">17/10/2025</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267576\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267576\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267576\" title=\"Jornada 8\">8</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=267576\">FC Cartagena</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267576\"><div class=\"resultat-gols resultat-resultat-1\">2</div><div class=\"resultat-gols resultat-resultat-1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=267576\">Algeciras</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=267576\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=267576\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=267576\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267576\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=267576\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267576\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267576\">18</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=267576\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267576\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267576\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=267576\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267584,
+      "match_provider_key": "bdfutbol:match:267584",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267584",
+      "date": "26/10/2025",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "9",
+      "home_team": "Marbella",
+      "score_text": "0 0",
+      "home_goals": 0,
+      "away_goals": 0,
+      "away_team": "FC Cartagena",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 81,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267584\">9</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267584\">26/10/2025</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267584\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267584\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267584\" title=\"Jornada 9\">9</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=267584\">Marbella</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267584\"><div class=\"resultat-gols resultat-resultat-0\">0</div><div class=\"resultat-gols resultat-resultat-0\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=267584\">FC Cartagena</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=267584\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=267584\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=267584\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=267584\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=267584\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267584\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267584\">81</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=267584\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267584\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267584\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=267584\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 505510,
+      "match_provider_key": "bdfutbol:match:505510",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=505510",
+      "date": "29/10/2025",
+      "season": "2025-26",
+      "competition": "COP",
+      "round_or_type": "R1",
+      "home_team": "Puente Genil FC",
+      "score_text": "0 1",
+      "home_goals": 0,
+      "away_goals": 1,
+      "away_team": "FC Cartagena",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 73,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=505510\">10</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=505510\">29/10/2025</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=505510\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=505510\">COP</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=505510\" title=\"Ronda 1\">R1</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=505510\">Puente Genil FC</a></td>",
+        "col_6": "<td><a href=\"p.php?id=505510\"><div class=\"resultat-gols resultat-resultat-1\">0</div><div class=\"resultat-gols resultat-resultat-1\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=505510\">FC Cartagena</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=505510\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=505510\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=505510\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=505510\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=505510\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=505510\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=505510\">73</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=505510\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=505510\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=505510\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=505510\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267604,
+      "match_provider_key": "bdfutbol:match:267604",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267604",
+      "date": "08/11/2025",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "11",
+      "home_team": "Teruel",
+      "score_text": "1 2",
+      "home_goals": 1,
+      "away_goals": 2,
+      "away_team": "FC Cartagena",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267604\">11</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267604\">08/11/2025</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267604\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267604\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267604\" title=\"Jornada 11\">11</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=267604\">Teruel</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267604\"><div class=\"resultat-gols resultat-resultat-1\">1</div><div class=\"resultat-gols resultat-resultat-1\">2</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=267604\">FC Cartagena</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=267604\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"p.php?id=267604\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=267604\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267604\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267604\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267604\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267604\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=267604\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267604\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267604\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=267604\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267615,
+      "match_provider_key": "bdfutbol:match:267615",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267615",
+      "date": "16/11/2025",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "12",
+      "home_team": "Europa",
+      "score_text": "2 0",
+      "home_goals": 2,
+      "away_goals": 0,
+      "away_team": "FC Cartagena",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 45,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267615\">12</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267615\">16/11/2025</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267615\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267615\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267615\" title=\"Jornada 12\">12</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=267615\">Europa</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267615\"><div class=\"resultat-gols resultat-resultat--1\">2</div><div class=\"resultat-gols resultat-resultat--1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=267615\">FC Cartagena</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=267615\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=267615\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=267615\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267615\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=267615\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267615\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267615\">45</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=267615\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267615\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267615\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=267615\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267619,
+      "match_provider_key": "bdfutbol:match:267619",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267619",
+      "date": "23/11/2025",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "13",
+      "home_team": "FC Cartagena",
+      "score_text": "0 0",
+      "home_goals": 0,
+      "away_goals": 0,
+      "away_team": "Eldense",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 1,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267619\">13</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267619\">23/11/2025</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267619\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267619\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267619\" title=\"Jornada 13\">13</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=267619\">FC Cartagena</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267619\"><div class=\"resultat-gols resultat-resultat-0\">0</div><div class=\"resultat-gols resultat-resultat-0\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=267619\">Eldense</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=267619\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=267619\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=267619\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267619\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=267619\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267619\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267619\">1</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=267619\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267619\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267619\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=267619\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267632,
+      "match_provider_key": "bdfutbol:match:267632",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267632",
+      "date": "28/11/2025",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "14",
+      "home_team": "Betis Deportivo",
+      "score_text": "0 1",
+      "home_goals": 0,
+      "away_goals": 1,
+      "away_team": "FC Cartagena",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 77,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267632\">14</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267632\">28/11/2025</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267632\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267632\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267632\" title=\"Jornada 14\">14</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=267632\">Betis Deportivo</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267632\"><div class=\"resultat-gols resultat-resultat-1\">0</div><div class=\"resultat-gols resultat-resultat-1\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=267632\">FC Cartagena</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=267632\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=267632\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=267632\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=267632\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=267632\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267632\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267632\">77</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=267632\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267632\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267632\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=267632\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 505551,
+      "match_provider_key": "bdfutbol:match:505551",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=505551",
+      "date": "04/12/2025",
+      "season": "2025-26",
+      "competition": "COP",
+      "round_or_type": "R2",
+      "home_team": "FC Cartagena",
+      "score_text": "1 2",
+      "home_goals": 1,
+      "away_goals": 2,
+      "away_team": "Valencia",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=505551\">15</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=505551\">04/12/2025</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=505551\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=505551\">COP</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=505551\" title=\"Ronda 2\">R2</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=505551\">FC Cartagena</a></td>",
+        "col_6": "<td><a href=\"p.php?id=505551\"><div class=\"resultat-gols resultat-resultat--1\">1</div><div class=\"resultat-gols resultat-resultat--1\">2</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=505551\">Valencia</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=505551\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=505551\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=505551\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=505551\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=505551\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=505551\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=505551\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=505551\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=505551\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=505551\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=505551\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267640,
+      "match_provider_key": "bdfutbol:match:267640",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267640",
+      "date": "08/12/2025",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "15",
+      "home_team": "FC Cartagena",
+      "score_text": "0 1",
+      "home_goals": 0,
+      "away_goals": 1,
+      "away_team": "Murcia",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 45,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267640\">16</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267640\">08/12/2025</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267640\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267640\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267640\" title=\"Jornada 15\">15</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=267640\">FC Cartagena</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267640\"><div class=\"resultat-gols resultat-resultat--1\">0</div><div class=\"resultat-gols resultat-resultat--1\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=267640\">Murcia</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=267640\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=267640\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=267640\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267640\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=267640\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267640\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267640\">45</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=267640\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267640\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267640\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=267640\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267654,
+      "match_provider_key": "bdfutbol:match:267654",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267654",
+      "date": "14/12/2025",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "16",
+      "home_team": "Gimnàstic de Tarragona",
+      "score_text": "2 0",
+      "home_goals": 2,
+      "away_goals": 0,
+      "away_team": "FC Cartagena",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 44,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267654\">17</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267654\">14/12/2025</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267654\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267654\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267654\" title=\"Jornada 16\">16</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=267654\">Gimnàstic de Tarragona</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267654\"><div class=\"resultat-gols resultat-resultat--1\">2</div><div class=\"resultat-gols resultat-resultat--1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=267654\">FC Cartagena</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=267654\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=267654\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=267654\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267654\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=267654\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267654\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267654\">44</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=267654\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267654\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267654\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=267654\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267659,
+      "match_provider_key": "bdfutbol:match:267659",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267659",
+      "date": "21/12/2025",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "17",
+      "home_team": "FC Cartagena",
+      "score_text": "3 0",
+      "home_goals": 3,
+      "away_goals": 0,
+      "away_team": "Juventud de Torremolinos",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267659\">18</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267659\">21/12/2025</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267659\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267659\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267659\" title=\"Jornada 17\">17</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=267659\">FC Cartagena</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267659\"><div class=\"resultat-gols resultat-resultat-1\">3</div><div class=\"resultat-gols resultat-resultat-1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=267659\">Juventud de Torremolinos</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=267659\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"p.php?id=267659\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=267659\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267659\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267659\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267659\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267659\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=267659\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267659\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267659\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=267659\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267669,
+      "match_provider_key": "bdfutbol:match:267669",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267669",
+      "date": "03/01/2026",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "18",
+      "home_team": "Alcorcón",
+      "score_text": "1 1",
+      "home_goals": 1,
+      "away_goals": 1,
+      "away_team": "FC Cartagena",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 75,
+      "yellow_cards_raw": "'64",
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267669\">19</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267669\">03/01/2026</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267669\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267669\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267669\" title=\"Jornada 18\">18</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=267669\">Alcorcón</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267669\"><div class=\"resultat-gols resultat-resultat-0\">1</div><div class=\"resultat-gols resultat-resultat-0\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=267669\">FC Cartagena</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=267669\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=267669\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=267669\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=267669\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=267669\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267669\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267669\">75</a></td>",
+        "TA": "<td class=\"GR resp_off\"><a href=\"p.php?id=267669\"><span class=\"\" title=\"\">'64</span></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267669\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267669\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=267669\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267679,
+      "match_provider_key": "bdfutbol:match:267679",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267679",
+      "date": "11/01/2026",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "19",
+      "home_team": "FC Cartagena",
+      "score_text": "1 4",
+      "home_goals": 1,
+      "away_goals": 4,
+      "away_team": "UD Ibiza",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 25,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267679\">20</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267679\">11/01/2026</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267679\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267679\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267679\" title=\"Jornada 19\">19</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=267679\">FC Cartagena</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267679\"><div class=\"resultat-gols resultat-resultat--1\">1</div><div class=\"resultat-gols resultat-resultat--1\">4</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=267679\">UD Ibiza</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=267679\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=267679\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=267679\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267679\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=267679\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267679\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267679\">25</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=267679\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267679\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267679\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=267679\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267695,
+      "match_provider_key": "bdfutbol:match:267695",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267695",
+      "date": "16/01/2026",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "20",
+      "home_team": "Villarreal B",
+      "score_text": "1 0",
+      "home_goals": 1,
+      "away_goals": 0,
+      "away_team": "FC Cartagena",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 70,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267695\">21</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267695\">16/01/2026</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267695\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267695\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267695\" title=\"Jornada 20\">20</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=267695\">Villarreal B</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267695\"><div class=\"resultat-gols resultat-resultat--1\">1</div><div class=\"resultat-gols resultat-resultat--1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=267695\">FC Cartagena</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=267695\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=267695\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=267695\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=267695\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=267695\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267695\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267695\">70</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=267695\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267695\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267695\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=267695\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267700,
+      "match_provider_key": "bdfutbol:match:267700",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267700",
+      "date": "24/01/2026",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "21",
+      "home_team": "FC Cartagena",
+      "score_text": "2 2",
+      "home_goals": 2,
+      "away_goals": 2,
+      "away_team": "Europa",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 46,
+      "yellow_cards_raw": "'27",
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267700\">22</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267700\">24/01/2026</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267700\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267700\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267700\" title=\"Jornada 21\">21</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=267700\">FC Cartagena</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267700\"><div class=\"resultat-gols resultat-resultat-0\">2</div><div class=\"resultat-gols resultat-resultat-0\">2</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=267700\">Europa</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=267700\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=267700\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=267700\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=267700\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=267700\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267700\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267700\">46</a></td>",
+        "TA": "<td class=\"GR resp_off\"><a href=\"p.php?id=267700\"><span class=\"\" title=\"\">'27</span></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267700\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267700\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=267700\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267713,
+      "match_provider_key": "bdfutbol:match:267713",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267713",
+      "date": "30/01/2026",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "22",
+      "home_team": "Hércules",
+      "score_text": "2 0",
+      "home_goals": 2,
+      "away_goals": 0,
+      "away_team": "FC Cartagena",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 35,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267713\">23</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267713\">30/01/2026</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267713\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267713\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267713\" title=\"Jornada 22\">22</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=267713\">Hércules</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267713\"><div class=\"resultat-gols resultat-resultat--1\">2</div><div class=\"resultat-gols resultat-resultat--1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=267713\">FC Cartagena</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=267713\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=267713\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=267713\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267713\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=267713\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267713\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267713\">35</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=267713\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267713\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267713\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=267713\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267719,
+      "match_provider_key": "bdfutbol:match:267719",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267719",
+      "date": "25/02/2026",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "23",
+      "home_team": "FC Cartagena",
+      "score_text": "1 0",
+      "home_goals": 1,
+      "away_goals": 0,
+      "away_team": "Sevilla Atlético",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 4,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267719\">24</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267719\">25/02/2026</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267719\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267719\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267719\" title=\"Jornada 23\">23</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=267719\">FC Cartagena</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267719\"><div class=\"resultat-gols resultat-resultat-1\">1</div><div class=\"resultat-gols resultat-resultat-1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=267719\">Sevilla Atlético</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=267719\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=267719\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=267719\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267719\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=267719\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267719\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267719\">4</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=267719\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267719\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267719\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=267719\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267778,
+      "match_provider_key": "bdfutbol:match:267778",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267778",
+      "date": "21/03/2026",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "29",
+      "home_team": "Atlético Madrileño",
+      "score_text": "2 0",
+      "home_goals": 2,
+      "away_goals": 0,
+      "away_team": "FC Cartagena",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 9,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267778\">25</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267778\">21/03/2026</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267778\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267778\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267778\" title=\"Jornada 29\">29</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=267778\">Atlético Madrileño</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267778\"><div class=\"resultat-gols resultat-resultat--1\">2</div><div class=\"resultat-gols resultat-resultat--1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=267778\">FC Cartagena</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=267778\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=267778\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=267778\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267778\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=267778\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267778\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267778\">9</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=267778\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267778\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267778\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=267778\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267789,
+      "match_provider_key": "bdfutbol:match:267789",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267789",
+      "date": "28/03/2026",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "30",
+      "home_team": "FC Cartagena",
+      "score_text": "1 0",
+      "home_goals": 1,
+      "away_goals": 0,
+      "away_team": "Atlético Sanluqueño",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267789\">26</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267789\">28/03/2026</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267789\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267789\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267789\" title=\"Jornada 30\">30</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=267789\">FC Cartagena</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267789\"><div class=\"resultat-gols resultat-resultat-1\">1</div><div class=\"resultat-gols resultat-resultat-1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=267789\">Atlético Sanluqueño</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=267789\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"p.php?id=267789\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=267789\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267789\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267789\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267789\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267789\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=267789\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267789\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267789\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=267789\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267804,
+      "match_provider_key": "bdfutbol:match:267804",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267804",
+      "date": "04/04/2026",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "31",
+      "home_team": "Juventud de Torremolinos",
+      "score_text": "0 1",
+      "home_goals": 0,
+      "away_goals": 1,
+      "away_team": "FC Cartagena",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 1,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267804\">27</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267804\">04/04/2026</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267804\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267804\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267804\" title=\"Jornada 31\">31</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=267804\">Juventud de Torremolinos</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267804\"><div class=\"resultat-gols resultat-resultat-1\">0</div><div class=\"resultat-gols resultat-resultat-1\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=267804\">FC Cartagena</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=267804\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=267804\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=267804\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267804\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=267804\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267804\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267804\">1</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=267804\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267804\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267804\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=267804\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267824,
+      "match_provider_key": "bdfutbol:match:267824",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267824",
+      "date": "19/04/2026",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "33",
+      "home_team": "Eldense",
+      "score_text": "2 1",
+      "home_goals": 2,
+      "away_goals": 1,
+      "away_team": "FC Cartagena",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 4,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267824\">28</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267824\">19/04/2026</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267824\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267824\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267824\" title=\"Jornada 33\">33</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=267824\">Eldense</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267824\"><div class=\"resultat-gols resultat-resultat--1\">2</div><div class=\"resultat-gols resultat-resultat--1\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=267824\">FC Cartagena</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=267824\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=267824\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=267824\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267824\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=267824\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267824\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267824\">4</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=267824\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267824\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267824\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=267824\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267853,
+      "match_provider_key": "bdfutbol:match:267853",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267853",
+      "date": "08/05/2026",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "36",
+      "home_team": "FC Cartagena",
+      "score_text": "2 1",
+      "home_goals": 2,
+      "away_goals": 1,
+      "away_team": "Alcorcón",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 17,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267853\">29</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267853\">08/05/2026</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267853\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267853\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267853\" title=\"Jornada 36\">36</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=267853\">FC Cartagena</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267853\"><div class=\"resultat-gols resultat-resultat-1\">2</div><div class=\"resultat-gols resultat-resultat-1\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=267853\">Alcorcón</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=267853\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=267853\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=267853\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267853\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=267853\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267853\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267853\">17</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=267853\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267853\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267853\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=267853\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267863,
+      "match_provider_key": "bdfutbol:match:267863",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267863",
+      "date": "16/05/2026",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "37",
+      "home_team": "UD Ibiza",
+      "score_text": "3 1",
+      "home_goals": 3,
+      "away_goals": 1,
+      "away_team": "FC Cartagena",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 19,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267863\">30</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267863\">16/05/2026</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267863\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267863\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267863\" title=\"Jornada 37\">37</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=267863\">UD Ibiza</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267863\"><div class=\"resultat-gols resultat-resultat--1\">3</div><div class=\"resultat-gols resultat-resultat--1\">1</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=267863\">FC Cartagena</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=267863\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=267863\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=267863\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267863\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=267863\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267863\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267863\">19</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=267863\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267863\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267863\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=267863\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 267877,
+      "match_provider_key": "bdfutbol:match:267877",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=267877",
+      "date": "23/05/2026",
+      "season": "2025-26",
+      "competition": "1rf",
+      "round_or_type": "38",
+      "home_team": "FC Cartagena",
+      "score_text": "2 2",
+      "home_goals": 2,
+      "away_goals": 2,
+      "away_team": "Betis Deportivo",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 39,
+      "yellow_cards_raw": "'60",
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2025-26",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=267877\">31</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=267877\">23/05/2026</a></td>",
+        "Temporada": "<td data-temp=\"2025-26\"><a href=\"p.php?id=267877\">2025-26</a></td>",
+        "Competición": "<td><a href=\"p.php?id=267877\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=267877\" title=\"Jornada 38\">38</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=267877\">FC Cartagena</a></td>",
+        "col_6": "<td><a href=\"p.php?id=267877\"><div class=\"resultat-gols resultat-resultat-0\">2</div><div class=\"resultat-gols resultat-resultat-0\">2</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=267877\">Betis Deportivo</a></td>",
+        "PT": "<td class=\"resp_off\"><a href=\"p.php?id=267877\"> </a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=267877\"> </a></td>",
+        "PS": "<td class=\"PS resp_off\"><a href=\"p.php?id=267877\"><p class=\"punt_part\"></p></a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=267877\"> </a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=267877\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=267877\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=267877\">39</a></td>",
+        "TA": "<td class=\"GR resp_off\"><a href=\"p.php?id=267877\"><span class=\"\" title=\"\">'60</span></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=267877\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=267877\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=267877\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 272521,
+      "match_provider_key": "bdfutbol:match:272521",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=272521",
+      "date": "30/08/2026",
+      "season": "2026-27",
+      "competition": "1rf",
+      "round_or_type": "1",
+      "home_team": "Atlético Madrileño",
+      "score_text": "2 2",
+      "home_goals": 2,
+      "away_goals": 2,
+      "away_team": "Juventud de Torremolinos",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 80,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2026-27",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=272521\">1</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=272521\">30/08/2026</a></td>",
+        "Temporada": "<td data-temp=\"2026-27\"><a href=\"p.php?id=272521\">2026-27</a></td>",
+        "Competición": "<td><a href=\"p.php?id=272521\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=272521\" title=\"Jornada 1\">1</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=272521\">Atlético Madrileño</a></td>",
+        "col_6": "<td><a href=\"p.php?id=272521\"><div class=\"resultat-gols resultat-resultat-0\">2</div><div class=\"resultat-gols resultat-resultat-0\">2</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=272521\">Juventud de Torremolinos</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=272521\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=272521\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=272521\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=272521\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=272521\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=272521\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=272521\">80</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=272521\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=272521\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=272521\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=272521\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 272534,
+      "match_provider_key": "bdfutbol:match:272534",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=272534",
+      "date": "06/09/2026",
+      "season": "2026-27",
+      "competition": "1rf",
+      "round_or_type": "2",
+      "home_team": "Hércules",
+      "score_text": "0 2",
+      "home_goals": 0,
+      "away_goals": 2,
+      "away_team": "Atlético Madrileño",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 82,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2026-27",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=272534\">2</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=272534\">06/09/2026</a></td>",
+        "Temporada": "<td data-temp=\"2026-27\"><a href=\"p.php?id=272534\">2026-27</a></td>",
+        "Competición": "<td><a href=\"p.php?id=272534\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=272534\" title=\"Jornada 2\">2</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=272534\">Hércules</a></td>",
+        "col_6": "<td><a href=\"p.php?id=272534\"><div class=\"resultat-gols resultat-resultat-1\">0</div><div class=\"resultat-gols resultat-resultat-1\">2</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=272534\">Atlético Madrileño</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=272534\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=272534\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=272534\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=272534\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=272534\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=272534\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=272534\">82</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=272534\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=272534\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=272534\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=272534\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 272537,
+      "match_provider_key": "bdfutbol:match:272537",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=272537",
+      "date": "13/09/2026",
+      "season": "2026-27",
+      "competition": "1rf",
+      "round_or_type": "3",
+      "home_team": "Atlético Madrileño",
+      "score_text": "4 0",
+      "home_goals": 4,
+      "away_goals": 0,
+      "away_team": "Murcia",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": "'59",
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2026-27",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=272537\">3</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=272537\">13/09/2026</a></td>",
+        "Temporada": "<td data-temp=\"2026-27\"><a href=\"p.php?id=272537\">2026-27</a></td>",
+        "Competición": "<td><a href=\"p.php?id=272537\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=272537\" title=\"Jornada 3\">3</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=272537\">Atlético Madrileño</a></td>",
+        "col_6": "<td><a href=\"p.php?id=272537\"><div class=\"resultat-gols resultat-resultat-1\">4</div><div class=\"resultat-gols resultat-resultat-1\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=272537\">Murcia</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=272537\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"p.php?id=272537\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=272537\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=272537\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=272537\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=272537\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=272537\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=272537\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=272537\"></a></td>",
+        "G": "<td class=\"GO\"><a href=\"p.php?id=272537\"><span class=\"\" title=\"\">'59</span></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=272537\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 272549,
+      "match_provider_key": "bdfutbol:match:272549",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=272549",
+      "date": "19/09/2026",
+      "season": "2026-27",
+      "competition": "1rf",
+      "round_or_type": "4",
+      "home_team": "Huesca",
+      "score_text": "0 0",
+      "home_goals": 0,
+      "away_goals": 0,
+      "away_team": "Atlético Madrileño",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 90,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2026-27",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=272549\">4</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=272549\">19/09/2026</a></td>",
+        "Temporada": "<td data-temp=\"2026-27\"><a href=\"p.php?id=272549\">2026-27</a></td>",
+        "Competición": "<td><a href=\"p.php?id=272549\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=272549\" title=\"Jornada 4\">4</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=272549\">Huesca</a></td>",
+        "col_6": "<td><a href=\"p.php?id=272549\"><div class=\"resultat-gols resultat-resultat-0\">0</div><div class=\"resultat-gols resultat-resultat-0\">0</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=272549\">Atlético Madrileño</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=272549\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"PC resp_off\"><a href=\"p.php?id=272549\"><p class=\"punt_part\"></p></a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=272549\"> </a></td>",
+        "PX": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=272549\"> </a></td>",
+        "PI": "<td class=\"resp_off\" style=\"display: none;\"><a href=\"p.php?id=272549\"> </a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=272549\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=272549\">90</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=272549\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=272549\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=272549\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=272549\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 272557,
+      "match_provider_key": "bdfutbol:match:272557",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=272557",
+      "date": "25/09/2026",
+      "season": "2026-27",
+      "competition": "1rf",
+      "round_or_type": "5",
+      "home_team": "Atlético Madrileño",
+      "score_text": "1 3",
+      "home_goals": 1,
+      "away_goals": 3,
+      "away_team": "Villarreal B",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 46,
+      "yellow_cards_raw": null,
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2026-27",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=272557\">5</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=272557\">25/09/2026</a></td>",
+        "Temporada": "<td data-temp=\"2026-27\"><a href=\"p.php?id=272557\">2026-27</a></td>",
+        "Competición": "<td><a href=\"p.php?id=272557\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=272557\" title=\"Jornada 5\">5</a></td>",
+        "Local": "<td class=\"aligright eq\"><a href=\"p.php?id=272557\">Atlético Madrileño</a></td>",
+        "col_6": "<td><a href=\"p.php?id=272557\"><div class=\"resultat-gols resultat-resultat--1\">1</div><div class=\"resultat-gols resultat-resultat--1\">3</div></a></td>",
+        "Visitante": "<td class=\"aligleft\"><a href=\"p.php?id=272557\">Villarreal B</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=272557\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=272557\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=272557\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=272557\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=272557\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=272557\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=272557\">46</a></td>",
+        "TA": "<td class=\"resp_off\"><a href=\"p.php?id=272557\"></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=272557\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=272557\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=272557\"></a></td>"
+      }
+    },
+    {
+      "match_provider_id": 272572,
+      "match_provider_key": "bdfutbol:match:272572",
+      "provider_season_id": null,
+      "match_url": "https://www.bdfutbol.com/es/p/p.php?id=272572",
+      "date": "02/10/2026",
+      "season": "2026-27",
+      "competition": "1rf",
+      "round_or_type": "6",
+      "home_team": "Real Madrid Castilla",
+      "score_text": "3 2",
+      "home_goals": 3,
+      "away_goals": 2,
+      "away_team": "Atlético Madrileño",
+      "started_raw": null,
+      "complete_raw": null,
+      "substitute_raw": null,
+      "substituted_raw": null,
+      "incomplete_raw": null,
+      "unused_callup_raw": null,
+      "minutes": 61,
+      "yellow_cards_raw": "'54",
+      "red_cards_raw": null,
+      "goals_raw": null,
+      "goals_conceded": null,
+      "provenance": "bdfutbol",
+      "source_url": "https://www.bdfutbol.com/es/p/j13583.html?temp=2026-27",
+      "raw_cells": {
+        "#": "<td class=\"text-clar\"><a href=\"p.php?id=272572\">6</a></td>",
+        "Fecha": "<td><a href=\"p.php?id=272572\">02/10/2026</a></td>",
+        "Temporada": "<td data-temp=\"2026-27\"><a href=\"p.php?id=272572\">2026-27</a></td>",
+        "Competición": "<td><a href=\"p.php?id=272572\">1rf</a></td>",
+        "Tipo": "<td class=\"tdjornada\"><a href=\"p.php?id=272572\" title=\"Jornada 6\">6</a></td>",
+        "Local": "<td class=\"aligright\"><a href=\"p.php?id=272572\">Real Madrid Castilla</a></td>",
+        "col_6": "<td><a href=\"p.php?id=272572\"><div class=\"resultat-gols resultat-resultat--1\">3</div><div class=\"resultat-gols resultat-resultat--1\">2</div></a></td>",
+        "Visitante": "<td class=\"aligleft eq\"><a href=\"p.php?id=272572\">Atlético Madrileño</a></td>",
+        "PT": "<td class=\"PT resp_off\"><a href=\"p.php?id=272572\"><p class=\"punt_part\"></p></a></td>",
+        "PC": "<td class=\"resp_off\"><a href=\"p.php?id=272572\"> </a></td>",
+        "PS": "<td class=\"resp_off\"><a href=\"p.php?id=272572\"> </a></td>",
+        "PX": "<td class=\"PX resp_off\" style=\"display: none;\"><a href=\"p.php?id=272572\"><p class=\"punt_part\"></p></a></td>",
+        "PI": "<td class=\"PInc resp_off\" style=\"display: none;\"><a href=\"p.php?id=272572\"><p class=\"punt_part\"></p></a></td>",
+        "C": "<td class=\"resp_off\"><a href=\"p.php?id=272572\"> </a></td>",
+        "Min": "<td><a href=\"p.php?id=272572\">61</a></td>",
+        "TA": "<td class=\"GR resp_off\"><a href=\"p.php?id=272572\"><span class=\"\" title=\"\">'54</span></a></td>",
+        "TR": "<td class=\"resp_off\"><a href=\"p.php?id=272572\"></a></td>",
+        "G": "<td class=\"resp_off\"><a href=\"p.php?id=272572\"></a></td>",
+        "GE": "<td class=\"resp_off\"><a href=\"p.php?id=272572\"></a></td>"
+      }
+    }
+  ],
+  "source_run": "/home/mario/Documents/Trabalo/Proyectos/RealJaen/FootballDataHub/data/raw/bdfutbol/player_full_13583/20261008T090004.046874Z",
+  "warnings": []
+}
