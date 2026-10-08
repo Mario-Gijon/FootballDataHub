@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
@@ -43,6 +44,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     _add_team_ids(offline)
     offline.add_argument("--raw-root", type=Path, default=DEFAULT_RAW_ROOT)
     offline.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT)
+    offline.add_argument("--compact-export", action="store_true", help="Escribe gzip lossless bajo compact/; omite CSV redundante de filas.")
+    offline.add_argument("--include-table-csv", action="store_true", help="Añade table_rows.csv.gz al export compacto.")
 
     live = modes.add_parser("live", help="Captura las vistas conocidas para IDs explícitos")
     _add_team_ids(live)
@@ -57,6 +60,19 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     live.add_argument("--browser", choices=("brave", "chrome", "chromium", "auto"), default="brave")
     live.add_argument("--settle-ms", type=int, default=1200)
+    live.add_argument("--compact-export", action="store_true", help="Escribe gzip lossless bajo compact/; omite CSV redundante de filas.")
+    live.add_argument("--include-table-csv", action="store_true", help="Añade table_rows.csv.gz al export compacto.")
+    policy = live.add_mutually_exclusive_group()
+    policy.add_argument("--reuse", dest="refresh", action="store_false", help="Reutiliza la captura válida más reciente (predeterminado).")
+    policy.add_argument("--refresh", action="store_true", help="Adquiere snapshots nuevos sin sobrescribir los anteriores.")
+    live.set_defaults(refresh=False)
+    live.add_argument(
+        "--match-result-filter",
+        action="append",
+        choices=("all", "pg", "pe", "pp"),
+        default=[],
+        help="Captura también resultados actuales de club: all omite pgep; pg/pe/pp filtran resultado.",
+    )
     return parser.parse_args(argv)
 
 
@@ -72,7 +88,10 @@ def _process_snapshots(
     team_season_ids: list[str],
     raw_root: Path,
     output_root: Path,
+    compact_export: bool = False,
+    include_table_csv: bool = False,
 ) -> tuple[Path, dict[str, Any], list[dict[str, Any]], list[dict[str, Any]]]:
+    started = time.perf_counter()
     snapshots = discover_latest_snapshots(raw_root, team_season_ids=set(team_season_ids))
     if not snapshots:
         raise InvalidClubTeamSnapshot(f"No hay snapshots válidos bajo {raw_root} para los IDs indicados")
@@ -112,6 +131,9 @@ def _process_snapshots(
         variant_pages=variant_pages,
         coverage=coverage,
         output_root=output_root,
+        compact=compact_export,
+        processing_seconds=time.perf_counter() - started,
+        include_table_csv=include_table_csv if compact_export else None,
     )
     return output_dir, coverage, parsed_pages, variant_pages
 
@@ -129,6 +151,8 @@ def run(args: argparse.Namespace) -> int:
                 team_season_ids=team_ids,
                 raw_root=args.raw_root,
                 output_root=args.output_root,
+                compact_export=args.compact_export,
+                include_table_csv=args.include_table_csv,
             )
         except (OSError, ValueError, RuntimeError) as exc:
             print(f"ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
@@ -155,6 +179,9 @@ def run(args: argparse.Namespace) -> int:
         "team_season_ids": team_ids,
         "provider": "BDFutbol",
         "capture_policy": "BrowserSessionManager + BDFutbolAccess; stop at first non-VALID response",
+        "snapshot_policy": "refresh" if args.refresh else "reuse",
+        "match_result_filters": list(dict.fromkeys(args.match_result_filter)),
+        "compact_export": args.compact_export,
         "parser_version": PARSER_VERSION,
     }
     access_stopped = False
@@ -165,9 +192,16 @@ def run(args: argparse.Namespace) -> int:
             profile_dir=args.profile,
             browser=args.browser,
             settle_ms=args.settle_ms,
+            reuse_existing=not args.refresh,
+            match_result_filters=tuple(dict.fromkeys(args.match_result_filter)),
         )
         capture_status["processed_snapshots"] = [
-            {"url": snapshot.url, "snapshot_directory": _relative(snapshot.directory), "sha256": snapshot.sha256}
+            {
+                "url": snapshot.url,
+                "snapshot_directory": _relative(snapshot.directory),
+                "sha256": snapshot.sha256,
+                "disposition": snapshot.capture_disposition,
+            }
             for snapshot in processed
         ]
     except ClubTeamAccessStopped as exc:
@@ -196,6 +230,8 @@ def run(args: argparse.Namespace) -> int:
             team_season_ids=team_ids,
             raw_root=args.raw_root,
             output_root=args.output_root,
+            compact_export=args.compact_export,
+            include_table_csv=args.include_table_csv,
         )
     except (OSError, ValueError, RuntimeError) as exc:
         print(f"ERROR al procesar snapshots preservados: {type(exc).__name__}: {exc}", file=sys.stderr)

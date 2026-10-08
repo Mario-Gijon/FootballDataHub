@@ -5,10 +5,10 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
 
 from football_data_hub.providers.bdfutbol.access import AccessAssessment, AccessStatus
 from football_data_hub.providers.bdfutbol.club_team import (
@@ -16,6 +16,7 @@ from football_data_hub.providers.bdfutbol.club_team import (
     classify_club_team_url,
     parse_club_team_html,
 )
+from football_data_hub.providers.bdfutbol.discovery import timestamp_utc
 
 _TEAM_SEASON_ID = re.compile(r"^t\d{4}-\d+$")
 
@@ -42,6 +43,7 @@ class ClubTeamSnapshot:
     metadata: dict[str, Any]
     sha256: str
     page: dict[str, str]
+    capture_disposition: str = "CAPTURED"
 
 
 def load_club_team_snapshot(directory: Path) -> ClubTeamSnapshot:
@@ -175,6 +177,30 @@ def _club_urls(club_id: str) -> dict[str, str]:
     }
 
 
+def _new_snapshot_run_root(raw_root: Path) -> Path:
+    """Reserve a unique raw run directory; never reuse a path that may contain data."""
+    raw_root.mkdir(parents=True, exist_ok=True)
+    timestamp = timestamp_utc()
+    candidate = raw_root / timestamp
+    suffix = 1
+    while True:
+        try:
+            candidate.mkdir(parents=False, exist_ok=False)
+            return candidate
+        except FileExistsError:
+            candidate = raw_root / f"{timestamp}-{suffix:02d}"
+            suffix += 1
+
+
+def _snapshot_for_reuse(
+    existing_by_url: dict[str, ClubTeamSnapshot], url: str, *, reuse_existing: bool
+) -> ClubTeamSnapshot | None:
+    if not reuse_existing:
+        return None
+    existing = existing_by_url.get(url)
+    return replace(existing, capture_disposition="REUSED") if existing else None
+
+
 _CLUB_ID = re.compile(r"^e(?P<number>\d+)$")
 
 
@@ -186,6 +212,7 @@ def capture_club_team_snapshots(
     browser: str = "brave",
     settle_ms: int = 1200,
     reuse_existing: bool = True,
+    match_result_filters: tuple[str, ...] = (),
 ) -> list[ClubTeamSnapshot]:
     """Capture all discovered team/club views with Brave + Xvfb + CDP.
 
@@ -196,6 +223,10 @@ def capture_club_team_snapshots(
         raise ValueError("Indica al menos un ID explícito de equipo-temporada")
     if settle_ms < 0:
         raise ValueError("settle_ms debe ser >= 0")
+    allowed_result_filters = {"all", "pg", "pe", "pp"}
+    invalid_filters = set(match_result_filters) - allowed_result_filters
+    if invalid_filters:
+        raise ValueError(f"Filtros de resultado no admitidos: {sorted(invalid_filters)}")
     unique_ids = list(dict.fromkeys(team_season_ids))
     for team_id in unique_ids:
         if not _TEAM_SEASON_ID.fullmatch(team_id):
@@ -204,10 +235,10 @@ def capture_club_team_snapshots(
     from football_data_hub.core.browser_runtime import BrowserRuntimeConfig
     from football_data_hub.core.browser_session import BrowserSessionManager
     from football_data_hub.providers.bdfutbol.access import BDFutbolAccess
-    from football_data_hub.providers.bdfutbol.discovery import capture_dom_snapshot, timestamp_utc
+    from football_data_hub.providers.bdfutbol.discovery import capture_dom_snapshot
 
     raw_root = raw_root.expanduser().resolve()
-    run_root = raw_root / timestamp_utc()
+    run_root: Path | None = None
     processed: list[ClubTeamSnapshot] = []
     log: list[dict[str, Any]] = []
     config = BrowserRuntimeConfig(profile_dir=profile_dir, browser=browser)
@@ -220,13 +251,16 @@ def capture_club_team_snapshots(
     with BrowserSessionManager(config) as session:
         access = BDFutbolAccess(session)
 
-        def capture(url: str, marker: tuple[str, ...], output: Path) -> ClubTeamSnapshot:
-            if reuse_existing:
-                existing = existing_by_url.get(url)
-                if existing is not None:
-                    log.append({"url": url, "status": "REUSED", "snapshot": str(existing.directory)})
-                    processed.append(existing)
-                    return existing
+        def capture(url: str, marker: tuple[str, ...], output_parts: tuple[str, ...]) -> ClubTeamSnapshot:
+            nonlocal run_root
+            existing = _snapshot_for_reuse(existing_by_url, url, reuse_existing=reuse_existing)
+            if existing is not None:
+                log.append({"url": url, "status": "REUSED", "snapshot": str(existing.directory)})
+                processed.append(existing)
+                return existing
+            if run_root is None:
+                run_root = _new_snapshot_run_root(raw_root)
+            output = run_root.joinpath(*output_parts)
             with access.open(url, required_markers=marker, settle_ms=settle_ms) as result:
                 assessment = result.assessment
                 if assessment.status is not AccessStatus.VALID or result.visit is None:
@@ -238,7 +272,7 @@ def capture_club_team_snapshots(
                     output_dir=output,
                     screenshot=False,
                 )
-            snapshot = load_club_team_snapshot(output)
+            snapshot = replace(load_club_team_snapshot(output), capture_disposition="CAPTURED")
             processed.append(snapshot)
             existing_by_url[url] = snapshot
             log.append({"url": url, "status": "CAPTURED", "snapshot": str(output)})
@@ -249,7 +283,7 @@ def capture_club_team_snapshots(
             team_base = capture(
                 team_urls["team_alignment"],
                 ("Plantilla", "2026-27"),
-                run_root / team_id / "team_alignment",
+                (team_id, "team_alignment"),
             )
             team_page = parse_club_team_html(team_base.html, team_base.url, source_metadata=team_base.metadata)
             club_id = team_page.get("club_id")
@@ -266,9 +300,19 @@ def capture_club_team_snapshots(
             for view, url in team_urls.items():
                 if view == "team_alignment":
                     continue
-                capture(url, team_markers, run_root / team_id / view)
+                capture(url, team_markers, (team_id, view))
             for view, url in _club_urls(club_id).items():
-                capture(url, club_markers, run_root / team_id / view)
+                capture(url, club_markers, (team_id, view))
+            for result_filter in dict.fromkeys(match_result_filters):
+                parameters = {"cat": "1rf", "temp": "2026-27"}
+                if result_filter != "all":
+                    parameters["pgep"] = result_filter
+                match_url = f"{_club_urls(club_id)['club_matches']}?{urlencode(parameters)}"
+                capture(
+                    match_url,
+                    ("1rf", "2026-27"),
+                    (team_id, "club_match_variants", result_filter),
+                )
     return processed
 
 

@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import hashlib
 import json
+import gzip
 from pathlib import Path
 
 import pytest
 
 from football_data_hub.collectors.bdfutbol_club_team import (
     InvalidClubTeamSnapshot,
+    _new_snapshot_run_root,
+    _snapshot_for_reuse,
     _club_urls,
     discover_latest_snapshots,
     load_club_team_snapshot,
@@ -19,6 +22,7 @@ from football_data_hub.providers.bdfutbol.club_team import (
     parse_club_team_html,
 )
 from football_data_hub.storage.club_team_exports import write_club_team_exports
+from scrape_bdfutbol_club_team import parse_args
 
 
 TEAM_ID = "t2026-2749"
@@ -382,6 +386,9 @@ def test_complete_roster_and_stats_pair_does_not_mark_whole_entity_complete() ->
     assert checks["roster_ids_without_statistics"] == []
     assert checks["statistics_ids_without_roster"] == []
     assert roster["coverage_status"] == statistics["coverage_status"] == "COMPLETE"
+    assert "Apodo y Nombre" in roster["structured_source_headers"]
+    assert "Min" in roster["raw_only_headers"]
+    assert "player_id" in roster["interpreted_record_fields"]
     assert coverage["entity_coverage"][0]["status"] == "INCOMPLETE"
     assert coverage["summary"]["views_complete"] == 2
 
@@ -456,15 +463,23 @@ def test_club_page_preserves_historical_rows_and_profile_links() -> None:
 
 def _filtered_match_pages() -> tuple[dict, dict]:
     canonical_html = """<html><body><div id="body"><div class="hero"><h1>Partidos Jaén</h1></div>
-      <main><h2>Temporadas</h2><table id="t1"><tr><th>Temporada</th><th>PJ</th><th>PG</th></tr>
-        <tr><td>2026-27</td><td>6</td><td>3</td></tr></table></main></div></body></html>"""
-    variant_html = """<html><body><div id="body"><div class="hero"><h1>Partidos Jaén</h1></div>
+      <main><h2>Temporadas</h2><table id="t1"><tr><th>Temporada</th><th>PJ</th><th>PG</th><th>PE</th><th>PP</th></tr>
+        <tr><td>2026-27</td><td>6</td><td>3</td><td>2</td><td>1</td></tr></table></main></div></body></html>"""
+    outcomes = (("pg", "0", "3"), ("pg", "0", "1"), ("pg", "1", "2"),
+        ("pe", "1", "1"), ("pe", "0", "0"), ("pp", "2", "0"))
+    def row(index: int, outcome: str, against: str, scored: str) -> str:
+        return (
+            f'<tr><td><a href="/es/p/p.php?id={1000 + index}">{index}</a></td>'
+            f'<td>0{index}/09/2026</td><td>2026-27</td><td>1rf</td><td>Jornada {index}</td>'
+            f'<td>Local</td><td>{against} {scored}</td><td>Visitante</td><td>0</td><td>0</td>'
+            f'<td>{scored}</td><td>{against}</td></tr>'
+        )
+    all_rows = "".join(row(index, *item) for index, item in enumerate(outcomes, start=1))
+    all_html = f"""<html><body><div id="body"><div class="hero"><h1>Partidos Jaén</h1></div>
       <main><h2>Partidos</h2><table id="tpartits">
-        <tr><th>Temporada</th><th>Competición</th><th>Fecha</th><th>Local</th><th>Visitante</th><th>Resultado</th></tr>
-        <tr><td>2026-27</td><td>1rf</td><td>30/08/2026</td><td>Europa</td><td>Jaén</td><td>0-3</td></tr>
-        <tr><td>2026-27</td><td>1rf</td><td>12/09/2026</td><td><a href="/es/e/e76.html">Teruel</a></td><td>Jaén</td><td>0-1</td></tr>
-        <tr><td>2026-27</td><td>1rf</td><td>19/09/2026</td><td>Jaén</td><td>UD Ibiza</td><td>4-2</td></tr>
-        <tr class="filatotal"><td colspan="6">Total 3 victorias</td></tr>
+        <tr><th>#</th><th>Fecha</th><th>Temporada</th><th>Competición</th><th>Tipo</th>
+          <th>Local</th><th></th><th>Visitante</th><th>TA</th><th>TR</th><th>GF</th><th>GC</th></tr>
+        {all_rows}<tr class="filatotal"><td colspan="12">Total 6 partidos</td></tr>
       </table></main></div></body></html>"""
     canonical = parse_club_team_html(
         canonical_html,
@@ -472,6 +487,8 @@ def _filtered_match_pages() -> tuple[dict, dict]:
         source_metadata={"access_status": "VALID", "http_status": 200, "rendered_html_sha256": "base-hash"},
     )
     filters = {"cat": "1rf", "temp": "2026-27", "pgep": "pg"}
+    wins = "".join(row(index, *item) for index, item in enumerate(outcomes[:3], start=1))
+    variant_html = all_html.replace(all_rows, wins).replace("Total 6 partidos", "Total 3 victorias")
     variant = parse_club_team_html(
         variant_html,
         "https://www.bdfutbol.com/es/p/e49.html?cat=1rf&temp=2026-27&pgep=pg",
@@ -490,6 +507,41 @@ def _filtered_match_pages() -> tuple[dict, dict]:
     return canonical, variant
 
 
+def _match_variant_for_filter(
+    outcome_filter: str | None,
+    source_results: tuple[tuple[str, str, str], ...] | None = None,
+) -> dict:
+    canonical, _ = _filtered_match_pages()
+    all_outcomes = source_results or (("pg", "0", "3"), ("pg", "0", "1"), ("pg", "1", "2"),
+        ("pe", "1", "1"), ("pe", "0", "0"), ("pp", "2", "0"))
+    selected = [item for item in all_outcomes if outcome_filter is None or item[0] == outcome_filter]
+    def row(index: int, against: str, scored: str) -> str:
+        return (
+            f'<tr><td><a href="/es/p/p.php?id={1000 + index}">{index}</a></td>'
+            f'<td>0{index}/09/2026</td><td>2026-27</td><td>1rf</td><td>Jornada {index}</td>'
+            f'<td>Local</td><td>{against} {scored}</td><td>Visitante</td><td>0</td><td>0</td>'
+            f'<td>{scored}</td><td>{against}</td></tr>'
+        )
+    outcome_positions = {item: index for index, item in enumerate(all_outcomes, start=1)}
+    rows = "".join(row(outcome_positions[item], item[1], item[2]) for item in selected)
+    html = f"""<html><body><div id="body"><div class="hero"><h1>Partidos Jaén</h1></div>
+      <main><table id="tpartits"><tr><th>#</th><th>Fecha</th><th>Temporada</th><th>Competición</th>
+      <th>Tipo</th><th>Local</th><th></th><th>Visitante</th><th>TA</th><th>TR</th><th>GF</th><th>GC</th></tr>
+      {rows}<tr class="filatotal"><td colspan="12">Total</td></tr></table></main></div></body></html>"""
+    filters = {"cat": "1rf", "temp": "2026-27"}
+    query = "cat=1rf&temp=2026-27"
+    if outcome_filter:
+        filters["pgep"] = outcome_filter
+        query += f"&pgep={outcome_filter}"
+    page = parse_club_team_html(
+        html,
+        f"https://www.bdfutbol.com/es/p/e49.html?{query}",
+        source_metadata={"access_status": "VALID", "http_status": 200, "rendered_html_sha256": f"filter-{outcome_filter or 'all'}"},
+    )
+    page["view_variant"] = {"variant_id": f"result-{outcome_filter or 'all'}", "filter_parameters": filters}
+    return page
+
+
 def test_filtered_club_matches_variant_is_validated_only_in_its_scope() -> None:
     canonical, variant = _filtered_match_pages()
     coverage = build_club_team_coverage([canonical], variant_pages=[variant])
@@ -498,13 +550,179 @@ def test_filtered_club_matches_variant_is_validated_only_in_its_scope() -> None:
     assert match_variant["status"] == "VALIDATED"
     assert match_variant["coverage_status"] == "COMPLETE"
     assert match_variant["records_observed"] == 3
-    assert match_variant["validation"]["aggregate_wins"] == 3
+    assert match_variant["validation"]["aggregate_expected"] == 3
     assert match_variant["validation"]["total_rows"] == 1
     canonical_state = next(item for item in coverage["views"] if item["view"] == "club_matches")
     assert canonical_state["status"] == "PARSED"
     assert canonical_state["coverage_status"] == "INCOMPLETE"
     assert coverage["entity_coverage"][0]["status"] == "INCOMPLETE"
     assert coverage["summary"]["interaction_variants_complete"] == 1
+    result_scope = coverage["match_result_coverage"][0]
+    assert result_scope["status"] == "INCOMPLETE"
+    assert result_scope["aggregate_counts"]["pg"] == 3
+    assert result_scope["missing_result_views"] == ["all", "pe", "pp"]
+
+
+def test_all_current_result_filters_reconcile_against_aggregates_and_unique_ids() -> None:
+    canonical, _ = _filtered_match_pages()
+    variants = [_match_variant_for_filter(value) for value in (None, "pg", "pe", "pp")]
+    coverage = build_club_team_coverage([canonical], variant_pages=variants)
+
+    assert [item["coverage_status"] for item in coverage["interaction_variants"]] == [
+        "COMPLETE", "COMPLETE", "COMPLETE", "COMPLETE",
+    ]
+    for item in coverage["interaction_variants"]:
+        assert item["validation"]["validated"] is True
+    result_scope = coverage["match_result_coverage"][0]
+    assert result_scope["status"] == "COMPLETE"
+    assert result_scope["aggregate_counts"] == {"pg": 3, "pe": 2, "pp": 1, "all": 6}
+    assert result_scope["outcome_union_equals_all_view"] is True
+    assert result_scope["all_result_match_ids"] == ["1001", "1002", "1003", "1004", "1005", "1006"]
+    assert result_scope["duplicate_ids_across_outcomes"] == []
+    base_match_view = next(
+        item for item in coverage["views"] if item["entity_type"] == "club" and item["view"] == "club_matches"
+    )
+    assert all("resultado" not in pending.lower() for pending in base_match_view["pending"])
+    # Match-filter completeness is scoped; the club entity remains incomplete because
+    # its other base views and historical interactions were not all supplied here.
+    assert coverage["entity_coverage"][0]["status"] == "INCOMPLETE"
+
+
+def test_zero_match_result_filter_validates_against_zero_aggregate() -> None:
+    source_results = (("pg", "0", "3"), ("pg", "0", "1"), ("pg", "1", "2"),
+        ("pg", "0", "2"), ("pg", "1", "3"), ("pe", "1", "1"))
+    canonical_html = """<html><body><div id="body"><div class="hero"><h1>Partidos Lugo</h1></div>
+      <main><table id="t1"><tr><th>Temporada</th><th>PJ</th><th>PG</th><th>PE</th><th>PP</th></tr>
+      <tr><td>2026-27</td><td>6</td><td>5</td><td>1</td><td>0</td></tr></table></main></div></body></html>"""
+    canonical = parse_club_team_html(
+        canonical_html,
+        "https://www.bdfutbol.com/es/p/e76.html",
+        source_metadata={"access_status": "VALID", "http_status": 200},
+    )
+    empty_losses = _match_variant_for_filter("pp", source_results)
+    empty_losses["entity_id"] = "e76"
+    empty_losses["url"] = "https://www.bdfutbol.com/es/p/e76.html?cat=1rf&temp=2026-27&pgep=pp"
+    coverage = build_club_team_coverage([canonical], variant_pages=[empty_losses])
+
+    validation = coverage["interaction_variants"][0]["validation"]
+    assert validation["aggregate_expected"] == 0
+    assert validation["played_match_rows"] == 0
+    assert validation["validated"] is True
+
+
+def test_entity_capture_state_changes_when_all_base_snapshots_are_present() -> None:
+    from football_data_hub.providers.bdfutbol.club_team import expected_views_for_club, expected_views_for_team
+
+    html = """<html><body><div id="body"><div class="hero"><h1>Real Jaén</h1>
+      <a href="/es/e/e49.html">Real Jaén</a></div><main><h2>Datos</h2>
+      <table id="sample"><tr><th>Campo</th></tr><tr><td>valor</td></tr></table>
+      </main></div></body></html>"""
+    team_urls = {
+        "team_alignment": BASE,
+        "team_roster": f"{BASE}?t=plantilla",
+        "team_statistics": f"{BASE}?t=lista",
+        "team_tracking": f"{BASE}?t=seg",
+        "team_transfers": f"{BASE}?t=altas",
+        "team_matches": f"{BASE}?tab=partits",
+    }
+    club_urls = {
+        "club_profile": "https://www.bdfutbol.com/es/e/e49.html",
+        "club_statistics": "https://www.bdfutbol.com/es/e/e49.html?p=stats",
+        "club_players": "https://www.bdfutbol.com/es/e/egols49.html",
+        "club_coaches": "https://www.bdfutbol.com/es/e/eentr49.html",
+        "club_matches": "https://www.bdfutbol.com/es/p/e49.html",
+        "club_rivals": "https://www.bdfutbol.com/es/p/er49.html",
+    }
+    pages = [
+        parse_club_team_html(
+            html,
+            url,
+            source_metadata={"access_status": "VALID", "http_status": 200, "rendered_html_sha256": view},
+        )
+        for view, url in {**team_urls, **club_urls}.items()
+    ]
+    partial = build_club_team_coverage(pages[:2], team_season_ids=[TEAM_ID])
+    captured = build_club_team_coverage(pages, team_season_ids=[TEAM_ID])
+    team_state = next(item for item in captured["entity_coverage"] if item["entity_type"] == "team_season")
+
+    assert partial["entity_coverage"][0]["status"] == "INCOMPLETE"
+    assert team_state["base_capture_status"] == "COMPLETE"
+    assert team_state["status"] == "BASE_CAPTURED"
+    assert team_state["interpretation_status"] == "PARTIAL_RAW_PRESERVED"
+    assert team_state["views_captured"] == len(expected_views_for_team())
+    assert len(expected_views_for_club()) == 6
+    assert team_state["pending_interactions"]
+
+
+def test_two_new_participants_with_different_roster_shapes_use_same_parser() -> None:
+    team_specs = (
+        ("t2026-27149", "e149", ("j201", "j202"), False),
+        ("t2026-2740", "e40", ("j301", "j302", "j303"), True),
+    )
+    pages = []
+    for team_id, club_id, player_ids, wider_roster in team_specs:
+        base = f"https://www.bdfutbol.com/es/t/{team_id}.html"
+        roster_rows = "".join(member_row(player_id, f"Jugador {player_id}") for player_id in player_ids)
+        roster_html = team_html(
+            roster_rows=roster_rows,
+            team_season_id=team_id,
+            club_id=club_id,
+        )
+        if wider_roster:
+            roster_html = roster_html.replace(
+                "<th class='optional'>Min</th>",
+                "<th class='optional'>Min</th><th>Dato adicional</th>",
+            ).replace("</td></tr>", "</td><td>valor raw</td></tr>")
+        stats_html = team_html(
+            include_roster=False,
+            statistics_rows="".join(stats_row(player_id, f"Jugador {player_id}", "0") for player_id in player_ids),
+            team_season_id=team_id,
+            club_id=club_id,
+        )
+        pages.extend([
+            parse_club_team_html(
+                roster_html,
+                f"{base}?t=plantilla",
+                source_metadata={"access_status": "VALID", "http_status": 200},
+            ),
+            parse_club_team_html(
+                stats_html,
+                f"{base}?t=lista",
+                source_metadata={"access_status": "VALID", "http_status": 200},
+            ),
+        ])
+
+    coverage = build_club_team_coverage(pages, team_season_ids=[item[0] for item in team_specs])
+
+    for team_id, _, player_ids, _ in team_specs:
+        check = coverage["team_membership_checks"][team_id]
+        assert check["roster_rows"] == len(player_ids)
+        assert check["statistics_rows"] == len(player_ids)
+        assert check["roster_ids_without_statistics"] == []
+        assert check["statistics_ids_without_roster"] == []
+    assert coverage["team_membership_checks"]["t2026-27149"]["roster_rows"] != coverage[
+        "team_membership_checks"
+    ]["t2026-2740"]["roster_rows"]
+
+
+def test_full_width_section_row_is_preserved_without_false_table_overflow() -> None:
+    html = """<html><body><div id="body"><div class="hero"><h1>Plantilla 2026-27</h1>
+      <a href="/es/e/e49.html">Real Jaén</a></div><main><table id="taulaplantilla">
+      <tr><th>Apodo</th><th>Pos</th></tr>
+      <tr><td><a href="/es/j/j101.html">Jugador</a></td><td>Delantero</td></tr>
+      <tr><td colspan="50">Suplentes</td></tr></table></main></div></body></html>"""
+    page = parse_club_team_html(
+        html,
+        BASE,
+        source_metadata={"access_status": "VALID", "http_status": 200},
+    )
+    coverage = build_club_team_coverage([page], team_season_ids=[TEAM_ID])
+    alignment = next(item for item in coverage["views"] if item["view"] == "team_alignment")
+
+    assert alignment["status"] == "VALIDATED"
+    assert alignment["table_integrity_status"] == "VALIDATED"
+    assert alignment["table_integrity"]["taulaplantilla"]["section_spanning_row_indexes"] == [2]
+    assert alignment["table_integrity"]["taulaplantilla"]["row_indexes_with_overflow"] == []
 
 
 def test_export_writes_json_csv_and_relationships_without_network(tmp_path: Path) -> None:
@@ -522,6 +740,101 @@ def test_export_writes_json_csv_and_relationships_without_network(tmp_path: Path
     assert export_summary["team_membership_rows"] == 1
     assert members["items"][0]["player_id"] == "j101"
     assert members["items"][0]["zero_appearances"] is True
+
+
+def test_compact_export_is_gzip_lossless_and_keeps_legacy_export_untouched(tmp_path: Path) -> None:
+    pages = parsed_team_pages()
+    coverage = build_club_team_coverage(pages, team_season_ids=[TEAM_ID])
+    legacy = write_club_team_exports(parsed_pages=pages, coverage=coverage, output_root=tmp_path)
+    compact = write_club_team_exports(
+        parsed_pages=pages,
+        coverage=coverage,
+        output_root=tmp_path,
+        compact=True,
+        processing_seconds=1.25,
+    )
+    compact_with_tables = write_club_team_exports(
+        parsed_pages=pages,
+        coverage=coverage,
+        output_root=tmp_path,
+        compact=True,
+        include_table_csv=True,
+    )
+
+    assert legacy.parent == tmp_path.resolve()
+    assert compact.parent == (tmp_path / "compact").resolve()
+    original = json.loads((legacy / "pages/team_season/t2026-2749/team_roster.json").read_text(encoding="utf-8"))
+    with gzip.open(compact / "pages/team_season/t2026-2749/team_roster.json.gz", "rt", encoding="utf-8") as stream:
+        restored = json.load(stream)
+    assert restored == original
+    assert not (compact / "table_rows.csv.gz").exists()
+    with gzip.open(compact_with_tables / "table_rows.csv.gz", "rt", encoding="utf-8") as stream:
+        csv_header = stream.readline()
+    assert "cells_json" in csv_header
+    assert (legacy / "pages/team_season/t2026-2749/team_roster.json").is_file()
+    with gzip.open(compact / "dataset_metadata.json.gz", "rt", encoding="utf-8") as stream:
+        metadata = json.load(stream)
+    assert metadata["storage_format"]["compression"] == "gzip"
+    assert metadata["storage_format"]["table_rows_csv_included"] is False
+    with gzip.open(compact_with_tables / "dataset_metadata.json.gz", "rt", encoding="utf-8") as stream:
+        metadata_with_csv = json.load(stream)
+    assert metadata_with_csv["storage_format"]["table_rows_csv_included"] is True
+    with gzip.open(compact / "export_summary.json.gz", "rt", encoding="utf-8") as stream:
+        summary = json.load(stream)
+    assert summary["processing_seconds"] >= 1.25
+
+
+def test_new_raw_run_root_never_reuses_an_existing_path(tmp_path: Path, monkeypatch) -> None:
+    from football_data_hub.collectors import bdfutbol_club_team as collector
+
+    monkeypatch.setattr(collector, "timestamp_utc", lambda: "20261008T120000Z")
+    old = tmp_path / "raw" / "20261008T120000Z"
+    old.mkdir(parents=True)
+    sentinel = old / "existing.raw"
+    sentinel.write_text("preserve", encoding="utf-8")
+
+    created = _new_snapshot_run_root(tmp_path / "raw")
+
+    assert created.name == "20261008T120000Z-01"
+    assert sentinel.read_text(encoding="utf-8") == "preserve"
+
+
+def test_latest_snapshot_selection_is_reusable_without_refresh(tmp_path: Path) -> None:
+    url = f"{BASE}?t=plantilla"
+    older = tmp_path / "raw" / "older"
+    newer = tmp_path / "raw" / "newer"
+    write_snapshot(older, url, team_html(), "2026-10-08T12:00:00Z")
+    write_snapshot(newer, url, team_html(), "2026-10-08T13:00:00Z")
+
+    snapshots = discover_latest_snapshots(tmp_path / "raw", team_season_ids={TEAM_ID})
+
+    assert [item.directory for item in snapshots] == [newer.resolve()]
+
+
+def test_refresh_skips_a_reusable_snapshot_without_mutating_it(tmp_path: Path) -> None:
+    snapshot_dir = tmp_path / "raw" / "prior"
+    url = f"{BASE}?t=plantilla"
+    write_snapshot(snapshot_dir, url, team_html())
+    existing = load_club_team_snapshot(snapshot_dir)
+    cache = {url: existing}
+
+    reused = _snapshot_for_reuse(cache, url, reuse_existing=True)
+    refreshed = _snapshot_for_reuse(cache, url, reuse_existing=False)
+
+    assert reused is not None and reused.capture_disposition == "REUSED"
+    assert refreshed is None
+    assert existing.capture_disposition == "CAPTURED"
+    assert (snapshot_dir / "rendered.html").is_file()
+
+
+def test_cli_distinguishes_reuse_refresh_and_offline_modes() -> None:
+    reusable = parse_args(["live", "--team-id", TEAM_ID])
+    refresh = parse_args(["live", "--team-id", TEAM_ID, "--refresh"])
+    offline = parse_args(["offline", "--team-id", TEAM_ID])
+
+    assert reusable.mode == "live" and reusable.refresh is False
+    assert refresh.mode == "live" and refresh.refresh is True
+    assert offline.mode == "offline"
 
 
 def test_export_keeps_filtered_variant_separate_with_source_provenance(tmp_path: Path) -> None:

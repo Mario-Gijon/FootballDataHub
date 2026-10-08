@@ -22,6 +22,15 @@ _CLUB_PRIMARY_TABLES = {
     "club_players": "llista",
     "club_coaches": "llista",
 }
+_INTERPRETED_HEADERS_BY_VIEW = {
+    "team_alignment": {"#", "Dorsal", "Apodo", "Apodo y Nombre", "Nombre", "Fecha", "Lugar de nacimiento", "Provincia", "Pos", "Posición"},
+    "team_roster": {"#", "Dorsal", "Apodo", "Apodo y Nombre", "Nombre", "Fecha", "Lugar de nacimiento", "Provincia", "Pos", "Posición"},
+    "team_statistics": {"Apodo", "Nombre", "PJ", "Partidos Jugados"},
+    "club_players": {"Apodo y Nombre", "Apodo", "Nombre"},
+    "club_coaches": {"Apodo y Nombre", "Apodo", "Nombre"},
+    "club_matches": {"Temporada", "Competición", "PJ", "PG", "PE", "PP", "GF", "GC"},
+    "club_rivals": {"Nombre"},
+}
 _PENDING_BY_VIEW = {
     "club_profile": ["selector Tabla/Listado, selector de competición y comparación de clubes"],
     "club_statistics": ["pestañas internas y filtros por competición/categoría no activados"],
@@ -81,6 +90,26 @@ def _linked_ids(page: dict[str, Any], table_id: str, entity_type: str) -> set[st
     }
 
 
+def _is_section_spanning_row(row: dict[str, Any], table: dict[str, Any]) -> bool:
+    cells = row.get("cells", [])
+    if row.get("row_role") != "data" or len(cells) != 1:
+        return False
+    cell = cells[0]
+    return (
+        not cell.get("links")
+        and int(cell.get("column_span", 1)) >= int(table.get("column_count") or 1)
+    )
+
+
+def _sports_data_rows(table: dict[str, Any]) -> list[dict[str, Any]]:
+    return [
+        row for row in table.get("rows", [])
+        if row.get("kind") == "data"
+        and row.get("row_role") not in {"total", "subtotal"}
+        and not _is_section_spanning_row(row, table)
+    ]
+
+
 def _view_reconciled(page: dict[str, Any]) -> bool:
     """Validate only views whose source rows can be reconciled deterministically."""
     view = str(page.get("view"))
@@ -93,7 +122,7 @@ def _view_reconciled(page: dict[str, Any]) -> bool:
         record_ids = [str(item["player_id"]) for item in records]
         if (
             table is None
-            or table.get("data_row_count") != len(records)
+            or len(_sports_data_rows(table)) != len(records)
             or len(record_ids) != len(set(record_ids))
             or set(record_ids) != _linked_ids(page, table_id, "player")
         ):
@@ -103,7 +132,7 @@ def _view_reconciled(page: dict[str, Any]) -> bool:
             coach_ids = {str(item["coach_id"]) for item in team_data.get("coach_rows", [])}
             if (
                 coach_table is None
-                or coach_table.get("data_row_count") != len(team_data.get("coach_rows", []))
+                or len(_sports_data_rows(coach_table)) != len(team_data.get("coach_rows", []))
                 or coach_ids != _linked_ids(page, "taulaentrenadors", "coach")
             ):
                 return False
@@ -128,14 +157,14 @@ def _view_reconciled(page: dict[str, Any]) -> bool:
         table = next((item for item in tables if item.get("table_id") == "llista"), None)
         entity_type = "player" if view == "club_players" else "coach"
         linked_ids = _linked_ids(page, "llista", entity_type)
-        return bool(table and table.get("data_row_count") and table["data_row_count"] == len(linked_ids))
+        return bool(table and _sports_data_rows(table) and len(_sports_data_rows(table)) == len(linked_ids))
 
     if view == "club_rivals":
         expected = (("t5", "player"), ("t6", "coach"), ("t7", "club"))
         for table_id, entity_type in expected:
             table = next((item for item in tables if item.get("table_id") == table_id), None)
             linked_ids = _linked_ids(page, table_id, entity_type)
-            if not table or table.get("data_row_count") != len(linked_ids) or not linked_ids:
+            if not table or len(_sports_data_rows(table)) != len(linked_ids) or not linked_ids:
                 return False
         return True
     return False
@@ -207,9 +236,16 @@ def _validated_filtered_match_variant(
     canonical_page: dict[str, Any] | None,
     filters: dict[str, str],
 ) -> dict[str, Any] | None:
-    """Cross-check one explicit current-season results filter against the club total table."""
-    expected_filters = {"cat": "1rf", "temp": "2026-27", "pgep": "pg"}
-    if page.get("view") != "club_matches" or filters != expected_filters:
+    """Check one current-season match variant against its aggregate row and IDs."""
+    if page.get("view") != "club_matches":
+        return None
+    if filters.get("cat") != "1rf" or filters.get("temp") != "2026-27":
+        return None
+    if set(filters) - {"cat", "temp", "pgep"}:
+        return None
+    outcome_filter = filters.get("pgep")
+    expected_column = {"pg": "PG", "pe": "PE", "pp": "PP", None: "PJ"}.get(outcome_filter)
+    if expected_column is None:
         return None
     filtered = _table(page, "tpartits")
     aggregate = _table(canonical_page, "t1")
@@ -219,9 +255,9 @@ def _validated_filtered_match_variant(
     season_row = next((row for row in aggregate_rows if _value_at(aggregate, row, "Temporada") == filters["temp"]), None)
     if season_row is None:
         return None
-    expected_wins_raw = _value_at(aggregate, season_row, "PG")
+    expected_raw = _value_at(aggregate, season_row, expected_column)
     try:
-        expected_wins = int(str(expected_wins_raw))
+        expected_count = int(str(expected_raw))
     except (TypeError, ValueError):
         return None
     match_rows = [row for row in filtered.get("rows", []) if row.get("row_role") == "data"]
@@ -230,15 +266,151 @@ def _validated_filtered_match_variant(
         and _value_at(filtered, row, "Competición") == filters["cat"]
         for row in match_rows
     )
-    validated = bool(match_rows) and len(match_rows) == expected_wins and filter_match
+    row_ids = {
+        int(occurrence["source_row_index"]): str(item["entity_id"])
+        for item in page.get("relationships", [])
+        if item.get("entity_type") == "match"
+        for occurrence in item.get("occurrences", [])
+        if occurrence.get("source_table_id") == "tpartits"
+        and occurrence.get("source_row_index") is not None
+    }
+    scored: list[tuple[dict[str, Any], int, int, str | None]] = []
+    for row in match_rows:
+        try:
+            goals_for = int(str(_value_at(filtered, row, "GF")))
+            goals_against = int(str(_value_at(filtered, row, "GC")))
+        except (TypeError, ValueError):
+            continue
+        outcome = "pg" if goals_for > goals_against else "pe" if goals_for == goals_against else "pp"
+        scored.append((row, goals_for, goals_against, outcome))
+    outcome_count = len(scored) if outcome_filter is None else sum(
+        item[3] == outcome_filter for item in scored
+    )
+    rows_match_outcome = all(
+        item[3] == outcome_filter for item in scored
+    ) if outcome_filter else len(scored) == outcome_count
+    scored_ids = [row_ids.get(int(row["row_index"])) for row, _, _, _ in scored]
+    unique_scored_ids = [match_id for match_id in scored_ids if match_id is not None]
+    validated = (
+        outcome_count == expected_count
+        and filter_match
+        and rows_match_outcome
+        and len(unique_scored_ids) == len(scored)
+        and len(set(unique_scored_ids)) == len(unique_scored_ids)
+    )
     return {
         "validated": validated,
-        "aggregate_wins": expected_wins,
+        "result_filter": outcome_filter or "all",
+        "aggregate_column": expected_column,
+        "aggregate_expected": expected_count,
         "filtered_match_rows": len(match_rows),
+        "played_match_rows": len(scored),
+        "scheduled_or_unscored_rows": len(match_rows) - len(scored),
+        "matched_outcome_rows": outcome_count,
         "all_rows_match_query": filter_match,
+        "all_rows_match_result_filter": rows_match_outcome,
+        "match_ids": unique_scored_ids,
+        "match_ids_unique": len(unique_scored_ids) == len(set(unique_scored_ids)),
+        "all_played_rows_have_match_ids": len(unique_scored_ids) == len(scored),
         "total_rows": sum(row.get("row_role") == "total" for row in filtered.get("rows", [])),
-        "basis": "tpartits filas de 1rf/2026-27 frente a PG de t1 para 2026-27",
+        "basis": f"tpartits {outcome_filter or 'sin pgep'} frente a {expected_column} de t1 para 2026-27",
     }
+
+
+def _table_integrity(table: dict[str, Any]) -> dict[str, Any]:
+    rows = table.get("rows", [])
+    data_rows = [row for row in rows if row.get("kind") == "data"]
+    inconsistent = []
+    section_spanning_rows = []
+    omissions: dict[str, dict[str, Any]] = {}
+    headers = table.get("header_cells") or _headers(table)
+    for row in rows:
+        alignment = row.get("column_alignment", {})
+        if alignment.get("overflow_column_count", 0):
+            if _is_section_spanning_row(row, table):
+                section_spanning_rows.append(row.get("row_index"))
+            else:
+                inconsistent.append(row.get("row_index"))
+        missing = alignment.get("missing_trailing_column_indexes", [])
+        if missing:
+            omissions[str(row.get("row_index"))] = {
+                "column_indexes": missing,
+                "headers": [headers[index] if index < len(headers) else None for index in missing],
+                "status": alignment.get("status"),
+            }
+    matches_counts = (
+        table.get("row_count") == len(rows)
+        and table.get("data_row_count") == len(data_rows)
+        and not inconsistent
+    )
+    return {
+        "status": "VALIDATED" if matches_counts else "MISMATCH",
+        "html_parser_rows": len(rows),
+        "reported_rows": table.get("row_count"),
+        "data_rows": len(data_rows),
+        "reported_data_rows": table.get("data_row_count"),
+        "headers": headers,
+        "header_count": len(headers),
+        "row_indexes_with_overflow": inconsistent,
+        "section_spanning_row_indexes": section_spanning_rows,
+        "source_column_omissions": omissions,
+        "raw_cell_values_preserved": all(
+            isinstance(cell.get("text"), str)
+            for row in rows for cell in row.get("cells", [])
+        ),
+    }
+
+
+def _page_integrity(page: dict[str, Any]) -> dict[str, Any]:
+    tables = page.get("tables", [])
+    table_checks = {
+        str(table.get("table_id") or f"table_{table.get('table_index')}"): _table_integrity(table)
+        for table in tables
+    }
+    team_data = page.get("team_data", {})
+    typed_rows = (
+        team_data.get("roster_rows", [])
+        or team_data.get("player_statistics", [])
+        or team_data.get("coach_rows", [])
+    )
+    observed_headers = list(dict.fromkeys(
+        header
+        for check in table_checks.values()
+        for header in check["headers"]
+        if header
+    ))
+    mapped_headers = {header.casefold() for header in _INTERPRETED_HEADERS_BY_VIEW.get(str(page.get("view")), set())}
+    raw_only_headers = [header for header in observed_headers if header.casefold() not in mapped_headers]
+    table_status = (
+        "NOT_VALIDATED_NO_TABLES"
+        if not table_checks
+        else "VALIDATED"
+        if all(item["status"] == "VALIDATED" for item in table_checks.values())
+        else "MISMATCH"
+    )
+    return {
+        "table_status": table_status,
+        "tables": table_checks,
+        "interpreted_record_fields": sorted({
+            key
+            for row in typed_rows
+            for key in row
+            if key not in {"raw_cells", "statistics_cells"}
+        }),
+        "structured_source_headers": [header for header in observed_headers if header.casefold() in mapped_headers],
+        "raw_only_headers": raw_only_headers,
+        "unparsed_statistics_rows": len(team_data.get("statistics_unparsed_rows", [])),
+        "relationship_counts": _relation_counts(page),
+        "relationships_reconciled": _view_reconciled(page),
+    }
+
+
+def _entity_pending_interactions(entity_views: list[dict[str, Any]]) -> list[dict[str, str]]:
+    pending = []
+    for view in entity_views:
+        for item in view.get("pending", []):
+            pending.append({"view": str(view["view"]), "item": str(item)})
+    return pending
 
 
 def _interaction_variant_coverage(
@@ -359,6 +531,12 @@ def build_club_team_coverage(
                         "status": "DISCOVERED",
                         "coverage_status": "INCOMPLETE",
                         "access_status": None,
+                        "table_integrity_status": "NOT_CAPTURED",
+                        "table_integrity": {},
+                        "interpreted_record_fields": [],
+                        "structured_source_headers": [],
+                        "raw_only_headers": [],
+                        "source_column_omissions": {},
                         "url": None,
                         "records_observed": 0,
                         "reason": "La vista está identificada en la navegación del proveedor, pero no hay snapshot de este piloto.",
@@ -395,6 +573,7 @@ def build_club_team_coverage(
                 if table_id and view not in {"club_profile", "club_statistics", "club_matches"}:
                     parsed_ok = parsed_ok and bool(primary_tables)
                 status = "VALIDATED" if parsed_ok and _view_reconciled(page) else "PARSED"
+                integrity = _page_integrity(page)
                 coverage_status = "INCOMPLETE"
                 if entity_type == "team_season" and view in {"team_roster", "team_statistics"}:
                     counts = _member_counts(parsed_by_key, entity_id)
@@ -415,6 +594,19 @@ def build_club_team_coverage(
                     "status": status,
                     "coverage_status": coverage_status,
                     "access_status": source.get("access_status"),
+                    "table_integrity_status": integrity["table_status"],
+                    "table_integrity": integrity["tables"],
+                    "interpreted_record_fields": integrity["interpreted_record_fields"],
+                    "structured_source_headers": integrity["structured_source_headers"],
+                    "raw_only_headers": integrity["raw_only_headers"],
+                    "source_column_omissions": {
+                        table_id: check["source_column_omissions"]
+                        for table_id, check in integrity["tables"].items()
+                        if check["source_column_omissions"]
+                    },
+                    "unparsed_statistics_rows": integrity["unparsed_statistics_rows"],
+                    "relationship_counts": integrity["relationship_counts"],
+                    "relationships_reconciled": integrity["relationships_reconciled"],
                     "evidence_status": _evidence_status(page),
                     "url": page.get("url"),
                     "snapshot_sha256": source.get("rendered_html_sha256"),
@@ -423,9 +615,9 @@ def build_club_team_coverage(
                     "records_observed": records,
                     "reason": (
                         "La tabla y sus IDs enlazados se reconciliaron dentro de esta vista; "
-                        "la entidad sigue INCOMPLETE mientras falten otras vistas."
+                        "la interpretación tipada cubre solo el alcance documentado de esta vista."
                         if coverage_status == "COMPLETE"
-                        else "Las filas primarias y sus IDs enlazados se reconciliaron; quedan filtros o variantes por comprobar."
+                        else "Las filas raw se conservaron; quedan campos, filtros o variantes por interpretar."
                         if status == "VALIDATED"
                         else "Snapshot válido y parseado; todavía no se reconciliaron todas las filas primarias con sus IDs."
                     ),
@@ -434,6 +626,22 @@ def build_club_team_coverage(
 
     team_records = {team_id: _member_counts(parsed_by_key, team_id) for team_id in teams}
     interaction_variants = _interaction_variant_coverage(variant_pages or [], parsed_by_key)
+    match_result_coverage = _match_result_coverage(interaction_variants, clubs)
+    match_result_by_club = {item["club_id"]: item for item in match_result_coverage}
+    for row in rows:
+        if row["entity_type"] != "club" or row["view"] != "club_matches" or row["status"] == "DISCOVERED":
+            continue
+        scope = match_result_by_club.get(str(row["entity_id"]))
+        if scope and scope["status"] == "COMPLETE":
+            row["pending"] = [
+                "Filtros de temporadas históricas, rival y nacionalidad fuera de 1rf/2026-27 no explorados."
+            ]
+        elif scope and scope["observed_result_views"]:
+            row["pending"] = [
+                "Faltan variantes 1rf/2026-27 de resultado: "
+                + ", ".join(scope["missing_result_views"]),
+                "Filtros de temporadas históricas, rival y nacionalidad no explorados.",
+            ]
     unique_players = {
         str(row["player_id"])
         for page in parsed_pages
@@ -447,8 +655,55 @@ def build_club_team_coverage(
         for row in page.get("team_data", {}).get("coach_rows", [])
     }
     status_counts = Counter(row["status"] for row in rows)
+    entity_coverage = []
+    for entity_type, entity_ids, expected_views in (
+        ("team_season", teams, expected_views_for_team()),
+        ("club", clubs, expected_views_for_club()),
+    ):
+        for entity_id in entity_ids:
+            entity_views = [
+                row for row in rows
+                if row["entity_type"] == entity_type and row["entity_id"] == entity_id
+            ]
+            captured = sum(row["status"] != "DISCOVERED" for row in entity_views)
+            valid = sum(row["access_status"] == "VALID" for row in entity_views)
+            structurally_validated = sum(row.get("table_integrity_status") == "VALIDATED" for row in entity_views)
+            capture_complete = captured == len(expected_views) and valid == len(expected_views)
+            pending_interactions = _entity_pending_interactions(entity_views)
+            fully_interpreted = all(row["coverage_status"] == "COMPLETE" for row in entity_views)
+            entity_status = (
+                "COMPLETE"
+                if capture_complete and fully_interpreted and not pending_interactions
+                else "BASE_CAPTURED"
+                if capture_complete
+                else "INCOMPLETE"
+            )
+            entity_coverage.append({
+                "entity_type": entity_type,
+                "entity_id": entity_id,
+                "club_id": team_clubs.get(entity_id) if entity_type == "team_season" else None,
+                "views_expected": len(expected_views),
+                "views_captured": captured,
+                "views_access_valid": valid,
+                "views_structurally_validated": structurally_validated,
+                "base_capture_status": "COMPLETE" if capture_complete else "PARTIAL",
+                "interpretation_status": "COMPLETE_WITHIN_SCOPE" if fully_interpreted and not pending_interactions else "PARTIAL_RAW_PRESERVED",
+                "status": entity_status,
+                "pending_views": [
+                    row["view"] for row in entity_views if row["status"] == "DISCOVERED"
+                ],
+                "pending_interpretation_views": [
+                    row["view"] for row in entity_views if row["coverage_status"] != "COMPLETE"
+                ],
+                "pending_interactions": pending_interactions,
+                "reason": (
+                    "Las vistas base están capturadas; persisten interpretaciones, campos raw-only o interacciones pendientes."
+                    if entity_status == "BASE_CAPTURED"
+                    else "Faltan snapshots base válidos para cerrar la captura de esta entidad."
+                ),
+            })
     return {
-        "schema_version": "football_data_hub.bdfutbol.club_team_coverage.v1",
+        "schema_version": "football_data_hub.bdfutbol.club_team_coverage.v3",
         "scope": {
             "team_season_ids": teams,
             "club_ids": clubs,
@@ -462,36 +717,18 @@ def build_club_team_coverage(
             "views_complete": sum(row["coverage_status"] == "COMPLETE" for row in rows),
             "interaction_variants_observed": len(interaction_variants),
             "interaction_variants_complete": sum(row["coverage_status"] == "COMPLETE" for row in interaction_variants),
-            "entities_incomplete": len(teams) + len(clubs),
+            "match_result_scopes_complete": sum(item["status"] == "COMPLETE" for item in match_result_coverage),
+            "entities_complete": sum(item["status"] == "COMPLETE" for item in entity_coverage),
+            "entities_base_captured": sum(item["base_capture_status"] == "COMPLETE" for item in entity_coverage),
+            "entities_incomplete": sum(item["status"] != "COMPLETE" for item in entity_coverage),
             "pipeline_states": dict(sorted(status_counts.items())),
             "team_player_memberships": sum(item["roster_rows"] for item in team_records.values()),
             "unique_team_player_ids": len(unique_players),
             "unique_team_coach_ids": len(unique_coaches),
         },
         "team_membership_checks": team_records,
-        "entity_coverage": [
-            {
-                "entity_type": entity_type,
-                "entity_id": entity_id,
-                "club_id": team_clubs.get(entity_id) if entity_type == "team_season" else None,
-                "views_expected": len(expected_views),
-                "views_captured": sum(
-                    row["entity_type"] == entity_type and row["entity_id"] == entity_id and row["status"] != "DISCOVERED"
-                    for row in rows
-                ),
-                "status": "INCOMPLETE",
-                "pending_views": [
-                    row["view"] for row in rows
-                    if row["entity_type"] == entity_type and row["entity_id"] == entity_id and row["status"] == "DISCOVERED"
-                ],
-                "reason": "Quedan filtros, variantes o vistas relacionadas pendientes; no se declara COMPLETE.",
-            }
-            for entity_type, entity_ids, expected_views in (
-                ("team_season", teams, expected_views_for_team()),
-                ("club", clubs, expected_views_for_club()),
-            )
-            for entity_id in entity_ids
-        ],
+        "entity_coverage": entity_coverage,
+        "match_result_coverage": match_result_coverage,
         "views": rows,
         "interaction_variants": interaction_variants,
         "resources": [
@@ -520,6 +757,69 @@ def build_club_team_coverage(
             "VALIDATED": "Hash/HTTP y estructura extraída fueron comprobados.",
             "COMPLETE": "Todos los campos/registros de la vista están reconciliados; no implica que la entidad completa esté cerrada.",
             "INCOMPLETE": "Quedan secciones, filtros o variantes conocidos por inspeccionar.",
+            "BASE_CAPTURED": "Todas las vistas base esperadas tienen snapshots VALID; campos raw-only e interacciones siguen separados.",
+            "RAW_CAPTURED": "La estructura HTML/tabla y sus valores de celda se preservaron; no implica interpretación semántica.",
             "BLOCKED": "BDFutbolAccess devolvió un desafío o bloqueo; no se interpreta como contenido deportivo.",
         },
     }
+
+
+def _match_result_coverage(
+    variants: list[dict[str, Any]], club_ids: list[str]
+) -> list[dict[str, Any]]:
+    """Require all-results plus each outcome and reconcile unique played match IDs."""
+    expected_filters = {"all", "pg", "pe", "pp"}
+    result = []
+    for club_id in club_ids:
+        observed = {}
+        for variant in variants:
+            if variant.get("entity_type") != "club" or variant.get("entity_id") != club_id:
+                continue
+            filters = variant.get("filter_parameters", {})
+            if filters.get("cat") != "1rf" or filters.get("temp") != "2026-27":
+                continue
+            result_filter = str(filters.get("pgep") or "all")
+            if result_filter in expected_filters:
+                observed[result_filter] = variant
+        ids_by_filter = {
+            name: set((variant.get("validation") or {}).get("match_ids", []))
+            for name, variant in observed.items()
+        }
+        combined = [match_id for name in ("pg", "pe", "pp") for match_id in ids_by_filter.get(name, set())]
+        duplicate_ids = sorted({match_id for match_id in combined if combined.count(match_id) > 1})
+        outcomes_union = set(combined)
+        all_ids = ids_by_filter.get("all", set())
+        expected_counts = {
+            name: (observed.get(name, {}).get("validation") or {}).get("aggregate_expected")
+            for name in ("pg", "pe", "pp", "all")
+        }
+        outcomes_sum = (
+            sum(expected_counts[name] for name in ("pg", "pe", "pp"))
+            if all(isinstance(expected_counts[name], int) for name in ("pg", "pe", "pp"))
+            else None
+        )
+        all_variants_valid = all(
+            name in observed and observed[name].get("coverage_status") == "COMPLETE"
+            for name in expected_filters
+        )
+        reconciled = bool(
+            all_variants_valid
+            and not duplicate_ids
+            and outcomes_union == all_ids
+            and outcomes_sum == expected_counts["all"] == len(all_ids)
+        )
+        result.append({
+            "club_id": club_id,
+            "scope": f"club={club_id};cat=1rf;temp=2026-27;result=all,pg,pe,pp",
+            "status": "COMPLETE" if reconciled else "INCOMPLETE",
+            "expected_result_views": sorted(expected_filters),
+            "observed_result_views": sorted(observed),
+            "missing_result_views": sorted(expected_filters - set(observed)),
+            "aggregate_counts": expected_counts,
+            "outcome_match_ids": {name: sorted(ids_by_filter.get(name, set())) for name in ("pg", "pe", "pp")},
+            "all_result_match_ids": sorted(all_ids),
+            "duplicate_ids_across_outcomes": duplicate_ids,
+            "outcome_union_equals_all_view": bool(all_variants_valid and outcomes_union == all_ids),
+            "reason": "El conjunto de victorias/empates/derrotas se reconcilia con PJ y la vista general." if reconciled else "Faltan variantes o la unión de IDs/resultados no coincide con los agregados.",
+        })
+    return result

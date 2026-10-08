@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import csv
+import gzip
 import hashlib
 import json
 import os
 import tempfile
+import time
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -28,19 +30,33 @@ def _atomic_write(path: Path, data: bytes) -> None:
             os.unlink(temporary)
 
 
-def _write_json(path: Path, value: Any) -> None:
-    content = json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
-    _atomic_write(path, content.encode("utf-8"))
+def _write_json(path: Path, value: Any, *, compressed: bool = False) -> None:
+    content = json.dumps(
+        value,
+        ensure_ascii=False,
+        indent=None if compressed else 2,
+        separators=(",", ":") if compressed else None,
+        sort_keys=True,
+    ) + "\n"
+    data = content.encode("utf-8")
+    _atomic_write(path, gzip.compress(data, compresslevel=6, mtime=0) if compressed else data)
 
 
-def _write_csv(path: Path, rows: list[dict[str, Any]], fields: tuple[str, ...]) -> None:
+def _write_csv(
+    path: Path,
+    rows: list[dict[str, Any]],
+    fields: tuple[str, ...],
+    *,
+    compressed: bool = False,
+) -> None:
     from io import StringIO
 
     output = StringIO(newline="")
     writer = csv.DictWriter(output, fieldnames=fields, extrasaction="ignore")
     writer.writeheader()
     writer.writerows(rows)
-    _atomic_write(path, output.getvalue().encode("utf-8"))
+    data = output.getvalue().encode("utf-8")
+    _atomic_write(path, gzip.compress(data, compresslevel=6, mtime=0) if compressed else data)
 
 
 def _json_cell(value: Any) -> str:
@@ -218,16 +234,36 @@ def write_club_team_exports(
     variant_pages: list[dict[str, Any]] | None = None,
     coverage: dict[str, Any],
     output_root: Path,
+    compact: bool = False,
+    processing_seconds: float | None = None,
+    include_table_csv: bool | None = None,
 ) -> Path:
-    """Write page-level JSON plus relation, roster and lossless table-row CSVs."""
+    """Write lossless JSON/CSV exports; compact mode uses deterministic gzip files."""
+    write_started = time.perf_counter()
+    include_table_csv = not compact if include_table_csv is None else include_table_csv
     all_pages = [*parsed_pages, *(variant_pages or [])]
     source_key = "|".join(sorted(
         f"{page['url']}:{page.get('source', {}).get('rendered_html_sha256')}"
         for page in all_pages
     ))
-    key = hashlib.sha256(f"{source_key}|parser:{PARSER_VERSION}".encode("utf-8")).hexdigest()[:20]
-    output_dir = output_root.expanduser().resolve() / f"snapshot-{key}-parser-{PARSER_VERSION}"
+    storage_profile = f"gzip-table-csv-{include_table_csv}" if compact else "legacy"
+    key = hashlib.sha256(
+        f"{source_key}|parser:{PARSER_VERSION}|coverage:{coverage.get('schema_version')}|storage:{storage_profile}".encode("utf-8")
+    ).hexdigest()[:20]
+    base_output = output_root.expanduser().resolve()
+    if compact:
+        base_output = base_output / "compact"
+    output_dir = base_output / f"snapshot-{key}-parser-{PARSER_VERSION}"
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    def output_path(path: Path) -> Path:
+        return path.with_name(f"{path.name}.gz") if compact else path
+
+    def write_json(path: Path, value: Any) -> None:
+        _write_json(output_path(path), value, compressed=compact)
+
+    def write_csv(path: Path, rows: list[dict[str, Any]], fields: tuple[str, ...]) -> None:
+        _write_csv(output_path(path), rows, fields, compressed=compact)
 
     sources = [
         {
@@ -246,27 +282,35 @@ def write_club_team_exports(
         for page in all_pages
     ]
     metadata = {
-        "schema_version": "football_data_hub.bdfutbol.club_team_export.v1",
+        "schema_version": "football_data_hub.bdfutbol.club_team_export.v2",
         "extraction_key": key,
         "parser_version": PARSER_VERSION,
         "provider": "BDFutbol",
         "season_scope": "2026/27",
         "source_snapshots": sources,
         "coverage_summary": coverage.get("summary"),
+        "storage_format": {
+            "compression": "gzip" if compact else "none",
+            "lossless": True,
+            "json_suffix": ".json.gz" if compact else ".json",
+            "csv_suffix": ".csv.gz" if compact else ".csv",
+            "table_rows_csv_included": include_table_csv,
+            "compatibility_note": "Uncompressed exports remain the default; compact exports use standard gzip readers.",
+        },
     }
-    _write_json(output_dir / "dataset_metadata.json", metadata)
+    write_json(output_dir / "dataset_metadata.json", metadata)
     for page in parsed_pages:
-        _write_json(output_dir / _page_path(page), page)
+        write_json(output_dir / _page_path(page), page)
     for page in variant_pages or []:
-        _write_json(output_dir / _variant_path(page), page)
-    _write_json(output_dir / "resource_catalog.json", {
+        write_json(output_dir / _variant_path(page), page)
+    write_json(output_dir / "resource_catalog.json", {
         "schema_version": "football_data_hub.bdfutbol.club_team.catalog.v1",
         "provider": "BDFutbol",
         "resources": coverage.get("resources", []),
         "interaction_variants": coverage.get("interaction_variants", []),
     })
-    _write_json(output_dir / "coverage_matrix.json", coverage)
-    _write_csv(
+    write_json(output_dir / "coverage_matrix.json", coverage)
+    write_csv(
         output_dir / "coverage_matrix.csv",
         _csv_metrics(coverage),
         (
@@ -274,11 +318,11 @@ def write_club_team_exports(
             "evidence_status", "url", "records_observed", "reason", "pending_json", "snapshot_sha256",
         ),
     )
-    _write_json(output_dir / "interaction_variants.json", {
+    write_json(output_dir / "interaction_variants.json", {
         **metadata,
         "items": coverage.get("interaction_variants", []),
     })
-    _write_csv(
+    write_csv(
         output_dir / "interaction_variants.csv",
         _variant_csv_metrics(coverage),
         (
@@ -289,8 +333,8 @@ def write_club_team_exports(
     )
 
     members = _member_exports(parsed_pages)
-    _write_json(output_dir / "team_members.json", {**metadata, "items": members})
-    _write_csv(
+    write_json(output_dir / "team_members.json", {**metadata, "items": members})
+    write_csv(
         output_dir / "team_members.csv",
         [
             {
@@ -309,8 +353,8 @@ def write_club_team_exports(
     )
 
     relationships = _relationship_exports(all_pages)
-    _write_json(output_dir / "relationships.json", {**metadata, "items": relationships})
-    _write_csv(
+    write_json(output_dir / "relationships.json", {**metadata, "items": relationships})
+    write_csv(
         output_dir / "relationships.csv",
         [{**item, "occurrences": _json_cell(item.get("occurrences", []))} for item in relationships],
         (
@@ -322,8 +366,8 @@ def write_club_team_exports(
     )
 
     club_people = _club_people(parsed_pages)
-    _write_json(output_dir / "club_people.json", {**metadata, "items": club_people})
-    _write_csv(
+    write_json(output_dir / "club_people.json", {**metadata, "items": club_people})
+    write_csv(
         output_dir / "club_people.csv",
         club_people,
         (
@@ -332,28 +376,37 @@ def write_club_team_exports(
         ),
     )
 
-    table_rows = _table_row_exports(parsed_pages)
-    variant_table_rows = _table_row_exports(variant_pages or [])
-    _write_csv(
-        output_dir / "table_rows.csv",
-        table_rows,
-        (
-            "entity_type", "entity_id", "view", "variant_id", "url", "table_index", "table_id",
-            "section_heading", "row_index", "row_kind", "row_role", "cell_count",
-            "column_alignment_json", "cells_json", "source_snapshot_sha256",
-        ),
+    table_rows_count = sum(
+        len(table.get("rows", [])) for page in parsed_pages for table in page.get("tables", [])
     )
-    _write_csv(
-        output_dir / "variant_table_rows.csv",
-        variant_table_rows,
-        (
-            "entity_type", "entity_id", "view", "variant_id", "url", "table_index", "table_id",
-            "section_heading", "row_index", "row_kind", "row_role", "cell_count",
-            "column_alignment_json", "cells_json", "source_snapshot_sha256",
-        ),
+    variant_table_rows_count = sum(
+        len(table.get("rows", []))
+        for page in variant_pages or []
+        for table in page.get("tables", [])
     )
+    if include_table_csv:
+        table_rows = _table_row_exports(parsed_pages)
+        variant_table_rows = _table_row_exports(variant_pages or [])
+        write_csv(
+            output_dir / "table_rows.csv",
+            table_rows,
+            (
+                "entity_type", "entity_id", "view", "variant_id", "url", "table_index", "table_id",
+                "section_heading", "row_index", "row_kind", "row_role", "cell_count",
+                "column_alignment_json", "cells_json", "source_snapshot_sha256",
+            ),
+        )
+        write_csv(
+            output_dir / "variant_table_rows.csv",
+            variant_table_rows,
+            (
+                "entity_type", "entity_id", "view", "variant_id", "url", "table_index", "table_id",
+                "section_heading", "row_index", "row_kind", "row_role", "cell_count",
+                "column_alignment_json", "cells_json", "source_snapshot_sha256",
+            ),
+        )
     view_counts = Counter(str(page.get("view")) for page in parsed_pages)
-    _write_json(output_dir / "export_summary.json", {
+    write_json(output_dir / "export_summary.json", {
         **metadata,
         "parsed_page_count": len(parsed_pages),
         "variant_page_count": len(variant_pages or []),
@@ -361,7 +414,9 @@ def write_club_team_exports(
         "team_membership_rows": len(members),
         "relationships": len(relationships),
         "club_people_registry_rows": len(club_people),
-        "table_rows": len(table_rows),
-        "variant_table_rows": len(variant_table_rows),
+        "table_rows": table_rows_count,
+        "variant_table_rows": variant_table_rows_count,
+        "table_rows_csv_included": include_table_csv,
+        "processing_seconds": (processing_seconds or 0.0) + (time.perf_counter() - write_started),
     })
     return output_dir
