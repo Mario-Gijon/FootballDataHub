@@ -94,7 +94,7 @@ def discover_latest_snapshots(
     raw_root = raw_root.expanduser().resolve()
     if not raw_root.is_dir():
         raise FileNotFoundError(f"No existe el directorio raw: {raw_root}")
-    candidates: dict[str, tuple[Path, str, dict[str, str]]] = {}
+    candidates: dict[str, list[tuple[Path, str, dict[str, str]]]] = {}
     for metadata_path in raw_root.rglob("metadata.json"):
         try:
             metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
@@ -109,42 +109,60 @@ def discover_latest_snapshots(
         if team_season_ids and page["entity_type"] == "team_season" and page["entity_id"] not in team_season_ids:
             continue
         captured = str(metadata.get("captured_at_utc") or "")
-        previous = candidates.get(url)
-        if previous is None or captured > previous[1]:
-            candidates[url] = (metadata_path.parent, captured, page)
+        candidates.setdefault(url, []).append((metadata_path.parent, captured, page))
+
+    validated_by_url: dict[str, ClubTeamSnapshot | None] = {}
+
+    def latest_valid(url: str) -> ClubTeamSnapshot | None:
+        if url not in validated_by_url:
+            snapshot = None
+            for directory, _, _ in sorted(
+                candidates[url],
+                key=lambda candidate: (candidate[1], str(candidate[0])),
+                reverse=True,
+            ):
+                try:
+                    snapshot = load_club_team_snapshot(directory)
+                    break
+                except InvalidClubTeamSnapshot:
+                    continue
+            validated_by_url[url] = snapshot
+        return validated_by_url[url]
 
     selected_clubs = set(club_ids or ())
     if team_season_ids and not selected_clubs:
-        for directory, _, page in candidates.values():
+        for url, url_candidates in candidates.items():
+            _, _, page = url_candidates[0]
             if page["entity_type"] != "team_season" or page["view"] != "team_alignment":
                 continue
-            try:
-                snapshot = load_club_team_snapshot(directory)
-            except InvalidClubTeamSnapshot:
+            if page["entity_id"] not in team_season_ids:
+                continue
+            snapshot = latest_valid(url)
+            if snapshot is None:
                 continue
             parsed = parse_club_team_html(snapshot.html, snapshot.url, source_metadata=snapshot.metadata)
             if parsed.get("club_id"):
                 selected_clubs.add(parsed["club_id"])
 
-    selected: list[tuple[Path, dict[str, str]]] = []
-    for directory, _, page in candidates.values():
+    selected_urls: set[str] = set()
+    for url, url_candidates in candidates.items():
+        _, _, page = url_candidates[0]
         if team_season_ids:
             if page["entity_type"] == "team_season" and page["entity_id"] in team_season_ids:
-                selected.append((directory, page))
+                selected_urls.add(url)
             elif page["entity_type"] == "club" and page["entity_id"] in selected_clubs:
-                selected.append((directory, page))
+                selected_urls.add(url)
         elif club_ids:
             if page["entity_type"] != "club" or page["entity_id"] in selected_clubs:
-                selected.append((directory, page))
+                selected_urls.add(url)
         else:
-            selected.append((directory, page))
+            selected_urls.add(url)
 
     snapshots: list[ClubTeamSnapshot] = []
-    for directory, _ in selected:
-        try:
-            snapshots.append(load_club_team_snapshot(directory))
-        except InvalidClubTeamSnapshot:
-            continue
+    for url in selected_urls:
+        snapshot = latest_valid(url)
+        if snapshot is not None:
+            snapshots.append(snapshot)
     return sorted(snapshots, key=lambda item: (item.page["entity_type"], item.page["entity_id"], item.page["view"]))
 
 

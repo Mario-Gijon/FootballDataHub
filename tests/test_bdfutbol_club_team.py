@@ -6,6 +6,7 @@ import gzip
 from pathlib import Path
 
 import pytest
+import scrape_bdfutbol_club_team as club_team_cli
 
 from football_data_hub.collectors.bdfutbol_club_team import (
     InvalidClubTeamSnapshot,
@@ -811,6 +812,26 @@ def test_latest_snapshot_selection_is_reusable_without_refresh(tmp_path: Path) -
     assert [item.directory for item in snapshots] == [newer.resolve()]
 
 
+@pytest.mark.parametrize("latest_failure", ["bad_sha", "incomplete_marker"])
+def test_latest_invalid_snapshot_falls_back_to_previous_valid_copy(
+    tmp_path: Path, latest_failure: str,
+) -> None:
+    url = f"{BASE}?t=plantilla"
+    older = tmp_path / "raw" / "older"
+    newer = tmp_path / "raw" / "newer"
+    write_snapshot(older, url, team_html(), "2026-10-08T12:00:00Z")
+    write_snapshot(newer, url, team_html(), "2026-10-08T13:00:00Z")
+    if latest_failure == "bad_sha":
+        (newer / "rendered.html").write_text("changed after capture", encoding="utf-8")
+    else:
+        (newer / "INCOMPLETE").write_text("capture stopped", encoding="utf-8")
+
+    snapshots = discover_latest_snapshots(tmp_path / "raw", team_season_ids={TEAM_ID})
+
+    assert [item.directory for item in snapshots] == [older.resolve()]
+    assert snapshots[0].sha256 == hashlib.sha256((older / "rendered.html").read_bytes()).hexdigest()
+
+
 def test_refresh_skips_a_reusable_snapshot_without_mutating_it(tmp_path: Path) -> None:
     snapshot_dir = tmp_path / "raw" / "prior"
     url = f"{BASE}?t=plantilla"
@@ -835,6 +856,103 @@ def test_cli_distinguishes_reuse_refresh_and_offline_modes() -> None:
     assert reusable.mode == "live" and reusable.refresh is False
     assert refresh.mode == "live" and refresh.refresh is True
     assert offline.mode == "offline"
+
+
+def test_offline_cli_returns_nonzero_when_a_base_view_is_missing(
+    tmp_path: Path, monkeypatch, capsys,
+) -> None:
+    team_views = (
+        "team_alignment", "team_roster", "team_statistics", "team_tracking",
+        "team_transfers", "team_matches",
+    )
+    club_views = (
+        "club_profile", "club_statistics", "club_players", "club_coaches",
+        "club_matches", "club_rivals",
+    )
+    view_rows = []
+    for entity_type, entity_id, names in (
+        ("team_season", TEAM_ID, team_views),
+        ("club", CLUB_ID, club_views),
+    ):
+        for view in names:
+            missing = entity_type == "club" and view == "club_rivals"
+            view_rows.append({
+                "entity_type": entity_type,
+                "entity_id": entity_id,
+                "view": view,
+                "status": "DISCOVERED" if missing else "PARSED",
+                "access_status": None if missing else "VALID",
+                "table_integrity_status": "NOT_CAPTURED" if missing else "VALIDATED",
+                "table_integrity": {} if missing else {"main": {"raw_cell_values_preserved": True}},
+            })
+    coverage = {
+        "summary": {
+            "views_expected": 12,
+            "views_captured": 11,
+            "views_validated": 10,
+            "unique_team_player_ids": 1,
+            "unique_team_coach_ids": 1,
+        },
+        "entity_coverage": [
+            {
+                "entity_type": "team_season", "entity_id": TEAM_ID, "club_id": CLUB_ID,
+                "views_expected": 6, "views_captured": 6, "views_access_valid": 6,
+                "base_capture_status": "COMPLETE",
+            },
+            {
+                "entity_type": "club", "entity_id": CLUB_ID, "club_id": None,
+                "views_expected": 6, "views_captured": 5, "views_access_valid": 5,
+                "base_capture_status": "PARTIAL",
+            },
+        ],
+        "views": view_rows,
+    }
+    parsed_pages = [{
+        "entity_type": "team_season", "entity_id": TEAM_ID, "view": "team_alignment",
+        "relationships": [{"entity_type": "club", "entity_id": CLUB_ID}],
+    }]
+    monkeypatch.setattr(
+        club_team_cli,
+        "_process_snapshots",
+        lambda **_: (tmp_path, coverage, parsed_pages, []),
+    )
+
+    exit_code = club_team_cli.run(
+        parse_args(["offline", "--team-id", TEAM_ID, "--output-root", str(tmp_path)])
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 5
+    assert "CAPTURA BASE INCOMPLETA" in captured.err
+    assert "club e49/club_rivals" in captured.err
+    assert "Estado de captura base: BASE_CAPTURED" not in captured.out
+
+
+def test_raw_integrity_validation_count_is_separate_from_parser_state() -> None:
+    coverage = {
+        "views": [
+            {
+                "access_status": "VALID",
+                "table_integrity_status": "VALIDATED",
+                "table_integrity": {"main": {"raw_cell_values_preserved": True}},
+                "status": "PARSED",
+            },
+            {
+                "access_status": "VALID",
+                "table_integrity_status": "VALIDATED",
+                "table_integrity": {"main": {"raw_cell_values_preserved": False}},
+                "status": "PARSED",
+            },
+            {
+                "access_status": "VALID",
+                "table_integrity_status": "NOT_CAPTURED",
+                "table_integrity": {},
+                "status": "DISCOVERED",
+            },
+        ]
+    }
+
+    assert club_team_cli._base_raw_integrity_validated_count(coverage) == 1
 
 
 def test_export_keeps_filtered_variant_separate_with_source_provenance(tmp_path: Path) -> None:

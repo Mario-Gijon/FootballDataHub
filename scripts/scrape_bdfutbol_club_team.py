@@ -18,7 +18,12 @@ from football_data_hub.collectors.bdfutbol_club_team import (
     discover_latest_snapshots,
 )
 from football_data_hub.parsers.club_team_coverage import build_club_team_coverage
-from football_data_hub.providers.bdfutbol.club_team import PARSER_VERSION, parse_club_team_html
+from football_data_hub.providers.bdfutbol.club_team import (
+    PARSER_VERSION,
+    expected_views_for_club,
+    expected_views_for_team,
+    parse_club_team_html,
+)
 from football_data_hub.providers.bdfutbol.discovery import timestamp_utc
 from football_data_hub.storage.club_team_exports import write_club_team_exports
 
@@ -81,6 +86,96 @@ def _relative(path: Path) -> str:
         return path.resolve().relative_to(Path.cwd().resolve()).as_posix()
     except ValueError:
         return path.as_posix()
+
+
+def _base_capture_gaps(
+    coverage: dict[str, Any],
+    team_season_ids: list[str],
+    parsed_pages: list[dict[str, Any]],
+) -> list[str]:
+    """Return capture/raw-integrity gaps; semantic PARSED views can still pass."""
+    entities = {
+        (str(row.get("entity_type")), str(row.get("entity_id"))): row
+        for row in coverage.get("entity_coverage", [])
+    }
+    views = {
+        (str(row.get("entity_type")), str(row.get("entity_id")), str(row.get("view"))): row
+        for row in coverage.get("views", [])
+    }
+    page_by_key = {
+        (str(page.get("entity_type")), str(page.get("entity_id")), str(page.get("view"))): page
+        for page in parsed_pages
+    }
+    gaps: list[str] = []
+
+    def check_entity(entity_type: str, entity_id: str, expected_views: tuple[str, ...]) -> None:
+        entity = entities.get((entity_type, entity_id))
+        if entity is None:
+            gaps.append(f"{entity_type} {entity_id}: sin fila de cobertura")
+            return
+        if (
+            entity.get("views_captured") != len(expected_views)
+            or entity.get("views_access_valid") != len(expected_views)
+            or entity.get("base_capture_status") != "COMPLETE"
+        ):
+            gaps.append(
+                f"{entity_type} {entity_id}: cobertura base "
+                f"{entity.get('views_access_valid', 0)}/{len(expected_views)} válida"
+            )
+        for view_name in expected_views:
+            row = views.get((entity_type, entity_id, view_name))
+            if row is None or row.get("access_status") != "VALID":
+                gaps.append(f"{entity_type} {entity_id}/{view_name}: snapshot ausente o inválido")
+                continue
+            if row.get("table_integrity_status") != "VALIDATED":
+                gaps.append(
+                    f"{entity_type} {entity_id}/{view_name}: integridad raw "
+                    f"{row.get('table_integrity_status', 'desconocida')}"
+                )
+                continue
+            table_checks = row.get("table_integrity", {})
+            if not table_checks or any(
+                check.get("raw_cell_values_preserved") is not True
+                for check in table_checks.values()
+            ):
+                gaps.append(f"{entity_type} {entity_id}/{view_name}: celdas raw sin verificar")
+
+    unique_clubs: set[str] = set()
+    for team_id in team_season_ids:
+        check_entity("team_season", team_id, expected_views_for_team())
+        team_row = entities.get(("team_season", team_id))
+        club_id = str(team_row.get("club_id") or "") if team_row else ""
+        if not club_id:
+            gaps.append(f"team_season {team_id}: relación con club permanente no identificada")
+            continue
+        unique_clubs.add(club_id)
+        alignment = page_by_key.get(("team_season", team_id, "team_alignment"))
+        linked_clubs = {
+            str(item.get("entity_id"))
+            for item in (alignment or {}).get("relationships", [])
+            if item.get("entity_type") == "club"
+        }
+        if club_id not in linked_clubs:
+            gaps.append(f"team_season {team_id}: club_id {club_id} no coincide con el enlace raw")
+
+    for club_id in sorted(unique_clubs):
+        check_entity("club", club_id, expected_views_for_club())
+    return gaps
+
+
+def _base_raw_integrity_validated_count(coverage: dict[str, Any]) -> int:
+    """Count views whose access and original table-cell preservation were validated."""
+    return sum(
+        1
+        for row in coverage.get("views", [])
+        if row.get("access_status") == "VALID"
+        and row.get("table_integrity_status") == "VALIDATED"
+        and row.get("table_integrity")
+        and all(
+            check.get("raw_cell_values_preserved") is True
+            for check in row["table_integrity"].values()
+        )
+    )
 
 
 def _process_snapshots(
@@ -168,6 +263,13 @@ def run(args: argparse.Namespace) -> int:
             f"Jugadores de plantilla: {coverage['summary']['unique_team_player_ids']} IDs únicos; "
             f"entrenadores: {coverage['summary']['unique_team_coach_ids']} IDs únicos"
         )
+        gaps = _base_capture_gaps(coverage, team_ids, parsed_pages)
+        if gaps:
+            print("CAPTURA BASE INCOMPLETA:", file=sys.stderr)
+            for gap in gaps:
+                print(f"- {gap}", file=sys.stderr)
+            return 5
+        print("Estado de captura base: BASE_CAPTURED")
         return 0
 
     if args.settle_ms < 0:
@@ -224,7 +326,8 @@ def run(args: argparse.Namespace) -> int:
         _write_live_status(args.analysis_root / timestamp_utc() / "capture_status.json", capture_status)
         return 3
 
-    _write_live_status(args.analysis_root / timestamp_utc() / "capture_status.json", capture_status)
+    status_path = args.analysis_root / timestamp_utc() / "capture_status.json"
+    _write_live_status(status_path, capture_status)
     try:
         output_dir, coverage, parsed_pages, variant_pages = _process_snapshots(
             team_season_ids=team_ids,
@@ -236,10 +339,24 @@ def run(args: argparse.Namespace) -> int:
     except (OSError, ValueError, RuntimeError) as exc:
         print(f"ERROR al procesar snapshots preservados: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 4 if access_stopped else 3
+    gaps = _base_capture_gaps(coverage, team_ids, parsed_pages)
+    capture_status.update({
+        "base_capture_status": "BASE_CAPTURED" if not gaps else "PARTIAL",
+        "base_views_expected": coverage["summary"]["views_expected"],
+        "base_views_captured": coverage["summary"]["views_captured"],
+        "base_views_raw_integrity_validated": _base_raw_integrity_validated_count(coverage),
+        "base_views_validated": coverage["summary"]["views_validated"],
+        "base_view_pipeline_states": coverage["summary"].get("pipeline_states", {}),
+        "missing_base_views": gaps,
+        "export_directory": _relative(output_dir),
+    })
+    _write_live_status(status_path, capture_status)
     print(f"Parser: {PARSER_VERSION}")
     print(f"Snapshots procesados: {len(parsed_pages) + len(variant_pages)} ({len(variant_pages)} variantes)")
     print(f"Salida JSON/CSV: {output_dir}")
-    return 4 if access_stopped else 0
+    if gaps:
+        print(f"Captura base incompleta: {len(gaps)} incidencia(s)", file=sys.stderr)
+    return 4 if access_stopped else 5 if gaps else 0
 
 
 def main(argv: list[str] | None = None) -> int:
