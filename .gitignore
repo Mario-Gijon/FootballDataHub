@@ -1,36 +1,59 @@
-# Python
+# Python and test caches
 .venv/
 __pycache__/
 **/__pycache__/
 *.py[cod]
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
 
-# Build and packaging
+# Build artifacts
 build/
 dist/
 *.egg-info/
 
-# Local environment and secrets
+# Generated data and snapshots (keep directory placeholders)
+/data/raw/*
+!/data/raw/.gitkeep
+/data/parsed/*
+!/data/parsed/.gitkeep
+/data/normalized/*
+!/data/normalized/.gitkeep
+/data/media/*
+!/data/media/.gitkeep
+/data/analysis/*
+!/data/analysis/.gitkeep
+
+# Browser profiles and Playwright state
+.football-data-hub-browser/
+**/_browser_profile/
+**/browser-profile/
+**/playwright/.auth/
+
+# Local credentials and secrets
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+**/*credentials*.json
+**/*secrets*.json
+**/*token*.json
 
-# IDEs and editors
+# Editor and operating system files
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
-
-# Operating systems
 .DS_Store
 Thumbs.db
 
-# Data contents (keep directory placeholders)
-/data/raw/*
-!/data/raw/.gitkeep
-/data/normalized/*
-!/data/normalized/.gitkeep
-/data/media/*
-!/data/media/.gitkeep
+# Temporary output
+*.log
+*.tmp
+*.temp

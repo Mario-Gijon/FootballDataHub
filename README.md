@@ -1,5 +1,5 @@
-# FootballDataHub
+# FootballDataHub V2
 
-Herramienta interna para adquirir, conservar, normalizar y auditar datasets de fútbol. En su alcance inicial estudia la Primera Federación española 2026/27 (grupos I y II), empezando por analizar BDFutbol como primera fuente.
+Base limpia para reconstruir una herramienta interna de adquisición y auditoría de datos de fútbol. El primer alcance será Primera Federación 2026/27, grupos I y II, empezando por el discovery exhaustivo de BDFutbol.
 
-El proyecto está en una fase inicial de discovery: primero se estudiará la viabilidad y estructura de las fuentes. La prioridad es preservar los datos raw y, posteriormente, producir datasets normalizados y auditables.
+El trabajo actual es el **Hito 0: Discovery**. No hay scrapers ni contratos de datos implementados todavía. La arquitectura prevista y sus límites están resumidos en [docs/architecture.md](docs/architecture.md).

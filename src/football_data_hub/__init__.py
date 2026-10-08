@@ -1,1 +1,1 @@
-"""FootballDataHub package."""
+"""FootballDataHub V2 package."""
