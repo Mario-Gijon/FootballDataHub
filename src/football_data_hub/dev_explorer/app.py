@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from html import escape
 from pathlib import Path
 from typing import Any
@@ -17,7 +17,11 @@ from football_data_hub.dev_explorer.data import (
     DatasetCandidate,
     DatasetValidationError,
     ExplorerDataset,
+    ClubExplorerDataset,
     PlayerExplorerDataset,
+    competition_conflict_evidence,
+    club_selection_status,
+    discover_club_exports,
     diagnostic_rows,
     discover_datasets,
     discover_player_exports,
@@ -28,17 +32,23 @@ from football_data_hub.dev_explorer.data import (
     has_result,
     latest_valid_dataset,
     latest_valid_player_export,
+    latest_valid_club_export,
     load_player_export,
+    load_club_export,
     load_dataset,
     player_match_counts,
     player_export_captured_at,
     player_search_label,
+    search_clubs,
+    filter_club_matches,
+    match_observation_comparison,
     search_records,
     recent_results,
     score_label,
     standings_table_rows,
     team_records,
     upcoming_matches,
+    verified_participant_groups,
 )
 
 
@@ -55,6 +65,14 @@ PLAYER_DATA_ROOT = (
     / "parsed"
     / "bdfutbol"
     / "player_2026_27"
+    / "compact"
+)
+CLUB_DATA_ROOT = (
+    Path(__file__).resolve().parents[3]
+    / "data"
+    / "parsed"
+    / "bdfutbol"
+    / "club_team_2026_27"
     / "compact"
 )
 
@@ -652,6 +670,94 @@ def _player_export_choice() -> PlayerExplorerDataset | None:
         return None
 
 
+def _export_fingerprint(root: Path, *, recursive: bool = True) -> tuple[tuple[str, int, int], ...]:
+    if not root.is_dir():
+        return ()
+    files = root.rglob("*.gz") if recursive else root.glob("*/*.json")
+    signature = []
+    for path in files:
+        try:
+            stat = path.stat()
+        except OSError:
+            continue
+        signature.append((str(path.relative_to(root)), stat.st_size, stat.st_mtime_ns))
+    return tuple(sorted(signature))
+
+
+@st.cache_data(show_spinner=False)
+def _cached_club_candidates(root: str, fingerprint: tuple[tuple[str, int, int], ...]):
+    del fingerprint
+    return discover_club_exports(Path(root))
+
+
+@st.cache_resource(show_spinner=False)
+def _cached_competition_datasets(
+    root: str,
+    fingerprint: tuple[tuple[str, int, int], ...],
+) -> list[ExplorerDataset]:
+    del fingerprint
+    datasets = []
+    for candidate in discover_datasets(Path(root)):
+        if candidate.valid:
+            try:
+                datasets.append(load_dataset(candidate.path))
+            except DatasetValidationError:
+                continue
+    return datasets
+
+
+@st.cache_resource(show_spinner=False)
+def _cached_club_dataset(
+    path: str,
+    fingerprint: tuple[tuple[str, int, int], ...],
+    team_groups: tuple[tuple[str, tuple[tuple[str, str], ...]], ...],
+) -> ClubExplorerDataset:
+    del fingerprint
+    mapping = {team_id: dict(values) for team_id, values in team_groups}
+    return load_club_export(Path(path), team_groups=mapping)
+
+
+def _club_export_choice() -> tuple[ClubExplorerDataset, list[ExplorerDataset]] | None:
+    club_fingerprint = _export_fingerprint(CLUB_DATA_ROOT)
+    candidates = _cached_club_candidates(str(CLUB_DATA_ROOT), club_fingerprint)
+    valid = [candidate for candidate in candidates if candidate.valid]
+    if not valid:
+        st.warning("No hay exports de clubes compatibles y válidos en el repositorio.")
+        invalid = [candidate for candidate in candidates if not candidate.valid]
+        if invalid:
+            with st.expander(f"Versiones no compatibles ({len(invalid)})"):
+                st.dataframe(pd.DataFrame([
+                    {"Export": item.path.name, "Motivo": "; ".join(item.errors)}
+                    for item in invalid[:20]
+                ]), hide_index=True, width="stretch")
+        return None
+    latest = latest_valid_club_export(valid)
+    selected_index = st.sidebar.selectbox(
+        "Export de clubes",
+        range(len(valid)),
+        index=valid.index(latest) if latest else 0,
+        format_func=lambda index: valid[index].label,
+        key="club_export_selection",
+    )
+    candidate = valid[selected_index]
+    if len(valid) > 1:
+        st.sidebar.caption(f"{len(valid)} exports compatibles; se puede revisar una versión anterior.")
+
+    competition_fingerprint = _export_fingerprint(DATA_ROOT, recursive=False)
+    competition_datasets = _cached_competition_datasets(str(DATA_ROOT), competition_fingerprint)
+    group_mapping = verified_participant_groups(competition_datasets)
+    compact_mapping = tuple(sorted(
+        (team_id, tuple(sorted(values.items())))
+        for team_id, values in group_mapping.items()
+    ))
+    dataset = _cached_club_dataset(
+        str(candidate.path),
+        club_fingerprint,
+        compact_mapping,
+    )
+    return dataset, competition_datasets
+
+
 def _player_view_coverage(dataset: PlayerExplorerDataset, player_id: str, view: str) -> dict[str, Any]:
     return dataset.coverage_for(player_id, view) or {}
 
@@ -1175,18 +1281,366 @@ def _players_page(dataset: PlayerExplorerDataset) -> None:
         _player_rivals_tab(dataset, selected_id)
 
 
+def _club_selection_panel(
+    dataset: ClubExplorerDataset,
+    competition_datasets: list[ExplorerDataset],
+) -> None:
+    status = club_selection_status(dataset)
+    if status["selection_status"] == "AMBIGUOUS_VALID_SOURCES":
+        st.warning(
+            "El cruce con el calendario de competición tiene dos fuentes válidas con una discrepancia. "
+            "Esto no invalida el historial capturado desde clubes; la aplicación no elige una fuente ni "
+            "marca partidos como ausentes por este motivo."
+        )
+        with st.expander("Consultar la discrepancia entre extracciones", expanded=False):
+            conflicts = status.get("candidate_conflicts") or []
+            if conflicts:
+                conflict = conflicts[0]
+                identity = (conflict.get("conflicts") or [{}])[0].get("fixture_identity", [])
+                evidence = competition_conflict_evidence(competition_datasets, conflict)
+                st.markdown("**Fixture con estado distinto**")
+                if evidence:
+                    example = evidence[0]
+                    st.write(
+                        f"Grupo {example.get('group') or '—'} · "
+                        f"{example.get('home_team_name') or 'Local'}–{example.get('away_team_name') or 'visitante'} · "
+                        f"{example.get('date') or 'fecha raw no disponible'} · "
+                        f"jornada {example.get('round') or 'raw no disponible'}"
+                    )
+                else:
+                    st.write("Identidad raw: " + ", ".join(str(value) for value in identity))
+                st.caption(
+                    f"Campos en conflicto: {', '.join((conflict.get('conflicts') or [{}])[0].get('fields', [])) or 'sin detalle'} · "
+                    f"identidad raw: {', '.join(str(value) for value in identity)}"
+                )
+                if evidence:
+                    st.dataframe(pd.DataFrame([
+                        {
+                            "Extracción": row.get("extraction_key"),
+                            "Estado export": row.get("status_in_export"),
+                            "Resultado raw": row.get("result_status"),
+                            "Fecha · jornada": f"{row.get('date') or '—'} · {row.get('round') or '—'}",
+                            "Local": row.get("home_team_name"),
+                            "Visitante": row.get("away_team_name"),
+                        }
+                        for row in evidence
+                    ]), hide_index=True, width="stretch")
+                    with st.expander("Hashes, fecha y URL de cada fuente"):
+                        st.dataframe(pd.DataFrame([
+                            {
+                                "Extracción": row.get("extraction_key"),
+                                "Captura UTC": row.get("captured_at_utc"),
+                                "SHA-256": row.get("snapshot_sha256"),
+                                "URL fuente": row.get("final_url"),
+                            }
+                            for row in evidence
+                        ]), hide_index=True, width="stretch")
+                else:
+                    st.info("Las dos filas fuente de competición no están disponibles en los exports locales.")
+            else:
+                st.info("La metadata declara fuentes válidas ambiguas, sin detalle de fixture en este export.")
+            st.caption("El cotejo no ejecutado se mantiene como pendiente; no representa cero partidos ni una lista de ausencias.")
+    else:
+        st.caption(f"Selección de competición: {status['selection_status'] or 'estado no disponible'}.")
+
+    metrics = st.columns(4)
+    metrics[0].metric("IDs de partidos", status.get("historical_unique_matches") or "—")
+    metrics[1].metric("Observaciones", status.get("historical_source_observations") or "—")
+    metrics[2].metric("Compartidas", status.get("shared_source_observations") or "—")
+    metrics[3].metric("Temporadas", status.get("historical_seasons") or "—")
+    if status.get("crosscheck_status") == "NOT_RUN_NO_SELECTED_COMPETITION_SOURCE":
+        st.caption("Cotejo de competición: no ejecutado porque no existe una fuente seleccionada; los contadores de ausencias no aplican.")
+    else:
+        st.caption(f"Cotejo de competición: {status.get('crosscheck_status') or 'no disponible'}.")
+
+
+def _club_roster_table(dataset: ClubExplorerDataset, club_id: str) -> None:
+    rows = [row for row in dataset.arrays["rosters"] if row.get("club_id") == club_id]
+    if not rows:
+        st.info("La plantilla actual no tiene filas disponibles en este export.")
+        return
+    st.caption(f"{len(rows)} pertenencias de plantilla asociadas al club y equipo-temporada actual.")
+    st.dataframe(pd.DataFrame([
+        {
+            "Jugador": row.get("name_raw"),
+            "ID jugador": row.get("player_id"),
+            "Posición raw": row.get("position_raw"),
+            "Dorsal raw": row.get("shirt_number_raw"),
+            "Apariciones raw": row.get("appearances_raw"),
+            "Estadísticas presentes": row.get("statistics_present"),
+            "Cero apariciones": row.get("zero_appearances"),
+        }
+        for row in rows
+    ]), hide_index=True, width="stretch", height=min(520, 42 + 35 * len(rows)))
+
+
+def _club_coaches_table(dataset: ClubExplorerDataset, club_id: str) -> None:
+    rows = [row for row in dataset.arrays["coaches_current"] if row.get("club_id") == club_id]
+    if not rows:
+        st.info("No hay entrenador actual registrado en las filas disponibles para este club.")
+        return
+    st.dataframe(pd.DataFrame([
+        {
+            "Entrenador": row.get("name_raw"),
+            "ID entrenador": row.get("coach_id"),
+            "Nacimiento raw": row.get("birth_date_raw"),
+            "Procedencia": row.get("captured_at_utc"),
+        }
+        for row in rows
+    ]), hide_index=True, width="stretch")
+
+
+def _club_match_table_rows(
+    dataset: ClubExplorerDataset,
+    matches: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    rows = []
+    for match in matches:
+        score = "—"
+        if match.get("home_goals") is not None and match.get("away_goals") is not None:
+            score = f"{match['home_goals']}–{match['away_goals']}"
+        rows.append({
+            "Fecha": _date_label(match.get("date")),
+            "Temporada raw": match.get("season_raw"),
+            "Competición raw": match.get("competition_code_raw"),
+            "Jornada raw": match.get("round_label_raw") or match.get("round_code_raw"),
+            "Local": match.get("home_team_name_raw"),
+            "Marcador": score,
+            "Visitante": match.get("away_team_name_raw"),
+            "Árbitro ID raw": match.get("referee_id_raw"),
+            "ID partido": match.get("match_id"),
+            "Observaciones": len(dataset.observations_for_match(str(match.get("match_id") or ""))),
+        })
+    return rows
+
+
+def _club_match_detail(dataset: ClubExplorerDataset, match: dict[str, Any]) -> None:
+    match_id = str(match.get("match_id") or "")
+    observations = dataset.observations_for_match(match_id)
+    score = "Marcador no disponible"
+    if match.get("home_goals") is not None and match.get("away_goals") is not None:
+        score = f"{match['home_goals']}–{match['away_goals']}"
+    home = escape(str(match.get("home_team_name_raw") or "Local no identificado"))
+    away = escape(str(match.get("away_team_name_raw") or "Visitante no identificado"))
+    st.markdown(
+        f"<div class='fixture-line'><div class='fixture-team fixture-home'>{home}</div>"
+        f"<div class='fixture-score'>{escape(score)}</div><div class='fixture-team fixture-away'>{away}</div></div>",
+        unsafe_allow_html=True,
+    )
+    match_metadata = [
+        ("Fecha", _date_label(match.get("date"))),
+        ("Temporada raw", match.get("season_raw") or "—"),
+        ("Competición raw", match.get("competition_code_raw") or "—"),
+        ("Jornada raw", match.get("round_label_raw") or match.get("round_code_raw") or "—"),
+    ]
+    st.markdown(" · ".join(f"**{label}:** {escape(str(value))}" for label, value in match_metadata))
+    st.caption(
+        f"ID de partido {match_id} · árbitro ID raw {match.get('referee_id_raw') or '—'} · "
+        f"{len(observations)} observación(es) fuente"
+    )
+    if match.get("team_season_identity_status") == "NOT_ESTABLISHED":
+        st.info("La identidad histórica de equipo-temporada no está establecida. Los IDs de adquisición que aparecen en las fuentes son contexto de captura, no una identidad histórica asignada.")
+    elif match.get("team_season_identity_status"):
+        st.caption(f"Estado de identidad histórica: {match.get('team_season_identity_status')}.")
+
+    if len(observations) > 1:
+        comparison = match_observation_comparison(observations)
+        conflict_fields = match.get("differing_fields_between_club_sources") or comparison["differing_fields"]
+        if conflict_fields:
+            st.warning(f"Las observaciones conservan diferencias en: {', '.join(map(str, conflict_fields))}.")
+        else:
+            st.success(f"Las {len(observations)} observaciones coinciden en los campos comparables registrados.")
+        if comparison["matching_fields"]:
+            st.caption(f"Campos coincidentes: {', '.join(comparison['matching_fields'])}.")
+    elif observations:
+        st.caption("Solo hay una observación de club para este partido; no existe un segundo lado que contrastar.")
+    else:
+        st.warning("El partido no tiene observaciones fuente asociadas en el índice actual.")
+
+    if observations:
+        st.markdown("**Procedencia de cada observación**")
+        for index, observation in enumerate(observations, start=1):
+            source_club = observation.get("source_club_id") or "club sin ID"
+            with st.expander(f"Fuente {index} · {source_club} · {observation.get('captured_at_utc') or 'fecha no disponible'}"):
+                st.dataframe(pd.DataFrame([{
+                    "Club fuente": source_club,
+                    "Equipo-temporada de adquisición (contexto)": observation.get("source_team_season_id"),
+                    "URL de captura": observation.get("url"),
+                    "Fila de origen": observation.get("source_record_index"),
+                    "Captura UTC": observation.get("captured_at_utc"),
+                    "SHA-256 raw": observation.get("snapshot_sha256"),
+                }]), hide_index=True, width="stretch")
+                raw_values = observation.get("source_values_raw")
+                field_map = observation.get("source_field_map")
+                if isinstance(raw_values, list):
+                    field_map = field_map if isinstance(field_map, dict) else {}
+                    st.markdown("Campos raw conservados")
+                    st.dataframe(pd.DataFrame([
+                        {
+                            "Posición raw": position,
+                            "Campo registrado": field_map.get(str(position), "sin mapeo de nombre"),
+                            "Valor raw (JSON)": json.dumps(value, ensure_ascii=False, separators=(",", ":")),
+                        }
+                        for position, value in enumerate(raw_values)
+                    ]), hide_index=True, width="stretch")
+
+
+def _clubs_page(dataset: ClubExplorerDataset, competition_datasets: list[ExplorerDataset]) -> None:
+    st.markdown("<div class='sport-kicker'>HISTORIAL Y PLANTILLAS · EXPORTS LOCALES</div>", unsafe_allow_html=True)
+    st.title("Clubes")
+    st.caption("Club permanente y equipo-temporada 2026/27 se muestran por separado. El historial se consulta por club_id y no infiere equipos-temporada históricos.")
+    _club_selection_panel(dataset, competition_datasets)
+
+    clubs = dataset.clubs
+    if not clubs:
+        st.info("El export no contiene clubes con cobertura histórica disponible.")
+        return
+    query = st.text_input("Buscar club por nombre o ID", key="club_search").strip()
+    matches = search_clubs(clubs, query)
+    if not matches:
+        st.info("No se encontraron clubes con esa búsqueda.")
+        return
+    club_ids = [club["club_id"] for club in matches]
+    selected_club_id = st.selectbox(
+        "Club participante",
+        club_ids,
+        format_func=lambda club_id: next(
+            f"{club['display_name']} · {club_id}"
+            for club in matches if club["club_id"] == club_id
+        ),
+        key="club_selected_id",
+    )
+    club = next(item for item in clubs if item["club_id"] == selected_club_id)
+    profile = club.get("profile") or {}
+    history = club.get("history_coverage") or {}
+    current_team = club.get("team_name")
+    st.markdown(f"### {escape(str(club['display_name']))}")
+    identity = st.columns(4)
+    identity[0].metric("Club ID", club["club_id"] or "—")
+    identity[1].metric("Equipo actual", current_team or "No enlazado")
+    identity[2].metric("Equipo ID", club.get("team_season_id") or "—")
+    identity[3].metric("Grupo actual", f"Grupo {club['group']}" if club.get("group") else "No confirmado")
+    st.caption(
+        f"ID permanente {club['club_id']} · ID equipo-temporada 2026/27 {club.get('team_season_id') or 'no disponible'}"
+    )
+    if profile.get("title"):
+        st.caption(str(profile["title"]))
+
+    if profile.get("hero_text"):
+        with st.expander("Datos institucionales de la ficha", expanded=False):
+            st.write(profile["hero_text"])
+            st.caption("Texto conservado de la ficha del club; se muestra tal como está disponible en el export.")
+    elif club.get("profile_error"):
+        st.info("La ficha institucional local no se pudo leer. El resto del export sigue disponible.")
+    else:
+        st.info("No hay texto institucional disponible para este club en el export.")
+
+    team_coverage = next((row for row in dataset.arrays["coverage_by_club"] if row.get("club_id") == selected_club_id), None)
+    if team_coverage:
+        st.markdown("#### Estadísticas del equipo actual")
+        st.caption("Agregados observados para la temporada actual; no se expanden a encuentros históricos ni a métricas de jugadores.")
+        aggregate = team_coverage.get("aggregate_expected") or {}
+        labels = [("PJ", "PJ"), ("PG", "PG"), ("PE", "PE"), ("PP", "PP"), ("GF", "GF"), ("GC", "GC")]
+        stat_columns = st.columns(len(labels))
+        for column, (key, label) in zip(stat_columns, labels):
+            column.metric(label, aggregate.get(key) if aggregate.get(key) is not None else "—")
+        st.caption(f"Estado de validación registrado: {team_coverage.get('status') or 'no disponible'} · filas observadas: {team_coverage.get('match_rows_observed') if team_coverage.get('match_rows_observed') is not None else '—'}")
+    else:
+        st.info("No hay agregados de equipo para este club en el export.")
+
+    st.markdown("#### Plantilla 2026/27")
+    _club_roster_table(dataset, selected_club_id)
+    st.markdown("#### Entrenadores actuales registrados")
+    _club_coaches_table(dataset, selected_club_id)
+
+    with st.expander("Cobertura y procedencia", expanded=False):
+        st.dataframe(pd.DataFrame([{
+            "Partidos únicos asociados": history.get("unique_match_ids"),
+            "Observaciones reportadas": history.get("source_records_reported"),
+            "Observaciones parseadas": history.get("source_observations_parsed"),
+            "Temporadas observadas": len(history.get("seasons_observed") or []),
+            "Estado parseo": history.get("source_parse_status"),
+            "Captura UTC": history.get("captured_at_utc"),
+            "SHA-256 raw": history.get("snapshot_sha256"),
+            "URL de origen": history.get("url"),
+        }]), hide_index=True, width="stretch")
+        with st.expander("Temporadas raw observadas"):
+            seasons = history.get("seasons_observed") or []
+            st.write(", ".join(map(str, seasons)) if seasons else "No hay temporadas registradas.")
+        if team_coverage:
+            st.caption(f"Checks de agregados: {team_coverage.get('checks') or 'no registrados'}")
+        st.caption(f"Export {dataset.path.name} · parser {dataset.metadata.get('parser_version')} · extracción {dataset.metadata.get('extraction_key')}")
+
+    st.markdown("#### Historial de partidos")
+    club_matches = dataset.matches_for_club(selected_club_id)
+    if not club_matches:
+        st.info("No hay partidos únicos asociados a este club en el índice histórico.")
+        return
+    season_options = sorted({str(row.get("season_raw")) for row in club_matches if row.get("season_raw")}, reverse=True)
+    competition_options = sorted({str(row.get("competition_code_raw")) for row in club_matches if row.get("competition_code_raw")})
+    season_col, comp_col, rival_col, venue_col = st.columns(4)
+    season_filter = season_col.selectbox("Temporada raw", ["Todas", *season_options], key=f"club_season_{selected_club_id}")
+    competition_filter = comp_col.selectbox("Competición raw", ["Todas", *competition_options], key=f"club_comp_{selected_club_id}")
+    rival_filter = rival_col.text_input("Buscar rival", key=f"club_rival_{selected_club_id}").strip()
+    venue_filter = venue_col.selectbox("Local / visitante", ["Todos", "Local", "Visitante"], key=f"club_venue_{selected_club_id}")
+    from_col, to_col = st.columns(2)
+    date_from = from_col.date_input("Desde", value=None, key=f"club_from_{selected_club_id}")
+    date_to = to_col.date_input("Hasta", value=None, key=f"club_to_{selected_club_id}")
+    selected_matches = filter_club_matches(
+        club_matches,
+        club_id=selected_club_id,
+        season=None if season_filter == "Todas" else season_filter,
+        competition=None if competition_filter == "Todas" else competition_filter,
+        rival=rival_filter or None,
+        venue=None if venue_filter == "Todos" else venue_filter.casefold(),
+        date_from=date_from if isinstance(date_from, date) else None,
+        date_to=date_to if isinstance(date_to, date) else None,
+    )
+    page_size = st.selectbox("Partidos por página", [25, 50, 100], index=0, key=f"club_page_size_{selected_club_id}")
+    page_count = max(1, (len(selected_matches) + page_size - 1) // page_size)
+    page_key = f"club_history_page_{selected_club_id}_{season_filter}_{competition_filter}_{rival_filter}_{venue_filter}_{date_from}_{date_to}_{page_size}"
+    page_number = st.number_input("Página", min_value=1, max_value=page_count, value=1, step=1, key=page_key)
+    offset = (int(page_number) - 1) * page_size
+    page_matches = selected_matches[offset:offset + page_size]
+    st.caption(f"{len(selected_matches):,} partidos únicos con estos filtros · mostrando {offset + 1 if page_matches else 0}–{offset + len(page_matches)}. Las observaciones duplicadas se consultan en el detalle.")
+    if page_matches:
+        st.dataframe(pd.DataFrame(_club_match_table_rows(dataset, page_matches)), hide_index=True, width="stretch", height=470)
+        match_ids = [str(match.get("match_id")) for match in page_matches]
+        selected_match_id = st.selectbox(
+            "Detalle por match_id",
+            match_ids,
+            format_func=lambda match_id: next(
+                f"{row.get('date') or 'fecha raw no disponible'} · {row.get('home_team_name_raw')} {row.get('home_goals') if row.get('home_goals') is not None else '—'}–{row.get('away_goals') if row.get('away_goals') is not None else '—'} {row.get('away_team_name_raw')} · {match_id}"
+                for row in page_matches if str(row.get("match_id")) == match_id
+            ),
+            key=f"club_match_detail_{selected_club_id}_{page_key}",
+        )
+        selected_match = next(row for row in page_matches if str(row.get("match_id")) == selected_match_id)
+        with st.container(border=True):
+            st.markdown("##### Detalle del partido")
+            _club_match_detail(dataset, selected_match)
+    else:
+        st.info("No hay partidos para los filtros elegidos. Las fechas inválidas solo se excluyen cuando se aplica un intervalo.")
+
+
 def main() -> None:
     _inject_styles()
     st.sidebar.markdown("## ⚽ FootballDataHub")
     st.sidebar.caption("PREVIEW DE TEMPORADA · 2026/27")
     page = st.sidebar.radio(
         "Navegación",
-        ["Inicio", "Clasificación", "Calendario", "Equipos", "Partidos", "Jugadores"],
+        ["Inicio", "Clasificación", "Calendario", "Equipos", "Partidos", "Jugadores", "Clubes"],
     )
     if page == "Jugadores":
         player_dataset = _player_export_choice()
         if player_dataset is not None:
             _players_page(player_dataset)
+        return
+    if page == "Clubes":
+        club_result = _club_export_choice()
+        if club_result is not None:
+            club_dataset, competition_datasets = club_result
+            _clubs_page(club_dataset, competition_datasets)
         return
     dataset = _dataset_choice()
     if dataset is None:

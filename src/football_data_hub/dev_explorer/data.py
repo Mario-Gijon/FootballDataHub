@@ -26,6 +26,38 @@ GROUPS = ("I", "II")
 FIXTURE_STATES = ("played", "scheduled", "unresolved", "unconfirmed", "unknown")
 EXPECTED_EXPORT_SCHEMA = "football_data_hub.competition_export.v1"
 EXPECTED_PLAYER_EXPORT_SCHEMA = "football_data_hub.bdfutbol.player_pages.v3"
+EXPECTED_CLUB_EXPORT_SCHEMA = "football_data_hub.bdfutbol.club_team_export.v2"
+EXPECTED_CLUB_SPORTS_SCHEMA = "football_data_hub.bdfutbol.club_team_sports.v3"
+CLUB_EXPORT_ARRAYS = (
+    "matches_from_embedded_data",
+    "embedded_match_observations",
+    "embedded_match_coverage_by_club",
+    "rosters",
+    "coaches_current",
+    "coverage_by_club",
+    "summary",
+    "embedded_match_competition_crosscheck",
+    "embedded_match_filtered_table_card_crosscheck",
+)
+CLUB_MATCH_VIEW_FIELDS = {
+    "match_id", "date", "date_raw", "season_raw", "match_season_raw", "season_start_year_raw",
+    "competition_code_raw", "round_code_raw", "round_label_raw", "home_club_id", "away_club_id",
+    "home_club_id_raw", "away_club_id_raw", "home_team_name_raw", "away_team_name_raw",
+    "home_goals", "away_goals", "home_goals_raw", "away_goals_raw", "referee_id_raw", "group",
+    "home_team_season_id", "away_team_season_id", "match_url", "source_observation_count",
+    "source_club_ids", "differing_fields_between_club_sources", "team_season_identity_status",
+    "team_season_identity_evidence",
+}
+CLUB_OBSERVATION_VIEW_FIELDS = {
+    "match_id", "source_club_id", "source_team_season_id", "source_club_is_home",
+    "source_record_index", "captured_at_utc", "snapshot_sha256", "url", "source_kind",
+    "source_values_raw", "source_field_map", "unmapped_values_raw", "date", "season_raw",
+    "competition_code_raw", "home_club_id", "home_team_name_raw", "home_goals",
+    "away_club_id", "away_team_name_raw", "away_goals", "referee_id_raw", "round_code_raw",
+    "round_label_raw",
+    "source_club_result_code_raw", "source_club_result_from_score", "source_club_result_validation",
+    "source_club_yellow_cards_raw", "source_club_red_cards_raw",
+}
 PLAYER_EXPORT_ARRAYS = (
     "players",
     "profiles",
@@ -157,6 +189,80 @@ class PlayerExplorerDataset:
             record for record in self.arrays["coverage"]
             if record.get("player_id") == player_id and record.get("view") == view
         ), None)
+
+
+@dataclass(frozen=True, slots=True)
+class ClubExportCandidate:
+    path: Path
+    valid: bool
+    captured_at_utc: str | None
+    parser_version: str | None
+    extraction_key: str | None
+    selection_status: str | None
+    errors: tuple[str, ...] = ()
+
+    @property
+    def captured_at(self) -> datetime | None:
+        return parse_datetime(self.captured_at_utc)
+
+    @property
+    def label(self) -> str:
+        captured = self.captured_at
+        capture_label = captured.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M UTC") if captured else "sin fecha"
+        return f"{capture_label} · parser {self.parser_version or 'desconocido'} · {self.path.name}"
+
+
+@dataclass(slots=True)
+class ClubExplorerDataset:
+    path: Path
+    metadata: dict[str, Any]
+    arrays: dict[str, list[dict[str, Any]]]
+    profiles: dict[str, dict[str, Any]]
+    profile_errors: dict[str, str]
+    team_groups: dict[str, dict[str, str]]
+    matches_by_club: dict[str, list[dict[str, Any]]]
+    observations_by_match: dict[str, list[dict[str, Any]]]
+
+    @property
+    def matches(self) -> list[dict[str, Any]]:
+        return self.arrays["matches_from_embedded_data"]
+
+    @property
+    def observations(self) -> list[dict[str, Any]]:
+        return self.arrays["embedded_match_observations"]
+
+    @property
+    def clubs(self) -> list[dict[str, Any]]:
+        clubs = []
+        for coverage in self.arrays["embedded_match_coverage_by_club"]:
+            club_id = str(coverage.get("club_id") or "")
+            profile = self.profiles.get(club_id, {})
+            team_id = str(coverage.get("team_season_id") or "")
+            participant = self.team_groups.get(team_id, {})
+            profile_title = profile.get("title")
+            profile_name = profile_title.split(" |", 1)[0] if isinstance(profile_title, str) else None
+            display_name = participant.get("team_name") or profile_name or club_id or "Club sin ID"
+            clubs.append({
+                "club_id": club_id,
+                "display_name": display_name,
+                "team_season_id": team_id or None,
+                "team_name": participant.get("team_name"),
+                "group": participant.get("group"),
+                "search_text": " ".join(str(value) for value in (
+                    display_name, club_id, team_id, participant.get("team_name"),
+                    profile.get("title"), profile.get("hero_text"),
+                ) if value),
+                "profile": profile,
+                "profile_error": self.profile_errors.get(club_id),
+                "history_coverage": coverage,
+            })
+        return sorted(clubs, key=lambda item: (str(item["display_name"]).casefold(), item["club_id"]))
+
+    def matches_for_club(self, club_id: str) -> list[dict[str, Any]]:
+        return self.matches_by_club.get(club_id, [])
+
+    def observations_for_match(self, match_id: str) -> list[dict[str, Any]]:
+        return self.observations_by_match.get(match_id, [])
 
 
 def parse_datetime(value: Any) -> datetime | None:
@@ -592,7 +698,126 @@ def standings_table_rows(dataset: ExplorerDataset, group: str) -> list[dict[str,
 
 def _read_gzip_json(path: Path) -> Any:
     try:
-        return json.loads(gzip.decompress(path.read_bytes()).decode("utf-8"))
+        with gzip.open(path, "rt", encoding="utf-8") as source:
+            return json.load(source)
+    except (OSError, EOFError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise DatasetValidationError(f"No se pudo leer {path.name}: {exc}") from exc
+
+
+class _GzipJSONReader:
+    """Lee valores JSON uno a uno desde un gzip, sin materializar el documento entero."""
+
+    def __init__(self, source: Any) -> None:
+        self.source = source
+        self.buffer = ""
+        self.position = 0
+        self.eof = False
+        self.decoder = json.JSONDecoder()
+
+    def _fill(self) -> bool:
+        if self.position:
+            self.buffer = self.buffer[self.position:]
+            self.position = 0
+        chunk = self.source.read(64 * 1024)
+        if not chunk:
+            self.eof = True
+            return False
+        self.buffer += chunk
+        return True
+
+    def _skip_space(self) -> None:
+        while True:
+            while self.position < len(self.buffer) and self.buffer[self.position].isspace():
+                self.position += 1
+            if self.position < len(self.buffer) or not self._fill():
+                return
+
+    def peek(self) -> str | None:
+        self._skip_space()
+        return self.buffer[self.position] if self.position < len(self.buffer) else None
+
+    def expect(self, token: str) -> None:
+        self._skip_space()
+        while self.position >= len(self.buffer) and self._fill():
+            self._skip_space()
+        if not self.buffer.startswith(token, self.position):
+            raise DatasetValidationError(f"JSON gzip inválido; se esperaba {token!r}")
+        self.position += len(token)
+
+    def value(self) -> Any:
+        while True:
+            self._skip_space()
+            try:
+                value, end = self.decoder.raw_decode(self.buffer, self.position)
+            except json.JSONDecodeError as exc:
+                if self._fill():
+                    continue
+                raise DatasetValidationError(f"JSON gzip incompleto: {exc}") from exc
+            self.position = end
+            return value
+
+
+def _stream_gzip_json_items(
+    path: Path,
+    *,
+    keep_fields: set[str] | None = None,
+    retain_items: bool = True,
+) -> tuple[dict[str, Any], list[dict[str, Any]], int]:
+    """Valida el array items sin conservar documentos anidados que no use la pantalla."""
+    try:
+        with gzip.open(path, "rt", encoding="utf-8") as source:
+            reader = _GzipJSONReader(source)
+            reader.expect("{")
+            envelope: dict[str, Any] = {}
+            collected: list[dict[str, Any]] = []
+            item_count = 0
+            items_seen = False
+            first_field = True
+            while reader.peek() != "}":
+                if not first_field:
+                    reader.expect(",")
+                first_field = False
+                key = reader.value()
+                if not isinstance(key, str):
+                    raise DatasetValidationError(f"{path.name}: la clave JSON de nivel superior no es texto")
+                reader.expect(":")
+                if key != "items":
+                    envelope[key] = reader.value()
+                    continue
+                if items_seen:
+                    raise DatasetValidationError(f"{path.name}: clave items repetida")
+                items_seen = True
+                reader.expect("[")
+                if reader.peek() != "]":
+                    while True:
+                        item = reader.value()
+                        if not isinstance(item, dict):
+                            raise DatasetValidationError(f"{path.name}: todos los elementos de items deben ser objetos")
+                        item_count += 1
+                        if retain_items:
+                            if keep_fields is None:
+                                collected.append(item)
+                            else:
+                                collected.append({
+                                    field_name: value
+                                    for field_name, value in item.items()
+                                    if field_name in keep_fields
+                                })
+                        if reader.peek() == ",":
+                            reader.expect(",")
+                            continue
+                        reader.expect("]")
+                        break
+                else:
+                    reader.expect("]")
+            reader.expect("}")
+            if reader.peek() is not None:
+                raise DatasetValidationError(f"{path.name}: contenido extra tras el objeto JSON")
+            if not items_seen:
+                raise DatasetValidationError(f"{path.name}: falta el array items")
+            return envelope, collected, item_count
+    except DatasetValidationError as exc:
+        raise DatasetValidationError(f"No se pudo leer {path.name}: {exc}") from exc
     except (OSError, EOFError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise DatasetValidationError(f"No se pudo leer {path.name}: {exc}") from exc
 
@@ -803,3 +1028,459 @@ def filter_player_matches(
             continue
         selected.append(record)
     return selected
+
+
+def _club_export_documents(
+    path: Path,
+    *,
+    retain_items: bool = True,
+) -> tuple[dict[str, Any] | None, dict[str, list[dict[str, Any]]], tuple[str, ...]]:
+    errors: list[str] = []
+    metadata_path = path / "dataset_metadata.json.gz"
+    if not metadata_path.is_file():
+        return None, {}, ("Falta dataset_metadata.json.gz",)
+    try:
+        metadata = _read_gzip_json(metadata_path)
+    except DatasetValidationError as exc:
+        return None, {}, (str(exc),)
+    if not isinstance(metadata, dict):
+        return None, {}, ("dataset_metadata.json.gz debe contener un objeto JSON",)
+    if metadata.get("schema_version") != EXPECTED_CLUB_EXPORT_SCHEMA:
+        errors.append(f"schema_version no compatible: {metadata.get('schema_version')!r}")
+    if metadata.get("provider") != "BDFutbol":
+        errors.append("provider no corresponde a BDFutbol")
+    extraction_key = metadata.get("extraction_key")
+    parser_version = metadata.get("parser_version")
+    if not isinstance(extraction_key, str) or not extraction_key.strip():
+        errors.append("Falta extraction_key de tipo texto")
+    if not isinstance(parser_version, str) or not parser_version.strip():
+        errors.append("Falta parser_version de tipo texto")
+    snapshots = metadata.get("source_snapshots")
+    if not isinstance(snapshots, (list, dict)):
+        errors.append("source_snapshots debe ser una lista o un objeto")
+    crosscheck_source = metadata.get("competition_crosscheck_source")
+    selection = crosscheck_source.get("selection", {}) if isinstance(crosscheck_source, dict) else {}
+    if not isinstance(selection, dict) or not isinstance(selection.get("selection_status"), str):
+        errors.append("Falta el estado de selección del cruce de competición")
+
+    arrays: dict[str, list[dict[str, Any]]] = {}
+    resource_counts: dict[str, int] = {}
+    for resource in CLUB_EXPORT_ARRAYS:
+        filename = f"sports/{resource}.json.gz"
+        file_path = path / filename
+        if not file_path.is_file():
+            errors.append(f"Falta {filename}")
+            continue
+        streamed_list = resource not in {
+            "summary", "embedded_match_competition_crosscheck", "embedded_match_filtered_table_card_crosscheck",
+        }
+        try:
+            if streamed_list:
+                if retain_items and resource == "matches_from_embedded_data":
+                    envelope, items, item_count = _stream_gzip_json_items(
+                        file_path,
+                        keep_fields=CLUB_MATCH_VIEW_FIELDS,
+                    )
+                elif retain_items and resource == "embedded_match_observations":
+                    envelope, items, item_count = _stream_gzip_json_items(
+                        file_path,
+                        keep_fields=CLUB_OBSERVATION_VIEW_FIELDS,
+                    )
+                elif not retain_items:
+                    lightweight_fields = {"match_id"} if resource == "matches_from_embedded_data" else (
+                        {"club_id"} if resource == "embedded_match_coverage_by_club" else set()
+                    )
+                    envelope, items, item_count = _stream_gzip_json_items(
+                        file_path,
+                        keep_fields=lightweight_fields,
+                        retain_items=bool(lightweight_fields),
+                    )
+                else:
+                    document = _read_gzip_json(file_path)
+                    if not isinstance(document, dict):
+                        errors.append(f"{filename} debe contener un objeto JSON")
+                        continue
+                    envelope = {key: value for key, value in document.items() if key != "items"}
+                    items = document.get("items")
+                    if not isinstance(items, list):
+                        errors.append(f"{filename}: items debe ser una lista")
+                        continue
+                    if any(not isinstance(item, dict) for item in items):
+                        errors.append(f"{filename}: todos los elementos de items deben ser objetos")
+                        continue
+                    item_count = len(items)
+            else:
+                document = _read_gzip_json(file_path)
+                if not isinstance(document, dict):
+                    errors.append(f"{filename} debe contener un objeto JSON")
+                    continue
+                envelope = document
+                items = document.get("items")
+                if resource == "embedded_match_competition_crosscheck":
+                    items = [document]
+                    item_count = 1
+                elif not isinstance(items, dict):
+                    errors.append(f"{filename}: items debe ser un objeto")
+                    continue
+                else:
+                    item_count = 1
+                    items = [items]
+        except DatasetValidationError as exc:
+            errors.append(str(exc))
+            continue
+        if envelope.get("schema_version") != EXPECTED_CLUB_SPORTS_SCHEMA:
+            errors.append(f"{filename}: schema_version no compatible")
+        if extraction_key and envelope.get("extraction_key") != extraction_key:
+            errors.append(f"{filename}: extraction_key no coincide con metadata")
+        if parser_version and envelope.get("parser_version") != parser_version:
+            errors.append(f"{filename}: parser_version no coincide con metadata")
+        resource_counts[resource] = item_count
+        if resource == "embedded_match_competition_crosscheck":
+            arrays[resource] = [envelope]
+        elif resource in {"summary", "embedded_match_filtered_table_card_crosscheck"}:
+            arrays[resource] = items
+        elif retain_items or resource in {"matches_from_embedded_data", "embedded_match_coverage_by_club"}:
+            arrays[resource] = items
+
+    match_rows = arrays.get("matches_from_embedded_data", [])
+    match_ids = [item.get("match_id") for item in match_rows]
+    if len(match_ids) != len(set(match_ids)):
+        errors.append("matches_from_embedded_data contiene match_id repetidos")
+    if any(not isinstance(match_id, str) or not match_id for match_id in match_ids):
+        errors.append("matches_from_embedded_data contiene un match_id ausente o inválido")
+    coverage_ids = [item.get("club_id") for item in arrays.get("embedded_match_coverage_by_club", [])]
+    if len(coverage_ids) != len(set(coverage_ids)):
+        errors.append("embedded_match_coverage_by_club contiene club_id repetidos")
+    crosscheck_rows = arrays.get("embedded_match_competition_crosscheck", [])
+    if not crosscheck_rows or not isinstance(crosscheck_rows[0].get("status"), str):
+        errors.append("embedded_match_competition_crosscheck no contiene un estado")
+    summary_rows = arrays.get("summary", [])
+    if summary_rows:
+        expected_counts = {
+            "embedded_unique_match_ids": resource_counts.get("matches_from_embedded_data", 0),
+            "embedded_match_observations": resource_counts.get("embedded_match_observations", 0),
+        }
+        for field_name, actual in expected_counts.items():
+            reported = summary_rows[0].get(field_name)
+            if reported is not None and reported != actual:
+                errors.append(f"summary.{field_name} no coincide con el recurso correspondiente")
+    return metadata, arrays, tuple(errors)
+
+
+def club_export_captured_at(metadata: dict[str, Any] | None) -> str | None:
+    if metadata is None:
+        return None
+    snapshots = metadata.get("source_snapshots", [])
+    if isinstance(snapshots, dict):
+        iterable = snapshots.values()
+    elif isinstance(snapshots, list):
+        iterable = snapshots
+    else:
+        return None
+    values = [
+        item.get("captured_at_utc")
+        for item in iterable
+        if isinstance(item, dict) and parse_datetime(item.get("captured_at_utc")) is not None
+    ]
+    return max(
+        values,
+        key=lambda value: parse_datetime(value) or datetime.min.replace(tzinfo=timezone.utc),
+        default=None,
+    )
+
+
+def discover_club_exports(root: Path) -> list[ClubExportCandidate]:
+    """Valida exports gzip versionados de clubes y partidos históricos, sin abrir páginas raw."""
+    root = root.expanduser()
+    if not root.is_dir():
+        return []
+    candidates = []
+    for path in root.iterdir():
+        if not path.is_dir() or path.name.startswith("."):
+            continue
+        metadata, _, errors = _club_export_documents(path, retain_items=False)
+        source = metadata.get("competition_crosscheck_source", {}) if metadata else {}
+        selection = source.get("selection", {}) if isinstance(source, dict) else {}
+        candidates.append(ClubExportCandidate(
+            path=path,
+            valid=metadata is not None and not errors,
+            captured_at_utc=club_export_captured_at(metadata),
+            parser_version=metadata.get("parser_version") if metadata else None,
+            extraction_key=metadata.get("extraction_key") if metadata else None,
+            selection_status=selection.get("selection_status") if isinstance(selection, dict) else None,
+            errors=errors,
+        ))
+    return sorted(
+        candidates,
+        key=lambda item: (
+            item.valid,
+            item.captured_at or datetime.min.replace(tzinfo=timezone.utc),
+            _version_key(item.parser_version),
+            item.path.name,
+        ),
+        reverse=True,
+    )
+
+
+def latest_valid_club_export(candidates: list[ClubExportCandidate]) -> ClubExportCandidate | None:
+    valid = [candidate for candidate in candidates if candidate.valid]
+    return max(
+        valid,
+        key=lambda item: (
+            item.captured_at or datetime.min.replace(tzinfo=timezone.utc),
+            _version_key(item.parser_version),
+            item.path.name,
+        ),
+        default=None,
+    )
+
+
+def verified_participant_groups(datasets: list[ExplorerDataset]) -> dict[str, dict[str, str]]:
+    """Cruza equipos-temporada solo si cada export válido conserva el mismo grupo."""
+    if not datasets:
+        return {}
+    participant_maps: list[dict[str, dict[str, str]]] = []
+    for dataset in datasets:
+        participant_map = {
+            str(item["team_season_id"]): {
+                "group": str(item["group"]),
+                "team_name": str(item.get("team_name") or ""),
+            }
+            for item in dataset.participants
+            if item.get("team_season_id") and item.get("group") in GROUPS
+        }
+        participant_maps.append(participant_map)
+    all_team_ids = set().union(*(set(participant_map) for participant_map in participant_maps))
+    result: dict[str, dict[str, str]] = {}
+    for team_id in all_team_ids:
+        observations = [participant_map.get(team_id) for participant_map in participant_maps]
+        present = [item for item in observations if item is not None]
+        groups = {item["group"] for item in present}
+        if len(observations) != len(datasets) or len(present) != len(datasets) or len(groups) != 1:
+            continue
+        names = {item["team_name"] for item in present}
+        result[team_id] = {
+            "group": next(iter(groups)),
+            "team_name": next(iter(names)) if len(names) == 1 else "",
+        }
+    return result
+
+
+def competition_conflict_evidence(
+    datasets: list[ExplorerDataset],
+    conflict: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Recupera de exports locales los estados raw de ambos lados de un conflicto."""
+    left_key = conflict.get("left_extraction_key")
+    right_key = conflict.get("right_extraction_key")
+    conflicts = conflict.get("conflicts", [])
+    identity = conflicts[0].get("fixture_identity", []) if conflicts and isinstance(conflicts[0], dict) else []
+    if len(identity) < 5 or identity[0] != "fixture":
+        return []
+    _, group, season, home_id, away_id = identity[:5]
+    rows = []
+    for dataset in datasets:
+        extraction_key = dataset.metadata.get("extraction_key")
+        if extraction_key not in {left_key, right_key}:
+            continue
+        match = next((
+            item for item in dataset.matches.get(str(group), [])
+            if item.get("home_team_season_id") == home_id
+            and item.get("away_team_season_id") == away_id
+        ), None)
+        if match is None:
+            continue
+        source = dataset.capture_for_group(str(group))
+        rows.append({
+            "extraction_key": extraction_key,
+            "season": season,
+            "group": group,
+            "date": match.get("date"),
+            "round": match.get("round"),
+            "home_team_name": match.get("home_team_name"),
+            "away_team_name": match.get("away_team_name"),
+            "result_status": match.get("result_status"),
+            "fixture_status": match.get("fixture_status"),
+            "status_in_export": match.get("fixture_status") or match.get("result_status"),
+            "final_url": source.get("final_url"),
+            "captured_at_utc": source.get("captured_at_utc"),
+            "snapshot_sha256": source.get("snapshot_sha256"),
+        })
+    return sorted(rows, key=lambda item: str(item.get("extraction_key")))
+
+
+def load_club_export(
+    path: Path,
+    *,
+    team_groups: dict[str, dict[str, str]] | None = None,
+) -> ClubExplorerDataset:
+    """Carga los recursos deportivos compactos y perfiles de club bajo demanda local."""
+    path = path.expanduser().resolve()
+    metadata, arrays, errors = _club_export_documents(path)
+    if errors or metadata is None:
+        raise DatasetValidationError("; ".join(errors) if errors else "Metadata no disponible")
+    profiles: dict[str, dict[str, Any]] = {}
+    profile_errors: dict[str, str] = {}
+    for item in arrays["embedded_match_coverage_by_club"]:
+        club_id = item.get("club_id")
+        if not isinstance(club_id, str) or not club_id:
+            continue
+        if not all(character.isalnum() or character in "_-" for character in club_id):
+            profile_errors[club_id] = "El ID de club no es seguro para resolver la ficha local"
+            continue
+        profile_path = path / "pages" / "club" / club_id / "club_profile.json.gz"
+        if not profile_path.is_file():
+            continue
+        try:
+            profile = _read_gzip_json(profile_path)
+        except DatasetValidationError as exc:
+            profile_errors[club_id] = str(exc)
+            continue
+        if not isinstance(profile, dict) or profile.get("entity_type") != "club" or profile.get("entity_id") != club_id:
+            profile_errors[club_id] = "La ficha no coincide con el club esperado"
+            continue
+        source = profile.get("source") if isinstance(profile.get("source"), dict) else {}
+        profiles[club_id] = {
+            "entity_type": "club",
+            "entity_id": club_id,
+            "title": profile.get("title"),
+            "hero_text": profile.get("hero_text"),
+            "url": profile.get("url"),
+            "source": {
+                "rendered_html_sha256": source.get("rendered_html_sha256"),
+                "captured_at_utc": source.get("captured_at_utc"),
+            },
+        }
+
+    matches_by_club: dict[str, list[dict[str, Any]]] = {}
+    for match in arrays["matches_from_embedded_data"]:
+        for club_id in {match.get("home_club_id"), match.get("away_club_id")}:
+            if isinstance(club_id, str) and club_id:
+                matches_by_club.setdefault(club_id, []).append(match)
+    observations_by_match: dict[str, list[dict[str, Any]]] = {}
+    for observation in arrays["embedded_match_observations"]:
+        match_id = observation.get("match_id")
+        if isinstance(match_id, str) and match_id:
+            observations_by_match.setdefault(match_id, []).append(observation)
+    return ClubExplorerDataset(
+        path=path,
+        metadata=metadata,
+        arrays=arrays,
+        profiles=profiles,
+        profile_errors=profile_errors,
+        team_groups=team_groups or {},
+        matches_by_club=matches_by_club,
+        observations_by_match=observations_by_match,
+    )
+
+
+def search_clubs(clubs: list[dict[str, Any]], query: str) -> list[dict[str, Any]]:
+    """Busca en nombre visible, identidad permanente y equipo-temporada actual."""
+    normalized_query = _search_key(query).strip()
+    if not normalized_query:
+        return clubs
+    return [
+        club for club in clubs
+        if normalized_query in _search_key(" ".join(str(club.get(field) or "") for field in (
+            "display_name", "club_id", "team_season_id", "team_name", "search_text",
+        )))
+    ]
+
+
+def _match_date(value: Any) -> date | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        return None
+
+
+def filter_club_matches(
+    matches: list[dict[str, Any]],
+    *,
+    club_id: str,
+    season: str | None = None,
+    competition: str | None = None,
+    rival: str | None = None,
+    venue: str | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+) -> list[dict[str, Any]]:
+    """Filtra partidos únicos del índice local; conserva fechas y códigos raw."""
+    query = _search_key(rival or "").strip()
+    result: list[dict[str, Any]] = []
+    for match in matches:
+        home_id = match.get("home_club_id")
+        away_id = match.get("away_club_id")
+        if home_id == club_id:
+            rival_id = away_id
+            rival_name = match.get("away_team_name_raw")
+            match_venue = "local"
+        elif away_id == club_id:
+            rival_id = home_id
+            rival_name = match.get("home_team_name_raw")
+            match_venue = "visitante"
+        else:
+            continue
+        if season and match.get("season_raw") != season:
+            continue
+        if competition and match.get("competition_code_raw") != competition:
+            continue
+        if venue and match_venue != venue:
+            continue
+        if query and query not in _search_key(f"{rival_id or ''} {rival_name or ''}"):
+            continue
+        played_on = _match_date(match.get("date"))
+        if date_from and (played_on is None or played_on < date_from):
+            continue
+        if date_to and (played_on is None or played_on > date_to):
+            continue
+        result.append(match)
+    return sorted(
+        result,
+        key=lambda item: (
+            _match_date(item.get("date")) is None,
+            -(_match_date(item.get("date")) or date.min).toordinal(),
+            str(item.get("match_id") or ""),
+        ),
+    )
+
+
+def club_selection_status(dataset: ClubExplorerDataset) -> dict[str, Any]:
+    """Devuelve selección y cotejo sin convertir un cotejo pendiente en discrepancia."""
+    source = dataset.metadata.get("competition_crosscheck_source", {})
+    selection = source.get("selection", {}) if isinstance(source, dict) else {}
+    crosscheck = dataset.arrays.get("embedded_match_competition_crosscheck", [{}])[0]
+    summary = dataset.arrays.get("summary", [{}])[0]
+    return {
+        "selection_status": selection.get("selection_status") if isinstance(selection, dict) else None,
+        "selection_reason": selection.get("selection_reason") if isinstance(selection, dict) else None,
+        "candidate_conflicts": selection.get("candidate_conflicts", []) if isinstance(selection, dict) else [],
+        "crosscheck_status": crosscheck.get("status"),
+        "crosscheck_matches_compared": crosscheck.get("matches_compared"),
+        "crosscheck_expected": crosscheck.get("competition_export_played_matches"),
+        "crosscheck_missing_from_embedded": crosscheck.get("competition_match_ids_missing_from_embedded"),
+        "crosscheck_absent_from_competition": crosscheck.get("embedded_match_ids_absent_from_competition"),
+        "historical_unique_matches": summary.get("embedded_unique_match_ids"),
+        "historical_source_observations": summary.get("embedded_match_observations"),
+        "shared_source_observations": summary.get("embedded_duplicate_observations"),
+        "historical_seasons": summary.get("embedded_historical_seasons_observed"),
+    }
+
+
+def match_observation_comparison(observations: list[dict[str, Any]]) -> dict[str, Any]:
+    """Resume qué campos de las observaciones coinciden, sin elegir una fuente."""
+    fields = (
+        "season_raw", "competition_code_raw", "date", "home_club_id", "home_team_name_raw",
+        "home_goals", "away_club_id", "away_team_name_raw", "away_goals", "round_code_raw",
+        "round_label_raw", "referee_id_raw",
+    )
+    if len(observations) < 2:
+        return {"source_count": len(observations), "matching_fields": [], "differing_fields": []}
+    matching = []
+    differing = []
+    for field_name in fields:
+        values = [item.get(field_name) for item in observations]
+        (matching if all(value == values[0] for value in values[1:]) else differing).append(field_name)
+    return {"source_count": len(observations), "matching_fields": matching, "differing_fields": differing}
