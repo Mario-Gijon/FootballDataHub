@@ -36,9 +36,12 @@ def _assessment(url: str, status: AccessStatus = AccessStatus.VALID) -> AccessAs
     )
 
 
-def _write_valid_snapshot(directory: Path, url: str) -> None:
+def _write_valid_snapshot(
+    directory: Path,
+    url: str,
+    raw: bytes = b"<html><body>synthetic test snapshot</body></html>",
+) -> None:
     directory.mkdir(parents=True)
-    raw = b"<html><body>synthetic test snapshot</body></html>"
     (directory / "rendered.html").write_bytes(raw)
     (directory / "metadata.json").write_text(json.dumps({
         "requested_url": url,
@@ -56,6 +59,7 @@ def _install_fake_browser(
     statuses: list[AccessStatus],
     *,
     final_urls: list[str] | None = None,
+    captured_html: bytes = b"<html><body>synthetic test snapshot</body></html>",
 ) -> list[str]:
     from football_data_hub.core import browser_session
     from football_data_hub.providers.bdfutbol import access as access_module
@@ -99,7 +103,7 @@ def _install_fake_browser(
             return VisitContext(assessment)
 
     def capture(*, assessment: AccessAssessment, output_dir: Path, **_kwargs: object) -> dict:
-        _write_valid_snapshot(output_dir, assessment.requested_url)
+        _write_valid_snapshot(output_dir, assessment.requested_url, captured_html)
         return {}
 
     monkeypatch.setattr(browser_session, "BrowserSessionManager", Session)
@@ -207,8 +211,35 @@ def test_refresh_writes_a_new_immutable_snapshot_and_keeps_previous(tmp_path: Pa
     profile = next(row for row in records if row["view"] == "profile")
     assert profile["status"] == "CAPTURED_VALID"
     assert profile["snapshot_directory"] != "previous/j123/profile"
+    assert profile["previous_snapshot_directory"] == "previous/j123/profile"
+    assert profile["content_change_status"] == "UNCHANGED"
     assert (previous / "rendered.html").read_bytes() == old_html
     assert (raw_root / profile["snapshot_directory"] / "rendered.html").is_file()
+
+
+def test_refresh_records_changed_content_by_snapshot_hash(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    raw_root = tmp_path / "raw"
+    url = player_view_url("j123", "profile")
+    previous = raw_root / "previous" / "j123" / "profile"
+    _write_valid_snapshot(previous, url)
+    calls = _install_fake_browser(
+        monkeypatch,
+        [AccessStatus.VALID] * len(PLAYER_VIEWS),
+        captured_html=b"<html><body>new synthetic content</body></html>",
+    )
+
+    records = capture_player_snapshots(
+        player_ids=["j123"], raw_root=raw_root, profile_dir=tmp_path / "profile", refresh=True,
+    )
+
+    profile = next(row for row in records if row["view"] == "profile")
+    assert len(calls) == len(PLAYER_VIEWS)
+    assert profile["previous_snapshot_sha256"] == hashlib.sha256(
+        b"<html><body>synthetic test snapshot</body></html>"
+    ).hexdigest()
+    assert profile["snapshot_sha256"] != profile["previous_snapshot_sha256"]
+    assert profile["content_change_status"] == "CHANGED"
+    assert (previous / "rendered.html").read_bytes() == b"<html><body>synthetic test snapshot</body></html>"
 
 
 def test_invalid_snapshot_is_not_reused_and_is_marked_for_revalidation(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

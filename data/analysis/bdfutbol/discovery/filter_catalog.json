@@ -1,0 +1,189 @@
+{
+  "schema_version": "football_data_hub.bdfutbol.discovery.filter_catalog.v1",
+  "interaction_states": {
+    "VERIFIED": "Prior actual read-only interaction or captured query variant with evidence.",
+    "DOM_ONLY": "Control/options exist in raw DOM but outcome not exercised.",
+    "NOT_TESTED": "No interaction evidence.",
+    "ACCESS_BLOCKED": "Current page was challenged; no further requests."
+  },
+  "records": [
+    {
+      "filter_id": "competition.classification",
+      "resource_ids": [
+        "competition.group_i.classification",
+        "competition.group_ii.classification"
+      ],
+      "controls": [
+        "#classitip: local/away/general",
+        "round 1-38",
+        "include/exclude postponed",
+        "all/date/date range/round filter",
+        "chart metric: position/points/goals for/goals against"
+      ],
+      "state": "VERIFIED",
+      "outcome": "Local selection changed classification rows; choosing date filter revealed date1/date2 controls; metric change redrew an SVG. Tested URL unchanged; no main navigation/fetch/XHR seen for those actions. Some image GETs followed a control action.",
+      "evidence": "data/analysis/bdfutbol/luna_audit/20261008T121144.726760Z/interaction_probe.json",
+      "untested": [
+        "all rounds/dates/postponements",
+        "same interaction on Group II"
+      ]
+    },
+    {
+      "filter_id": "competition.tabs",
+      "resource_ids": [
+        "competition.group_i.classification"
+      ],
+      "controls": [
+        "tab=results",
+        "tab=top",
+        "tab=referees",
+        "tab=stats"
+      ],
+      "state": "VERIFIED",
+      "outcome": "Separate query-string page snapshots exist for Group I. Group II tabs not opened.",
+      "evidence": "data/analysis/bdfutbol/luna_audit/resource_catalog.json"
+    },
+    {
+      "filter_id": "competition.referees",
+      "controls": [
+        "season select (96 options in captured Group I page)",
+        "group Todos/Grupo 1/Grupo 2"
+      ],
+      "state": "DOM_ONLY",
+      "outcome": "Option labels/values in DOM; no alternate option was selected.",
+      "evidence": "data/raw/bdfutbol/luna_audit/20261008T121144.726760Z/referees/inventory.json"
+    },
+    {
+      "filter_id": "team_season.navigation",
+      "controls": [
+        "season selector (varies per club; up to 70 in Jaén sample)",
+        "Alineación/Plantilla/Estadísticas",
+        "competition select"
+      ],
+      "state": "DOM_ONLY",
+      "outcome": "Controls preserved in the snapshot; only some base/known view URLs were captured, without exploring all seasons.",
+      "evidence": "data/raw/bdfutbol/luna_audit/20261008T121250.991672Z/team_season_jaen/inventory.json"
+    },
+    {
+      "filter_id": "team_season.optional_columns",
+      "controls": [
+        "15 optional column checkboxes: Dorsal, Foto, País, Apodo y Nombre, Demarcación, Edad, PJ, Partidos titular/completos/suplente, Convocado sin jugar, Minutos, TA, TR, Goles",
+        "Recordar",
+        "Restablecer"
+      ],
+      "state": "VERIFIED",
+      "outcome": "Disclosure opened and labels/checked states read; no checkbox toggled and no preference saved/reset. Background JSD/reCAPTCHA/telemetry observed; secondary /manifest.json returned 403 while main page remained VALID. Do not attribute all delayed requests to the disclosure.",
+      "evidence": "data/analysis/bdfutbol/luna_audit/20261008T121519.382702Z/column_panel_interaction.json"
+    },
+    {
+      "filter_id": "club.profile",
+      "controls": [
+        "Tabla/Listado",
+        "competition",
+        "club comparison (947 options in Jaén inventory)"
+      ],
+      "state": "DOM_ONLY",
+      "outcome": "List/control inventory only; no selection outcome tested.",
+      "evidence": "data/analysis/bdfutbol/luna_audit/resource_catalog.json"
+    },
+    {
+      "filter_id": "club.matches.result",
+      "parameters": {
+        "cat": "1rf",
+        "temp": "2026-27",
+        "pgep": [
+          "pg",
+          "pe",
+          "pp"
+        ],
+        "omit_pgep": "all"
+      },
+      "state": "VERIFIED",
+      "outcome": "29 source snapshots in export catalog: 17 all, 4 draws, 4 wins, 4 losses. Validated subsets reconcile against t1 aggregates where present. 17/40 clubs have all variant; do not interpret missing captures as zero matches.",
+      "evidence": "data/parsed/bdfutbol/club_team_2026_27/compact/snapshot-f36c91119a98390766ff-parser-1.3.0/resource_catalog.json.gz"
+    },
+    {
+      "filter_id": "player.profile",
+      "controls": [
+        "team",
+        "country",
+        "trajectory chart",
+        "column disclosure"
+      ],
+      "state": "DOM_ONLY",
+      "outcome": "Observed on Morillas only; no filter results captured.",
+      "evidence": "data/raw/bdfutbol/luna_audit/20261008T121250.991672Z/player_profile_morillas/inventory.json"
+    },
+    {
+      "filter_id": "player.statistics",
+      "controls": [
+        "competition select (Morillas: 2ª B/1ª RFEF/Copa del Rey)",
+        "optional columns"
+      ],
+      "state": "DOM_ONLY",
+      "outcome": "Captured selected options; not applied.",
+      "evidence": "data/raw/bdfutbol/luna_audit/20261008T121250.991672Z/player_stats_morillas/inventory.json"
+    },
+    {
+      "filter_id": "player.matches",
+      "controls": [
+        "competition",
+        "season",
+        "team",
+        "opponent",
+        "national-team",
+        "country",
+        "win/draw/loss/played state where exposed"
+      ],
+      "state": "DOM_ONLY",
+      "outcome": "One unfiltered Morillas snapshot; filter combinations, pagination, and individual match results not audited.",
+      "evidence": "data/raw/bdfutbol/luna_audit/20261008T121250.991672Z/player_matches_morillas/inventory.json"
+    },
+    {
+      "filter_id": "player.rivals",
+      "controls": [
+        "competition",
+        "season",
+        "position"
+      ],
+      "state": "DOM_ONLY",
+      "outcome": "Options present only; not applied.",
+      "evidence": "data/raw/bdfutbol/luna_audit/20261008T121250.991672Z/player_rivals_morillas/inventory.json"
+    },
+    {
+      "filter_id": "club_people_and_rivals",
+      "controls": [
+        "season",
+        "competition",
+        "position",
+        "country",
+        "optional columns"
+      ],
+      "state": "DOM_ONLY",
+      "outcome": "Controls/options present in captured resource catalog; no universal interaction outcome.",
+      "evidence": "data/parsed/bdfutbol/club_team_2026_27/compact/snapshot-f36c91119a98390766ff-parser-1.3.0/resource_catalog.json.gz"
+    },
+    {
+      "filter_id": "pagination_sorting",
+      "controls": [
+        "sortable/configurable table classes; pagination controls where present"
+      ],
+      "state": "NOT_TESTED",
+      "outcome": "Classes/controls do not demonstrate an actual sort or page transition."
+    },
+    {
+      "filter_id": "new_player_live_requests",
+      "resource_ids": [
+        "player.profile"
+      ],
+      "state": "ACCESS_BLOCKED",
+      "outcome": "Single navigation to j23751/profile returned 403/CHALLENGE_REQUIRED. No further BDFutbol navigation was made.",
+      "evidence": "data/analysis/bdfutbol/discovery/live_access_check/20261008T212243.699473Z.json"
+    }
+  ],
+  "rules": [
+    "DOM presence is not evidence of filter effect.",
+    "Client-side row changes do not imply new records were acquired.",
+    "Filtered snapshot is a distinct variant and does not replace the base view."
+  ]
+}

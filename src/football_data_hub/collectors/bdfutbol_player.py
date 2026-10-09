@@ -9,7 +9,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from football_data_hub.parsers.player_pages import PLAYER_VIEWS, classify_player_view
+from football_data_hub.parsers.player_pages import (
+    PLAYER_VIEWS,
+    classify_player_view,
+    missing_profile_field_evidence,
+)
 from football_data_hub.providers.bdfutbol.access import AccessAssessment, AccessStatus
 from football_data_hub.providers.bdfutbol.discovery import (
     capture_dom_snapshot,
@@ -20,13 +24,14 @@ from football_data_hub.parsers.player_pages import discover_player_snapshots
 
 _PLAYER_ID = re.compile(r"^j\d+$")
 _VIEW_MARKERS = {
-    "profile": ("Nombre completo", "Demarcación"),
+    "profile": ("Trayectoria",),
     "statistics": ("Estadísticas",),
     "matches": ("Partidos",),
     "rivals": ("Rivales",),
 }
 _VIEW_TITLE_MARKERS = {"profile": ("Futbolista",)}
 _VIEW_REQUIRED_SELECTORS = {"profile": ("h1", ".traject")}
+_VIEW_DOCUMENT_VALIDATORS = {"profile": missing_profile_field_evidence}
 _BASE_URL = "https://www.bdfutbol.com/es"
 
 
@@ -314,6 +319,7 @@ def capture_player_snapshots(
                         required_markers=_VIEW_MARKERS[view],
                         required_title_markers=_VIEW_TITLE_MARKERS.get(view, ()),
                         required_selectors=_VIEW_REQUIRED_SELECTORS.get(view, ()),
+                        document_validator=_VIEW_DOCUMENT_VALIDATORS.get(view),
                         settle_ms=settle_ms,
                     ) as result:
                         assessment = result.assessment
@@ -366,6 +372,17 @@ def capture_player_snapshots(
                         "snapshot_directory": output.relative_to(raw_root).as_posix(),
                         "snapshot_sha256": digest,
                         "snapshot_bytes": byte_count,
+                        "previous_snapshot_directory": (
+                            existing[url]["snapshot_directory"] if url in existing else None
+                        ),
+                        "previous_snapshot_sha256": (
+                            existing[url]["snapshot_sha256"] if url in existing else None
+                        ),
+                        "content_change_status": (
+                            "UNCHANGED" if url in existing and existing[url]["snapshot_sha256"] == digest
+                            else "CHANGED" if url in existing
+                            else "BASELINE_CAPTURE"
+                        ),
                     })
                     write_json(state_path, _state_payload(records, run_root))
     except PlayerAcquisitionStopped:
@@ -389,6 +406,8 @@ def _failed_record(
         "missing_markers": list(assessment.missing_markers),
         "missing_title_markers": list(assessment.missing_title_markers),
         "missing_selectors": list(assessment.missing_selectors),
+        "missing_dom_markers": list(assessment.missing_dom_markers),
+        "missing_dom_evidence": list(assessment.missing_dom_evidence),
         "reason": assessment.reason,
     }
 

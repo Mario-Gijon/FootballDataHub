@@ -14,6 +14,7 @@ from football_data_hub.parsers.player_pages import (
     build_player_pilot_candidates,
     classify_player_view,
     discover_player_snapshots,
+    missing_profile_field_evidence,
     parse_player_html,
     parse_player_snapshot,
     parse_player_snapshot_inventory,
@@ -87,6 +88,20 @@ def test_parse_profile_preserves_history_totals_hidden_columns_and_absences() ->
     assert [tab["label_raw"] for tab in page["view_tabs"]] == [
         "Trayectoria", "Estadísticas", "Partidos", "Rivales",
     ]
+
+
+def test_profile_semantic_evidence_reuses_parser_field_recognition() -> None:
+    assert missing_profile_field_evidence(_profile_html()) == ()
+    # Synthetic incomplete page: the labels occur as unrelated page text, but
+    # they are not structured personal-field rows accepted by the parser.
+    html = """<html><body><p>Nombre completo Demarcación</p>
+    <h1>Player</h1><table class="traject"></table></body></html>"""
+    assert missing_profile_field_evidence(html) == ("Nombre completo", "Demarcación")
+    empty_fields = """<html><body>
+    <div class="float-left"><div>Nombre completo</div><div class="font-weight-bold"></div></div>
+    <div class="float-left"><div>Demarcación</div><div></div></div>
+    </body></html>"""
+    assert missing_profile_field_evidence(empty_fields) == ("Nombre completo", "Demarcación")
 
 
 def test_statistics_keep_zero_null_section_and_reordered_milestone_header() -> None:
@@ -234,9 +249,6 @@ def test_individual_match_table_preserves_scored_scheduled_and_non_fixture_rows(
 
 def test_real_morillas_snapshots_keep_four_views_three_trajectory_rows_and_empty_fixture_table() -> None:
     raw_root = Path(__file__).resolve().parents[1] / "data/raw/bdfutbol"
-    morillas_snapshot = raw_root / "luna_audit/20261008T121250.991672Z/player_matches_morillas"
-    if not morillas_snapshot.is_dir():
-        pytest.skip("Los snapshots locales de Morillas no están disponibles")
     pages = parse_player_snapshot_inventory(discover_player_snapshots(raw_root), raw_root)
     morillas = [page for page in pages if page["player_id"] == "j209629"]
     by_view = {page["view"]: page for page in morillas}
@@ -455,3 +467,12 @@ def test_compact_exports_are_repeatable_and_do_not_embed_raw_html(tmp_path: Path
     coverage = json.load(gzip.open(first / "coverage.json.gz", "rt", encoding="utf-8"))
     assert len(coverage["items"]) == 4
     assert coverage["items"][0]["parse_status"] == "PARSED"
+    immutable_file = first / "dataset_metadata.json.gz"
+    immutable_file.write_bytes(b"tampered historical export")
+    with pytest.raises(FileExistsError, match="no se sobrescribirá"):
+        build_player_exports(
+            inventory=inventory,
+            parsed_pages=[page],
+            source_audit=audit,
+            output_root=tmp_path / "exports",
+        )

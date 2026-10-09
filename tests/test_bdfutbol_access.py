@@ -13,14 +13,26 @@ from football_data_hub.collectors.bdfutbol_player import (
     _VIEW_TITLE_MARKERS,
 )
 from football_data_hub.core.browser_session import BrowserNavigationError
+from football_data_hub.parsers.player_pages import missing_profile_field_evidence
 from football_data_hub.providers.bdfutbol import access as mod
 
 URL = "https://www.bdfutbol.com/es/j/j209629.html"
 MARKERS = ("Morillas", "Nombre completo", "Demarcación")
 VALID_BODY = "Morillas | Nombre completo | Jaime Morillas | Demarcación | Portero"
-PROFILE_BODY_MARKERS = ("Nombre completo", "Demarcación")
+PROFILE_BODY_MARKERS = ("Trayectoria",)
 PROFILE_TITLE_MARKERS = ("Futbolista",)
 PROFILE_SELECTORS = ("h1", ".traject")
+PROFILE_FIELD_EVIDENCE = ("Nombre completo", "Demarcación")
+
+SYNTHETIC_PROFILE_HTML = """<!doctype html><html><head>
+<title>Manu Pedreño - Futbolista | BDFutbol</title></head><body>
+<h1>Manu Pedreño</h1><a>Trayectoria</a>
+<div class="hero"><div class="d-none d-md-block">
+  <div class="float-left"><div>Nombre completo</div>
+    <div class="font-weight-bold">Antonio Manuel Moñino Pedreño</div></div>
+  <div class="float-left"><div>Demarcación</div><div>Delantero</div></div>
+</div></div><table class="traject"><tr><th>Temp</th></tr></table>
+</body></html>"""
 
 
 def assess(**overrides):
@@ -76,19 +88,25 @@ def test_profile_title_marker_with_error_content_is_incomplete():
         required_title_markers=PROFILE_TITLE_MARKERS,
         required_selectors=PROFILE_SELECTORS,
         present_selectors=(),
+        missing_dom_evidence=PROFILE_FIELD_EVIDENCE,
     )
     assert result.http_status == 200
     assert result.status is mod.AccessStatus.INVALID_CONTENT
     assert result.missing_markers == PROFILE_BODY_MARKERS
     assert result.missing_title_markers == ()
     assert result.missing_selectors == PROFILE_SELECTORS
+    assert result.missing_dom_evidence == PROFILE_FIELD_EVIDENCE
 
 
 def test_synthetic_profile_accepts_futbolista_in_title_but_not_body() -> None:
     # Fixture sintético basado en el contrato y la evidencia manual aportada;
     # no se usa como evidencia de la estructura real de j23751.
-    body = "Nombre completo Antonio Manuel Moñino Pedreño. Demarcación Delantero."
+    body = "Trayectoria"
     assert "Futbolista" not in body
+    assert "Nombre completo" not in body
+    assert "Demarcación" not in body
+    missing_evidence = missing_profile_field_evidence(SYNTHETIC_PROFILE_HTML)
+    assert missing_evidence == ()
     result = assess(
         page_title="Manu Pedreño, Antonio Manuel Moñino Pedreño - Futbolista | BDFutbol",
         body_text=body,
@@ -96,11 +114,13 @@ def test_synthetic_profile_accepts_futbolista_in_title_but_not_body() -> None:
         required_title_markers=PROFILE_TITLE_MARKERS,
         required_selectors=PROFILE_SELECTORS,
         present_selectors=PROFILE_SELECTORS,
+        missing_dom_evidence=missing_evidence,
     )
     assert result.status is mod.AccessStatus.VALID
     assert result.missing_markers == ()
     assert result.missing_title_markers == ()
     assert result.missing_selectors == ()
+    assert result.missing_dom_evidence == ()
 
 
 def test_profile_title_alone_does_not_accept_incorrect_http_200_content() -> None:
@@ -111,16 +131,18 @@ def test_profile_title_alone_does_not_accept_incorrect_http_200_content() -> Non
         required_title_markers=PROFILE_TITLE_MARKERS,
         required_selectors=PROFILE_SELECTORS,
         present_selectors=(),
+        missing_dom_evidence=PROFILE_FIELD_EVIDENCE,
     )
     assert result.status is mod.AccessStatus.INVALID_CONTENT
     assert result.missing_markers == PROFILE_BODY_MARKERS
     assert result.missing_selectors == PROFILE_SELECTORS
+    assert result.missing_dom_evidence == PROFILE_FIELD_EVIDENCE
 
 
 def test_profile_with_fields_but_without_trajectory_structure_is_incomplete() -> None:
     result = assess(
         page_title="Manu Pedreño - Futbolista | BDFutbol",
-        body_text="Nombre completo Antonio Manuel Moñino Pedreño. Demarcación Delantero.",
+        body_text="Trayectoria",
         required_markers=PROFILE_BODY_MARKERS,
         required_title_markers=PROFILE_TITLE_MARKERS,
         required_selectors=PROFILE_SELECTORS,
@@ -129,6 +151,7 @@ def test_profile_with_fields_but_without_trajectory_structure_is_incomplete() ->
     assert result.status is mod.AccessStatus.INVALID_CONTENT
     assert result.missing_markers == ()
     assert result.missing_selectors == (".traject",)
+    assert result.missing_dom_evidence == ()
 
 
 def test_profile_challenge_is_rejected_before_semantic_content() -> None:
@@ -150,6 +173,7 @@ def test_profile_final_url_for_another_player_is_rejected() -> None:
         required_title_markers=PROFILE_TITLE_MARKERS,
         required_selectors=PROFILE_SELECTORS,
         present_selectors=PROFILE_SELECTORS,
+        missing_dom_evidence=(),
     )
     assert result.status is mod.AccessStatus.INVALID_URL
 
@@ -162,13 +186,11 @@ def test_real_morillas_snapshots_pass_all_four_view_access_contracts() -> None:
         "matches": "player_matches_morillas",
         "rivals": "player_rivals_morillas",
     }
-    if any(not (raw_root / name / "rendered.html").is_file() for name in snapshot_names.values()):
-        pytest.skip("Los snapshots offline de Morillas no están disponibles")
-
     for view, snapshot_name in snapshot_names.items():
         snapshot = raw_root / snapshot_name
         metadata = json.loads((snapshot / "metadata.json").read_text(encoding="utf-8"))
-        soup = BeautifulSoup((snapshot / "rendered.html").read_text(encoding="utf-8"), "lxml")
+        html = (snapshot / "rendered.html").read_text(encoding="utf-8")
+        soup = BeautifulSoup(html, "lxml")
         present = tuple(
             selector for selector in _VIEW_REQUIRED_SELECTORS.get(view, ())
             if soup.select_one(selector) is not None
@@ -183,6 +205,9 @@ def test_real_morillas_snapshots_pass_all_four_view_access_contracts() -> None:
             required_title_markers=_VIEW_TITLE_MARKERS.get(view, ()),
             required_selectors=_VIEW_REQUIRED_SELECTORS.get(view, ()),
             present_selectors=present,
+            missing_dom_evidence=(
+                missing_profile_field_evidence(html) if view == "profile" else ()
+            ),
         )
         assert assessment.status is mod.AccessStatus.VALID, view
 
@@ -266,7 +291,7 @@ def test_access_open_profile_checks_title_body_and_dom_structure():
         def __init__(self):
             super().__init__(
                 title="Manu Pedreño - Futbolista | BDFutbol",
-                body="Nombre completo Antonio Manuel Moñino Pedreño. Demarcación Delantero.",
+                body="Trayectoria",
             )
 
         def locator(self, selector):
@@ -276,12 +301,16 @@ def test_access_open_profile_checks_title_body_and_dom_structure():
                 return SimpleNamespace(count=lambda: 1)
             raise AssertionError(f"Selector inesperado: {selector}")
 
+        def content(self):
+            return SYNTHETIC_PROFILE_HTML
+
     session = FakeSession(ProfilePage())
     with mod.BDFutbolAccess(session).open(
         URL,
         required_markers=PROFILE_BODY_MARKERS,
         required_title_markers=PROFILE_TITLE_MARKERS,
         required_selectors=PROFILE_SELECTORS,
+        document_validator=missing_profile_field_evidence,
         max_wait_seconds=0,
     ) as result:
         assert result.assessment.status is mod.AccessStatus.VALID

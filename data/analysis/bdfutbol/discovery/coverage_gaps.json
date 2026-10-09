@@ -1,0 +1,241 @@
+{
+  "schema_version": "football_data_hub.bdfutbol.discovery.coverage_gaps.v1",
+  "coverage_states": {
+    "NORMALIZED": "Typed fields with documented interpretation.",
+    "RAW_PRESERVED": "Captured values/HTML/attributes available for offline reprocessing.",
+    "PARSER_MISSING": "Raw evidence present but no parser extraction is implemented.",
+    "FILTER_PENDING": "Known filter/variant not verified or reconciled.",
+    "CAPTURE_PENDING": "No valid base snapshot for the resource/scope.",
+    "ACCESS_BLOCKED": "A current controlled request returned challenge/block.",
+    "SOURCE_ABSENT": "Absence proven only within an explicitly named sampled page/table.",
+    "UNKNOWN": "Evidence does not distinguish presence from absence."
+  },
+  "records": [
+    {
+      "coverage_id": "competition.groups",
+      "scope": "Groups I-II 2026/27",
+      "states": [
+        "NORMALIZED",
+        "RAW_PRESERVED",
+        "FILTER_PENDING"
+      ],
+      "observed": "2 groups, 40 clubs, 760 fixtures, 119 played each at capture; one prior past fixture unresolved.",
+      "gaps": [
+        "Group II alternate tabs not opened; not all filter/date/postponement variants tested; season is mutable."
+      ],
+      "offline_next": "Reconcile 760 IDs/rows across two competition exports and existing club/team result snapshots."
+    },
+    {
+      "coverage_id": "club.permanent_views",
+      "scope": "40 clubs x 6 base views",
+      "states": [
+        "RAW_PRESERVED",
+        "PARSER_MISSING",
+        "FILTER_PENDING"
+      ],
+      "observed": "240 base page resources (40 for each of six views); coverage matrix marks all 240 INCOMPLETE, pipeline 120 PARSED / 120 VALIDATED, with no interpreted_record_fields recorded for these club views.",
+      "gaps": [
+        "Many club table headings/cells are raw-only; typed extraction/semantic interpretation is absent for the base views.",
+        "Historical filters, optional columns and every club-specific table variant are not semantically audited."
+      ]
+    },
+    {
+      "coverage_id": "team_season.views",
+      "scope": "40 team seasons x 6 base views",
+      "states": [
+        "NORMALIZED",
+        "RAW_PRESERVED",
+        "PARSER_MISSING",
+        "FILTER_PENDING"
+      ],
+      "observed": "240 base pages; 40 roster and 40 player-statistics views are marked COMPLETE at view scope; the other 160 team-season views are INCOMPLETE. No full club/team entity is COMPLETE. 1,039 memberships, 1,034 IDs, 179 zero-appearance rows and 41 coach rows.",
+      "gaps": [
+        "Many table columns are raw-only even in complete views; do not treat all columns as semantically normalized.",
+        "160 alignment/tracking/transfers/matches views have unresolved fields or variants.",
+        "Two team_tracking snapshots lack header 5; no column was imputed.",
+        "Historical team-season options remain pending."
+      ]
+    },
+    {
+      "coverage_id": "player.memberships",
+      "scope": "Roster identities and team-season memberships",
+      "states": [
+        "NORMALIZED",
+        "RAW_PRESERVED"
+      ],
+      "observed": "1,034 unique IDs; 1,039 memberships.",
+      "gaps": [
+        "Membership is not full career coverage; preserve zero-appearance and multiple-team rows."
+      ]
+    },
+    {
+      "coverage_id": "player.profile",
+      "scope": "Individual histories for in-scope players",
+      "states": [
+        "NORMALIZED",
+        "RAW_PRESERVED",
+        "CAPTURE_PENDING",
+        "ACCESS_BLOCKED"
+      ],
+      "observed": "Morillas only parsed; 3 career rows plus total. One current j23751 request was blocked.",
+      "gaps": [
+        "1,033 other players have no four-view history in 0.2.1 export; career completeness uncertified; old HTTP200 rejected body absent."
+      ]
+    },
+    {
+      "coverage_id": "player.statistics_and_rivals",
+      "scope": "Individual stats/rivals",
+      "states": [
+        "NORMALIZED",
+        "RAW_PRESERVED",
+        "FILTER_PENDING",
+        "CAPTURE_PENDING",
+        "ACCESS_BLOCKED"
+      ],
+      "observed": "Morillas 97 statistics rows and 533 rivals records.",
+      "gaps": [
+        "Other players not captured; competition/season/position variants pending; PJ cross-view scope difference unresolved."
+      ]
+    },
+    {
+      "coverage_id": "player.individual_matches",
+      "scope": "Player match-by-match rows",
+      "states": [
+        "RAW_PRESERVED",
+        "SOURCE_ABSENT",
+        "UNKNOWN",
+        "FILTER_PENDING"
+      ],
+      "observed": "Morillas had 51 aggregate rows and 0 data rows in #tpartits.",
+      "gaps": [
+        "SOURCE_ABSENT only for that captured page/table; source-wide availability unknown; other player pages not acquired."
+      ]
+    },
+    {
+      "coverage_id": "matches",
+      "scope": "Competition schedule plus detailed match pages",
+      "states": [
+        "NORMALIZED",
+        "RAW_PRESERVED",
+        "CAPTURE_PENDING",
+        "FILTER_PENDING"
+      ],
+      "observed": "760 fixture rows, 119 played per group at capture, 68 played IDs cross-checked via club variants, one individual detail snapshot.",
+      "gaps": [
+        "51 played IDs not observed in captured club variants; only one match detail page means lineups/events are not covered comprehensively."
+      ]
+    },
+    {
+      "coverage_id": "coaches",
+      "scope": "Coach IDs, profiles and career pages",
+      "states": [
+        "RAW_PRESERVED",
+        "CAPTURE_PENDING",
+        "FILTER_PENDING"
+      ],
+      "observed": "41 current team-season coach rows/IDs; one coach profile sample.",
+      "gaps": [
+        "Other coach profiles and profile subviews not captured; history completeness unknown."
+      ]
+    },
+    {
+      "coverage_id": "referees",
+      "scope": "Referee identities, history and assignments",
+      "states": [
+        "RAW_PRESERVED",
+        "CAPTURE_PENDING",
+        "FILTER_PENDING",
+        "ACCESS_BLOCKED"
+      ],
+      "observed": "Group I leaderboard plus one referee profile; current live access is challenged.",
+      "gaps": [
+        "Group II leaderboard, other profiles and match designations not reconciled."
+      ]
+    },
+    {
+      "coverage_id": "stadiums",
+      "scope": "Stadium profiles/history",
+      "states": [
+        "RAW_PRESERVED",
+        "CAPTURE_PENDING",
+        "UNKNOWN"
+      ],
+      "observed": "One stadium sample and IDs/text linked in fixtures/clubs.",
+      "gaps": [
+        "Remaining stadium profiles and venue changes over seasons pending."
+      ]
+    },
+    {
+      "coverage_id": "rivals",
+      "scope": "Club and player rival/history relations",
+      "states": [
+        "NORMALIZED",
+        "RAW_PRESERVED",
+        "FILTER_PENDING",
+        "CAPTURE_PENDING"
+      ],
+      "observed": "40 club rival views and one player rival view in existing exports.",
+      "gaps": [
+        "Historical scopes/filter variants and global relation completeness not audited."
+      ]
+    },
+    {
+      "coverage_id": "media",
+      "scope": "Portraits, crests, galleries and charts",
+      "states": [
+        "RAW_PRESERVED",
+        "PARSER_MISSING",
+        "CAPTURE_PENDING",
+        "UNKNOWN"
+      ],
+      "observed": "531 HTML/DOM snapshots reference images; 15 PNG screenshots; 150,539 aggregate repeated image candidates.",
+      "gaps": [
+        "No parser export of chart series / no semantic chart normalization.",
+        "No binary-photo/crest download batch; no unique-media dedup; inventory totals repeat navigation/ads; galleries not fully inspected."
+      ]
+    },
+    {
+      "coverage_id": "global_rankings_and_other_pages",
+      "scope": "Global rankings, national selection/community and extra sections",
+      "states": [
+        "NOT_TESTED",
+        "CAPTURE_PENDING",
+        "UNKNOWN"
+      ],
+      "observed": "Global navigation links only.",
+      "gaps": [
+        "Destination pages not visited; do not count menu links as audited resources."
+      ]
+    }
+  ],
+  "completion_rule": "BASE_CAPTURED, valid HTTP, parsed rows, and semantic/entity/history COMPLETE are separate claims; snapshots do not certify source-wide completeness.",
+  "club_team_export_coverage": {
+    "entities_base_captured": 80,
+    "entities_complete": 0,
+    "entities_incomplete": 80,
+    "interaction_variants_complete": 28,
+    "interaction_variants_observed": 29,
+    "match_result_scopes_complete": 16,
+    "pipeline_states": {
+      "PARSED": 240,
+      "VALIDATED": 240
+    },
+    "team_player_memberships": 1039,
+    "unique_team_coach_ids": 41,
+    "unique_team_player_ids": 1034,
+    "views_captured": 480,
+    "views_complete": 80,
+    "views_expected": 480,
+    "views_validated": 240,
+    "view_coverage_status_counts": {
+      "INCOMPLETE": 400,
+      "COMPLETE": 80
+    },
+    "pipeline_status_counts": {
+      "VALIDATED": 240,
+      "PARSED": 240
+    },
+    "entity_complete_count": 0,
+    "definition": "Completeness is a view-level coverage-matrix status. No club/team entity has all its view families semantically complete."
+  }
+}

@@ -337,6 +337,22 @@ def _find_profile_value(soup: BeautifulSoup, label: str) -> dict[str, Any] | Non
     return candidates[0] if candidates else None
 
 
+def missing_profile_field_evidence(html: str) -> tuple[str, ...]:
+    """Return required personal fields not found by the profile parser's DOM rules.
+
+    BeautifulSoup reads text nodes in the captured DOM, including responsive
+    elements hidden from ``innerText`` at a particular viewport. Field
+    recognition deliberately reuses ``_find_profile_value`` so acquisition
+    validation and offline parsing accept the same labeled structures.
+    """
+    soup = BeautifulSoup(html, "lxml")
+    return tuple(
+        label for label in ("Nombre completo", "Demarcación")
+        if not (field := _find_profile_value(soup, label))
+        or not str(field.get("raw_value") or "").strip()
+    )
+
+
 def _profile_data(soup: BeautifulSoup, tables: list[dict[str, Any]], base_url: str) -> dict[str, Any]:
     title = _text(soup.title)
     h1 = _text(soup.find("h1"))

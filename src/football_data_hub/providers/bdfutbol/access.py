@@ -7,6 +7,7 @@ específicos. La verificación se limita al dominio bdfutbol.com.
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
 from urllib.parse import parse_qsl, urlsplit
@@ -38,6 +39,8 @@ class AccessAssessment:
     reason: str | None = None
     missing_title_markers: tuple[str, ...] = ()
     missing_selectors: tuple[str, ...] = ()
+    missing_dom_markers: tuple[str, ...] = ()
+    missing_dom_evidence: tuple[str, ...] = ()
 
     @property
     def accessible(self) -> bool:
@@ -102,12 +105,20 @@ def assess_bdfutbol_access(
     required_title_markers: tuple[str, ...] = (),
     required_selectors: tuple[str, ...] = (),
     present_selectors: tuple[str, ...] = (),
+    required_dom_text_selector: str | None = None,
+    required_dom_text_markers: tuple[str, ...] = (),
+    dom_text: str = "",
+    missing_dom_evidence: tuple[str, ...] = (),
 ) -> AccessAssessment:
     markers = (*required_markers, *required_title_markers)
     if not required_markers or any(not marker.strip() for marker in markers):
         raise ValueError("Es obligatorio proporcionar marcadores semánticos no vacíos")
     if any(not selector.strip() for selector in required_selectors):
         raise ValueError("Los selectores estructurales no pueden estar vacíos")
+    if any(not marker.strip() for marker in required_dom_text_markers):
+        raise ValueError("Los marcadores DOM no pueden estar vacíos")
+    if required_dom_text_markers and not (required_dom_text_selector or "").strip():
+        raise ValueError("Los marcadores DOM requieren un selector de contenido")
     if not is_bdfutbol_https_url(requested_url):
         return AccessAssessment(
             AccessStatus.INVALID_URL, requested_url, final_url, http_status,
@@ -139,15 +150,19 @@ def assess_bdfutbol_access(
         )
     missing = tuple(m for m in required_markers if m.casefold() not in body)
     missing_title = tuple(m for m in required_title_markers if m.casefold() not in title)
+    scoped_dom_text = dom_text.casefold()
+    missing_dom = tuple(m for m in required_dom_text_markers if m.casefold() not in scoped_dom_text)
     present = set(present_selectors)
     missing_selectors = tuple(selector for selector in required_selectors if selector not in present)
-    if missing or missing_title or missing_selectors:
+    if missing or missing_title or missing_selectors or missing_dom or missing_dom_evidence:
         return AccessAssessment(
             AccessStatus.INVALID_CONTENT, requested_url, final_url,
             http_status, page_title, missing,
             "Faltan marcadores semánticos o estructura del recurso",
             missing_title_markers=missing_title,
             missing_selectors=missing_selectors,
+            missing_dom_markers=missing_dom,
+            missing_dom_evidence=missing_dom_evidence,
         )
     return AccessAssessment(
         AccessStatus.VALID, requested_url, final_url, http_status, page_title,
@@ -165,6 +180,9 @@ class BDFutbolAccess:
         required_markers: tuple[str, ...],
         required_title_markers: tuple[str, ...] = (),
         required_selectors: tuple[str, ...] = (),
+        required_dom_text_selector: str | None = None,
+        required_dom_text_markers: tuple[str, ...] = (),
+        document_validator: Callable[[str], tuple[str, ...]] | None = None,
         settle_ms: int = 750,
         max_wait_seconds: float = 12.0,
     ) -> BDFutbolVisit:
@@ -176,6 +194,10 @@ class BDFutbolAccess:
             raise ValueError("Los marcadores de título no pueden estar vacíos")
         if any(not selector.strip() for selector in required_selectors):
             raise ValueError("Los selectores estructurales no pueden estar vacíos")
+        if any(not marker.strip() for marker in required_dom_text_markers):
+            raise ValueError("Los marcadores DOM no pueden estar vacíos")
+        if required_dom_text_markers and not (required_dom_text_selector or "").strip():
+            raise ValueError("Los marcadores DOM requieren un selector de contenido")
         if settle_ms < 0 or max_wait_seconds < 0:
             raise ValueError("Los tiempos no pueden ser negativos")
         try:
@@ -197,6 +219,11 @@ class BDFutbolAccess:
                     selector for selector in required_selectors
                     if page.locator(selector).count() > 0
                 )
+                dom_text = ""
+                if required_dom_text_selector:
+                    dom_text = " ".join(
+                        page.locator(required_dom_text_selector).all_text_contents()
+                    )
                 assessment = assess_bdfutbol_access(
                     requested_url=url,
                     final_url=visit.final_url,
@@ -207,7 +234,28 @@ class BDFutbolAccess:
                     required_title_markers=required_title_markers,
                     required_selectors=required_selectors,
                     present_selectors=present_selectors,
+                    required_dom_text_selector=required_dom_text_selector,
+                    required_dom_text_markers=required_dom_text_markers,
+                    dom_text=dom_text,
                 )
+                if document_validator and assessment.status is AccessStatus.VALID:
+                    missing_evidence = document_validator(page.content())
+                    if missing_evidence:
+                        assessment = assess_bdfutbol_access(
+                            requested_url=url,
+                            final_url=visit.final_url,
+                            http_status=visit.response_status,
+                            page_title=title,
+                            body_text=body_text,
+                            required_markers=required_markers,
+                            required_title_markers=required_title_markers,
+                            required_selectors=required_selectors,
+                            present_selectors=present_selectors,
+                            required_dom_text_selector=required_dom_text_selector,
+                            required_dom_text_markers=required_dom_text_markers,
+                            dom_text=dom_text,
+                            missing_dom_evidence=missing_evidence,
+                        )
             except Exception:
                 visit.close()
                 raise

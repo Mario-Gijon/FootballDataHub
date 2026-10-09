@@ -33,6 +33,16 @@ dist/
 /data/analysis/bdfutbol/luna_audit/*
 !/data/analysis/bdfutbol/luna_audit/resource_catalog.json
 
+# Exhaustive discovery catalogs are versioned; live diagnostics stay local.
+!/data/analysis/bdfutbol/discovery/
+/data/analysis/bdfutbol/discovery/*
+!/data/analysis/bdfutbol/discovery/resource_catalog.json
+!/data/analysis/bdfutbol/discovery/field_catalog.json
+!/data/analysis/bdfutbol/discovery/filter_catalog.json
+!/data/analysis/bdfutbol/discovery/relationship_catalog.json
+!/data/analysis/bdfutbol/discovery/coverage_gaps.json
+!/data/analysis/bdfutbol/discovery/discovery_manifest.json
+
 # Browser profiles and Playwright state
 .football-data-hub-browser/
 **/_browser_profile/
