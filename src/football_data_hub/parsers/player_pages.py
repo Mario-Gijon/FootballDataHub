@@ -12,8 +12,8 @@ from urllib.parse import parse_qs, urljoin, urlsplit
 
 from bs4 import BeautifulSoup, Tag
 
-PLAYER_PARSER_VERSION = "0.2.2"
-PLAYER_SCHEMA_VERSION = "football_data_hub.bdfutbol.player_pages.v2"
+PLAYER_PARSER_VERSION = "0.2.3"
+PLAYER_SCHEMA_VERSION = "football_data_hub.bdfutbol.player_pages.v3"
 PLAYER_VIEWS = ("profile", "statistics", "matches", "rivals")
 _PLAYER_URL = re.compile(r"/es/(?:j/j|p/jr?|p/j)(\d+)\.html$")
 _PLAYER_ID = re.compile(r"(?:^|/)j(\d+)\.html$")
@@ -22,6 +22,14 @@ _INTEGER = re.compile(r"^-?\d+$")
 _DATE = re.compile(r"^(\d{2})/(\d{2})/(\d{4})$")
 _SEASON = re.compile(r"^\d{4}-\d{2}$")
 _SCORE = re.compile(r"^(\d+)\s+(\d+)$")
+_WINDOW_P_ASSIGNMENT = re.compile(r"(?<![\w$])(?:window\.)?P\s*=\s*")
+# Positional properties used by scripts_partits.js:get_data() for player records.
+# This records the source's names; fields without an independently verified label stay raw.
+_WINDOW_P_FIELD_NAMES = (
+    "t", "cat", "jor1", "dat", "loc", "e1", "gc", "gf", "id",
+    "pt", "pc", "ps", "min", "pv", "tg1", "tg2", "tv", "tg",
+    "e2", "ce1", "ce2", "gp", "genc", "px", "jor2", "jor", "nomtemp",
+)
 
 
 class PlayerSnapshotError(ValueError):
@@ -60,6 +68,44 @@ def _text(node: Tag | None) -> str:
 def _integer(raw: str | None) -> int | None:
     value = (raw or "").strip()
     return int(value) if _INTEGER.fullmatch(value) else None
+
+
+def _integer_value(raw: Any) -> int | None:
+    if isinstance(raw, int) and not isinstance(raw, bool):
+        return raw
+    return _integer(str(raw)) if isinstance(raw, str) else None
+
+
+def _window_p_values(html: str) -> tuple[str, list[list[Any]]]:
+    """Read BDFutbol's serialized P array only when its observed tuple shape matches."""
+    soup = BeautifulSoup(html, "lxml")
+    candidates: list[list[list[Any]]] = []
+    saw_assignment = False
+    assignment_count = 0
+    decoder = json.JSONDecoder()
+    for script in soup.find_all("script"):
+        source = script.string or script.get_text()
+        if not source:
+            continue
+        for match in _WINDOW_P_ASSIGNMENT.finditer(source):
+            saw_assignment = True
+            assignment_count += 1
+            try:
+                values, _ = decoder.raw_decode(source[match.end():])
+            except json.JSONDecodeError:
+                continue
+            if isinstance(values, list) and all(isinstance(row, list) for row in values):
+                candidates.append(values)
+    if assignment_count > 1:
+        return "AMBIGUOUS_ASSIGNMENTS", []
+    if not candidates:
+        return ("UNINTERPRETED_ASSIGNMENT" if saw_assignment else "NOT_PRESENT", [])
+    if assignment_count != 1 or len(candidates) != 1:
+        return "AMBIGUOUS_ASSIGNMENTS", []
+    values = candidates[0]
+    if any(len(row) != len(_WINDOW_P_FIELD_NAMES) for row in values):
+        return "UNSUPPORTED_TUPLE_WIDTH", []
+    return ("PARSED_27_FIELD_TUPLES" if values else "PRESENT_EMPTY"), values
 
 
 def _cell_value_status(raw: str) -> str:
@@ -700,6 +746,107 @@ def _individual_player_match_rows(
     return rows, role_counts
 
 
+def _window_p_player_match_rows(
+    values: list[list[Any]],
+    *,
+    player_id: str,
+    base_url: str,
+    captured_at_utc: str | None,
+) -> list[dict[str, Any]]:
+    """Normalize verified player-match tuples while retaining their exact raw values."""
+    from football_data_hub.parsers.match_status import assess_match_status
+
+    rows: list[dict[str, Any]] = []
+    for source_index, source_values in enumerate(values):
+        source = dict(zip(_WINDOW_P_FIELD_NAMES, source_values, strict=True))
+        match_id_value = _integer_value(source["id"])
+        match_id = str(match_id_value) if match_id_value is not None and match_id_value > 0 else None
+        date_raw = str(source["dat"]) if source["dat"] is not None else None
+        date_match = _DATE.fullmatch((date_raw or "").strip())
+        date_iso = (
+            f"{date_match.group(3)}-{date_match.group(2)}-{date_match.group(1)}"
+            if date_match else None
+        )
+        home_goals = _integer_value(source["gc"])
+        away_goals = _integer_value(source["gf"])
+        result_raw = (
+            f"{home_goals} {away_goals}"
+            if home_goals is not None and away_goals is not None else None
+        )
+        location = _integer_value(source["loc"])
+        if location == 1:
+            player_team = source["e1"]
+            opponent_team = source["e2"]
+            player_club_id = source["ce1"]
+            opponent_club_id = source["ce2"]
+            player_side = "home"
+        elif location == 0:
+            player_team = source["e2"]
+            opponent_team = source["e1"]
+            player_club_id = source["ce2"]
+            opponent_club_id = source["ce1"]
+            player_side = "away"
+        else:
+            player_team = opponent_team = player_club_id = opponent_club_id = None
+            player_side = None
+        appearance_flags = [_integer_value(source[name]) for name in ("pt", "pc", "ps")]
+        if any(value == 1 for value in appearance_flags):
+            appearance_status = "APPEARED_PER_SOURCE_FLAGS"
+        elif all(value in {0, 1} for value in appearance_flags):
+            appearance_status = "NO_APPEARANCE_PER_SOURCE_FLAGS"
+        else:
+            appearance_status = "UNINTERPRETED_SOURCE_FLAGS"
+        assessment = assess_match_status(
+            {
+                "match_id": match_id,
+                "date": date_iso,
+                "date_raw": date_raw,
+                "result_raw": result_raw,
+                "home_goals": home_goals,
+                "away_goals": away_goals,
+            },
+            captured_at_utc=captured_at_utc,
+        )
+        rows.append({
+            "player_id": player_id,
+            "match_id": match_id,
+            "match_url": urljoin(base_url, f"p.php?id={match_id}") if match_id else None,
+            "season_start_year_raw": source["t"],
+            "season_raw": source["nomtemp"],
+            "competition_raw": source["cat"],
+            "round_raw": source["jor"],
+            "round_title_raw": source["jor2"],
+            "date_raw": date_raw,
+            "date": date_iso,
+            "home_team_raw": source["e1"],
+            "away_team_raw": source["e2"],
+            "home_club_id_raw": source["ce1"],
+            "away_club_id_raw": source["ce2"],
+            "home_goals": home_goals,
+            "away_goals": away_goals,
+            "result_raw": result_raw,
+            "player_team_side_raw": player_side,
+            "player_team_raw": player_team,
+            "player_club_id_raw": player_club_id,
+            "opponent_team_raw": opponent_team,
+            "opponent_club_id_raw": opponent_club_id,
+            "player_appearance_status": appearance_status,
+            "result_relative_code_raw": source["gp"],
+            "player_match_metrics_raw": {
+                name: source[name]
+                for name in ("pt", "pc", "ps", "min", "pv", "tg1", "tg2", "tv", "tg", "genc", "px")
+            },
+            "source_kind": "window.P",
+            "source_record_index": source_index,
+            "source_js_field_names": list(_WINDOW_P_FIELD_NAMES),
+            "source_values_raw": source_values,
+            "match_state": assessment["state"],
+            "match_state_issues": assessment["issues"],
+            "match_state_evidence": assessment["evidence"],
+        })
+    return rows
+
+
 def _view_records(
     view: str,
     tables: list[dict[str, Any]],
@@ -708,6 +855,8 @@ def _view_records(
     base_url: str = "",
     captured_at_utc: str | None = None,
     filter_parameters: dict[str, str] | None = None,
+    window_p_status: str = "NOT_PRESENT",
+    window_p_values: list[list[Any]] | None = None,
 ) -> dict[str, Any]:
     if view == "profile":
         raise PlayerSnapshotError("La vista profile requiere el parser de identidad y trayectoria")
@@ -748,7 +897,7 @@ def _view_records(
             (table for table in tables if table.get("table_role") == "individual_match_fixtures"),
             None,
         )
-        individual_rows, row_role_counts = _individual_player_match_rows(
+        table_individual_rows, row_role_counts = _individual_player_match_rows(
             fixture_table,
             player_id=player_id,
             captured_at_utc=captured_at_utc,
@@ -756,8 +905,28 @@ def _view_records(
         query = parse_qs(urlsplit(base_url).query, keep_blank_values=True)
         filters = {key: values[-1] for key, values in query.items()}
         filters.update(filter_parameters or {})
-        if individual_rows:
+        is_base_view = _is_base_view_url(base_url, "matches")
+        if window_p_status == "PARSED_27_FIELD_TUPLES" and is_base_view:
+            individual_rows = _window_p_player_match_rows(
+                window_p_values or [],
+                player_id=player_id,
+                base_url=base_url,
+                captured_at_utc=captured_at_utc,
+            )
+            individual_rows_source = "WINDOW_P" if individual_rows else None
+        else:
+            individual_rows = table_individual_rows
+            individual_rows_source = "TPARTITS" if table_individual_rows else None
+        if individual_rows and individual_rows_source == "WINDOW_P":
+            detail_status = (
+                "WINDOW_P_MATCH_RECORDS_PRESENT; BASE_TPARTITS_ROWS_ALSO_PRESENT"
+                if table_individual_rows
+                else "WINDOW_P_MATCH_RECORDS_PRESENT; BASE_TPARTITS_HEADER_ONLY"
+            )
+        elif individual_rows:
             detail_status = "INDIVIDUAL_MATCH_FIXTURE_ROWS_PRESENT"
+        elif window_p_status == "PARSED_27_FIELD_TUPLES" and not is_base_view:
+            detail_status = "FILTERED_TPARTITS_EMPTY; WINDOW_P_NOT_USED_FOR_FILTERED_OUTPUT"
         elif fixture_table and row_role_counts.get("header", 0):
             detail_status = "AGGREGATE_TABLES_ONLY_HEADER_ONLY_NO_FIXTURES"
         elif fixture_table:
@@ -767,6 +936,13 @@ def _view_records(
         return {
             "match_summary_rows": summaries,
             "individual_match_rows": individual_rows,
+            "individual_match_rows_source": individual_rows_source,
+            "window_p_parse_status": window_p_status,
+            "window_p_record_count": (
+                len(window_p_values or [])
+                if window_p_status in {"PARSED_27_FIELD_TUPLES", "PRESENT_EMPTY"}
+                else None
+            ),
             "match_detail_coverage": detail_status,
             "individual_match_row_role_counts": row_role_counts,
             "filter_parameters": filters,
@@ -831,6 +1007,9 @@ def parse_player_html(
     if view == "profile":
         view_data = _profile_data(soup, tables, url)
     else:
+        window_p_status, window_p_values = (
+            _window_p_values(html) if view == "matches" else ("NOT_APPLICABLE", [])
+        )
         view_data = _view_records(
             view,
             tables,
@@ -841,6 +1020,8 @@ def parse_player_html(
                 {str(key): str(value) for key, value in metadata.get("filter_parameters", {}).items()}
                 if isinstance(metadata.get("filter_parameters"), dict) else None
             ),
+            window_p_status=window_p_status,
+            window_p_values=window_p_values,
         )
     roles_observed = [table["table_role"] for table in tables]
     missing_roles = [
@@ -873,10 +1054,15 @@ def parse_player_html(
     }
     if view == "matches":
         coverage["match_detail_scope"] = (
-            "INDIVIDUAL_FIXTURE_ROWS"
+            "INDIVIDUAL_FIXTURE_ROWS_FROM_WINDOW_P"
+            if view_data.get("individual_match_rows_source") == "WINDOW_P"
+            else "INDIVIDUAL_FIXTURE_ROWS"
             if view_data.get("individual_match_rows") else "AGGREGATE_ONLY"
         )
         coverage["match_detail_coverage"] = view_data.get("match_detail_coverage")
+        coverage["individual_match_rows_source"] = view_data.get("individual_match_rows_source")
+        coverage["window_p_parse_status"] = view_data.get("window_p_parse_status")
+        coverage["window_p_record_count"] = view_data.get("window_p_record_count")
         coverage["filtered_view"] = view_data.get("filtered_view", False)
         coverage["filter_parameters"] = view_data.get("filter_parameters", {})
     return {

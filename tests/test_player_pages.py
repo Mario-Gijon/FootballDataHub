@@ -195,7 +195,13 @@ def test_individual_match_table_preserves_scored_scheduled_and_non_fixture_rows(
         "<tr><td>League</td><td>2</td></tr></table>"
         for table_id in ("t2", "t1", "t55", "t5")
     )
-    html = f"<html><body>{summaries}{table}</body></html>"
+    # Synthetic full-page P array: a filtered variant must still use only its visible table rows.
+    window_p_tuple = [
+        2026, "1rf", "", "30/08/2026", 1, "Home FC", 2, 1, 901,
+        1, 1, 0, 90, 0, 0, 0, 0, "", "Away FC", 10, 20, 1, 0, 0,
+        "Jornada 1", "1", "2026-27",
+    ]
+    html = f"<html><body>{summaries}{table}<script>var P={json.dumps([window_p_tuple])};</script></body></html>"
     url = "https://www.bdfutbol.com/es/p/j123.html?temp=2026-27&comp=1rf"
     metadata = _metadata(url, html)
     metadata["captured_at_utc"] = "2026-09-01T12:00:00+00:00"
@@ -221,6 +227,8 @@ def test_individual_match_table_preserves_scored_scheduled_and_non_fixture_rows(
         "header": 1, "data": 3, "total": 1, "blank": 1, "section": 0,
     }
     assert data["filter_parameters"] == {"temp": "2026-27", "comp": "1rf"}
+    assert data["individual_match_rows_source"] == "TPARTITS"
+    assert data["window_p_record_count"] == 1
     assert data["filtered_view"] is True
     assert data["exhaustiveness_status"] == "FILTERED_SNAPSHOT_NOT_EXHAUSTIVE"
     assert page["coverage"]["match_detail_scope"] == "INDIVIDUAL_FIXTURE_ROWS"
@@ -248,7 +256,7 @@ def test_individual_match_table_preserves_scored_scheduled_and_non_fixture_rows(
     assert exported_matches[0]["source_values_raw"][6] == "2 1"
 
 
-def test_real_morillas_snapshots_keep_four_views_three_trajectory_rows_and_empty_fixture_table() -> None:
+def test_real_morillas_snapshots_parse_embedded_player_match_rows() -> None:
     raw_root = Path(__file__).resolve().parents[1] / "data/raw/bdfutbol"
     pages = parse_player_snapshot_inventory(discover_player_snapshots(raw_root), raw_root)
     morillas = [page for page in pages if page["player_id"] == "j209629"]
@@ -257,10 +265,116 @@ def test_real_morillas_snapshots_keep_four_views_three_trajectory_rows_and_empty
     assert set(by_view) == set(PLAYER_VIEWS)
     assert len(by_view["profile"]["view_data"]["career_rows"]) == 3
     assert len(by_view["matches"]["view_data"]["match_summary_rows"]) == 51
-    assert by_view["matches"]["view_data"]["individual_match_rows"] == []
-    assert by_view["matches"]["view_data"]["match_detail_coverage"] == "AGGREGATE_TABLES_ONLY_HEADER_ONLY_NO_FIXTURES"
+    morillas_matches = by_view["matches"]["view_data"]
+    assert len(morillas_matches["individual_match_rows"]) == 81
+    assert morillas_matches["individual_match_rows_source"] == "WINDOW_P"
+    assert morillas_matches["window_p_parse_status"] == "PARSED_27_FIELD_TUPLES"
+    assert morillas_matches["window_p_record_count"] == 81
+    assert morillas_matches["match_detail_coverage"] == (
+        "WINDOW_P_MATCH_RECORDS_PRESENT; BASE_TPARTITS_HEADER_ONLY"
+    )
+    assert next(
+        table for table in by_view["matches"]["tables"] if table["table_id"] == "tpartits"
+    )["data_row_count"] == 0
+    assert morillas_matches["individual_match_rows"][-1]["match_id"] == "272569"
+    assert morillas_matches["individual_match_rows"][-1]["player_team_raw"] == "Jaén"
     assert len(by_view["statistics"]["view_data"]["statistics_rows"]) == 97
     assert len(by_view["rivals"]["view_data"]["rival_records"]) == 533
+
+
+def test_real_manu_snapshot_parses_all_window_p_records_and_match_ids() -> None:
+    raw_root = Path(__file__).resolve().parents[1] / "data/raw/bdfutbol"
+    page = parse_player_snapshot(
+        raw_root / "20261009T092115.395034Z/j23751/matches",
+        relative_to=raw_root,
+        expected_player_id="j23751",
+    )
+    data = page["view_data"]
+    rows = data["individual_match_rows"]
+
+    assert len(rows) == 259
+    assert len({row["match_id"] for row in rows}) == 259
+    assert data["individual_match_rows_source"] == "WINDOW_P"
+    assert page["coverage"]["window_p_record_count"] == 259
+    first_rfef_rows = [row for row in rows if row["competition_raw"] == "1rf"]
+    assert len(first_rfef_rows) == 126
+    assert sum(row["player_appearance_status"] == "APPEARED_PER_SOURCE_FLAGS" for row in first_rfef_rows) == 66
+    assert sum(row["player_appearance_status"] == "NO_APPEARANCE_PER_SOURCE_FLAGS" for row in first_rfef_rows) == 60
+    assert rows[-1]["match_id"] == "269465"
+    assert rows[-1]["date"] == "2026-10-04"
+    assert (rows[-1]["home_team_raw"], rows[-1]["away_team_raw"]) == (
+        "UD Logroñés", "Deportivo Fabril",
+    )
+    assert (rows[-1]["home_goals"], rows[-1]["away_goals"]) == (2, 1)
+    assert rows[-1]["player_team_side_raw"] == "home"
+    assert rows[-1]["player_match_metrics_raw"]["min"] == 90
+
+
+def test_synthetic_window_p_tuple_keeps_uninterpreted_values_and_maps_match_identity() -> None:
+    # Synthetic parser-contract fixture; the field mapping is established by live JS and raw snapshots.
+    tuple_values = [
+        2026, "1rf", "", "30/08/2026", 1, "Home FC", 2, 1, 901,
+        1, 1, 0, 90, 0, 0, 0, 0, "", "Away FC", 10, 20, 1, 0, 0,
+        "Jornada 1", "1", "2026-27",
+    ]
+    html = (
+        "<html><body>"
+        '<table id="t2"><tr><th>Competición</th></tr></table>'
+        '<table id="t1"><tr><th>Temporada</th></tr></table>'
+        '<table id="t55"><tr><th>Equipo</th></tr></table>'
+        '<table id="t5"><tr><th>Rival</th></tr></table>'
+        '<table id="tpartits"><tr><th>Fecha</th></tr></table>'
+        f"<script>var P={json.dumps([tuple_values])};</script>"
+        "</body></html>"
+    )
+    url = "https://www.bdfutbol.com/es/p/j123.html"
+    page = parse_player_html(html, _metadata(url, html))
+    row = page["view_data"]["individual_match_rows"][0]
+
+    assert page["view_data"]["window_p_parse_status"] == "PARSED_27_FIELD_TUPLES"
+    assert row["source_kind"] == "window.P"
+    assert row["match_id"] == "901"
+    assert row["match_url"] == "https://www.bdfutbol.com/es/p/p.php?id=901"
+    assert row["date"] == "2026-08-30"
+    assert (row["home_team_raw"], row["away_team_raw"]) == ("Home FC", "Away FC")
+    assert (row["home_goals"], row["away_goals"]) == (2, 1)
+    assert row["source_values_raw"] == tuple_values
+    assert row["player_match_metrics_raw"]["pt"] == 1
+    assert row["player_match_metrics_raw"]["tg2"] == 0
+
+
+def test_synthetic_unsupported_window_p_shape_stays_uninterpreted() -> None:
+    html = """<html><body>
+      <table id="t2"><tr><th>Competición</th></tr></table>
+      <table id="t1"><tr><th>Temporada</th></tr></table>
+      <table id="t55"><tr><th>Equipo</th></tr></table>
+      <table id="t5"><tr><th>Rival</th></tr></table>
+      <table id="tpartits"><tr><th>Fecha</th></tr></table>
+      <script>var P=[[2026, "unknown-width"]];</script>
+    </body></html>"""
+    url = "https://www.bdfutbol.com/es/p/j123.html"
+    page = parse_player_html(html, _metadata(url, html))
+
+    assert page["view_data"]["window_p_parse_status"] == "UNSUPPORTED_TUPLE_WIDTH"
+    assert page["view_data"]["window_p_record_count"] is None
+    assert page["view_data"]["individual_match_rows"] == []
+    assert page["coverage"]["match_detail_scope"] == "AGGREGATE_ONLY"
+
+
+def test_synthetic_ambiguous_window_p_assignments_stay_uninterpreted() -> None:
+    html = """<html><body>
+      <table id="t2"><tr><th>Competición</th></tr></table>
+      <table id="t1"><tr><th>Temporada</th></tr></table>
+      <table id="t55"><tr><th>Equipo</th></tr></table>
+      <table id="t5"><tr><th>Rival</th></tr></table>
+      <table id="tpartits"><tr><th>Fecha</th></tr></table>
+      <script>var P=[]; window.P=[];</script>
+    </body></html>"""
+    url = "https://www.bdfutbol.com/es/p/j123.html"
+    page = parse_player_html(html, _metadata(url, html))
+
+    assert page["view_data"]["window_p_parse_status"] == "AMBIGUOUS_ASSIGNMENTS"
+    assert page["view_data"]["individual_match_rows"] == []
 
 
 def test_rivals_preserve_hierarchical_columns_relations_and_duplicates() -> None:
@@ -537,7 +651,7 @@ def test_compact_exports_are_repeatable_and_do_not_embed_raw_html(tmp_path: Path
         output_root=tmp_path / "exports",
     )
     assert first == second
-    assert first.name.endswith("parser-0.2.2")
+    assert first.name.endswith("parser-0.2.3")
     assert sentinel.read_text(encoding="utf-8") == "previous immutable export"
     profiles = json.load(gzip.open(first / "profiles.json.gz", "rt", encoding="utf-8"))
     assert profiles["items"][0]["player_id"] == "j123"
