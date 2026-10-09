@@ -341,7 +341,7 @@ def test_real_match_resource_exports_keep_provenance_and_detail_counts(tmp_path:
     for resource, expected_count in expected_counts.items():
         payload = json.loads(gzip.decompress((output / f"{resource}.json.gz").read_bytes()))
         match = payload["matches"][0]
-        assert payload["parser_version"] == record["parser_version"] == "0.2.0"
+        assert payload["parser_version"] == record["parser_version"] == "0.3.0"
         assert match["match_id"] == "269462"
         assert match["source"]["rendered_html_sha256"] == record["source"]["rendered_html_sha256"]
         assert len(match["items"]) == expected_count
@@ -529,6 +529,90 @@ def test_real_coach_and_referee_keep_source_trajectory_headers_and_json() -> Non
     assert coach["coverage"]["interpretation_status"] == "PARTIAL_STRUCTURED_WITH_RAW_PRESERVATION"
 
 
+def test_real_coach_career_rows_align_with_html_and_javascript_without_expansion() -> None:
+    coach = parse_entity_metadata_file(_real_metadata_path(_REAL_PAGE_URLS["coach"]), REPO_ROOT)
+    career = coach["coach_career"]
+
+    assert career["html_row_count"] == career["javascript_item_count"] == 14
+    assert career["html_js_aligned_row_count"] == 14
+    assert career["html_js_alignment_status"] == (
+        "ALL_ROWS_MATCHED_BY_ORDER_AND_VISIBLE_FIELDS"
+    )
+    first = career["items"][0]
+    assert first["fields"]["season"]["value"] == "2009-10"
+    assert first["fields"]["team_name"]["value"] == "Jaén"
+    assert first["team_season_relation"]["entity_type"] == "team_season"
+    assert first["team_season_relation"]["entity_id"] == "t2009-1049"
+    assert first["team_season_relation"]["url"].endswith("/t/t2009-1049.html")
+    assert first["fields"]["country"]["value"] == "España"
+    assert first["fields"]["age"]["value"] == 39
+    assert first["fields"]["matches"]["value"] == 1
+    assert first["fields"]["wins"]["value"] == 0
+    assert first["fields"]["draws"]["value"] == 0
+    assert first["fields"]["losses"]["value"] == 1
+    assert first["fields"]["yellow_cards"]["value"] is None
+    assert first["fields"]["yellow_cards"]["value_raw"] == "-"
+    assert first["fields"]["yellow_cards"]["value_status"] == "SOURCE_DASH"
+    assert first["source_javascript_raw"]["tg"] == "0"
+    assert first["source_javascript_fields_not_normalized_raw"]["tg"] == "0"
+    assert career["unlabeled_column_indexes"] == [3, 12]
+    assert first["unlabeled_cells_raw"][0]["column_index"] == 3
+    assert career["totals_raw"][0]["cells_raw"][2] == "Total"
+    assert career["career_completeness"] == "NOT_ASSERTED"
+
+    assert len(career["competition_aggregates"]) == 14
+    assert career["competition_aggregates"][0]["competition_key_raw"] == "COP"
+    assert career["competition_aggregates"][0]["competition_entity_id"] is None
+    assert career["competition_aggregates"][0]["statistics"]["matches"]["value"] == 2
+
+    assert len(coach["coach_honours"]) == 1
+    honour = coach["coach_honours"][0]
+    assert honour["title_text_raw"] == "1 Liga 2a división B: 2012-13"
+    assert honour["season_raw"] == "2012-13"
+    assert honour["team_season_relations"][0]["entity_id"] == "t2012-1349"
+    assert honour["interpretation_status"] == "TITLE_SECTION_TEXT_AND_LINKS_PRESERVED"
+
+
+def test_real_referee_normalizes_published_season_aggregates_only() -> None:
+    referee = parse_entity_metadata_file(
+        _real_metadata_path(_REAL_PAGE_URLS["referee"]),
+        REPO_ROOT,
+    )
+    career = referee["referee_career"]
+
+    assert career["html_row_count"] == career["javascript_item_count"] == 4
+    assert career["html_js_aligned_row_count"] == 4
+    assert career["html_js_alignment_status"] == (
+        "ALL_ROWS_MATCHED_BY_ORDER_AND_VISIBLE_FIELDS"
+    )
+    first = career["items"][0]
+    assert first["fields"]["season"]["value"] == "2023-24"
+    assert first["fields"]["division"]["value"] == "2ªRf"
+    assert first["fields"]["matches_arbitrated"]["value"] == 13
+    assert first["fields"]["home_wins"]["value"] == 5
+    assert first["fields"]["draws"]["value"] == 5
+    assert first["fields"]["away_wins"]["value"] == 3
+    assert first["fields"]["yellow_cards"]["value"] == 46
+    assert first["fields"]["yellow_cards_per_match"]["value_raw"] == "3.54"
+    assert first["fields"]["red_cards"]["value"] == 5
+    assert first["fields"]["send_offs_per_match"]["value"] == 0.38
+    last = career["items"][-1]
+    assert last["fields"]["send_offs_per_match"]["value_raw"] == "0.00"
+    assert last["fields"]["send_offs_per_match"]["value"] == 0.0
+    assert last["fields"]["send_offs_per_match"]["value_status"] == "PARSED_NUMBER"
+    assert career["unlabeled_column_indexes"] == [2, 13]
+    assert career["totals_raw"][0]["cells_raw"][2] == "Total"
+    assert career["career_completeness"] == "NOT_ASSERTED"
+
+    assert len(career["competition_aggregates"]) == 1
+    aggregate = career["competition_aggregates"][0]
+    assert aggregate["season_raw"] == "2025-26"
+    assert aggregate["competition_key_raw"] == "PR3"
+    assert aggregate["statistics"]["matches_arbitrated"]["value"] == 1
+    assert aggregate["competition_entity_id"] is None
+    assert referee["coverage"]["individual_appointment_count"] == 0
+
+
 def test_real_stadium_keeps_sections_chart_values_and_map_literals_raw() -> None:
     record = parse_entity_metadata_file(_real_metadata_path(_REAL_PAGE_URLS["stadium"]), REPO_ROOT)
     data_visit = next(item for item in record["embedded_json"] if item["variable_name_raw"] == "dataVisit")
@@ -545,6 +629,273 @@ def test_real_stadium_keeps_sections_chart_values_and_map_literals_raw() -> None
         "popup_label_raw": "Suárez Puerta",
         "interpretation_status": "SOURCE_LITERALS_ONLY",
     }]
+
+
+def test_real_stadium_history_visitors_competitions_relations_and_location() -> None:
+    stadium = parse_entity_metadata_file(
+        _real_metadata_path(_REAL_PAGE_URLS["stadium"]),
+        REPO_ROOT,
+    )
+
+    history = stadium["stadium_history"]
+    assert [
+        (item["name_raw"], item["year_operator_raw"], item["year_value"])
+        for item in history["historical_names"]
+    ] == [("La Exposición", "<", 1955), ("Suárez Puerta", ">", 1956)]
+    assert all(
+        item["interpretation_status"]
+        == "SOURCE_COMPARATOR_PRESERVED_NOT_EXPANDED_TO_DATE_RANGE"
+        for item in history["historical_names"]
+    )
+    assert len(history["seasons"]) == 29
+    assert history["seasons"][0]["season_raw"] == "2026-27"
+    assert history["seasons"][0]["source_badge_count"] == 3
+    assert history["seasons"][0]["filter_season_raw"] == "2026-27"
+    assert history["first_official_match"] == {
+        "date_raw": "19/10/1947",
+        "date": "1947-10-19",
+        "competition_name_raw": "Copa del Rey",
+        "home_team_name_raw": "Avilés",
+        "away_team_name_raw": "Gijonés",
+        "home_score_raw": "3",
+        "away_score_raw": "1",
+        "home_goals": 3,
+        "away_goals": 1,
+        "match_entity_id": "511636",
+        "match_url": "https://www.bdfutbol.com/es/p/p.php?id=511636",
+        "relationship_status": "DIRECT_MATCH_LINK_IN_FIRST_OFFICIAL_MATCH_SECTION",
+        "interpretation_status": "LABELED_STRUCTURED_MATCH_CARD",
+    }
+
+    assert len(stadium["stadium_competitions"]) == 9
+    assert stadium["stadium_competitions"][0]["competition_name_raw"] == "Segunda División B"
+    assert stadium["stadium_competitions"][0]["source_code_raw"] == "2aB"
+    assert stadium["stadium_competitions"][0]["source_badge_count"] == 123
+    assert stadium["stadium_competitions"][0]["competition_entity_id"] is None
+
+    visitors = stadium["stadium_visitors"]
+    assert len(visitors["items"]) == 94
+    assert visitors["chart_item_count"] == visitors["chart_aligned_item_count"] == 15
+    assert visitors["chart_alignment_status"] == (
+        "TOP_CHART_ROWS_MATCH_VISIBLE_LIST_BY_ORDER_NAME_AND_COUNT"
+    )
+    assert visitors["items"][0]["club"]["entity_id"] == "58"
+    assert visitors["items"][0]["source_badge_count"] == 7
+    assert visitors["items"][0]["chart_item_raw"] == {
+        "equip": "Pontevedra",
+        "partits": 7,
+    }
+    assert len(stadium["stadium_local_clubs"]) == 4
+    assert stadium["stadium_local_clubs"][0]["club"]["entity_id"] == "81"
+    assert stadium["stadium_local_clubs"][0]["filter_club_id_raw"] == "81"
+
+    first_match_relation = next(
+        item for item in stadium["stadium_relationships"]
+        if item["relationship_role"] == "FIRST_OFFICIAL_MATCH"
+    )
+    assert first_match_relation["target_entity_id"] == "511636"
+    match = parse_entity_metadata_file(
+        _real_metadata_path(_REAL_PAGE_URLS["match"]),
+        REPO_ROOT,
+    )
+    assert any(
+        item["target_entity_type"] == "stadium"
+        and item["target_entity_id"] == "81"
+        for item in match["related_entity_links"]
+    )
+
+    assert stadium["stadium_location"]["latitude"] == 43.557
+    assert stadium["stadium_location"]["longitude"] == -5.93
+    assert stadium["stadium_location"]["zoom"] == 15
+    assert stadium["stadium_location"]["source_status"] == (
+        "SOURCE_DECLARED_NOT_EXTERNALLY_VERIFIED"
+    )
+    assert stadium["coverage"]["semantic_entity_completeness"] == "NOT_ASSERTED"
+    assert "capacity" not in stadium
+
+
+def test_synthetic_partial_coach_row_keeps_missing_and_unlabeled_fields_raw(
+    tmp_path: Path,
+) -> None:
+    metadata_path = _synthetic_snapshot(
+        tmp_path,
+        html=(
+            "<html><head><title>Entrenador | BDFutbol</title></head><body>"
+            "<h1>Entrenador de prueba</h1><table class='traject'>"
+            "<tr><th>Temp</th><th>Edad</th><th></th></tr>"
+            "<tr><td>2026-27</td><td>-</td><td>dato opaco</td></tr>"
+            "</table></body></html>"
+        ),
+    )
+    record = parse_entity_metadata_file(metadata_path, tmp_path)
+    career = record["coach_career"]
+
+    assert career["html_js_alignment_status"] == "JAVASCRIPT_TRAJECTORY_NOT_AVAILABLE"
+    assert career["items"][0]["fields"]["season"]["value"] == "2026-27"
+    assert career["items"][0]["fields"]["age"]["value"] is None
+    assert career["items"][0]["fields"]["age"]["value_raw"] == "-"
+    assert career["items"][0]["unlabeled_cells_raw"][0]["value_raw"] == "dato opaco"
+    assert career["items"][0]["source_javascript_raw"] is None
+    assert career["career_completeness"] == "NOT_ASSERTED"
+
+
+def test_synthetic_duplicate_stadium_visitor_rows_are_not_deduplicated(
+    tmp_path: Path,
+) -> None:
+    visitor = (
+        '<div class="visitor-item"><div><span class="text-muted">1.</span> '
+        '<a href="../e/e58.html">Pontevedra</a></div>'
+        '<a class="badge-custom" href="../c/partidos-estadio.html?visitant=58">2</a></div>'
+    )
+    html = (
+        "<html><head><title>Estadio de prueba | BDFutbol</title></head><body>"
+        "<h1>Estadio de prueba</h1><h2>Equipos Visitantes</h2>"
+        f'<div class="stat-card">{visitor}{visitor}</div>'
+        "<h2>Ubicación</h2><div class='stat-card' id='mapid'></div>"
+        '<script>var dataVisit = [{"equip":"Pontevedra","partits":2},'
+        '{"equip":"Pontevedra","partits":2}];</script></body></html>'
+    )
+    metadata_path = _synthetic_snapshot(
+        tmp_path,
+        requested_url=_REAL_PAGE_URLS["stadium"],
+        html=html,
+    )
+    record = parse_entity_metadata_file(metadata_path, tmp_path)
+
+    assert len(record["stadium_visitors"]["items"]) == 2
+    assert [
+        item["club"]["entity_id"] for item in record["stadium_visitors"]["items"]
+    ] == ["58", "58"]
+    assert record["stadium_visitors"]["chart_aligned_item_count"] == 2
+    assert [
+        item["relationship_role"] for item in record["stadium_relationships"]
+    ] == [
+        "CLUB_LISTED_IN_VISITOR_SECTION",
+        "CLUB_LISTED_IN_VISITOR_SECTION",
+    ]
+
+
+def test_a4_parser_preserves_a3_match_semantics_and_previous_export() -> None:
+    import gzip
+
+    current = parse_entity_metadata_file(
+        _real_metadata_path(_REAL_PAGE_URLS["match"]),
+        REPO_ROOT,
+    )
+    old_path = (
+        REPO_ROOT
+        / "data/parsed/bdfutbol/entity_detail_pilots/"
+        / "parser-0.2.0-source-4b97a04a5c1b8a6f/match_details.json.gz"
+    )
+    old_export = json.loads(gzip.decompress(old_path.read_bytes()))
+    old_match = next(
+        item for item in old_export["entities"] if item["entity_id"] == "269462"
+    )
+    assert current["schema_version"] == "football_data_hub.match_detail.v2"
+    for field in (
+        "match_title_fields",
+        "match_hero_fields_raw",
+        "match_clubs",
+        "match_participants",
+        "match_coaches",
+        "match_events",
+        "match_event_occurrences_raw",
+        "unclassified_hero_event_occurrences",
+        "unclassified_source_markers",
+        "excluded_hidden_sports_tables",
+        "match_quality",
+    ):
+        assert current[field] == old_match[field]
+
+
+def test_a4_semantic_resources_export_with_provenance_and_deterministic_reuse(
+    tmp_path: Path,
+) -> None:
+    import gzip
+
+    from parse_bdfutbol_entity_pages_offline import write_immutable_entity_exports
+
+    records = {
+        entity_type: [
+            parse_entity_metadata_file(
+                _real_metadata_path(url),
+                REPO_ROOT,
+            )
+        ]
+        for entity_type, url in _REAL_PAGE_URLS.items()
+    }
+    output = write_immutable_entity_exports(
+        records_by_type=records,
+        coverage=[],
+        errors=[],
+        source_fingerprint="synthetic-a4-resource-source",
+        output_root=tmp_path,
+    )
+    first_bytes = {
+        path.name: path.read_bytes() for path in output.iterdir() if path.is_file()
+    }
+    expected_resources = {
+        "coach_career",
+        "coach_honours",
+        "referee_career",
+        "stadium_history",
+        "stadium_visitors",
+        "stadium_competitions",
+        "stadium_relationships",
+        "stadium_location",
+    }
+    assert {f"{name}.json.gz" for name in expected_resources} <= set(first_bytes)
+
+    coach_export = json.loads(
+        gzip.decompress((output / "coach_career.json.gz").read_bytes())
+    )
+    coach = coach_export["entities"][0]
+    assert coach_export["parser_version"] == "0.3.0"
+    assert coach["entity_id"] == "l1835"
+    assert coach["source"]["rendered_html_sha256"] == records["coach"][0][
+        "source"
+    ]["rendered_html_sha256"]
+    assert len(coach["resource"]["items"]) == 14
+
+    referee_export = json.loads(
+        gzip.decompress((output / "referee_career.json.gz").read_bytes())
+    )
+    referee = referee_export["entities"][0]
+    assert referee["entity_id"] == "602267"
+    assert referee["resource"]["html_js_aligned_row_count"] == 4
+
+    stadium_export = json.loads(
+        gzip.decompress((output / "stadium_visitors.json.gz").read_bytes())
+    )
+    stadium = stadium_export["entities"][0]
+    assert stadium["entity_id"] == "81"
+    assert stadium["resource"]["chart_aligned_item_count"] == 15
+    assert len(stadium["resource"]["items"]) == 94
+
+    match_export = json.loads(gzip.decompress((output / "match_details.json.gz").read_bytes()))
+    coach_details = json.loads(
+        gzip.decompress((output / "coach_details.json.gz").read_bytes())
+    )
+    coverage_export = json.loads(
+        gzip.decompress((output / "coverage.json.gz").read_bytes())
+    )
+    assert match_export["schema_version"] == "football_data_hub.match_details_export.v2"
+    assert coach_details["schema_version"] == "football_data_hub.coach_details_export.v3"
+    assert coverage_export["schema_version"] == (
+        "football_data_hub.individual_entity_coverage.v3"
+    )
+
+    reused = write_immutable_entity_exports(
+        records_by_type=records,
+        coverage=[],
+        errors=[],
+        source_fingerprint="synthetic-a4-resource-source",
+        output_root=tmp_path,
+    )
+    assert reused == output
+    assert {
+        path.name: path.read_bytes() for path in reused.iterdir() if path.is_file()
+    } == first_bytes
 
 
 def test_real_snapshot_parse_is_deterministic() -> None:

@@ -13,15 +13,16 @@ import json
 import re
 from dataclasses import dataclass
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import parse_qs, urljoin, urlsplit
 
 from bs4 import BeautifulSoup, Tag
 
 from football_data_hub.audits.entity_inventory import identify_entity_url
 
-ENTITY_PAGE_PARSER_VERSION = "0.2.0"
+ENTITY_PAGE_PARSER_VERSION = "0.3.0"
 ENTITY_PAGE_TYPES = ("match", "coach", "referee", "stadium")
 _MATCH_TITLE = re.compile(
     r"^(?P<home>.+?)\s+-\s+(?P<away>.+?)\s+"
@@ -1025,6 +1026,807 @@ def _match_detail_semantics(
     }
 
 
+_CAREER_FIELD_SPECS = {
+    "coach": {
+        ("Temp", ""): ("season", "text"),
+        ("Equipo", ""): ("team_name", "text"),
+        ("País", ""): ("country", "text"),
+        ("Div", "División"): ("division", "text"),
+        ("Edad", ""): ("age", "integer"),
+        ("P", "Partidos"): ("matches", "integer"),
+        ("PG", "Ganados"): ("wins", "integer"),
+        ("PE", "Empatados"): ("draws", "integer"),
+        ("PP", "Perdidos"): ("losses", "integer"),
+        ("TA", "Tarjetas amarillas"): ("yellow_cards", "integer"),
+        ("TR", "Tarjetas rojas"): ("red_cards", "integer"),
+    },
+    "referee": {
+        ("Temp", ""): ("season", "text"),
+        ("País", ""): ("country", "text"),
+        ("Div", "División"): ("division", "text"),
+        ("Edad", ""): ("age", "integer"),
+        ("PA", "Partidos Arbitrados"): ("matches_arbitrated", "integer"),
+        ("VL", "Victorias locales"): ("home_wins", "integer"),
+        ("E", "Empates"): ("draws", "integer"),
+        ("VV", "Victorias visitantes"): ("away_wins", "integer"),
+        ("TA", "Tarjetas amarillas"): ("yellow_cards", "integer"),
+        ("TA PP", "Tarjetas amarillas por partido"): (
+            "yellow_cards_per_match", "number",
+        ),
+        ("TR", "Tarjetas rojas"): ("red_cards", "integer"),
+        ("TR PP", "Expulsiones por partido"): ("send_offs_per_match", "number"),
+    },
+}
+
+_JS_CAREER_FIELD_KEYS = {
+    "coach": {
+        "season": "temp",
+        "team_name": "nomeq",
+        "division": "jer",
+        "age": "edat",
+        "matches": "pj",
+        "wins": "pg",
+        "draws": "pe",
+        "losses": "pp",
+    },
+    "referee": {
+        "season": "temp",
+        "division": "jer",
+        "age": "edat",
+        "matches_arbitrated": "pj",
+        "home_wins": "pg",
+        "draws": "pe",
+        "away_wins": "pp",
+        "yellow_cards": "tg",
+        "yellow_cards_per_match": "tgp",
+        "red_cards": "tv",
+        "send_offs_per_match": "tvp",
+    },
+}
+
+
+def _typed_source_value(value_raw: str, kind: str) -> dict[str, Any]:
+    """Keep the source cell while typing only plain numeric values."""
+    if value_raw == "":
+        return {
+            "value_raw": value_raw,
+            "value": None,
+            "value_status": "SOURCE_EMPTY",
+        }
+    if value_raw.strip() == "-":
+        return {
+            "value_raw": value_raw,
+            "value": None,
+            "value_status": "SOURCE_DASH",
+        }
+    if kind == "text":
+        return {
+            "value_raw": value_raw,
+            "value": value_raw,
+            "value_status": "SOURCE_TEXT",
+        }
+    try:
+        number = Decimal(value_raw.strip())
+    except InvalidOperation:
+        return {
+            "value_raw": value_raw,
+            "value": None,
+            "value_status": "NOT_NUMERIC",
+        }
+    if not number.is_finite():
+        return {
+            "value_raw": value_raw,
+            "value": None,
+            "value_status": "NOT_FINITE_NUMBER",
+        }
+    if kind == "integer":
+        if number != number.to_integral_value():
+            return {
+                "value_raw": value_raw,
+                "value": None,
+                "value_status": "NOT_INTEGER",
+            }
+        value: int | float = int(number)
+    else:
+        value = float(number)
+    return {
+        "value_raw": value_raw,
+        "value": value,
+        "value_status": "PARSED_INTEGER" if isinstance(value, int) else "PARSED_NUMBER",
+    }
+
+
+def _embedded_dataset(
+    embedded: list[dict[str, Any]], variable_name: str,
+) -> dict[str, Any] | None:
+    return next(
+        (
+            item for item in embedded
+            if item.get("variable_name_raw") == variable_name
+            and item.get("parse_status") == "SOURCE_JSON_PARSED"
+        ),
+        None,
+    )
+
+
+def _trajectory_semantics(
+    soup: BeautifulSoup,
+    entity_type: str,
+    base_url: str,
+    embedded: list[dict[str, Any]],
+) -> dict[str, Any]:
+    table = soup.select_one("table.traject")
+    if table is None:
+        return {
+            "status": "NOT_PRESENT",
+            "items": [],
+            "totals_raw": [],
+            "html_js_alignment_status": "NOT_TESTED",
+        }
+
+    table_index = next(
+        (index for index, candidate in enumerate(soup.find_all("table")) if candidate is table),
+        None,
+    )
+    rows = _own_table_rows(table)
+    header_row = next((row for row in rows if row.find_all("th", recursive=False)), None)
+    header_cells = (
+        header_row.find_all("th", recursive=False) if header_row is not None else []
+    )
+    headers = [
+        {
+            "column_index": index,
+            "label_raw": _text(cell),
+            "title_raw": cell.get("title") or "",
+            "classes_raw": list(cell.get("class", [])),
+        }
+        for index, cell in enumerate(header_cells)
+    ]
+    specifications = _CAREER_FIELD_SPECS[entity_type]
+    data_rows: list[tuple[int, Tag]] = []
+    totals_raw: list[dict[str, Any]] = []
+    for row_index, row in enumerate(rows):
+        cells = row.find_all(["th", "td"], recursive=False)
+        if not cells or row is header_row:
+            continue
+        values = [_text(cell) for cell in cells]
+        if any(value.strip().casefold() == "total" for value in values):
+            totals_raw.append({
+                "source_row_index": row_index,
+                "cells_raw": values,
+                "classes_raw": list(row.get("class", [])),
+            })
+            continue
+        if not any(values):
+            continue
+        data_rows.append((row_index, row))
+
+    trajectory_dataset = _embedded_dataset(embedded, "trajectoria")
+    js_items = (
+        trajectory_dataset.get("values_raw")
+        if trajectory_dataset and isinstance(trajectory_dataset.get("values_raw"), list)
+        else []
+    )
+    items = []
+    aligned_count = 0
+    for item_index, (row_index, row) in enumerate(data_rows):
+        cells = row.find_all(["td", "th"], recursive=False)
+        field_values: dict[str, Any] = {}
+        unlabeled_cells = []
+        visible: dict[str, str] = {}
+        for column_index, cell in enumerate(cells):
+            header = headers[column_index] if column_index < len(headers) else {
+                "label_raw": "",
+                "title_raw": "",
+            }
+            label = header["label_raw"]
+            title = header["title_raw"]
+            value_raw = _text(cell)
+            key_and_kind = specifications.get((label, title))
+            if key_and_kind is None and label and not title:
+                key_and_kind = specifications.get((label, ""))
+            if key_and_kind is None:
+                if not label:
+                    unlabeled_cells.append({
+                        "column_index": column_index,
+                        "value_raw": value_raw,
+                        "classes_raw": list(cell.get("class", [])),
+                        "title_raw": cell.get("title"),
+                        "links": [
+                            {
+                                "text_raw": _text(anchor),
+                                "href_raw": anchor.get("href"),
+                                "url": _relative_source_url(base_url, anchor.get("href")),
+                            }
+                            for anchor in cell.find_all("a", href=True)
+                        ],
+                    })
+                continue
+            field_name, kind = key_and_kind
+            source_cell_text = value_raw
+            if field_name == "team_name":
+                team_anchor = cell.find("a", href=True)
+                if team_anchor is not None:
+                    value_raw = _text(team_anchor)
+            visible[field_name] = value_raw
+            field = _typed_source_value(value_raw, kind)
+            field.update({
+                "header_raw": label,
+                "header_title_raw": title,
+                "source_column_index": column_index,
+                "source_cell_text_raw": source_cell_text,
+                "source_cell_classes_raw": list(cell.get("class", [])),
+                "source_cell_links": [
+                    {
+                        "text_raw": _text(anchor),
+                        "href_raw": anchor.get("href"),
+                        "url": _relative_source_url(base_url, anchor.get("href")),
+                    }
+                    for anchor in cell.find_all("a", href=True)
+                ],
+                "interpretation_status": (
+                    "SOURCE_HEADER_AND_TITLE"
+                    if title else "SOURCE_HEADER"
+                ),
+            })
+            field_values[field_name] = field
+
+        source_links = [
+            _linked_entity(anchor, base_url)
+            for anchor in row.find_all("a", href=True)
+        ]
+        team_season_links = [
+            item for item in source_links
+            if item is not None and item["entity_type"] == "team_season"
+        ]
+        unique_team_seasons = {
+            (item["entity_id"], item["url"]): item for item in team_season_links
+        }
+        team_season_relation = None
+        relation_status = "NOT_PRESENT"
+        if len(unique_team_seasons) == 1:
+            team_season_relation = next(iter(unique_team_seasons.values()))
+            relation_status = "LINK_VERIFIED"
+        elif len(unique_team_seasons) > 1:
+            relation_status = "AMBIGUOUS_TEAM_SEASON_LINKS"
+
+        js_item = js_items[item_index] if item_index < len(js_items) else None
+        js_key_map = _JS_CAREER_FIELD_KEYS[entity_type]
+        comparisons = []
+        if isinstance(js_item, dict):
+            for field_name, js_key in js_key_map.items():
+                visible_value = visible.get(field_name)
+                if visible_value is None:
+                    continue
+                js_value = js_item.get(js_key)
+                comparisons.append({
+                    "field": field_name,
+                    "visible_value_raw": visible_value,
+                    "javascript_key_raw": js_key,
+                    "javascript_value_raw": js_value,
+                    "matches": str(visible_value).strip() == str(js_value).strip(),
+                })
+            if entity_type == "coach" and len(cells) > 1:
+                visible_team_code = cells[1].get("data-codi")
+                if visible_team_code is not None and js_item.get("codieq") is not None:
+                    comparisons.append({
+                        "field": "team_code_raw",
+                        "visible_value_raw": visible_team_code,
+                        "javascript_key_raw": "codieq",
+                        "javascript_value_raw": js_item.get("codieq"),
+                        "matches": str(visible_team_code) == str(js_item.get("codieq")),
+                    })
+        row_aligned = bool(comparisons) and all(item["matches"] for item in comparisons)
+        if row_aligned:
+            aligned_count += 1
+            country_field = field_values.get("country")
+            if country_field and isinstance(js_item, dict) and js_item.get("flag"):
+                country_field.update({
+                    "value": js_item["flag"],
+                    "value_status": "SOURCE_JS_FLAG_WITH_ALIGNED_TRAJECTORY_ROW",
+                    "source_javascript_key_raw": "flag",
+                    "source_javascript_value_raw": js_item["flag"],
+                    "interpretation_status": (
+                        "SOURCE_HEADER_AND_ALIGNED_JAVASCRIPT_FIELD"
+                    ),
+                })
+        items.append({
+            "source_row_index": row_index,
+            "source_table_index": table_index,
+            "source_row_classes_raw": list(row.get("class", [])),
+            "source_cell_count": len(cells),
+            "fields": field_values,
+            "unlabeled_cells_raw": unlabeled_cells,
+            "team_code_raw": (
+                cells[1].get("data-codi")
+                if entity_type == "coach" and len(cells) > 1 else None
+            ),
+            "country_source_raw": (
+                js_item.get("flag")
+                if row_aligned and isinstance(js_item, dict) else None
+            ),
+            "team_season_relation": team_season_relation,
+            "team_season_relation_status": relation_status,
+            "html_js_alignment_status": (
+                "MATCHED_VISIBLE_FIELDS" if row_aligned else
+                "NOT_MATCHED_OR_NOT_AVAILABLE"
+            ),
+            "html_js_field_comparisons": comparisons,
+            "source_javascript_raw": js_item if row_aligned else None,
+            "source_javascript_index": item_index if row_aligned else None,
+            "source_javascript_fields_not_normalized_raw": (
+                {
+                    key: value
+                    for key, value in js_item.items()
+                    if key not in set(js_key_map.values()) | {"codieq", "flag"}
+                }
+                if row_aligned and isinstance(js_item, dict) else None
+            ),
+            "interpretation_status": "PARTIAL_ROW_WITH_SOURCE_PRESERVATION",
+        })
+
+    all_rows_aligned = len(data_rows) == len(js_items) and len(data_rows) > 0 and (
+        aligned_count == len(data_rows)
+    )
+    if all_rows_aligned:
+        alignment_status = "ALL_ROWS_MATCHED_BY_ORDER_AND_VISIBLE_FIELDS"
+    elif not js_items:
+        alignment_status = "JAVASCRIPT_TRAJECTORY_NOT_AVAILABLE"
+    else:
+        alignment_status = "PARTIAL_OR_UNMATCHED_HTML_JAVASCRIPT_ROWS"
+    return {
+        "status": "PARTIAL_STRUCTURED_WITH_RAW_PRESERVATION",
+        "source_table_index": table_index,
+        "source_headers": headers,
+        "items": items,
+        "totals_raw": totals_raw,
+        "javascript_source_variable": "trajectoria",
+        "javascript_item_count": len(js_items),
+        "html_row_count": len(data_rows),
+        "html_js_aligned_row_count": aligned_count,
+        "html_js_alignment_status": alignment_status,
+        "unlabeled_column_indexes": [
+            header["column_index"] for header in headers if not header["label_raw"]
+        ],
+        "career_completeness": "NOT_ASSERTED",
+    }
+
+
+def _competition_aggregates(
+    embedded: list[dict[str, Any]], entity_type: str,
+) -> list[dict[str, Any]]:
+    dataset = _embedded_dataset(embedded, "competicions")
+    groups = dataset.get("values_raw") if dataset else []
+    if not isinstance(groups, list):
+        return []
+    key_map = _JS_CAREER_FIELD_KEYS[entity_type]
+    results = []
+    for group_index, group in enumerate(groups):
+        if not isinstance(group, dict):
+            continue
+        source_rows = group.get("data")
+        if not isinstance(source_rows, list):
+            continue
+        for row_index, source_row in enumerate(source_rows):
+            if not isinstance(source_row, dict):
+                continue
+            statistics = {}
+            for field_name, source_key in key_map.items():
+                if field_name in {"season", "team_name", "division", "age"}:
+                    continue
+                if source_key not in source_row:
+                    continue
+                raw = str(source_row[source_key])
+                kind = "number" if field_name.endswith("_per_match") else "integer"
+                statistics[field_name] = {
+                    **_typed_source_value(raw, kind),
+                    "source_key_raw": source_key,
+                    "interpretation_status": "KEY_MAPPING_CROSSCHECKED_WITH_TRAJECTORY_TABLE",
+                }
+            results.append({
+                "source_group_index": group_index,
+                "source_row_index": row_index,
+                "season_raw": source_row.get("temp"),
+                "team_code_raw": source_row.get("codieq"),
+                "team_name_raw": source_row.get("nomeq"),
+                "competition_key_raw": group.get("key"),
+                "competition_type_raw": group.get("tip"),
+                "competition_label_key_raw": group.get("nom"),
+                "statistics": statistics,
+                "source_row_raw": source_row,
+                "source_variable_raw": "competicions",
+                "competition_entity_id": None,
+                "competition_relation_status": "SOURCE_CODE_ONLY_NOT_RESOLVED_TO_ENTITY",
+                "interpretation_status": (
+                    "SOURCE_COMPETITION_AGGREGATE_WITH_PARTIAL_KEY_MAPPING"
+                ),
+            })
+    return results
+
+
+def _coach_honours(soup: BeautifulSoup, base_url: str) -> list[dict[str, Any]]:
+    heading = next(
+        (
+            item for item in soup.find_all("h2")
+            if _text(item).casefold() == "títulos"
+        ),
+        None,
+    )
+    table = heading.find_next("table") if heading is not None else None
+    if table is None:
+        return []
+    all_tables = soup.find_all("table")
+    table_index = next((index for index, item in enumerate(all_tables) if item is table), None)
+    results = []
+    for row_index, row in enumerate(_own_table_rows(table)):
+        cells = row.find_all(["th", "td"], recursive=False)
+        row_text = _text(row)
+        if not row_text:
+            continue
+        links = [
+            _linked_entity(anchor, base_url)
+            for anchor in row.find_all("a", href=True)
+        ]
+        team_seasons = [
+            item for item in links
+            if item is not None and item["entity_type"] == "team_season"
+        ]
+        results.append({
+            "title_text_raw": row_text,
+            "season_raw": next(
+                (_text(anchor) for anchor in row.find_all("a", href=True) if _text(anchor)),
+                None,
+            ),
+            "team_season_relations": team_seasons,
+            "image_references_raw": [
+                {
+                    "src_raw": image.get("src"),
+                    "alt_raw": image.get("alt"),
+                }
+                for image in row.find_all("img")
+            ],
+            "source": {
+                "section_heading_raw": _text(heading),
+                "table_index": table_index,
+                "row_index": row_index,
+                "cell_count": len(cells),
+            },
+            "interpretation_status": "TITLE_SECTION_TEXT_AND_LINKS_PRESERVED",
+        })
+    return results
+
+
+def _section_container(soup: BeautifulSoup, heading_raw: str) -> Tag | None:
+    heading = next(
+        (item for item in soup.find_all("h2") if _text(item) == heading_raw),
+        None,
+    )
+    return heading.parent if heading is not None and isinstance(heading.parent, Tag) else None
+
+
+def _badge_count_raw(text: str) -> tuple[str, int | None]:
+    raw = " ".join(text.split())
+    match = re.search(r"\d+", raw)
+    return raw, int(match.group()) if match else None
+
+
+def _query_parameter(url: str | None, parameter: str) -> str | None:
+    if not url:
+        return None
+    try:
+        return parse_qs(urlsplit(url).query).get(parameter, [None])[0]
+    except ValueError:
+        return None
+
+
+def _stadium_semantics(
+    soup: BeautifulSoup,
+    base_url: str,
+    embedded: list[dict[str, Any]],
+    map_literals: list[dict[str, str]],
+) -> dict[str, Any]:
+    history_names = []
+    name_table = next(
+        (
+            table for table in soup.find_all("table")
+            if table.find_previous("h2") is not None
+            and _text(table.find_previous("h2")) == "Nombres"
+        ),
+        None,
+    )
+    if name_table is not None:
+        table_index = next(
+            (index for index, item in enumerate(soup.find_all("table")) if item is name_table),
+            None,
+        )
+        for row_index, row in enumerate(_own_table_rows(name_table)):
+            value = _text(row)
+            if not value:
+                continue
+            match = re.fullmatch(r"(?P<name>.*?)\s+\((?P<operator>[<>])\s*(?P<year>\d{4})\)", value)
+            history_names.append({
+                "name_raw": match.group("name").strip() if match else value,
+                "period_raw": (
+                    f"{match.group('operator')}{match.group('year')}"
+                    if match else None
+                ),
+                "year_operator_raw": match.group("operator") if match else None,
+                "year_value": int(match.group("year")) if match else None,
+                "source_table_index": table_index,
+                "source_row_index": row_index,
+                "interpretation_status": (
+                    "SOURCE_COMPARATOR_PRESERVED_NOT_EXPANDED_TO_DATE_RANGE"
+                    if match else "RAW_ONLY_UNRECOGNIZED_NAME_PERIOD"
+                ),
+            })
+
+    seasons = []
+    season_container = _section_container(soup, "Temporadas")
+    if season_container is not None:
+        for item in season_container.select(".visitor-item"):
+            label = item.find("div")
+            label_raw = _text(label)
+            season_match = re.match(r"^\d+\.\s*(?P<season>\d{4}-\d{2})$", label_raw)
+            badge = item.select_one("a.badge-custom")
+            filter_url = _relative_source_url(base_url, badge.get("href")) if badge else None
+            count_raw, count = _badge_count_raw(_text(badge))
+            seasons.append({
+                "season_raw": season_match.group("season") if season_match else label_raw,
+                "source_rank_raw": label_raw.split(".", 1)[0] if "." in label_raw else None,
+                "source_badge_count_raw": count_raw,
+                "source_badge_count": count,
+                "filter_url": filter_url,
+                "filter_season_raw": _query_parameter(filter_url, "temp"),
+                "interpretation_status": (
+                    "SEASON_FILTER_AND_SOURCE_BADGE"
+                    if season_match and filter_url else "PARTIAL_SOURCE_ROW"
+                ),
+            })
+
+    competitions = []
+    competition_container = _section_container(soup, "Competiciones")
+    if competition_container is not None:
+        for item in competition_container.select(".mb-3.mr-3"):
+            label = item.find("span")
+            badge = item.select_one("a.badge-custom")
+            filter_url = _relative_source_url(base_url, badge.get("href")) if badge else None
+            count_raw, count = _badge_count_raw(_text(badge))
+            competitions.append({
+                "competition_name_raw": _text(label),
+                "source_code_raw": _query_parameter(filter_url, "comp"),
+                "source_badge_count_raw": count_raw,
+                "source_badge_count": count,
+                "filter_url": filter_url,
+                "competition_entity_id": None,
+                "competition_relation_status": "FILTER_CODE_ONLY_NOT_RESOLVED_TO_ENTITY",
+                "interpretation_status": (
+                    "LABELED_SECTION_FILTER_AND_BADGE"
+                    if label is not None and filter_url else "PARTIAL_SOURCE_ROW"
+                ),
+            })
+
+    local_clubs = []
+    local_container = _section_container(soup, "Equipo Local")
+    if local_container is not None:
+        for item in local_container.select(".d-flex.justify-content-between"):
+            anchor = item.select_one("a[href*='/e/e']")
+            badge = item.select_one("a.badge-custom")
+            linked = _linked_entity(anchor, base_url) if anchor else None
+            filter_url = _relative_source_url(base_url, badge.get("href")) if badge else None
+            count_raw, count = _badge_count_raw(_text(badge))
+            local_clubs.append({
+                "club": linked,
+                "source_badge_raw": count_raw,
+                "source_badge_count": count,
+                "filter_url": filter_url,
+                "filter_club_id_raw": _query_parameter(filter_url, "local"),
+                "relationship_role": "CLUB_LISTED_IN_LOCAL_TEAM_SECTION",
+                "relationship_status": (
+                    "DIRECT_CLUB_LINK_AND_LOCAL_FILTER"
+                    if linked and filter_url else "PARTIAL_SOURCE_RELATION"
+                ),
+            })
+
+    visitors = []
+    visitor_container = _section_container(soup, "Equipos Visitantes")
+    if visitor_container is not None:
+        for item_index, item in enumerate(visitor_container.select(".visitor-item")):
+            rank_node = item.select_one("span.text-muted")
+            label_raw = _text(item.find("div"))
+            rank_match = re.match(r"^(?P<rank>\d+)\.", label_raw)
+            anchor = item.select_one("a[href*='/e/e']")
+            badge = item.select_one("a.badge-custom")
+            linked = _linked_entity(anchor, base_url) if anchor else None
+            filter_url = _relative_source_url(base_url, badge.get("href")) if badge else None
+            count_raw, count = _badge_count_raw(_text(badge))
+            visitors.append({
+                "source_item_index": item_index,
+                "rank": int(rank_match.group("rank")) if rank_match else None,
+                "rank_raw": _text(rank_node) or None,
+                "club": linked,
+                "source_badge_count_raw": count_raw,
+                "source_badge_count": count,
+                "filter_url": filter_url,
+                "filter_club_id_raw": _query_parameter(filter_url, "visitant"),
+                "relationship_role": "CLUB_LISTED_IN_VISITOR_SECTION",
+                "relationship_status": (
+                    "DIRECT_CLUB_LINK_AND_VISITOR_FILTER"
+                    if linked and filter_url else "PARTIAL_SOURCE_RELATION"
+                ),
+                "chart_alignment_status": "NOT_TESTED",
+            })
+
+    chart = _embedded_dataset(embedded, "dataVisit")
+    chart_items = chart.get("values_raw") if chart else []
+    if not isinstance(chart_items, list):
+        chart_items = []
+    chart_alignment_count = 0
+    for index, visitor in enumerate(visitors):
+        chart_item = chart_items[index] if index < len(chart_items) else None
+        matches = (
+            isinstance(chart_item, dict)
+            and str(chart_item.get("equip")) == str(visitor.get("club", {}).get("name_raw"))
+            and str(chart_item.get("partits")) == str(visitor.get("source_badge_count"))
+        )
+        if matches:
+            chart_alignment_count += 1
+            visitor["chart_item_raw"] = chart_item
+            visitor["chart_alignment_status"] = "MATCHED_NAME_AND_COUNT_BY_SOURCE_ORDER"
+        else:
+            visitor["chart_item_raw"] = chart_item if index < len(chart_items) else None
+            visitor["chart_alignment_status"] = "UNMATCHED_OR_NO_CHART_ITEM"
+
+    first_match = None
+    first_match_container = _section_container(soup, "Primer partido oficial")
+    match_node = (
+        first_match_container.select_one(".final-match")
+        if first_match_container is not None else None
+    )
+    if match_node is not None:
+        date_raw = _text(match_node.select_one(".col-md-2 small"))
+        small_values = [_text(item) for item in match_node.select(".col-md-2 small")]
+        team_names = [_text(item) for item in match_node.select(".team-name")]
+        score_values = [
+            _text(item) for item in match_node.select(".score .resultat-gols")
+        ]
+        score_anchor = match_node.select_one(".score a[href]")
+        match_url = _relative_source_url(base_url, score_anchor.get("href")) if score_anchor else None
+        identity = _url_identity(match_url)
+        try:
+            parsed_date = datetime.strptime(date_raw, "%d/%m/%Y").date().isoformat()
+        except ValueError:
+            parsed_date = None
+        first_match = {
+            "date_raw": date_raw,
+            "date": parsed_date,
+            "competition_name_raw": small_values[1] if len(small_values) > 1 else None,
+            "home_team_name_raw": team_names[0] if team_names else None,
+            "away_team_name_raw": team_names[1] if len(team_names) > 1 else None,
+            "home_score_raw": score_values[0] if score_values else None,
+            "away_score_raw": score_values[1] if len(score_values) > 1 else None,
+            "home_goals": int(score_values[0]) if score_values and score_values[0].isdigit() else None,
+            "away_goals": int(score_values[1]) if len(score_values) > 1 and score_values[1].isdigit() else None,
+            "match_entity_id": (
+                identity["entity_id"] if identity and identity["entity_type"] == "match" else None
+            ),
+            "match_url": match_url,
+            "relationship_status": (
+                "DIRECT_MATCH_LINK_IN_FIRST_OFFICIAL_MATCH_SECTION"
+                if identity and identity["entity_type"] == "match" else "MATCH_LINK_NOT_VERIFIED"
+            ),
+            "interpretation_status": "LABELED_STRUCTURED_MATCH_CARD",
+        }
+
+    map_position = None
+    for literal in map_literals:
+        coordinate_match = re.fullmatch(
+            r"\[\s*([+-]?\d+(?:\.\d+)?)\s*,\s*([+-]?\d+(?:\.\d+)?)\s*\]",
+            literal.get("center_coordinates_raw", ""),
+        )
+        marker_match = re.fullmatch(
+            r"\[\s*([+-]?\d+(?:\.\d+)?)\s*,\s*([+-]?\d+(?:\.\d+)?)\s*\]",
+            literal.get("marker_coordinates_raw", ""),
+        )
+        if coordinate_match is None or marker_match is None:
+            continue
+        if coordinate_match.groups() != marker_match.groups():
+            continue
+        try:
+            zoom = Decimal(literal["zoom_raw"])
+        except (InvalidOperation, KeyError):
+            zoom = None
+        map_position = {
+            "latitude": float(coordinate_match.group(1)),
+            "longitude": float(coordinate_match.group(2)),
+            "zoom": float(zoom) if zoom is not None else None,
+            "popup_label_raw": literal.get("popup_label_raw"),
+            "center_coordinates_raw": literal.get("center_coordinates_raw"),
+            "marker_coordinates_raw": literal.get("marker_coordinates_raw"),
+            "source_status": "SOURCE_DECLARED_NOT_EXTERNALLY_VERIFIED",
+        }
+        break
+
+    relationships = []
+    for item in local_clubs:
+        if item.get("club"):
+            relationships.append({
+                "target_entity_type": "club",
+                "target_entity_id": item["club"]["entity_id"],
+                "target_url": item["club"]["url"],
+                "name_raw": item["club"]["name_raw"],
+                "relationship_role": item["relationship_role"],
+                "source_badge_raw": item["source_badge_raw"],
+                "source_filter_url": item["filter_url"],
+                "relationship_status": item["relationship_status"],
+                "interpretation_status": "DIRECT_LINK_AND_LABELED_SOURCE_SECTION",
+            })
+    for item in visitors:
+        if item.get("club"):
+            relationships.append({
+                "target_entity_type": "club",
+                "target_entity_id": item["club"]["entity_id"],
+                "target_url": item["club"]["url"],
+                "name_raw": item["club"]["name_raw"],
+                "relationship_role": item["relationship_role"],
+                "source_badge_raw": item["source_badge_count_raw"],
+                "source_filter_url": item["filter_url"],
+                "relationship_status": item["relationship_status"],
+                "interpretation_status": "DIRECT_LINK_AND_LABELED_SOURCE_SECTION",
+            })
+    if first_match and first_match["match_entity_id"]:
+        relationships.append({
+            "target_entity_type": "match",
+            "target_entity_id": first_match["match_entity_id"],
+            "target_url": first_match["match_url"],
+            "name_raw": (
+                f"{first_match['home_team_name_raw']} - {first_match['away_team_name_raw']}"
+            ),
+            "relationship_role": "FIRST_OFFICIAL_MATCH",
+            "relationship_status": first_match["relationship_status"],
+            "interpretation_status": "DIRECT_MATCH_LINK_AND_LABELED_SOURCE_SECTION",
+        })
+
+    return {
+        "history": {
+            "historical_names": history_names,
+            "seasons": seasons,
+            "first_official_match": first_match,
+            "status": "PARTIAL_STRUCTURED_WITH_RAW_PRESERVATION",
+        },
+        "visitors": {
+            "items": visitors,
+            "chart_source_variable": "dataVisit",
+            "chart_item_count": len(chart_items),
+            "chart_aligned_item_count": chart_alignment_count,
+            "chart_alignment_status": (
+                "TOP_CHART_ROWS_MATCH_VISIBLE_LIST_BY_ORDER_NAME_AND_COUNT"
+                if chart_items and len(chart_items) == chart_alignment_count
+                and len(chart_items) <= len(visitors)
+                else "PARTIAL_OR_UNMATCHED_CHART_ROWS"
+            ),
+            "status": "PARTIAL_STRUCTURED_WITH_RAW_PRESERVATION",
+        },
+        "competitions": competitions,
+        "relationships": relationships,
+        "local_clubs": local_clubs,
+        "map_position": map_position,
+        "coverage": {
+            "historical_name_count": len(history_names),
+            "season_count": len(seasons),
+            "competition_count": len(competitions),
+            "local_club_count": len(local_clubs),
+            "visitor_count": len(visitors),
+            "chart_item_count": len(chart_items),
+            "explicit_relationship_count": len(relationships),
+            "first_official_match_status": (
+                "LINKED" if first_match and first_match["match_entity_id"] else "NOT_LINKED"
+            ),
+            "location_status": map_position["source_status"] if map_position else "NOT_PARSED",
+            "semantic_entity_completeness": "NOT_ASSERTED",
+        },
+    }
+
+
 def parse_entity_snapshot(snapshot: EntitySnapshot, repo_root: Path) -> dict[str, Any]:
     """Parse a validated raw page without changing or exporting the raw HTML."""
     html = snapshot.html_bytes.decode("utf-8", errors="replace")
@@ -1080,7 +1882,11 @@ def parse_entity_snapshot(snapshot: EntitySnapshot, repo_root: Path) -> dict[str
             }
 
     record: dict[str, Any] = {
-        "schema_version": f"football_data_hub.{snapshot.entity_type}_detail.v2",
+        "schema_version": (
+            "football_data_hub.match_detail.v2"
+            if snapshot.entity_type == "match"
+            else f"football_data_hub.{snapshot.entity_type}_detail.v3"
+        ),
         "parser_version": ENTITY_PAGE_PARSER_VERSION,
         "entity_type": snapshot.entity_type,
         "entity_id": snapshot.entity_id,
@@ -1171,6 +1977,80 @@ def parse_entity_snapshot(snapshot: EntitySnapshot, repo_root: Path) -> dict[str
     else:
         record["display_name_raw"] = h1_values[0]
         record["field_interpretation"]["display_name"] = "RAW_ONLY"
+        if snapshot.entity_type in {"coach", "referee"}:
+            career = _trajectory_semantics(
+                soup,
+                snapshot.entity_type,
+                snapshot.final_url,
+                embedded,
+            )
+            competition_aggregates = _competition_aggregates(
+                embedded,
+                snapshot.entity_type,
+            )
+            career["competition_aggregates"] = competition_aggregates
+            career["competition_aggregate_source_status"] = (
+                "SOURCE_COMPETICIONS_ARRAY_PARTIALLY_NORMALIZED"
+                if competition_aggregates else "NO_COMPETITION_AGGREGATES_PARSED"
+            )
+            record[f"{snapshot.entity_type}_career"] = career
+            record["field_interpretation"][f"{snapshot.entity_type}_career"] = (
+                "SOURCE_TABLE_HEADERS_AND_MATCHED_TRAJECTORIA_ARRAY"
+            )
+            if snapshot.entity_type == "coach":
+                record["coach_honours"] = _coach_honours(
+                    soup,
+                    snapshot.final_url,
+                )
+                record["field_interpretation"]["coach_honours"] = (
+                    "EXPLICIT_TITULOS_SECTION_TEXT_LINKS_AND_IMAGE_REFERENCES"
+                )
+                record["coverage"].update({
+                    "career_row_count": len(career["items"]),
+                    "career_html_js_aligned_row_count": career[
+                        "html_js_aligned_row_count"
+                    ],
+                    "honour_row_count": len(record["coach_honours"]),
+                    "career_completeness": "NOT_ASSERTED",
+                })
+            else:
+                record["field_interpretation"]["referee_career"] = (
+                    "SEASON_AGGREGATES_ONLY_NO_MATCH_DESIGNATIONS_CREATED"
+                )
+                record["coverage"].update({
+                    "career_row_count": len(career["items"]),
+                    "career_html_js_aligned_row_count": career[
+                        "html_js_aligned_row_count"
+                    ],
+                    "competition_aggregate_count": len(competition_aggregates),
+                    "individual_appointment_count": 0,
+                    "career_completeness": "NOT_ASSERTED",
+                })
+        elif snapshot.entity_type == "stadium":
+            semantics = _stadium_semantics(
+                soup,
+                snapshot.final_url,
+                embedded,
+                record["map_literals_raw"],
+            )
+            record["stadium_history"] = semantics["history"]
+            record["stadium_visitors"] = semantics["visitors"]
+            record["stadium_competitions"] = semantics["competitions"]
+            record["stadium_relationships"] = semantics["relationships"]
+            record["stadium_location"] = semantics["map_position"]
+            record["stadium_local_clubs"] = semantics["local_clubs"]
+            record["coverage"].update(semantics["coverage"])
+            record["field_interpretation"].update({
+                "stadium_history": "LABELED_HISTORICAL_SECTIONS_AND_DIRECT_LINKS",
+                "stadium_visitors": "VISIBLE_VISITOR_LIST_CROSSCHECKED_WITH_DATA_VISIT",
+                "stadium_competitions": "LABELS_AND_FILTER_CODES_WITHOUT_ENTITY_RESOLUTION",
+                "stadium_relationships": "EXPLICIT_CLUB_AND_MATCH_LINKS_ONLY",
+                "stadium_location": (
+                    semantics["map_position"]["source_status"]
+                    if semantics["map_position"] else "NOT_PARSED"
+                ),
+                "stadium_local_clubs": "LABELED_LOCAL_SECTION_AND_DIRECT_CLUB_LINKS",
+            })
     return record
 
 

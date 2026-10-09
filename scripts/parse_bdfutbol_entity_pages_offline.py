@@ -97,7 +97,11 @@ def _build_output_files(
             ),
         )
         files[f"{entity_type}_details.json.gz"] = _json_bytes({
-            "schema_version": f"football_data_hub.{entity_type}_details_export.v2",
+            "schema_version": (
+                f"football_data_hub.{entity_type}_details_export.v2"
+                if entity_type == "match"
+                else f"football_data_hub.{entity_type}_details_export.v3"
+            ),
             "parser_version": ENTITY_PAGE_PARSER_VERSION,
             "entity_type": entity_type,
             "source_fingerprint": source_fingerprint,
@@ -127,8 +131,44 @@ def _build_output_files(
                 )
             ],
         }, compressed=True)
+    semantic_resources = {
+        "coach_career": ("coach", "coach_career"),
+        "coach_honours": ("coach", "coach_honours"),
+        "referee_career": ("referee", "referee_career"),
+        "stadium_history": ("stadium", "stadium_history"),
+        "stadium_visitors": ("stadium", "stadium_visitors"),
+        "stadium_competitions": ("stadium", "stadium_competitions"),
+        "stadium_relationships": ("stadium", "stadium_relationships"),
+        "stadium_location": ("stadium", "stadium_location"),
+    }
+    for resource_name, (entity_type, record_field) in semantic_resources.items():
+        entities = []
+        for record in sorted(
+            records_by_type[entity_type],
+            key=lambda item: (
+                item["entity_id"],
+                item.get("source", {}).get("captured_at_utc") or "",
+                item.get("source", {}).get("snapshot_directory") or "",
+            ),
+        ):
+            if record_field not in record:
+                continue
+            entities.append({
+                "entity_type": entity_type,
+                "entity_id": record["entity_id"],
+                "url": record.get("url"),
+                "source": record.get("source", {}),
+                "coverage": record.get("coverage", {}),
+                "resource": record[record_field],
+            })
+        files[f"{resource_name}.json.gz"] = _json_bytes({
+            "schema_version": f"football_data_hub.{resource_name}_export.v1",
+            "parser_version": ENTITY_PAGE_PARSER_VERSION,
+            "source_fingerprint": source_fingerprint,
+            "entities": entities,
+        }, compressed=True)
     files["coverage.json.gz"] = _json_bytes({
-        "schema_version": "football_data_hub.individual_entity_coverage.v2",
+        "schema_version": "football_data_hub.individual_entity_coverage.v3",
         "parser_version": ENTITY_PAGE_PARSER_VERSION,
         "source_fingerprint": source_fingerprint,
         "snapshots": sorted(coverage, key=lambda item: (
@@ -253,6 +293,36 @@ def run_offline_pipeline(*, repo_root: Path, raw_root: Path, output_root: Path) 
                 "published_result_coherence": record["match_quality"][
                     "published_result_coherence"
                 ],
+            })
+        elif entity_type in {"coach", "referee"}:
+            career = record[f"{entity_type}_career"]
+            coverage[-1].update({
+                "career_row_count": len(career["items"]),
+                "career_html_js_aligned_row_count": career[
+                    "html_js_aligned_row_count"
+                ],
+                "career_html_js_alignment_status": career[
+                    "html_js_alignment_status"
+                ],
+                "competition_aggregate_count": len(career["competition_aggregates"]),
+                "career_completeness": "NOT_ASSERTED",
+            })
+            if entity_type == "coach":
+                coverage[-1]["honour_row_count"] = len(record["coach_honours"])
+            else:
+                coverage[-1]["individual_appointment_count"] = 0
+        elif entity_type == "stadium":
+            coverage[-1].update({
+                "historical_name_count": record["coverage"]["historical_name_count"],
+                "stadium_season_count": record["coverage"]["season_count"],
+                "stadium_competition_count": record["coverage"]["competition_count"],
+                "stadium_local_club_count": record["coverage"]["local_club_count"],
+                "stadium_visitor_count": record["coverage"]["visitor_count"],
+                "stadium_chart_item_count": record["coverage"]["chart_item_count"],
+                "stadium_explicit_relationship_count": record["coverage"][
+                    "explicit_relationship_count"
+                ],
+                "location_status": record["coverage"]["location_status"],
             })
 
     output = write_immutable_entity_exports(
