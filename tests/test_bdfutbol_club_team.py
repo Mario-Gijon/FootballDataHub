@@ -4,9 +4,11 @@ import hashlib
 import json
 import gzip
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 import scrape_bdfutbol_club_team as club_team_cli
+from football_data_hub.collectors import bdfutbol_competition as competition_collector
 
 from football_data_hub.collectors.bdfutbol_club_team import (
     InvalidClubTeamSnapshot,
@@ -680,6 +682,220 @@ def test_zero_match_result_filter_validates_against_zero_aggregate() -> None:
     assert validation["validated"] is True
 
 
+def _synthetic_selection_candidate(
+    extraction_key: str, captured_at: str, *, played: bool, result_status: str = "played",
+) -> dict:
+    # Synthetic selector-only candidate; raw validation is mocked in these policy tests.
+    group_one = {
+        "match_id": "synthetic-match-i", "group": "I", "season": "2026/27",
+        "date": "2026-10-01", "round": 1, "home_team_season_id": "t-home",
+        "away_team_season_id": "t-away", "home_team_name": "Home", "away_team_name": "Away",
+        "home_goals": 2 if played else None, "away_goals": 1 if played else None,
+        "result_status": result_status if played else "not_available",
+        "result_raw": "2 1" if played else "—", "referee_id": "r1",
+        "match_state": "played" if played else "scheduled", "_competition_code_raw": "1rf",
+    }
+    group_two = {
+        "match_id": "synthetic-match-ii", "group": "II", "season": "2026/27",
+        "date": "2026-10-02", "round": 1, "home_team_season_id": "t-two-home",
+        "away_team_season_id": "t-two-away", "home_team_name": "Two Home", "away_team_name": "Two Away",
+        "home_goals": None, "away_goals": None, "result_status": "scheduled",
+        "result_raw": "—", "referee_id": None, "match_state": "scheduled",
+    }
+    sources = {
+        group: {
+            "url": f"https://www.bdfutbol.com/es/t/{group}.html",
+            "captured_at_utc": captured_at,
+            "snapshot_sha256": f"sha-{extraction_key}-{group}",
+            "snapshot_directory": f"raw/{extraction_key}/{group}",
+            "fixture_count": 1,
+        }
+        for group in ("I", "II")
+    }
+    state_counts = {
+        group: {"played": int(played and group == "I"), "scheduled": 1 - int(played and group == "I"),
+                "unresolved": 0, "inconsistent": 0}
+        for group in ("I", "II")
+    }
+    return {
+        "metadata": {
+            "extraction_key": extraction_key, "schema_version": "synthetic.v1",
+            "parser_version": "synthetic", "season": "2026/27",
+        },
+        "export_directory": f"exports/snapshot-{extraction_key}",
+        "extraction_key": extraction_key,
+        "groups": {"I": [group_one], "II": [group_two]},
+        "source_details": sources,
+        "status_counts": state_counts,
+        "captured_at_order": 1.0 if captured_at.endswith("10:00:00+00:00") else 2.0,
+    }
+
+
+def _mock_valid_competition_candidates(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, candidates: list[dict]) -> None:
+    paths = []
+    by_key = {}
+    for candidate in candidates:
+        directory = tmp_path / f"snapshot-{candidate['extraction_key']}-parser-synthetic"
+        directory.mkdir()
+        (directory / "dataset_metadata.json").write_text("{}", encoding="utf-8")
+        paths.append(directory / "dataset_metadata.json")
+        by_key[candidate["extraction_key"]] = candidate
+    monkeypatch.setattr(competition_collector.Path, "glob", lambda self, pattern: paths)
+    monkeypatch.setattr(
+        competition_collector,
+        "_validate_competition_export",
+        lambda path: by_key[path.parent.name.removeprefix("snapshot-").removesuffix("-parser-synthetic")],
+    )
+
+
+def test_competition_auto_selection_reports_conflicting_valid_sources_as_ambiguous(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    newer = _synthetic_selection_candidate("newer-empty", "2026-10-08T12:00:00+00:00", played=False)
+    older = _synthetic_selection_candidate("older-played", "2026-10-08T10:00:00+00:00", played=True)
+    _mock_valid_competition_candidates(tmp_path, monkeypatch, [newer, older])
+
+    result = competition_collector.load_competition_export(tmp_path)
+
+    assert result["matches"] is None
+    selection = result["selection"]
+    assert selection["selection_status"] == "AMBIGUOUS_VALID_SOURCES"
+    assert selection["selection_mode"] == "automatic_conflict_review"
+    assert selection["candidate_conflicts"][0]["different_fields_by_count"] == {
+        "away_goals": 1,
+        "home_goals": 1,
+        "normalized_match_state": 1,
+    }
+    assert {item["extraction_key"] for item in selection["valid_candidates"]} == {
+        "newer-empty", "older-played",
+    }
+    assert all(item["sources"]["I"]["snapshot_sha256"] for item in selection["valid_candidates"])
+
+
+def test_competition_explicit_selection_keeps_conflicts_and_discard_reason(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    newer = _synthetic_selection_candidate("newer-empty", "2026-10-08T12:00:00+00:00", played=False)
+    older = _synthetic_selection_candidate("older-played", "2026-10-08T10:00:00+00:00", played=True)
+    _mock_valid_competition_candidates(tmp_path, monkeypatch, [newer, older])
+
+    result = competition_collector.load_competition_export(tmp_path, extraction_key="older-played")
+
+    assert result["selection"]["selected_extraction_key"] == "older-played"
+    assert len(result["matches"]) == 2
+    assert result["selection"]["candidate_conflicts"][0]["conflicting_match_count"] == 1
+    assert result["selection"]["discarded_valid_sources"][0]["extraction_key"] == "newer-empty"
+    assert result["selection"]["discarded_valid_sources"][0]["reason"]
+
+
+def test_competition_source_selection_uses_verified_independent_match_evidence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    newer = _synthetic_selection_candidate("newer-empty", "2026-10-08T12:00:00+00:00", played=False)
+    older = _synthetic_selection_candidate("older-played", "2026-10-08T10:00:00+00:00", played=True)
+    _mock_valid_competition_candidates(tmp_path, monkeypatch, [newer, older])
+    evidence = {
+        "status": "VALIDATED",
+        "items": [{
+            "match_id": "synthetic-match-i", "season": "2026/27", "competition_code": "1rf",
+            "date": "2026-10-01", "home_team_season_id": "t-home", "away_team_season_id": "t-away",
+            "home_team_name": "Home", "away_team_name": "Away", "home_goals": 2, "away_goals": 1,
+            "referee_id": "1", "round": 1,
+            "source_observations": [{"url": "raw://synthetic-club-p", "snapshot_sha256": "p-sha"}],
+        }],
+        "source": {"source_family": "synthetic club P fixture", "coverage": "1 independently observed match"},
+    }
+
+    result = competition_collector.load_competition_export(
+        tmp_path, independent_match_evidence=evidence,
+    )
+
+    assert result["selection"]["selected_extraction_key"] == "older-played"
+    assert result["selection"]["selection_mode"] == "automatic_independently_corroborated"
+    assert result["selection"]["independent_comparison"]["matched_count"] == 1
+    assert result["selection"]["independent_evidence"]["source_family"] == "synthetic club P fixture"
+
+
+def test_equivalent_competition_exports_use_recency_after_semantic_comparison(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    older = _synthetic_selection_candidate("older", "2026-10-08T10:00:00+00:00", played=True, result_status="played")
+    newer = _synthetic_selection_candidate("newer", "2026-10-08T12:00:00+00:00", played=True, result_status="available")
+    _mock_valid_competition_candidates(tmp_path, monkeypatch, [older, newer])
+
+    result = competition_collector.load_competition_export(tmp_path)
+
+    assert result["selection"]["selected_extraction_key"] == "newer"
+    assert result["selection"]["selection_mode"] == "automatic_equivalent_sources_then_recency"
+    assert result["selection"]["candidate_conflicts"][0]["conflicting_match_count"] == 0
+
+
+def test_unpublished_fixture_id_does_not_hide_scheduled_vs_unresolved_conflict(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    older = _synthetic_selection_candidate("older", "2026-10-08T10:00:00+00:00", played=True)
+    newer = _synthetic_selection_candidate("newer", "2026-10-08T12:00:00+00:00", played=True)
+    for candidate in (older, newer):
+        fixture = candidate["groups"]["II"][0]
+        fixture["match_id"] = None
+    newer["groups"]["II"][0]["match_state"] = "unresolved"
+    _mock_valid_competition_candidates(tmp_path, monkeypatch, [older, newer])
+
+    result = competition_collector.load_competition_export(tmp_path)
+
+    assert result["matches"] is None
+    assert result["selection"]["selection_status"] == "AMBIGUOUS_VALID_SOURCES"
+    conflict = result["selection"]["candidate_conflicts"][0]
+    assert conflict["compared_fixtures"] == 2
+    assert conflict["conflicting_match_count"] == 1
+    assert conflict["different_fields_by_count"] == {"normalized_match_state": 1}
+    assert conflict["conflicts"][0]["match_id"] is None
+
+
+def test_club_p_evidence_requires_both_canonical_club_observations_and_keeps_sources() -> None:
+    tuple_home = [
+        2026, "1rf", "", "01/10/2026", 1, "Home", 2, 1, 272516,
+        "Away", 1, 2, 1, 600001, "Jornada 1", "1", 2, 0, "2026-27",
+    ]
+    tuple_away = [*tuple_home]
+    tuple_away[4] = 0
+    tuple_away[12] = -1
+    pages = []
+    for index, (team_id, club_id, values) in enumerate((
+        ("t2026-1", "e1", tuple_home), ("t2026-2", "e2", tuple_away),
+    )):
+        pages.append({
+            "entity_type": "team_season", "entity_id": team_id, "view": "team_alignment",
+            "club_id": club_id, "source": {"captured_at_utc": f"2026-10-08T12:0{index}:00+00:00"},
+        })
+        pages.append({
+            "entity_type": "club", "entity_id": club_id, "view": "club_matches",
+            "url": f"https://www.bdfutbol.com/es/p/{club_id}.html",
+            "source": {
+                "captured_at_utc": f"2026-10-08T12:0{index}:00+00:00",
+                "snapshot_directory": f"raw/{club_id}", "rendered_html_sha256": f"sha-{club_id}",
+            },
+            "club_data": {"embedded_match_data": {
+                "parse_status": "PARSED_19_POSITION_TUPLES",
+                "records": [{"source_record_index": index, "source_values_raw": values}],
+            }},
+        })
+
+    evidence = club_team_cli._independent_competition_evidence(pages)
+
+    assert evidence["status"] == "VALIDATED"
+    assert evidence["source"]["canonical_club_pages"] == 2
+    assert evidence["source"]["validated_matches"] == 1
+    item = evidence["items"][0]
+    assert item["home_team_season_id"] == "t2026-1"
+    assert item["away_team_season_id"] == "t2026-2"
+    assert item["round"] == 1
+    assert len(item["source_observations"]) == 2
+    assert {source["snapshot_sha256"] for source in item["source_observations"]} == {"sha-e1", "sha-e2"}
+    incomplete = club_team_cli._independent_competition_evidence(pages[:2] + [pages[2]])
+    assert incomplete["status"] == "INCOMPLETE"
+
+
 def test_competition_crosscheck_loader_rejects_partial_exports_instead_of_ranking_labels(tmp_path: Path) -> None:
     poorer = tmp_path / "snapshot-newer"
     richer = tmp_path / "snapshot-richer"
@@ -1076,3 +1292,39 @@ def test_export_keeps_filtered_variant_separate_with_source_provenance(tmp_path:
     assert summary["variant_table_rows"] > 0
     assert variant_export["items"][0]["coverage_status"] == "COMPLETE"
     assert any(item["source_variant_id"] == variant["view_variant"]["variant_id"] for item in relationships["items"])
+
+
+def test_offline_snapshot_pipeline_writes_selection_diagnostic_not_fixtures(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    snapshot = SimpleNamespace(
+        url=BASE,
+        html=team_html(),
+        directory=tmp_path / "raw-snapshot",
+        metadata={"rendered_html_sha256": "synthetic-team-sha"},
+        page={"entity_type": "team_season", "entity_id": TEAM_ID, "view": "team_alignment"},
+    )
+    selected_export = {
+        "matches": [{"match_id": "fixture-data-is-not-selection-metadata"}],
+        "selection": {"selection_status": "SELECTED", "selected_extraction_key": "synthetic-source"},
+    }
+    written: dict = {}
+    monkeypatch.setattr(club_team_cli, "discover_latest_snapshots", lambda *args, **kwargs: [snapshot])
+    monkeypatch.setattr(
+        club_team_cli, "_load_competition_selection", lambda *args, **kwargs: selected_export,
+    )
+    monkeypatch.setattr(
+        club_team_cli, "write_club_team_exports",
+        lambda **kwargs: written.update(kwargs) or (tmp_path / "export"),
+    )
+
+    club_team_cli._process_snapshots(
+        team_season_ids=[TEAM_ID],
+        raw_root=tmp_path,
+        output_root=tmp_path,
+        competition_root=tmp_path,
+    )
+
+    assert written["competition_matches"] == selected_export["matches"]
+    assert written["competition_selection"] == selected_export["selection"]
+    assert "matches" not in written["competition_selection"]

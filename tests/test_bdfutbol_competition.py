@@ -169,8 +169,17 @@ def test_hito1b_exports_are_quality_selected_and_each_has_119_played_matches() -
 
     automatic = load_competition_export(root)
     assert selected_keys == list(expected_keys)
-    assert automatic["selection"]["selection_mode"] == "automatic_quality_then_recency"
-    assert automatic["selection"]["selected_extraction_key"] == "d047191aa847be5c30d7"
+    assert automatic["matches"] is None
+    assert automatic["selection"]["selection_status"] == "AMBIGUOUS_VALID_SOURCES"
+    assert automatic["selection"]["selection_mode"] == "automatic_conflict_review"
+    conflict = automatic["selection"]["candidate_conflicts"][0]
+    assert conflict["compared_fixtures"] == 760
+    assert conflict["conflicting_match_count"] == 1
+    assert conflict["different_fields_by_count"] == {"normalized_match_state": 1}
+    assert conflict["conflicts"][0]["fixture_identity"] == [
+        "fixture", "II", "2026/27", "t2026-27176", "t2026-2740",
+    ]
+    assert conflict["conflicts"][0]["match_id"] is None
 
 
 def test_explicit_selection_rejects_an_incompatible_local_export(tmp_path: Path) -> None:

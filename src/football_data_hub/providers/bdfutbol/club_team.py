@@ -15,7 +15,7 @@ from urllib.parse import parse_qs, urljoin, urlsplit
 
 from bs4 import BeautifulSoup, Tag
 
-PARSER_VERSION = "1.5.0"
+PARSER_VERSION = "1.7.0"
 SCHEMA_VERSION = "football_data_hub.bdfutbol.club_team.v3"
 
 _CLUB_ID = re.compile(r"^e(?P<number>\d+)$")

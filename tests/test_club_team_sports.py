@@ -343,6 +343,8 @@ def test_compact_exports_are_gzip_readable_and_keep_normalized_provenance(tmp_pa
         embedded_observations = json.load(stream)
     with gzip.open(output / "sports/matches_from_embedded_data.json.gz", "rt", encoding="utf-8") as stream:
         embedded_matches = json.load(stream)
+    with gzip.open(output / "sports/embedded_match_filtered_table_card_crosscheck.json.gz", "rt", encoding="utf-8") as stream:
+        card_crosscheck = json.load(stream)
     with gzip.open(output / "dataset_metadata.json.gz", "rt", encoding="utf-8") as stream:
         metadata = json.load(stream)
     assert len(statistics["items"]) == 4
@@ -356,11 +358,17 @@ def test_compact_exports_are_gzip_readable_and_keep_normalized_provenance(tmp_pa
     assert embedded_observations["items"][0]["snapshot_sha256"].startswith("sha-")
     assert len(embedded_matches["items"]) == 1
     assert embedded_matches["items"][0]["source_observation_count"] == 2
+    assert "source_team_season_id" not in embedded_matches["items"][0]
+    assert embedded_matches["items"][0]["home_team_season_id"] is None
+    assert card_crosscheck["items"]["comparison_count"] == 2
+    assert card_crosscheck["items"]["different_count"] == 2
+    assert metadata["schema_version"] == "football_data_hub.bdfutbol.club_team_export.v2"
     assert (output / "sports/player_statistics.csv.gz").is_file()
     assert (output / "sports/embedded_match_observations.csv.gz").is_file()
     assert (output / "sports/matches_from_embedded_data.csv.gz").is_file()
     competition_selection = metadata["competition_crosscheck_source"]
     assert competition_selection["selection"]["selected_extraction_key"] == "hito1b-test"
+    assert metadata["parser_version"] == "1.7.0"
     assert competition_selection["played_fixtures_loaded"] == 0
     assert competition_selection["normalized_state_counts"] == {
         "played": 0, "scheduled": 0, "unresolved": 0, "inconsistent": 0,
@@ -417,6 +425,13 @@ def test_embedded_match_observations_deduplicate_ids_and_crosscheck_without_losi
         "result_status": "played",
         "fixture_status": "played",
         "season": "2026/27",
+        "round": 1,
+        "referee_id": "r600001",
+        "_competition_source_validated": True,
+        "_competition_extraction_key": "synthetic-h1b",
+        "_competition_snapshot_directory": "synthetic/competition",
+        "_snapshot_sha256": "synthetic-comp-sha",
+        "_captured_at_utc": "2026-10-08T10:00:00+00:00",
     }]
 
     data = build_club_team_sports_data(pages, competition)
@@ -428,6 +443,124 @@ def test_embedded_match_observations_deduplicate_ids_and_crosscheck_without_losi
     assert len(data["duplicate_embedded_matches"]) == 1
     assert data["embedded_match_competition_crosscheck"]["match_ids_equal"] is True
     assert data["embedded_match_competition_crosscheck"]["matches_all_fields_equal"] == 1
+    crosscheck = data["embedded_match_competition_crosscheck"]["comparisons"][0]
+    assert crosscheck["checks"]["referee_match"] is True
+    assert crosscheck["checks"]["round_match"] is True
+    assert crosscheck["field_comparisons"]["referee_match"]["competition_source"]["snapshot_sha256"] == "synthetic-comp-sha"
+    unique = data["matches_from_embedded_data"][0]
+    assert unique["home_team_season_id"] == "t2026-1"
+    assert unique["away_team_season_id"] == "t2026-2"
+    assert unique["team_season_identity_status"] == "VERIFIED_COMPETITION_CROSSWALK"
+    assert "source_team_season_id" not in unique
+    assert unique["acquisition_context"]["acquisition_team_season_ids"] == ["t2026-1", "t2026-2"]
+    assert {item["source_club_yellow_cards_raw"] for item in unique["source_observations"]} == {1, 2}
+    assert all(item["snapshot_sha256"] for item in unique["source_observations"])
+
+
+def test_no_selected_competition_source_leaves_crosscheck_unknown_not_absent() -> None:
+    home_tuple = [
+        2026, "1rf", "", "01/10/2026", 1, "Home", 2, 1, 272516,
+        "Away", 1, 2, 1, 600001, "Jornada 1", "1", 2, 0, "2026-27",
+    ]
+    away_tuple = [*home_tuple]
+    away_tuple[4] = 0
+    away_tuple[12] = -1
+    table_canonical, table_variant = _club_matches(
+        "e1", "t2026-1", captured_at="2026-10-08T13:00:00+00:00",
+        score="2 1", gf="2", gc="1",
+    )
+    pages = [
+        _team_identity("t2026-1", "e1", "Home"),
+        _team_identity("t2026-2", "e2", "Away"),
+        _embedded_club_page("e1", home_tuple),
+        _embedded_club_page("e2", away_tuple),
+        table_canonical,
+        table_variant,
+    ]
+
+    data = build_club_team_sports_data(pages, competition_matches=None)
+
+    crosscheck = data["embedded_match_competition_crosscheck"]
+    assert crosscheck["status"] == "NOT_RUN_NO_SELECTED_COMPETITION_SOURCE"
+    assert crosscheck["embedded_current_season_1rf_unique_matches"] == 1
+    assert crosscheck["competition_export_played_matches"] is None
+    assert crosscheck["embedded_match_ids_absent_from_competition"] is None
+    assert crosscheck["competition_match_ids_missing_from_embedded"] is None
+    assert crosscheck["match_ids_equal"] is None
+    assert crosscheck["matches_all_fields_equal"] is None
+    assert crosscheck["comparisons"] == []
+    assert data["summary"]["competition_played_matches_not_observed"] is None
+    assert data["matches_played"][0]["competition_match_present"] is None
+    assert data["matches_played"][0]["competition_match_status"] == "NOT_CHECKED_NO_SELECTED_SOURCE"
+
+
+def test_historical_matches_do_not_inherit_current_team_season_identity() -> None:
+    historical = [
+        1950, "1rf", "", "01/01/1951", 1, "Home", 2, 1, 12345,
+        "Away", 1, 2, 1, None, "Jornada 1", "1", 0, 0, "1950-51",
+    ]
+    pages = [
+        _team_identity("t2026-1", "e1", "Home"),
+        _team_identity("t2026-2", "e2", "Away"),
+        _embedded_club_page("e1", historical),
+    ]
+    data = build_club_team_sports_data(pages)
+    match = data["matches_from_embedded_data"][0]
+    assert match["match_season_raw"] == "1950-51"
+    assert match["home_team_season_id"] is None
+    assert match["away_team_season_id"] is None
+    assert match["team_season_identity_status"] == "NOT_ESTABLISHED"
+    assert "source_team_season_id" not in match
+    assert match["acquisition_context"]["acquisition_team_season_ids"] == ["t2026-1"]
+
+
+def test_filtered_table_card_crosscheck_preserves_both_capture_sources() -> None:
+    home_tuple = [
+        2026, "1rf", "", "01/10/2026", 1, "Home", 2, 1, 272516,
+        "Away", 1, 2, 1, 600001, "Jornada 1", "1", 2, 0, "2026-27",
+    ]
+    away_tuple = [*home_tuple]
+    away_tuple[4] = 0
+    away_tuple[12] = -1
+    away_tuple[16] = 1
+    variant_pages = []
+    for club_id, team_id, home, yellow in (
+        ("e1", "t2026-1", True, "2"), ("e2", "t2026-2", False, "1"),
+    ):
+        values = [
+            "1", "01/10/2026", "2026-27", "1rf", "Jornada 1", "Home", "2 1", "Away",
+            yellow, "0", "2" if home else "1", "1" if home else "2",
+        ]
+        variant_pages.append({
+            "entity_type": "club",
+            "entity_id": club_id,
+            "view": "club_matches",
+            "url": f"https://www.bdfutbol.com/es/p/{club_id}.html?cat=1rf&temp=2026-27",
+            "source": _source("2026-10-08T14:00:00+00:00"),
+            "tables": [{
+                "table_id": "tpartits", "header_cells": MATCH_HEADERS,
+                "rows": [_row(0, MATCH_HEADERS, kind="header"), _row(1, values)],
+            }],
+            "relationships": [{
+                "entity_type": "match", "entity_id": "272516",
+                "occurrences": [{"source_table_id": "tpartits", "source_row_index": 1}],
+            }],
+            "team_data": {},
+        })
+    pages = [
+        _team_identity("t2026-1", "e1", "Home"),
+        _team_identity("t2026-2", "e2", "Away"),
+        _embedded_club_page("e1", home_tuple),
+        _embedded_club_page("e2", away_tuple),
+        *variant_pages,
+    ]
+    data = build_club_team_sports_data(pages)
+    card_check = data["embedded_match_filtered_table_card_crosscheck"]
+    assert card_check["comparison_count"] == 2
+    assert card_check["matched_count"] == 2
+    assert card_check["different_count"] == 0
+    assert all(row["embedded_source"]["snapshot_sha256"] for row in card_check["comparisons"])
+    assert all(row["filtered_table_source"]["captured_at_utc"] for row in card_check["comparisons"])
 
 
 def test_embedded_match_result_code_disagreement_is_reported_and_raw_is_preserved() -> None:

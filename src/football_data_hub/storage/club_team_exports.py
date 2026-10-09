@@ -482,6 +482,9 @@ def write_club_team_exports(
                 "differing_fields_between_club_sources_json": _json_cell(item.get("differing_fields_between_club_sources")),
                 "seasons_observed_json": _json_cell(item.get("seasons_observed")),
                 "source_observations_json": _json_cell(item.get("source_observations")),
+                "acquisition_context_json": _json_cell(item.get("acquisition_context")),
+                "competition_fields_json": _json_cell(item.get("competition_fields")),
+                "team_season_identity_evidence_json": _json_cell(item.get("team_season_identity_evidence")),
                 "aggregate_expected_json": _json_cell(item.get("aggregate_expected")),
                 "outcomes_observed_json": _json_cell(item.get("outcomes_observed")),
                 "checks_json": _json_cell(item.get("checks")),
@@ -557,9 +560,12 @@ def write_club_team_exports(
         (
             "match_id", "match_url", "season_raw", "competition_code_raw", "date_raw", "date",
             "home_team_name_raw", "home_goals_raw", "away_goals_raw", "away_team_name_raw",
-            "home_club_id_raw", "away_club_id_raw", "source_observation_count", "source_club_ids",
-            "source_club_ids_json", "differing_fields_between_club_sources_json", "url", "snapshot_directory", "snapshot_sha256",
-            "captured_at_utc", "source_values_raw_json", "source_observations_json",
+            "home_club_id_raw", "away_club_id_raw", "match_season_raw", "group",
+            "home_team_season_id", "away_team_season_id", "team_season_identity_status",
+            "team_season_identity_evidence_json", "competition_fields_json",
+            "source_observation_count", "source_club_ids",
+            "source_club_ids_json", "differing_fields_between_club_sources_json", "source_values_raw_json",
+            "source_observations_json", "acquisition_context_json",
         ),
     )
     write_sports_json("duplicate_embedded_matches", sports["duplicate_embedded_matches"])
@@ -577,6 +583,10 @@ def write_club_team_exports(
     write_json(
         sports_dir / "embedded_match_competition_crosscheck.json",
         {**sports_metadata, **sports["embedded_match_competition_crosscheck"]},
+    )
+    write_sports_json(
+        "embedded_match_filtered_table_card_crosscheck",
+        sports["embedded_match_filtered_table_card_crosscheck"],
     )
     write_sports_json("coverage_by_club", sports["coverage_by_club"])
     write_sports_csv(

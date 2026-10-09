@@ -450,7 +450,10 @@ def _consolidate_matches(
                 )}
                 for item in sorted(items, key=lambda item: (item.get("captured_at_utc") or "", item.get("source_club_id") or ""))
             ],
-            "competition_match_present": comp is not None,
+            "competition_match_present": comp is not None if crosscheck_requested else None,
+            "competition_match_status": (
+                "PRESENT_IN_SELECTED_EXPORT" if comp else "NOT_IN_SELECTED_EXPORT"
+            ) if crosscheck_requested else "NOT_CHECKED_NO_SELECTED_SOURCE",
             "competition_result_status": comp.get("result_status") if comp else None,
             "competition_group": comp.get("group") if comp else None,
             "competition_comparison": {},
@@ -728,10 +731,96 @@ def _embedded_date(value: Any) -> str | None:
     return f"{year}-{month}-{day}"
 
 
+def _canonical_referee(value: Any) -> str | None:
+    if value is None or not str(value).strip():
+        return None
+    canonical = str(value).strip().casefold().removeprefix("r").lstrip("0")
+    return canonical or "0"
+
+
+def _verifiable_round(match: dict[str, Any]) -> int | None:
+    label = re.fullmatch(r"Jornada\s+(\d+)", str(match.get("round_label_raw") or "").strip(), re.IGNORECASE)
+    code = str(match.get("round_code_raw") or "").strip()
+    if label is None or code != label.group(1):
+        return None
+    return int(label.group(1))
+
+
+def _source_reference(item: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "url": item.get("url"),
+        "snapshot_directory": item.get("snapshot_directory"),
+        "snapshot_sha256": item.get("snapshot_sha256"),
+        "captured_at_utc": item.get("captured_at_utc"),
+    }
+
+
+def _filtered_table_card_crosscheck(
+    embedded_observations: list[dict[str, Any]],
+    table_observations: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Compare club-specific P card values with captured all-match table rows."""
+    table_by_key: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    for row in table_observations:
+        if not row.get("match_id") or not row.get("source_club_id"):
+            continue
+        if url_has_match_filters(str(row.get("url") or "")):
+            table_by_key[(str(row["match_id"]), str(row["source_club_id"]))].append(row)
+    comparisons = []
+    expected = [
+        row for row in embedded_observations
+        if row.get("season_raw") == "2026-27"
+        and row.get("competition_code_raw") == "1rf"
+        and row.get("match_id")
+    ]
+    for embedded in expected:
+        key = (str(embedded["match_id"]), str(embedded.get("source_club_id")))
+        for table_row in table_by_key.get(key, []):
+            pairs = {
+                "yellow_cards": (
+                    embedded.get("source_club_yellow_cards_raw"),
+                    table_row.get("source_club_yellow_cards"),
+                ),
+                "red_cards": (
+                    embedded.get("source_club_red_cards_raw"),
+                    table_row.get("source_club_red_cards"),
+                ),
+            }
+            checks = {
+                name: left == right if left is not None and right is not None else None
+                for name, (left, right) in pairs.items()
+            }
+            comparisons.append({
+                "match_id": str(embedded["match_id"]),
+                "source_club_id": embedded.get("source_club_id"),
+                "status": "MATCHED" if all(value is not False for value in checks.values()) else "DIFFERENT",
+                "checks": checks,
+                "values": {
+                    name: {"embedded_P_raw": left, "filtered_table": right}
+                    for name, (left, right) in pairs.items()
+                },
+                "embedded_source": _source_reference(embedded),
+                "filtered_table_source": _source_reference(table_row),
+            })
+    return {
+        "variant_policy": "captured all-match query variants without pgep only",
+        "comparisons": comparisons,
+        "comparison_count": len(comparisons),
+        "matched_count": sum(row["status"] == "MATCHED" for row in comparisons),
+        "different_count": sum(row["status"] == "DIFFERENT" for row in comparisons),
+        "not_captured_count": sum(
+            (str(row["match_id"]), str(row.get("source_club_id"))) not in table_by_key
+            for row in expected
+        ),
+    }
+
+
 def _embedded_club_matches(
     parsed_pages: list[dict[str, Any]],
     competition_matches: list[dict[str, Any]],
     team_by_club: dict[str, str],
+    table_match_observations: list[dict[str, Any]],
+    crosscheck_requested: bool,
 ) -> dict[str, Any]:
     """Normalize the source P tuples while retaining every club observation."""
     observations: list[dict[str, Any]] = []
@@ -892,32 +981,135 @@ def _embedded_club_matches(
         "away_goals", "away_team_name_raw", "home_club_id", "away_club_id", "referee_id_raw",
         "round_label_raw", "round_code_raw",
     )
+    competition_any_by_id = {
+        str(row["match_id"]): row for row in competition_matches if row.get("match_id") is not None
+    }
+    club_by_team = {team_id: club_id for club_id, team_id in team_by_club.items()}
     unique_matches: list[dict[str, Any]] = []
     duplicate_matches: list[dict[str, Any]] = []
     for match_id, rows in sorted(by_id.items()):
-        selected = rows[0]
+        selected = max(rows, key=lambda item: (
+            item.get("captured_at_utc") or "", str(item.get("source_club_id") or ""),
+        ))
         different_fields = [
             field for field in comparison_fields
             if len({json.dumps(row.get(field), ensure_ascii=False, sort_keys=True) for row in rows}) > 1
         ]
-        unique_matches.append({
-            **selected,
+        source_observations = [
+            {
+                "source_club_id": row.get("source_club_id"),
+                "acquisition_team_season_id": row.get("source_team_season_id"),
+                "source_record_index": row.get("source_record_index"),
+                "source_club_is_home": row.get("source_club_is_home"),
+                "source_club_home_flag_raw": row.get("source_club_home_flag_raw"),
+                "source_club_result_code_raw": row.get("source_club_result_code_raw"),
+                "source_club_result_validation": row.get("source_club_result_validation"),
+                "source_club_yellow_cards_raw": row.get("source_club_yellow_cards_raw"),
+                "source_club_red_cards_raw": row.get("source_club_red_cards_raw"),
+                "source_values_raw": row.get("source_values_raw"),
+                "url": row.get("url"),
+                "snapshot_directory": row.get("snapshot_directory"),
+                "snapshot_sha256": row.get("snapshot_sha256"),
+                "captured_at_utc": row.get("captured_at_utc"),
+            }
+            for row in sorted(rows, key=lambda item: (
+                item.get("captured_at_utc") or "", item.get("source_club_id") or "",
+                int(item.get("source_record_index") or 0),
+            ))
+        ]
+        comp = competition_any_by_id.get(match_id)
+        team_identity_checks = {
+            "season_match": bool(
+                selected.get("season_raw")
+                and str(selected.get("season_raw")).replace("-", "/")
+                == str((comp or {}).get("season") or "").replace("-", "/")
+                == "2026/27"
+            ),
+            "home_club_crosswalk": bool(
+                comp and comp.get("home_team_season_id")
+                and club_by_team.get(str(comp.get("home_team_season_id"))) == selected.get("home_club_id")
+            ),
+            "away_club_crosswalk": bool(
+                comp and comp.get("away_team_season_id")
+                and club_by_team.get(str(comp.get("away_team_season_id"))) == selected.get("away_club_id")
+            ),
+            "date_match": bool(comp and comp.get("date") == selected.get("date")),
+            "score_match": bool(
+                comp and comp.get("home_goals") == selected.get("home_goals")
+                and comp.get("away_goals") == selected.get("away_goals")
+            ),
+        }
+        team_identity_verified = all(team_identity_checks.values())
+        selected_source = next((
+            {
+                "source_club_id": item.get("source_club_id"),
+                "acquisition_team_season_id": item.get("acquisition_team_season_id"),
+                "url": item.get("url"),
+                "snapshot_directory": item.get("snapshot_directory"),
+                "snapshot_sha256": item.get("snapshot_sha256"),
+                "captured_at_utc": item.get("captured_at_utc"),
+            }
+            for item in source_observations
+            if item.get("source_club_id") == selected.get("source_club_id")
+            and item.get("source_record_index") == selected.get("source_record_index")
+        ), None)
+        match = {
+            key: value for key, value in selected.items()
+            if key not in {
+                "source_club_id", "source_team_season_id", "source_record_index", "url",
+                "snapshot_directory", "snapshot_sha256", "captured_at_utc",
+            }
+        }
+        match.update({
+            "match_season_raw": selected.get("season_raw"),
+            "competition_fields": {
+                "match_id": match_id,
+                "date": selected.get("date"),
+                "season": selected.get("season_raw"),
+                "competition_code": selected.get("competition_code_raw"),
+                "home_club_id": selected.get("home_club_id"),
+                "away_club_id": selected.get("away_club_id"),
+                "home_team_name": selected.get("home_team_name_raw"),
+                "away_team_name": selected.get("away_team_name_raw"),
+                "home_goals": selected.get("home_goals"),
+                "away_goals": selected.get("away_goals"),
+                "referee_id": selected.get("referee_id_raw"),
+                "round_label": selected.get("round_label_raw"),
+                "round_code": selected.get("round_code_raw"),
+            },
+            "group": comp.get("group") if team_identity_verified and comp else None,
+            "home_team_season_id": (
+                comp.get("home_team_season_id") if team_identity_verified and comp else None
+            ),
+            "away_team_season_id": (
+                comp.get("away_team_season_id") if team_identity_verified and comp else None
+            ),
+            "team_season_identity_status": (
+                "VERIFIED_COMPETITION_CROSSWALK" if team_identity_verified else "NOT_ESTABLISHED"
+            ),
+            "team_season_identity_evidence": {
+                "kind": "competition_match_and_current_team_alignment_crosswalk",
+                "match_id": match_id,
+                "checks": team_identity_checks,
+                "extraction_key": comp.get("_competition_extraction_key") if comp else None,
+                "snapshot_sha256": comp.get("_snapshot_sha256") if comp else None,
+                "captured_at_utc": comp.get("_captured_at_utc") if comp else None,
+            } if team_identity_verified else None,
             "source_observation_count": len(rows),
             "source_club_ids": sorted({str(row["source_club_id"]) for row in rows}),
             "differing_fields_between_club_sources": different_fields,
-            "source_observations": [
-                {
-                    "source_club_id": row.get("source_club_id"),
-                    "source_team_season_id": row.get("source_team_season_id"),
-                    "source_record_index": row.get("source_record_index"),
-                    "url": row.get("url"),
-                    "snapshot_directory": row.get("snapshot_directory"),
-                    "snapshot_sha256": row.get("snapshot_sha256"),
-                    "captured_at_utc": row.get("captured_at_utc"),
-                }
-                for row in rows
-            ],
+            "source_observations": source_observations,
+            "acquisition_context": {
+                "source_observation_count": len(rows),
+                "source_club_ids": sorted({str(row["source_club_id"]) for row in rows}),
+                "acquisition_team_season_ids": sorted({
+                    str(row["source_team_season_id"]) for row in rows
+                    if row.get("source_team_season_id")
+                }),
+                "selected_source_observation": selected_source,
+            },
         })
+        unique_matches.append(match)
         if len(rows) > 1:
             duplicate_matches.append({
                 "match_id": match_id,
@@ -955,32 +1147,86 @@ def _embedded_club_matches(
         and row.get("season_raw") == "2026-27"
         and row.get("competition_code_raw") == "1rf"
     }
-    club_by_team = {team_id: club_id for club_id, team_id in team_by_club.items()}
     crosscheck_rows: list[dict[str, Any]] = []
     for match_id, competition in sorted(competition_by_id.items()):
         embedded = embedded_current.get(match_id)
         if embedded is None:
             crosscheck_rows.append({"match_id": match_id, "status": "NOT_OBSERVED"})
             continue
-        checks = {
+        parsed_round = _verifiable_round(embedded)
+        normalized_referee = _canonical_referee(embedded.get("referee_id_raw"))
+        competition_referee = _canonical_referee(competition.get("referee_id"))
+        checks: dict[str, bool | None] = {
+            "match_id_match": str(embedded.get("match_id")) == str(competition.get("match_id")),
             "date_match": embedded.get("date") == competition.get("date"),
+            "season_match": str(embedded.get("season_raw") or "").replace("-", "/")
+            == str(competition.get("season") or "").replace("-", "/"),
+            "competition_code_match": (
+                embedded.get("competition_code_raw") == "1rf"
+                if competition.get("_competition_source_validated") is True else None
+            ),
             "home_team_match": _normalized_name(embedded.get("home_team_name_raw"))
             == _normalized_name(competition.get("home_team_name")),
             "away_team_match": _normalized_name(embedded.get("away_team_name_raw"))
             == _normalized_name(competition.get("away_team_name")),
-            "score_match": embedded.get("home_goals") == competition.get("home_goals")
-            and embedded.get("away_goals") == competition.get("away_goals"),
             "home_club_match": embedded.get("home_club_id")
             == club_by_team.get(str(competition.get("home_team_season_id"))),
             "away_club_match": embedded.get("away_club_id")
             == club_by_team.get(str(competition.get("away_team_season_id"))),
+            "score_match": embedded.get("home_goals") == competition.get("home_goals")
+            and embedded.get("away_goals") == competition.get("away_goals"),
+            "referee_match": (
+                normalized_referee == competition_referee
+                if normalized_referee is not None and competition_referee is not None else None
+            ),
+            "round_match": parsed_round == competition.get("round")
+            if parsed_round is not None and competition.get("round") is not None else None,
+        }
+        embedded_sources = embedded.get("source_observations", [])
+        competition_source = {
+            "url": competition.get("match_url"),
+            "snapshot_directory": competition.get("_competition_snapshot_directory"),
+            "snapshot_sha256": competition.get("_snapshot_sha256"),
+            "captured_at_utc": competition.get("_captured_at_utc"),
+            "extraction_key": competition.get("_competition_extraction_key"),
+        }
+        comparison_values = {
+            "match_id_match": (embedded.get("match_id"), competition.get("match_id")),
+            "date_match": (embedded.get("date"), competition.get("date")),
+            "season_match": (embedded.get("season_raw"), competition.get("season")),
+            "competition_code_match": (embedded.get("competition_code_raw"), "1rf"),
+            "home_team_match": (embedded.get("home_team_name_raw"), competition.get("home_team_name")),
+            "away_team_match": (embedded.get("away_team_name_raw"), competition.get("away_team_name")),
+            "home_club_match": (
+                embedded.get("home_club_id"), club_by_team.get(str(competition.get("home_team_season_id"))),
+            ),
+            "away_club_match": (
+                embedded.get("away_club_id"), club_by_team.get(str(competition.get("away_team_season_id"))),
+            ),
+            "score_match": (
+                [embedded.get("home_goals"), embedded.get("away_goals")],
+                [competition.get("home_goals"), competition.get("away_goals")],
+            ),
+            "referee_match": (normalized_referee, competition_referee),
+            "round_match": (parsed_round, competition.get("round")),
+        }
+        field_comparisons = {
+            field: {
+                "matched": matched,
+                "embedded_value": comparison_values[field][0],
+                "competition_value": comparison_values[field][1],
+                "embedded_sources": embedded_sources,
+                "competition_source": competition_source,
+            }
+            for field, matched in checks.items()
         }
         crosscheck_rows.append({
             "match_id": match_id,
-            "status": "MATCHED" if all(checks.values()) else "DIFFERENT",
+            "status": "MATCHED" if all(value is not False for value in checks.values()) else "DIFFERENT",
             "checks": checks,
-            "different_fields": [name for name, matched in checks.items() if not matched],
-            "competition_snapshot_at": competition.get("_captured_at_utc"),
+            "different_fields": [name for name, matched in checks.items() if matched is False],
+            "field_comparisons": field_comparisons,
+            "competition_source": competition_source,
             "embedded_source_club_ids": embedded.get("source_club_ids", []),
         })
     observed_ids = set(embedded_current)
@@ -988,14 +1234,16 @@ def _embedded_club_matches(
     unmatched_embedded = sorted(observed_ids - expected_ids)
     missing_embedded = sorted(expected_ids - observed_ids)
     crosscheck = {
-        "competition_export_played_matches": len(expected_ids),
+        "status": "COMPLETED" if crosscheck_requested else "NOT_RUN_NO_SELECTED_COMPETITION_SOURCE",
+        "competition_export_played_matches": len(expected_ids) if crosscheck_requested else None,
         "embedded_current_season_1rf_unique_matches": len(observed_ids),
-        "competition_match_ids_missing_from_embedded": missing_embedded,
-        "embedded_match_ids_absent_from_competition": unmatched_embedded,
-        "match_ids_equal": expected_ids == observed_ids,
-        "matches_compared": len(crosscheck_rows) - len(missing_embedded),
-        "matches_all_fields_equal": sum(row.get("status") == "MATCHED" for row in crosscheck_rows),
-        "differences": [row for row in crosscheck_rows if row.get("status") != "MATCHED"],
+        "competition_match_ids_missing_from_embedded": missing_embedded if crosscheck_requested else None,
+        "embedded_match_ids_absent_from_competition": unmatched_embedded if crosscheck_requested else None,
+        "match_ids_equal": expected_ids == observed_ids if crosscheck_requested else None,
+        "matches_compared": len(crosscheck_rows) - len(missing_embedded) if crosscheck_requested else 0,
+        "matches_all_fields_equal": sum(row.get("status") == "MATCHED" for row in crosscheck_rows) if crosscheck_requested else None,
+        "comparisons": crosscheck_rows if crosscheck_requested else [],
+        "differences": [row for row in crosscheck_rows if row.get("status") != "MATCHED"] if crosscheck_requested else [],
     }
     for row in crosscheck["differences"]:
         incidents.append({
@@ -1003,12 +1251,21 @@ def _embedded_club_matches(
             "severity": "warning",
             **row,
         })
+    card_crosscheck = _filtered_table_card_crosscheck(observations, table_match_observations)
+    for row in card_crosscheck["comparisons"]:
+        if row["status"] == "DIFFERENT":
+            incidents.append({
+                "code": "EMBEDDED_MATCH_FILTERED_TABLE_CARD_DIFFERENCE",
+                "severity": "warning",
+                **row,
+            })
     return {
         "observations": observations,
         "matches": unique_matches,
         "duplicates": duplicate_matches,
         "coverage": coverage,
         "competition_crosscheck": crosscheck,
+        "filtered_table_card_crosscheck": card_crosscheck,
         "incidents": incidents,
         "summary": {
             "source_pages_parsed": sum(row.get("source_parse_status") == "PARSED_19_POSITION_TUPLES" for row in coverage),
@@ -1028,6 +1285,10 @@ def _embedded_club_matches(
                 row.get("season_raw") == "2026-27" and row.get("competition_code_raw") == "1rf"
                 for row in observations
             ),
+            "filtered_table_card_comparisons": card_crosscheck["comparison_count"],
+            "filtered_table_card_matches": card_crosscheck["matched_count"],
+            "filtered_table_card_differences": card_crosscheck["different_count"],
+            "filtered_table_card_not_captured": card_crosscheck["not_captured_count"],
             **crosscheck,
         },
     }
@@ -1044,7 +1305,9 @@ def build_club_team_sports_data(
     rosters, coaches, roster_by_team = _rosters_and_coaches(parsed_pages, stats_by_membership)
     movements = _movement_references(parsed_pages)
     observations, aggregates = _match_observations(parsed_pages, team_by_club, name_by_team)
-    embedded = _embedded_club_matches(parsed_pages, competition_matches, team_by_club)
+    embedded = _embedded_club_matches(
+        parsed_pages, competition_matches, team_by_club, observations, crosscheck_requested,
+    )
     all_variant_clubs = {
         str(page.get("entity_id"))
         for page in parsed_pages
@@ -1105,7 +1368,7 @@ def build_club_team_sports_data(
         if not item["all_match_variant_captured"]:
             item["status"] = "INCOMPLETE"
     return {
-        "schema_version": "football_data_hub.bdfutbol.club_team_sports.v2",
+        "schema_version": "football_data_hub.bdfutbol.club_team_sports.v3",
         "rosters": rosters,
         "player_statistics": statistics,
         "coaches_current": coaches,
@@ -1117,6 +1380,7 @@ def build_club_team_sports_data(
         "duplicate_embedded_matches": embedded["duplicates"],
         "embedded_match_coverage_by_club": embedded["coverage"],
         "embedded_match_competition_crosscheck": embedded["competition_crosscheck"],
+        "embedded_match_filtered_table_card_crosscheck": embedded["filtered_table_card_crosscheck"],
         "coverage_by_club": match_coverage,
         "coverage_by_team": roster_coverage,
         "tracking_variants": tracking,
@@ -1157,6 +1421,6 @@ def build_club_team_sports_data(
             "competition_played_matches_not_observed": len({
                 str(item["match_id"]) for item in competition_matches
                 if item.get("match_id") is not None and normalized_match_state(item) == "played"
-            } - {str(item["match_id"]) for item in matches}),
+            } - {str(item["match_id"]) for item in matches}) if crosscheck_requested else None,
         },
     }

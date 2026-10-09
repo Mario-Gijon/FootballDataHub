@@ -5,8 +5,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import time
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
@@ -191,8 +193,8 @@ def _process_snapshots(
     output_root: Path,
     compact_export: bool = False,
     include_table_csv: bool = False,
-    competition_matches: list[dict[str, Any]] | None = None,
-    competition_selection: dict[str, Any] | None = None,
+    competition_root: Path = DEFAULT_COMPETITION_ROOT,
+    competition_extraction_key: str | None = None,
 ) -> tuple[Path, dict[str, Any], list[dict[str, Any]], list[dict[str, Any]]]:
     started = time.perf_counter()
     snapshots = discover_latest_snapshots(raw_root, team_season_ids=set(team_season_ids))
@@ -224,6 +226,20 @@ def _process_snapshots(
             variant_pages.append(page)
         else:
             parsed_pages.append(page)
+    competition_selection = _load_competition_selection(
+        competition_root,
+        extraction_key=competition_extraction_key,
+        independent_match_evidence=_independent_competition_evidence(parsed_pages),
+    )
+    competition_matches = competition_selection["matches"]
+    selection = competition_selection["selection"]
+    print(
+        "Fuente de competición: "
+        f"{selection.get('selection_status')} / {selection.get('selection_mode')} / "
+        f"{selection.get('selected_extraction_key') or 'sin selección automática'}"
+    )
+    if selection.get("selection_status") == "AMBIGUOUS_VALID_SOURCES":
+        print("AVISO: fuentes Hito 1B válidas en conflicto; export sin cruce de competición.", file=sys.stderr)
     coverage = build_club_team_coverage(
         parsed_pages,
         team_season_ids=team_season_ids,
@@ -238,7 +254,7 @@ def _process_snapshots(
         processing_seconds=time.perf_counter() - started,
         include_table_csv=include_table_csv if compact_export else None,
         competition_matches=competition_matches,
-        competition_selection=competition_selection,
+        competition_selection=selection,
     )
     return output_dir, coverage, parsed_pages, variant_pages
 
@@ -253,7 +269,7 @@ def _load_competition_matches(
     *,
     extraction_key: str | None = None,
 ) -> list[dict[str, Any]] | None:
-    """Return one local Hito 1B extraction selected by integrity and recency."""
+    """Return one local Hito 1B extraction after integrity and coherence checks."""
     return load_competition_export(root, extraction_key=extraction_key)["matches"]
 
 
@@ -261,26 +277,159 @@ def _load_competition_selection(
     root: Path = DEFAULT_COMPETITION_ROOT,
     *,
     extraction_key: str | None = None,
+    independent_match_evidence: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    return load_competition_export(root, extraction_key=extraction_key)
+    return load_competition_export(
+        root,
+        extraction_key=extraction_key,
+        independent_match_evidence=independent_match_evidence,
+    )
+
+
+def _independent_competition_evidence(parsed_pages: list[dict[str, Any]]) -> dict[str, Any]:
+    """Build corroboration from canonical club P arrays, without mixing page captures."""
+    team_by_club = {
+        str(page.get("club_id")): str(page.get("entity_id"))
+        for page in parsed_pages
+        if page.get("entity_type") == "team_season"
+        and page.get("view") == "team_alignment"
+        and page.get("club_id")
+    }
+    canonical_pages = [
+        page for page in parsed_pages
+        if page.get("entity_type") == "club"
+        and page.get("view") == "club_matches"
+        and not urlsplit(str(page.get("url", ""))).query
+    ]
+    by_match: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for page in canonical_pages:
+        data = page.get("club_data", {}).get("embedded_match_data", {})
+        if data.get("parse_status") != "PARSED_19_POSITION_TUPLES":
+            continue
+        club_id = str(page.get("entity_id"))
+        source = page.get("source", {})
+        for item in data.get("records", []):
+            values = item.get("source_values_raw")
+            if not isinstance(values, list) or len(values) != 19:
+                continue
+            if str(values[18]) != "2026-27" or str(values[1]) != "1rf":
+                continue
+            try:
+                match_id = str(int(values[8]))
+                home_club_id = f"e{int(values[10])}"
+                away_club_id = f"e{int(values[11])}"
+            except (TypeError, ValueError):
+                continue
+            date_match = re.fullmatch(r"(\d{2})/(\d{2})/(\d{4})", str(values[3] or ""))
+            date_iso = (
+                f"{date_match.group(3)}-{date_match.group(2)}-{date_match.group(1)}"
+                if date_match else None
+            )
+            try:
+                home_goals, away_goals = int(values[6]), int(values[7])
+            except (TypeError, ValueError):
+                home_goals = away_goals = None
+            round_match = re.fullmatch(r"Jornada\s+(\d+)", str(values[14] or "").strip(), re.IGNORECASE)
+            round_code = str(values[15]).strip() if values[15] is not None else ""
+            round_number = int(round_match.group(1)) if round_match and round_code == round_match.group(1) else None
+            referee_id = str(values[13]).strip().removeprefix("r") if values[13] is not None else None
+            by_match[match_id].append({
+                "match_id": match_id,
+                "date": date_iso,
+                "season": "2026/27",
+                "competition_code": "1rf",
+                "home_club_id": home_club_id,
+                "away_club_id": away_club_id,
+                "home_team_name": str(values[5]) if values[5] is not None else None,
+                "away_team_name": str(values[9]) if values[9] is not None else None,
+                "home_team_season_id": team_by_club.get(home_club_id),
+                "away_team_season_id": team_by_club.get(away_club_id),
+                "home_goals": home_goals,
+                "away_goals": away_goals,
+                "referee_id": referee_id,
+                "round": round_number,
+                "source_club_id": club_id,
+                "source_values_raw": values,
+                "source_observation": {
+                    "source_club_id": club_id,
+                    "source_record_index": item.get("source_record_index"),
+                    "url": page.get("url"),
+                    "snapshot_directory": source.get("snapshot_directory"),
+                    "snapshot_sha256": source.get("rendered_html_sha256"),
+                    "captured_at_utc": source.get("captured_at_utc"),
+                },
+            })
+
+    evidence_items = []
+    invalid_ids = []
+    neutral_positions = (0, 1, 3, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 18)
+    for match_id, rows in sorted(by_match.items()):
+        first = rows[0]
+        expected_clubs = {first["home_club_id"], first["away_club_id"]}
+        same_payload = all(
+            [row["source_values_raw"][index] for index in neutral_positions]
+            == [first["source_values_raw"][index] for index in neutral_positions]
+            for row in rows[1:]
+        )
+        observed_clubs = {row["source_club_id"] for row in rows}
+        if (
+            len(rows) != 2 or not same_payload or observed_clubs != expected_clubs
+            or not first.get("date") or first.get("home_goals") is None
+            or not first.get("home_team_season_id") or not first.get("away_team_season_id")
+        ):
+            invalid_ids.append(match_id)
+            continue
+        evidence_items.append({
+            **{key: first[key] for key in (
+                "match_id", "date", "season", "competition_code", "home_club_id", "away_club_id",
+                "home_team_name", "away_team_name", "home_team_season_id", "away_team_season_id",
+                "home_goals", "away_goals", "referee_id", "round",
+            )},
+            "source_observations": [row["source_observation"] for row in rows],
+        })
+
+    source_pages = []
+    for page in canonical_pages:
+        data = page.get("club_data", {}).get("embedded_match_data", {})
+        if data.get("parse_status") != "PARSED_19_POSITION_TUPLES":
+            continue
+        source = page.get("source", {})
+        source_pages.append({
+            "club_id": str(page.get("entity_id")),
+            "url": page.get("url"),
+            "snapshot_directory": source.get("snapshot_directory"),
+            "snapshot_sha256": source.get("rendered_html_sha256"),
+            "captured_at_utc": source.get("captured_at_utc"),
+        })
+    is_validated = bool(evidence_items) and not invalid_ids and len(source_pages) == len(canonical_pages)
+    return {
+        "status": "VALIDATED" if is_validated else "INCOMPLETE",
+        "items": evidence_items,
+        "source": {
+            "source_family": "canonical_club_pages.embedded_match_data.P",
+            "same_publisher_as_competition_source": True,
+            "canonical_club_pages": len(canonical_pages),
+            "pages_with_supported_P": len(source_pages),
+            "unique_current_1rf_matches": len(by_match),
+            "validated_matches": len(evidence_items),
+            "invalid_match_ids": invalid_ids,
+            "club_page_sources": source_pages,
+        },
+    }
 
 
 def run(args: argparse.Namespace) -> int:
     team_ids = list(dict.fromkeys(args.team_id))
     if args.mode == "offline":
         try:
-            competition_selection = _load_competition_selection(
-                args.competition_root,
-                extraction_key=args.competition_extraction_key,
-            )
             output_dir, coverage, parsed_pages, variant_pages = _process_snapshots(
                 team_season_ids=team_ids,
                 raw_root=args.raw_root,
                 output_root=args.output_root,
                 compact_export=args.compact_export,
                 include_table_csv=args.include_table_csv,
-                competition_matches=competition_selection["matches"],
-                competition_selection=competition_selection["selection"],
+                competition_root=args.competition_root,
+                competition_extraction_key=args.competition_extraction_key,
             )
         except (OSError, ValueError, RuntimeError) as exc:
             print(f"ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
@@ -362,18 +511,14 @@ def run(args: argparse.Namespace) -> int:
     status_path = args.analysis_root / timestamp_utc() / "capture_status.json"
     _write_live_status(status_path, capture_status)
     try:
-        competition_selection = _load_competition_selection(
-            args.competition_root,
-            extraction_key=args.competition_extraction_key,
-        )
         output_dir, coverage, parsed_pages, variant_pages = _process_snapshots(
             team_season_ids=team_ids,
             raw_root=args.raw_root,
             output_root=args.output_root,
             compact_export=args.compact_export,
             include_table_csv=args.include_table_csv,
-            competition_matches=competition_selection["matches"],
-            competition_selection=competition_selection["selection"],
+            competition_root=args.competition_root,
+            competition_extraction_key=args.competition_extraction_key,
         )
     except (OSError, ValueError, RuntimeError) as exc:
         print(f"ERROR al procesar snapshots preservados: {type(exc).__name__}: {exc}", file=sys.stderr)
