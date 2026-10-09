@@ -16,6 +16,7 @@ from football_data_hub.collectors.bdfutbol_player import (
     capture_player_snapshots,
 )
 from football_data_hub.parsers.player_pages import (
+    PLAYER_VIEWS,
     build_player_acquisition_inventory,
     discover_player_snapshots,
     parse_player_snapshot_inventory,
@@ -46,6 +47,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
     live = modes.add_parser("live", help="Captura hasta tres IDs indicados explícitamente")
     live.add_argument("--player-id", action="append", required=True, help="ID jNNN; repetir para varios")
+    live.add_argument(
+        "--view", choices=PLAYER_VIEWS, action="append", default=None,
+        help="Vista a capturar; repetir para varias. Si se omite, captura las cuatro vistas base.",
+    )
     live.add_argument("--raw-root", type=Path, default=DEFAULT_RAW_ROOT)
     live.add_argument("--profile", type=Path, default=DEFAULT_PROFILE)
     live.add_argument("--browser", choices=("brave", "chrome", "chromium", "auto"), default="brave")
@@ -143,6 +148,7 @@ def run(args: argparse.Namespace) -> int:
             return 0
         records = capture_player_snapshots(
             player_ids=args.player_id,
+            views=args.view,
             raw_root=args.raw_root,
             profile_dir=args.profile,
             browser=args.browser,

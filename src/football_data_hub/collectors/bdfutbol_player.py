@@ -234,6 +234,7 @@ def _validate_written_snapshot(directory: Path, url: str) -> tuple[str, int]:
 def capture_player_snapshots(
     *,
     player_ids: list[str],
+    views: list[str] | tuple[str, ...] | None = None,
     raw_root: Path,
     profile_dir: Path,
     browser: str = "brave",
@@ -242,11 +243,19 @@ def capture_player_snapshots(
     refresh: bool = False,
     screenshot: bool = False,
 ) -> list[dict[str, Any]]:
-    """Capture up to three explicitly named players; stop on the first non-VALID page."""
+    """Capture selected views for up to three players; stop on the first non-VALID page."""
     if not player_ids:
         raise ValueError("Indica al menos un ID explícito de jugador")
     if len(player_ids) > 3:
         raise ValueError("Cada piloto live se limita a tres jugadores como máximo")
+    selected_views = tuple(PLAYER_VIEWS if views is None else views)
+    if not selected_views:
+        raise ValueError("Indica al menos una vista de jugador")
+    if len(set(selected_views)) != len(selected_views):
+        raise ValueError("No repitas vistas de jugador")
+    invalid_views = [view for view in selected_views if view not in PLAYER_VIEWS]
+    if invalid_views:
+        raise ValueError(f"Vistas de jugador no admitidas: {', '.join(invalid_views)}")
     if settle_ms < 0:
         raise ValueError("settle_ms debe ser >= 0")
     ids = sorted(set(player_ids), key=_player_sort_key)
@@ -258,7 +267,7 @@ def capture_player_snapshots(
     discovered = discover_player_snapshots(raw_root) if raw_root.is_dir() else {}
     existing: dict[str, dict[str, Any]] = {}
     for player_id in ids:
-        for view in PLAYER_VIEWS:
+        for view in selected_views:
             url = player_view_url(player_id, view)
             valid = sorted(
                 (item for item in discovered.get((player_id, view), []) if _snapshot_matches(item, url)),
@@ -270,7 +279,7 @@ def capture_player_snapshots(
     records: list[dict[str, Any]] = []
     to_capture = [
         (player_id, view, player_view_url(player_id, view))
-        for player_id in ids for view in PLAYER_VIEWS
+        for player_id in ids for view in selected_views
         if refresh or not (reuse_existing and player_view_url(player_id, view) in existing)
     ]
     if not to_capture:
@@ -283,7 +292,7 @@ def capture_player_snapshots(
                 "snapshot_directory": existing[player_view_url(player_id, view)]["snapshot_directory"],
                 "snapshot_sha256": existing[player_view_url(player_id, view)]["snapshot_sha256"],
             }
-            for player_id in ids for view in PLAYER_VIEWS
+            for player_id in ids for view in selected_views
         ]
 
     from football_data_hub.core.browser_runtime import BrowserRuntimeConfig
@@ -298,7 +307,7 @@ def capture_player_snapshots(
         with BrowserSessionManager(session_config) as session:
             access = BDFutbolAccess(session)
             for player_id in ids:
-                for view in PLAYER_VIEWS:
+                for view in selected_views:
                     url = player_view_url(player_id, view)
                     if reuse_existing and not refresh and url in existing:
                         item = existing[url]

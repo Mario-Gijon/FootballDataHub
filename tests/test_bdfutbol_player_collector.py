@@ -18,7 +18,7 @@ from football_data_hub.collectors.bdfutbol_player import (
 from football_data_hub.collectors import bdfutbol_player as player_collector
 from football_data_hub.parsers.player_pages import PLAYER_VIEWS, discover_player_snapshots
 from football_data_hub.providers.bdfutbol.access import AccessAssessment, AccessStatus
-from scrape_bdfutbol_players import dry_run
+from scrape_bdfutbol_players import dry_run, parse_args
 
 
 def _assessment(url: str, status: AccessStatus = AccessStatus.VALID) -> AccessAssessment:
@@ -194,6 +194,35 @@ def test_existing_valid_snapshot_is_reused_without_starting_browser(tmp_path: Pa
     assert profile["status"] == "REUSED_VALID"
     assert profile["snapshot_directory"] == "previous/j123/profile"
     assert not list(raw_root.glob("20*"))
+
+
+def test_explicit_view_selection_captures_only_requested_profile(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    raw_root = tmp_path / "raw"
+    calls = _install_fake_browser(monkeypatch, [AccessStatus.VALID])
+
+    records = capture_player_snapshots(
+        player_ids=["j123"],
+        views=["profile"],
+        raw_root=raw_root,
+        profile_dir=tmp_path / "profile",
+    )
+
+    assert calls == [player_view_url("j123", "profile")]
+    assert [(row["player_id"], row["view"], row["status"]) for row in records] == [
+        ("j123", "profile", "CAPTURED_VALID"),
+    ]
+    state_path = next(raw_root.glob("*/acquisition_state.json"))
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    assert state["resumable"] is True
+    assert len(state["records"]) == 1
+
+
+def test_live_cli_accepts_staged_view_selection() -> None:
+    args = parse_args(["live", "--player-id", "j23751", "--view", "profile"])
+    assert args.player_id == ["j23751"]
+    assert args.view == ["profile"]
 
 
 def test_refresh_writes_a_new_immutable_snapshot_and_keeps_previous(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
