@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import unicodedata
 from collections import Counter, defaultdict
@@ -688,6 +689,350 @@ def _tracking_variants(
     return result, player_rows
 
 
+_CLUB_MATCH_P_FIELD_MAP = {
+    0: "season_start_year_raw",
+    1: "competition_code_raw",
+    3: "date_raw",
+    4: "source_club_home_flag_raw",
+    5: "home_team_name_raw",
+    6: "home_goals_raw",
+    7: "away_goals_raw",
+    8: "match_id_raw",
+    9: "away_team_name_raw",
+    10: "home_club_id_raw",
+    11: "away_club_id_raw",
+    12: "source_club_result_code_raw",
+    13: "referee_id_raw",
+    14: "round_label_raw",
+    15: "round_code_raw",
+    16: "source_club_yellow_cards_raw",
+    17: "source_club_red_cards_raw",
+    18: "season_raw",
+}
+
+
+def _source_integer(value: Any) -> int | None:
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return _integer(value)
+    return None
+
+
+def _embedded_date(value: Any) -> str | None:
+    raw = str(value) if value is not None else ""
+    match = _DATE.fullmatch(raw.strip())
+    if match is None:
+        return None
+    day, month, year = match.groups()
+    return f"{year}-{month}-{day}"
+
+
+def _embedded_club_matches(
+    parsed_pages: list[dict[str, Any]],
+    competition_matches: list[dict[str, Any]],
+    team_by_club: dict[str, str],
+) -> dict[str, Any]:
+    """Normalize the source P tuples while retaining every club observation."""
+    observations: list[dict[str, Any]] = []
+    coverage: list[dict[str, Any]] = []
+    incidents: list[dict[str, Any]] = []
+    for page in sorted(parsed_pages, key=lambda item: (str(item.get("entity_id")), str(item.get("url")))):
+        if page.get("entity_type") != "club" or page.get("view") != "club_matches":
+            continue
+        if urlsplit(str(page.get("url", ""))).query:
+            # Filtered snapshots repeat the same page-wide P array; the canonical
+            # no-query page is the single observation source for each club.
+            continue
+        source_data = page.get("club_data", {}).get("embedded_match_data", {})
+        parse_status = source_data.get("parse_status", "NOT_PRESENT")
+        source_records = source_data.get("records", [])
+        club_id = str(page.get("entity_id"))
+        club_number = club_id.removeprefix("e")
+        team_season_id = team_by_club.get(club_id)
+        source_page = _source(page)
+        club_rows: list[dict[str, Any]] = []
+        for item in source_records:
+            raw_values = item.get("source_values_raw")
+            if not isinstance(raw_values, list) or len(raw_values) != 19:
+                incidents.append({
+                    "code": "EMBEDDED_MATCH_UNSUPPORTED_TUPLE",
+                    "severity": "error",
+                    "club_id": club_id,
+                    "source_record_index": item.get("source_record_index"),
+                    **source_page,
+                })
+                continue
+            match_id_value = _source_integer(raw_values[8])
+            match_id = str(match_id_value) if match_id_value is not None and match_id_value > 0 else None
+            home_club_number = str(raw_values[10]) if raw_values[10] is not None else None
+            away_club_number = str(raw_values[11]) if raw_values[11] is not None else None
+            home_club_id = f"e{home_club_number}" if home_club_number else None
+            away_club_id = f"e{away_club_number}" if away_club_number else None
+            home_goals = _source_integer(raw_values[6])
+            away_goals = _source_integer(raw_values[7])
+            source_is_home = (
+                home_club_number == club_number
+                if home_club_number == club_number or away_club_number == club_number
+                else None
+            )
+            location_flag = _source_integer(raw_values[4])
+            if source_is_home is None:
+                incidents.append({
+                    "code": "EMBEDDED_MATCH_SOURCE_CLUB_NOT_PARTICIPANT",
+                    "severity": "error",
+                    "club_id": club_id,
+                    "match_id": match_id,
+                    "source_record_index": item.get("source_record_index"),
+                    **source_page,
+                })
+            elif location_flag != (1 if source_is_home else 0):
+                incidents.append({
+                    "code": "EMBEDDED_MATCH_HOME_FLAG_CONFLICT",
+                    "severity": "warning",
+                    "club_id": club_id,
+                    "match_id": match_id,
+                    "source_record_index": item.get("source_record_index"),
+                    "source_flag_raw": location_flag,
+                    "home_club_id_raw": home_club_number,
+                    "away_club_id_raw": away_club_number,
+                    **source_page,
+                })
+            if source_is_home is not None and home_goals is not None and away_goals is not None:
+                home_result = 1 if home_goals > away_goals else -1 if home_goals < away_goals else 0
+                result_from_club = home_result if source_is_home else -home_result
+                result_status = (
+                    "CONSISTENT_WITH_SCORE"
+                    if _source_integer(raw_values[12]) == result_from_club
+                    else "DIFFERS_FROM_SCORE"
+                )
+            else:
+                result_from_club = None
+                result_status = "NOT_COMPARABLE"
+            row = {
+                "match_id": match_id,
+                "match_url": f"https://www.bdfutbol.com/es/p/p.php?id={match_id}" if match_id else None,
+                "season_start_year_raw": raw_values[0],
+                "season_raw": raw_values[18],
+                "competition_code_raw": raw_values[1],
+                "date_raw": raw_values[3],
+                "date": _embedded_date(raw_values[3]),
+                "source_club_home_flag_raw": raw_values[4],
+                "source_club_is_home": source_is_home,
+                "home_team_name_raw": raw_values[5],
+                "home_goals_raw": raw_values[6],
+                "home_goals": home_goals,
+                "away_goals_raw": raw_values[7],
+                "away_goals": away_goals,
+                "away_team_name_raw": raw_values[9],
+                "home_club_id_raw": raw_values[10],
+                "home_club_id": home_club_id,
+                "away_club_id_raw": raw_values[11],
+                "away_club_id": away_club_id,
+                "source_club_result_code_raw": raw_values[12],
+                "source_club_result_from_score": result_from_club,
+                "source_club_result_validation": result_status,
+                "referee_id_raw": raw_values[13],
+                "round_label_raw": raw_values[14],
+                "round_code_raw": raw_values[15],
+                "source_club_yellow_cards_raw": raw_values[16],
+                "source_club_red_cards_raw": raw_values[17],
+                "unmapped_values_raw": {"2": raw_values[2]},
+                "source_club_id": club_id,
+                "source_team_season_id": team_season_id,
+                "source_kind": "club_match_window.P",
+                "source_record_index": item.get("source_record_index"),
+                "source_field_map": _CLUB_MATCH_P_FIELD_MAP,
+                "source_values_raw": raw_values,
+                **source_page,
+            }
+            club_rows.append(row)
+            observations.append(row)
+            if result_status == "DIFFERS_FROM_SCORE":
+                incidents.append({
+                    "code": "EMBEDDED_MATCH_RESULT_CODE_DIFFERS_FROM_SCORE",
+                    "severity": "warning",
+                    "club_id": club_id,
+                    "match_id": match_id,
+                    "source_record_index": item.get("source_record_index"),
+                    "source_result_code_raw": raw_values[12],
+                    "result_from_score": result_from_club,
+                    **source_page,
+                })
+        coverage.append({
+            "club_id": club_id,
+            "team_season_id": team_season_id,
+            "source_parse_status": parse_status,
+            "source_records_reported": source_data.get("record_count", 0),
+            "source_observations_parsed": len(club_rows),
+            "unique_match_ids": len({row["match_id"] for row in club_rows if row.get("match_id")}),
+            "records_without_match_id": sum(not row.get("match_id") for row in club_rows),
+            "seasons_observed": sorted({str(row["season_raw"]) for row in club_rows if row.get("season_raw")}),
+            "current_season_1rf_observations": sum(
+                row.get("season_raw") == "2026-27" and row.get("competition_code_raw") == "1rf"
+                for row in club_rows
+            ),
+            "url": source_page.get("url"),
+            "snapshot_directory": source_page.get("snapshot_directory"),
+            "snapshot_sha256": source_page.get("snapshot_sha256"),
+            "captured_at_utc": source_page.get("captured_at_utc"),
+        })
+
+    observations.sort(key=lambda item: (
+        str(item.get("match_id") or ""),
+        str(item.get("source_club_id") or ""),
+        int(item.get("source_record_index") or 0),
+    ))
+    by_id: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in observations:
+        if row.get("match_id"):
+            by_id[str(row["match_id"])].append(row)
+    comparison_fields = (
+        "season_raw", "competition_code_raw", "date", "home_team_name_raw", "home_goals",
+        "away_goals", "away_team_name_raw", "home_club_id", "away_club_id", "referee_id_raw",
+        "round_label_raw", "round_code_raw",
+    )
+    unique_matches: list[dict[str, Any]] = []
+    duplicate_matches: list[dict[str, Any]] = []
+    for match_id, rows in sorted(by_id.items()):
+        selected = rows[0]
+        different_fields = [
+            field for field in comparison_fields
+            if len({json.dumps(row.get(field), ensure_ascii=False, sort_keys=True) for row in rows}) > 1
+        ]
+        unique_matches.append({
+            **selected,
+            "source_observation_count": len(rows),
+            "source_club_ids": sorted({str(row["source_club_id"]) for row in rows}),
+            "differing_fields_between_club_sources": different_fields,
+            "source_observations": [
+                {
+                    "source_club_id": row.get("source_club_id"),
+                    "source_team_season_id": row.get("source_team_season_id"),
+                    "source_record_index": row.get("source_record_index"),
+                    "url": row.get("url"),
+                    "snapshot_directory": row.get("snapshot_directory"),
+                    "snapshot_sha256": row.get("snapshot_sha256"),
+                    "captured_at_utc": row.get("captured_at_utc"),
+                }
+                for row in rows
+            ],
+        })
+        if len(rows) > 1:
+            duplicate_matches.append({
+                "match_id": match_id,
+                "observation_count": len(rows),
+                "source_club_ids": sorted({str(row["source_club_id"]) for row in rows}),
+                "differing_fields": different_fields,
+                "source_observations": [
+                    {
+                        "source_club_id": row.get("source_club_id"),
+                        "source_record_index": row.get("source_record_index"),
+                        "snapshot_sha256": row.get("snapshot_sha256"),
+                    }
+                    for row in rows
+                ],
+            })
+        if different_fields:
+            incidents.append({
+                "code": "EMBEDDED_MATCH_DUPLICATE_SOURCES_DIFFER",
+                "severity": "warning",
+                "match_id": match_id,
+                "different_fields": different_fields,
+                "source_club_ids": sorted({str(row["source_club_id"]) for row in rows}),
+            })
+
+    competition_by_id = {
+        str(row["match_id"]): row
+        for row in competition_matches
+        if row.get("match_id") is not None
+        and normalized_match_state(row) == "played"
+        and str(row.get("season") or "").replace("-", "/") == "2026/27"
+    }
+    embedded_current = {
+        str(row["match_id"]): row for row in unique_matches
+        if row.get("match_id")
+        and row.get("season_raw") == "2026-27"
+        and row.get("competition_code_raw") == "1rf"
+    }
+    club_by_team = {team_id: club_id for club_id, team_id in team_by_club.items()}
+    crosscheck_rows: list[dict[str, Any]] = []
+    for match_id, competition in sorted(competition_by_id.items()):
+        embedded = embedded_current.get(match_id)
+        if embedded is None:
+            crosscheck_rows.append({"match_id": match_id, "status": "NOT_OBSERVED"})
+            continue
+        checks = {
+            "date_match": embedded.get("date") == competition.get("date"),
+            "home_team_match": _normalized_name(embedded.get("home_team_name_raw"))
+            == _normalized_name(competition.get("home_team_name")),
+            "away_team_match": _normalized_name(embedded.get("away_team_name_raw"))
+            == _normalized_name(competition.get("away_team_name")),
+            "score_match": embedded.get("home_goals") == competition.get("home_goals")
+            and embedded.get("away_goals") == competition.get("away_goals"),
+            "home_club_match": embedded.get("home_club_id")
+            == club_by_team.get(str(competition.get("home_team_season_id"))),
+            "away_club_match": embedded.get("away_club_id")
+            == club_by_team.get(str(competition.get("away_team_season_id"))),
+        }
+        crosscheck_rows.append({
+            "match_id": match_id,
+            "status": "MATCHED" if all(checks.values()) else "DIFFERENT",
+            "checks": checks,
+            "different_fields": [name for name, matched in checks.items() if not matched],
+            "competition_snapshot_at": competition.get("_captured_at_utc"),
+            "embedded_source_club_ids": embedded.get("source_club_ids", []),
+        })
+    observed_ids = set(embedded_current)
+    expected_ids = set(competition_by_id)
+    unmatched_embedded = sorted(observed_ids - expected_ids)
+    missing_embedded = sorted(expected_ids - observed_ids)
+    crosscheck = {
+        "competition_export_played_matches": len(expected_ids),
+        "embedded_current_season_1rf_unique_matches": len(observed_ids),
+        "competition_match_ids_missing_from_embedded": missing_embedded,
+        "embedded_match_ids_absent_from_competition": unmatched_embedded,
+        "match_ids_equal": expected_ids == observed_ids,
+        "matches_compared": len(crosscheck_rows) - len(missing_embedded),
+        "matches_all_fields_equal": sum(row.get("status") == "MATCHED" for row in crosscheck_rows),
+        "differences": [row for row in crosscheck_rows if row.get("status") != "MATCHED"],
+    }
+    for row in crosscheck["differences"]:
+        incidents.append({
+            "code": "EMBEDDED_MATCH_COMPETITION_CROSSCHECK_DIFFERENCE",
+            "severity": "warning",
+            **row,
+        })
+    return {
+        "observations": observations,
+        "matches": unique_matches,
+        "duplicates": duplicate_matches,
+        "coverage": coverage,
+        "competition_crosscheck": crosscheck,
+        "incidents": incidents,
+        "summary": {
+            "source_pages_parsed": sum(row.get("source_parse_status") == "PARSED_19_POSITION_TUPLES" for row in coverage),
+            "source_pages_expected": len(coverage),
+            "club_observations": len(observations),
+            "unique_match_ids": len(unique_matches),
+            "duplicate_observations": len(observations) - len(unique_matches),
+            "matches_with_multiple_club_sources": len(duplicate_matches),
+            "matches_without_id": sum(not row.get("match_id") for row in observations),
+            "result_code_score_disagreements": sum(
+                row.get("source_club_result_validation") == "DIFFERS_FROM_SCORE"
+                for row in observations
+            ),
+            "duplicate_source_conflicts": sum(bool(row.get("differing_fields")) for row in duplicate_matches),
+            "historical_seasons_observed": sorted({str(row["season_raw"]) for row in observations if row.get("season_raw")}),
+            "current_season_1rf_observations": sum(
+                row.get("season_raw") == "2026-27" and row.get("competition_code_raw") == "1rf"
+                for row in observations
+            ),
+            **crosscheck,
+        },
+    }
+
+
 def build_club_team_sports_data(
     parsed_pages: list[dict[str, Any]], competition_matches: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
@@ -699,6 +1044,7 @@ def build_club_team_sports_data(
     rosters, coaches, roster_by_team = _rosters_and_coaches(parsed_pages, stats_by_membership)
     movements = _movement_references(parsed_pages)
     observations, aggregates = _match_observations(parsed_pages, team_by_club, name_by_team)
+    embedded = _embedded_club_matches(parsed_pages, competition_matches, team_by_club)
     all_variant_clubs = {
         str(page.get("entity_id"))
         for page in parsed_pages
@@ -750,7 +1096,7 @@ def build_club_team_sports_data(
         }
         for item in tracking if not item["header_5_present"]
     ]
-    incidents = [*match_incidents, *track_issues]
+    incidents = [*match_incidents, *track_issues, *embedded["incidents"]]
     match_coverage = [
         {**item, "all_match_variant_captured": item["club_id"] in all_variant_clubs}
         for item in match_coverage
@@ -759,13 +1105,18 @@ def build_club_team_sports_data(
         if not item["all_match_variant_captured"]:
             item["status"] = "INCOMPLETE"
     return {
-        "schema_version": "football_data_hub.bdfutbol.club_team_sports.v1",
+        "schema_version": "football_data_hub.bdfutbol.club_team_sports.v2",
         "rosters": rosters,
         "player_statistics": statistics,
         "coaches_current": coaches,
         "movement_references": movements,
         "match_observations": observations,
         "matches_played": matches,
+        "embedded_match_observations": embedded["observations"],
+        "matches_from_embedded_data": embedded["matches"],
+        "duplicate_embedded_matches": embedded["duplicates"],
+        "embedded_match_coverage_by_club": embedded["coverage"],
+        "embedded_match_competition_crosscheck": embedded["competition_crosscheck"],
         "coverage_by_club": match_coverage,
         "coverage_by_team": roster_coverage,
         "tracking_variants": tracking,
@@ -791,6 +1142,18 @@ def build_club_team_sports_data(
             "clubs_match_expected": len(match_coverage),
             "tracking_header_5_missing": sum(not item["header_5_present"] for item in tracking),
             "all_match_variants_captured": len(all_variant_clubs),
+            "embedded_match_observations": embedded["summary"]["club_observations"],
+            "embedded_unique_match_ids": embedded["summary"]["unique_match_ids"],
+            "embedded_duplicate_observations": embedded["summary"]["duplicate_observations"],
+            "embedded_result_code_score_disagreements": embedded["summary"]["result_code_score_disagreements"],
+            "embedded_match_source_conflicts": embedded["summary"]["duplicate_source_conflicts"],
+            "embedded_competition_played_matches_expected": embedded["summary"]["competition_export_played_matches"],
+            "embedded_competition_played_matches_observed": embedded["summary"]["embedded_current_season_1rf_unique_matches"],
+            "embedded_competition_match_ids_equal": embedded["summary"]["match_ids_equal"],
+            "embedded_competition_matches_all_fields_equal": embedded["summary"]["matches_all_fields_equal"],
+            "embedded_source_pages_parsed": embedded["summary"]["source_pages_parsed"],
+            "embedded_source_pages_expected": embedded["summary"]["source_pages_expected"],
+            "embedded_historical_seasons_observed": len(embedded["summary"]["historical_seasons_observed"]),
             "competition_played_matches_not_observed": len({
                 str(item["match_id"]) for item in competition_matches
                 if item.get("match_id") is not None and normalized_match_state(item) == "played"

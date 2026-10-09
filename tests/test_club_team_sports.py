@@ -295,6 +295,29 @@ def test_competition_match_ids_can_confirm_scope_difference_in_season_aggregate(
 
 def test_compact_exports_are_gzip_readable_and_keep_normalized_provenance(tmp_path: Path) -> None:
     all_pages = _base_pages()
+    # Synthetic tuples exercise the additive gzip export contract; live raw
+    # evidence is checked by the optional snapshot integration test.
+    home_tuple = [
+        2026, "1rf", "", "01/10/2026", 1, "Home", 2, 1, 272516,
+        "Away", 1, 2, 1, 600001, "Jornada 1", "1", 2, 0, "2026-27",
+    ]
+    away_tuple = [*home_tuple]
+    away_tuple[4] = 0
+    away_tuple[12] = -1
+    away_tuple[16] = 1
+    for page in all_pages:
+        if page.get("view") != "club_matches" or "?" in page.get("url", ""):
+            continue
+        source_values = home_tuple if page.get("entity_id") == "e1" else away_tuple
+        page["club_data"] = {
+            "embedded_match_data": {
+                "source_variable": "P",
+                "parse_status": "PARSED_19_POSITION_TUPLES",
+                "tuple_width": 19,
+                "record_count": 1,
+                "records": [{"source_record_index": 0, "source_values_raw": source_values}],
+            },
+        }
     pages = [page for page in all_pages if "?cat=1rf&temp=2026-27" not in page["url"]]
     variants = [page for page in all_pages if "?cat=1rf&temp=2026-27" in page["url"]]
     output = write_club_team_exports(
@@ -316,6 +339,10 @@ def test_compact_exports_are_gzip_readable_and_keep_normalized_provenance(tmp_pa
         matches = json.load(stream)
     with gzip.open(output / "sports/tracking_player_rows.json.gz", "rt", encoding="utf-8") as stream:
         tracking = json.load(stream)
+    with gzip.open(output / "sports/embedded_match_observations.json.gz", "rt", encoding="utf-8") as stream:
+        embedded_observations = json.load(stream)
+    with gzip.open(output / "sports/matches_from_embedded_data.json.gz", "rt", encoding="utf-8") as stream:
+        embedded_matches = json.load(stream)
     with gzip.open(output / "dataset_metadata.json.gz", "rt", encoding="utf-8") as stream:
         metadata = json.load(stream)
     assert len(statistics["items"]) == 4
@@ -324,10 +351,105 @@ def test_compact_exports_are_gzip_readable_and_keep_normalized_provenance(tmp_pa
     assert len(matches["items"]) == 1
     assert len(matches["items"][0]["source_observations"]) == 2
     assert len(tracking["items"]) == 2
+    assert len(embedded_observations["items"]) == 2
+    assert embedded_observations["items"][0]["source_values_raw"][8] == 272516
+    assert embedded_observations["items"][0]["snapshot_sha256"].startswith("sha-")
+    assert len(embedded_matches["items"]) == 1
+    assert embedded_matches["items"][0]["source_observation_count"] == 2
     assert (output / "sports/player_statistics.csv.gz").is_file()
+    assert (output / "sports/embedded_match_observations.csv.gz").is_file()
+    assert (output / "sports/matches_from_embedded_data.csv.gz").is_file()
     competition_selection = metadata["competition_crosscheck_source"]
     assert competition_selection["selection"]["selected_extraction_key"] == "hito1b-test"
     assert competition_selection["played_fixtures_loaded"] == 0
     assert competition_selection["normalized_state_counts"] == {
         "played": 0, "scheduled": 0, "unresolved": 0, "inconsistent": 0,
     }
+
+
+def _embedded_club_page(club_id: str, source_values: list, *, index: int = 0) -> dict:
+    return {
+        "entity_type": "club",
+        "entity_id": club_id,
+        "view": "club_matches",
+        "url": f"https://www.bdfutbol.com/es/p/{club_id}.html",
+        "source": _source(),
+        "club_data": {
+            "embedded_match_data": {
+                "source_variable": "P",
+                "parse_status": "PARSED_19_POSITION_TUPLES",
+                "tuple_width": 19,
+                "record_count": 1,
+                "records": [{"source_record_index": index, "source_values_raw": source_values}],
+            },
+        },
+        "tables": [],
+        "relationships": [],
+    }
+
+
+def test_embedded_match_observations_deduplicate_ids_and_crosscheck_without_losing_sources() -> None:
+    # Synthetic 19-position rows model two club-page observations of one match.
+    home_tuple = [
+        2026, "1rf", "", "01/10/2026", 1, "Home", 2, 1, 272516,
+        "Away", 1, 2, 1, 600001, "Jornada 1", "1", 2, 0, "2026-27",
+    ]
+    away_tuple = [*home_tuple]
+    away_tuple[4] = 0
+    away_tuple[12] = -1
+    away_tuple[16] = 1
+    pages = [
+        _team_identity("t2026-1", "e1", "Home"),
+        _team_identity("t2026-2", "e2", "Away"),
+        _embedded_club_page("e1", home_tuple),
+        _embedded_club_page("e2", away_tuple),
+    ]
+    competition = [{
+        "match_id": "272516",
+        "date": "2026-10-01",
+        "home_team_name": "Home",
+        "away_team_name": "Away",
+        "home_team_season_id": "t2026-1",
+        "away_team_season_id": "t2026-2",
+        "home_goals": 2,
+        "away_goals": 1,
+        "result_raw": "2 1",
+        "result_status": "played",
+        "fixture_status": "played",
+        "season": "2026/27",
+    }]
+
+    data = build_club_team_sports_data(pages, competition)
+
+    assert len(data["embedded_match_observations"]) == 2
+    assert len(data["matches_from_embedded_data"]) == 1
+    assert data["matches_from_embedded_data"][0]["source_observation_count"] == 2
+    assert len(data["matches_from_embedded_data"][0]["source_observations"]) == 2
+    assert len(data["duplicate_embedded_matches"]) == 1
+    assert data["embedded_match_competition_crosscheck"]["match_ids_equal"] is True
+    assert data["embedded_match_competition_crosscheck"]["matches_all_fields_equal"] == 1
+
+
+def test_embedded_match_result_code_disagreement_is_reported_and_raw_is_preserved() -> None:
+    # Synthetic anomaly fixture; real raw review separately found three historic
+    # source codes that disagree with their score, so scores must not overwrite P.
+    source_tuple = [
+        2026, "1rf", "", "01/10/2026", 1, "Home", 2, 1, 272516,
+        "Away", 1, 2, -1, 600001, "Jornada 1", "1", 2, 0, "2026-27",
+    ]
+    pages = [
+        _team_identity("t2026-1", "e1", "Home"),
+        _team_identity("t2026-2", "e2", "Away"),
+        _embedded_club_page("e1", source_tuple),
+    ]
+
+    data = build_club_team_sports_data(pages)
+
+    observation = data["embedded_match_observations"][0]
+    assert observation["source_club_result_code_raw"] == -1
+    assert observation["source_club_result_from_score"] == 1
+    assert observation["source_club_result_validation"] == "DIFFERS_FROM_SCORE"
+    assert any(
+        incident["code"] == "EMBEDDED_MATCH_RESULT_CODE_DIFFERS_FROM_SCORE"
+        for incident in data["incidents"]
+    )

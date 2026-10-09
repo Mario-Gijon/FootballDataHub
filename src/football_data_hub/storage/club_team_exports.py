@@ -475,6 +475,12 @@ def write_club_team_exports(
             {
                 **item,
                 "columns_json": _json_cell(item.get("columns")),
+                "source_values_raw_json": _json_cell(item.get("source_values_raw")),
+                "source_field_map_json": _json_cell(item.get("source_field_map")),
+                "source_club_ids_json": _json_cell(item.get("source_club_ids")),
+                "unmapped_values_raw_json": _json_cell(item.get("unmapped_values_raw")),
+                "differing_fields_between_club_sources_json": _json_cell(item.get("differing_fields_between_club_sources")),
+                "seasons_observed_json": _json_cell(item.get("seasons_observed")),
                 "source_observations_json": _json_cell(item.get("source_observations")),
                 "aggregate_expected_json": _json_cell(item.get("aggregate_expected")),
                 "outcomes_observed_json": _json_cell(item.get("outcomes_observed")),
@@ -528,6 +534,50 @@ def write_club_team_exports(
          "source_snapshot_sha256", "captured_at_utc", "competition_comparison"),
     )
     write_sports_json("match_observations", sports["match_observations"])
+    write_sports_json("embedded_match_observations", sports["embedded_match_observations"])
+    write_sports_csv(
+        "embedded_match_observations",
+        sports["embedded_match_observations"],
+        (
+            "match_id", "match_url", "season_raw", "competition_code_raw", "date_raw", "date",
+            "home_team_name_raw", "home_goals_raw", "away_goals_raw", "away_team_name_raw",
+            "home_club_id_raw", "away_club_id_raw", "source_club_id", "source_team_season_id",
+            "source_club_is_home", "source_club_home_flag_raw", "source_club_result_code_raw",
+            "source_club_result_validation", "source_club_result_from_score", "referee_id_raw",
+            "round_label_raw", "round_code_raw", "source_club_yellow_cards_raw",
+            "source_club_red_cards_raw", "source_record_index", "source_kind", "url",
+            "snapshot_directory", "snapshot_sha256", "captured_at_utc", "source_values_raw_json",
+            "source_field_map_json", "unmapped_values_raw_json",
+        ),
+    )
+    write_sports_json("matches_from_embedded_data", sports["matches_from_embedded_data"])
+    write_sports_csv(
+        "matches_from_embedded_data",
+        sports["matches_from_embedded_data"],
+        (
+            "match_id", "match_url", "season_raw", "competition_code_raw", "date_raw", "date",
+            "home_team_name_raw", "home_goals_raw", "away_goals_raw", "away_team_name_raw",
+            "home_club_id_raw", "away_club_id_raw", "source_observation_count", "source_club_ids",
+            "source_club_ids_json", "differing_fields_between_club_sources_json", "url", "snapshot_directory", "snapshot_sha256",
+            "captured_at_utc", "source_values_raw_json", "source_observations_json",
+        ),
+    )
+    write_sports_json("duplicate_embedded_matches", sports["duplicate_embedded_matches"])
+    write_sports_json("embedded_match_coverage_by_club", sports["embedded_match_coverage_by_club"])
+    write_sports_csv(
+        "embedded_match_coverage_by_club",
+        sports["embedded_match_coverage_by_club"],
+        (
+            "club_id", "team_season_id", "source_parse_status", "source_records_reported",
+            "source_observations_parsed", "unique_match_ids", "records_without_match_id",
+            "seasons_observed_json", "current_season_1rf_observations", "url", "snapshot_directory",
+            "snapshot_sha256", "captured_at_utc",
+        ),
+    )
+    write_json(
+        sports_dir / "embedded_match_competition_crosscheck.json",
+        {**sports_metadata, **sports["embedded_match_competition_crosscheck"]},
+    )
     write_sports_json("coverage_by_club", sports["coverage_by_club"])
     write_sports_csv(
         "coverage_by_club", sports["coverage_by_club"],

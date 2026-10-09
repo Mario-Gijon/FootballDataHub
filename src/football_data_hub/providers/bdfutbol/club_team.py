@@ -7,6 +7,7 @@ new records or fetch linked player/coach histories.
 
 from __future__ import annotations
 
+import json
 import re
 from collections.abc import Iterable
 from typing import Any
@@ -14,8 +15,8 @@ from urllib.parse import parse_qs, urljoin, urlsplit
 
 from bs4 import BeautifulSoup, Tag
 
-PARSER_VERSION = "1.4.0"
-SCHEMA_VERSION = "football_data_hub.bdfutbol.club_team.v2"
+PARSER_VERSION = "1.5.0"
+SCHEMA_VERSION = "football_data_hub.bdfutbol.club_team.v3"
 
 _CLUB_ID = re.compile(r"^e(?P<number>\d+)$")
 _TEAM_SEASON_ID = re.compile(r"^t\d{4}-\d+$")
@@ -35,6 +36,8 @@ _PERSON_PATH = {
     "match_path": re.compile(r"^/es/p/(p\d+)\.html$"),
 }
 _CHART_SELECTOR = re.compile(r"chart|graf|graph|highchart|plot", re.IGNORECASE)
+_CLUB_MATCH_P_ASSIGNMENT = re.compile(r"(?<![\w$])(?:window\.)?P\s*=\s*")
+_CLUB_MATCH_P_TUPLE_WIDTH = 19
 
 
 class InvalidClubTeamPage(ValueError):
@@ -84,6 +87,65 @@ def classify_club_team_url(url: str) -> dict[str, str] | None:
 
 def _clean_text(value: str) -> str:
     return " ".join(value.split())
+
+
+def _club_match_p_data(soup: BeautifulSoup) -> dict[str, Any]:
+    """Retain club match rows embedded in the observed JavaScript ``P`` array.
+
+    The source tuple is retained verbatim by position. Its 19-position shape was
+    checked against captured club pages; semantic interpretation happens in the
+    sports parser, where the available match and filtered-page comparisons live.
+    """
+    decoder = json.JSONDecoder()
+    assignments = 0
+    candidates: list[list[list[Any]]] = []
+    saw_assignment = False
+    for script in soup.find_all("script"):
+        source = script.string or script.get_text()
+        if not source:
+            continue
+        for match in _CLUB_MATCH_P_ASSIGNMENT.finditer(source):
+            saw_assignment = True
+            assignments += 1
+            try:
+                value, _ = decoder.raw_decode(source[match.end():])
+            except json.JSONDecodeError:
+                continue
+            if isinstance(value, list) and all(isinstance(row, list) for row in value):
+                candidates.append(value)
+
+    if assignments > 1:
+        status = "AMBIGUOUS_ASSIGNMENTS"
+        values: list[list[Any]] = []
+    elif not candidates:
+        status = "UNINTERPRETED_ASSIGNMENT" if saw_assignment else "NOT_PRESENT"
+        values = []
+    elif len(candidates) != 1:
+        status = "AMBIGUOUS_ASSIGNMENTS"
+        values = []
+    else:
+        values = candidates[0]
+        scalar_types = (str, int, float, bool, type(None))
+        if any(
+            len(row) != _CLUB_MATCH_P_TUPLE_WIDTH
+            or any(not isinstance(item, scalar_types) for item in row)
+            for row in values
+        ):
+            status = "UNSUPPORTED_TUPLE_SHAPE"
+            values = []
+        else:
+            status = "PARSED_19_POSITION_TUPLES" if values else "PRESENT_EMPTY"
+
+    return {
+        "source_variable": "P",
+        "parse_status": status,
+        "tuple_width": _CLUB_MATCH_P_TUPLE_WIDTH if status == "PARSED_19_POSITION_TUPLES" else None,
+        "record_count": len(values),
+        "records": [
+            {"source_record_index": index, "source_values_raw": row}
+            for index, row in enumerate(values)
+        ],
+    }
 
 
 def _direct_cells(row: Tag) -> list[Tag]:
@@ -743,6 +805,10 @@ def parse_club_team_html(
         if len(club_relations) > 1:
             result["diagnostics"].append("Más de un club permanente enlazado desde la vista de equipo-temporada.")
         result["diagnostics"].extend(team_records["diagnostics"])
+    elif page["view"] == "club_matches":
+        result["club_data"] = {
+            "embedded_match_data": _club_match_p_data(soup),
+        }
     if not headings and not tables:
         result["diagnostics"].append("No se encontraron encabezados ni tablas en el contenido principal.")
     return result

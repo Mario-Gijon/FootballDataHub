@@ -198,6 +198,59 @@ def test_other_team_season_and_permanent_club_ids_remain_distinct() -> None:
     assert page["team_data"]["roster_rows"][0]["team_season_id"] == team_id
 
 
+def test_club_matches_embedded_p_retains_the_observed_19_position_tuple() -> None:
+    # Synthetic parser-contract fixture. The 19-position layout is corroborated
+    # by the captured 40-club raw pages and the Hito 1B/filtered match exports.
+    source_tuple = [
+        2026, "1rf", "", "01/10/2026", 1, "Home", 2, 1, 272516,
+        "Away", 1, 2, 1, 600001, "Jornada 1", "1", 2, 0, "2026-27",
+    ]
+    html = f"""<!doctype html><html><head><title>Club | BDFutbol</title></head>
+      <body><div id="body"><div class="hero"><h1>Partidos</h1></div>
+      <script>P={json.dumps([source_tuple])};</script></div></body></html>"""
+
+    page = parse_club_team_html(html, "https://www.bdfutbol.com/es/p/e1.html")
+
+    embedded = page["club_data"]["embedded_match_data"]
+    assert embedded["parse_status"] == "PARSED_19_POSITION_TUPLES"
+    assert embedded["tuple_width"] == 19
+    assert embedded["record_count"] == 1
+    assert embedded["records"][0]["source_values_raw"] == source_tuple
+
+
+def test_club_matches_embedded_p_keeps_unknown_tuple_width_raw_only() -> None:
+    # Synthetic unsupported-shape fixture; it must not be partially interpreted.
+    html = """<html><head><title>Club</title></head><body><div id="body">
+      <script>P=[[2026,"1rf",272516]];</script></div></body></html>"""
+
+    page = parse_club_team_html(html, "https://www.bdfutbol.com/es/p/e1.html")
+
+    embedded = page["club_data"]["embedded_match_data"]
+    assert embedded["parse_status"] == "UNSUPPORTED_TUPLE_SHAPE"
+    assert embedded["record_count"] == 0
+    assert embedded["records"] == []
+
+
+def test_local_real_club_matches_snapshot_has_the_observed_tuple_shape() -> None:
+    # This optional integration check uses a locally captured, hash-verified raw
+    # artifact. Fresh checkouts without ignored raw data skip it.
+    metadata_paths = sorted(Path("data/raw/bdfutbol").glob("**/club_matches/metadata.json"))
+    if not metadata_paths:
+        pytest.skip("No hay snapshots locales de club_matches para validar")
+    snapshot = load_club_team_snapshot(metadata_paths[0].parent)
+
+    page = parse_club_team_html(
+        snapshot.html,
+        snapshot.url,
+        source_metadata=snapshot.metadata,
+    )
+
+    embedded = page["club_data"]["embedded_match_data"]
+    assert embedded["parse_status"] == "PARSED_19_POSITION_TUPLES"
+    assert embedded["record_count"] > 0
+    assert all(len(row["source_values_raw"]) == 19 for row in embedded["records"])
+
+
 def test_statistics_view_keeps_zero_appearances_and_original_cells() -> None:
     page = parse_club_team_html(
         team_html(include_roster=False, statistics_rows=stats_row("j202", "Sin minutos", "0")),
