@@ -97,14 +97,38 @@ def _build_output_files(
             ),
         )
         files[f"{entity_type}_details.json.gz"] = _json_bytes({
-            "schema_version": f"football_data_hub.{entity_type}_details_export.v1",
+            "schema_version": f"football_data_hub.{entity_type}_details_export.v2",
             "parser_version": ENTITY_PAGE_PARSER_VERSION,
             "entity_type": entity_type,
             "source_fingerprint": source_fingerprint,
             "entities": records,
         }, compressed=True)
+    match_resources = {
+        "match_participants": "match_participants",
+        "match_coaches": "match_coaches",
+        "match_events": "match_events",
+        "match_quality": "match_quality",
+    }
+    for resource_name, record_field in match_resources.items():
+        files[f"{resource_name}.json.gz"] = _json_bytes({
+            "schema_version": f"football_data_hub.{resource_name}_export.v1",
+            "parser_version": ENTITY_PAGE_PARSER_VERSION,
+            "source_fingerprint": source_fingerprint,
+            "matches": [
+                {
+                    "match_id": record["entity_id"],
+                    "url": record.get("url"),
+                    "source": record.get("source", {}),
+                    "items": record.get(record_field, {}) if resource_name == "match_quality"
+                    else record.get(record_field, []),
+                }
+                for record in sorted(
+                    records_by_type["match"], key=lambda item: item["entity_id"],
+                )
+            ],
+        }, compressed=True)
     files["coverage.json.gz"] = _json_bytes({
-        "schema_version": "football_data_hub.individual_entity_coverage.v1",
+        "schema_version": "football_data_hub.individual_entity_coverage.v2",
         "parser_version": ENTITY_PAGE_PARSER_VERSION,
         "source_fingerprint": source_fingerprint,
         "snapshots": sorted(coverage, key=lambda item: (
@@ -112,13 +136,13 @@ def _build_output_files(
         )),
     }, compressed=True)
     files["errors.json.gz"] = _json_bytes({
-        "schema_version": "football_data_hub.individual_entity_errors.v1",
+        "schema_version": "football_data_hub.individual_entity_errors.v2",
         "parser_version": ENTITY_PAGE_PARSER_VERSION,
         "source_fingerprint": source_fingerprint,
         "errors": sorted(errors, key=lambda item: item["metadata_path"]),
     }, compressed=True)
     files["summary.json"] = _json_bytes({
-        "schema_version": "football_data_hub.individual_entity_export_summary.v1",
+        "schema_version": "football_data_hub.individual_entity_export_summary.v2",
         "parser_version": ENTITY_PAGE_PARSER_VERSION,
         "source_fingerprint": source_fingerprint,
         "valid_snapshot_count": sum(len(items) for items in records_by_type.values()),
@@ -218,6 +242,18 @@ def run_offline_pipeline(*, repo_root: Path, raw_root: Path, output_root: Path) 
             "embedded_json_dataset_count": record["coverage"]["embedded_json_dataset_count"],
             "interpretation_status": record["coverage"]["interpretation_status"],
         })
+        if entity_type == "match":
+            coverage[-1].update({
+                "participant_count": record["coverage"]["participant_count"],
+                "coach_count": record["coverage"]["coach_count"],
+                "event_count": record["coverage"]["event_count"],
+                "event_occurrence_count": record["coverage"]["event_occurrence_count"],
+                "event_list_completeness": record["coverage"]["event_list_completeness"],
+                "capture_ready_state": record["match_quality"]["capture_ready_state"],
+                "published_result_coherence": record["match_quality"][
+                    "published_result_coherence"
+                ],
+            })
 
     output = write_immutable_entity_exports(
         records_by_type=records_by_type,
