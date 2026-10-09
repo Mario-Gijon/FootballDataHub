@@ -51,6 +51,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--view", choices=PLAYER_VIEWS, action="append", default=None,
         help="Vista a capturar; repetir para varias. Si se omite, captura las cuatro vistas base.",
     )
+    live.add_argument(
+        "--filter", action="append", default=[], metavar="CONTROL=VALOR",
+        help="Captura una variante interactiva verificada; requiere --view statistics.",
+    )
     live.add_argument("--raw-root", type=Path, default=DEFAULT_RAW_ROOT)
     live.add_argument("--profile", type=Path, default=DEFAULT_PROFILE)
     live.add_argument("--browser", choices=("brave", "chrome", "chromium", "auto"), default="brave")
@@ -107,6 +111,26 @@ def _add_parse_coverage(plan: dict[str, Any], parsed_pages: list[dict[str, Any]]
         row["fields_not_investigated"] = page.get("coverage", {}).get("fields_not_investigated", [])
 
 
+def _parse_filter_arguments(
+    raw_filters: list[str], views: list[str] | None
+) -> dict[str, str] | None:
+    if not raw_filters:
+        return None
+    if views != ["statistics"]:
+        raise ValueError("--filter requiere exactamente --view statistics")
+    parsed: dict[str, str] = {}
+    for item in raw_filters:
+        control, separator, value = item.partition("=")
+        if not separator or not control.strip() or not value.strip():
+            raise ValueError(f"Filtro no válido {item!r}; usa CONTROL=VALOR")
+        control = control.strip()
+        value = value.strip()
+        if control in parsed:
+            raise ValueError(f"No repitas el control de filtro {control}")
+        parsed[control] = value
+    return parsed
+
+
 def dry_run(*, raw_root: Path, club_sports: Path, batch_size: int, refresh: bool) -> dict[str, Any]:
     """Validate local player snapshots and report the planned pilot; never opens a browser."""
     roster_path = club_sports / "rosters.json.gz"
@@ -149,6 +173,7 @@ def run(args: argparse.Namespace) -> int:
         records = capture_player_snapshots(
             player_ids=args.player_id,
             views=args.view,
+            filters=_parse_filter_arguments(args.filter, args.view),
             raw_root=args.raw_root,
             profile_dir=args.profile,
             browser=args.browser,

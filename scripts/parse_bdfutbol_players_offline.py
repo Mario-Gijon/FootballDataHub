@@ -15,6 +15,7 @@ from football_data_hub.parsers.player_pages import (
     build_player_pilot_candidates,
     discover_player_snapshots,
     parse_player_snapshot_inventory,
+    parse_player_snapshot_variants_inventory,
 )
 from football_data_hub.parsers.player_source_audit import (
     audit_caceres_scope,
@@ -102,6 +103,7 @@ def run(args: argparse.Namespace) -> int:
         player_inventory = build_player_acquisition_inventory(rosters, raw_inventory)
         _enrich_memberships(player_inventory, args.participants)
         parsed_pages = parse_player_snapshot_inventory(raw_inventory, args.raw_root)
+        parsed_variants = parse_player_snapshot_variants_inventory(raw_inventory, args.raw_root)
         player_inventory["player_pilot_candidates"] = build_player_pilot_candidates(
             player_inventory["memberships"],
             player_inventory["players"],
@@ -134,6 +136,7 @@ def run(args: argparse.Namespace) -> int:
         output = build_player_exports(
             inventory=player_inventory,
             parsed_pages=parsed_pages,
+            parsed_variants=parsed_variants,
             source_audit=source_audit,
             output_root=args.output_root,
         )

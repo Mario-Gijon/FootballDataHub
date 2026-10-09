@@ -310,6 +310,10 @@ def capture_dom_snapshot(
     output_dir: Path,
     limits: InventoryLimits = InventoryLimits(),
     screenshot: bool = False,
+    filter_parameters: dict[str, str] | None = None,
+    interaction_requests: list[dict[str, Any]] | None = None,
+    base_snapshot_directory: str | None = None,
+    base_snapshot_sha256: str | None = None,
 ) -> dict[str, Any]:
     """Archiva HTML renderizado y un inventario sin mutar la página.
 
@@ -350,6 +354,27 @@ def capture_dom_snapshot(
             "rendered_html_sha256": hashlib.sha256(html_bytes).hexdigest(),
             "screenshot_error": screenshot_error,
         }
+        if filter_parameters is not None:
+            metadata.update({
+                "snapshot_kind": "FILTERED_VARIANT",
+                "is_base_view_snapshot": False,
+                "filter_parameters": dict(sorted(filter_parameters.items())),
+                "interaction_mode": "CLIENT_SIDE_SELECT",
+                "interaction_requests": interaction_requests or [],
+                "base_snapshot_directory": base_snapshot_directory,
+                "base_snapshot_sha256": base_snapshot_sha256,
+            })
+            summary.update({
+                "snapshot_kind": "FILTERED_VARIANT",
+                "filter_parameters": dict(sorted(filter_parameters.items())),
+                "base_snapshot_directory": base_snapshot_directory,
+                "base_snapshot_sha256": base_snapshot_sha256,
+            })
+        else:
+            metadata.update({
+                "snapshot_kind": "BASE_VIEW",
+                "is_base_view_snapshot": True,
+            })
         write_json(output_dir / "metadata.json", metadata)
         write_json(output_dir / "summary.json", summary)
         return {**metadata, "inventory_summary": summary}

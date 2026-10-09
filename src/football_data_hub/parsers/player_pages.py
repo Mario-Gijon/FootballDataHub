@@ -12,7 +12,7 @@ from urllib.parse import parse_qs, urljoin, urlsplit
 
 from bs4 import BeautifulSoup, Tag
 
-PLAYER_PARSER_VERSION = "0.2.1"
+PLAYER_PARSER_VERSION = "0.2.2"
 PLAYER_SCHEMA_VERSION = "football_data_hub.bdfutbol.player_pages.v2"
 PLAYER_VIEWS = ("profile", "statistics", "matches", "rivals")
 _PLAYER_URL = re.compile(r"/es/(?:j/j|p/jr?|p/j)(\d+)\.html$")
@@ -78,6 +78,12 @@ def _source(metadata: dict[str, Any], snapshot_directory: str | None, html: str)
         "captured_at_utc": metadata.get("captured_at_utc"),
         "access_status": metadata.get("access_status"),
         "http_status": metadata.get("http_status"),
+        "snapshot_kind": metadata.get("snapshot_kind", "BASE_VIEW"),
+        "is_base_view_snapshot": metadata.get("is_base_view_snapshot"),
+        "filter_parameters": metadata.get("filter_parameters", {}),
+        "interaction_requests": metadata.get("interaction_requests", []),
+        "base_snapshot_directory": metadata.get("base_snapshot_directory"),
+        "base_snapshot_sha256": metadata.get("base_snapshot_sha256"),
         "snapshot_directory": snapshot_directory,
         "rendered_html_sha256": html_hash,
         "metadata_sha256_matches": (
@@ -701,6 +707,7 @@ def _view_records(
     *,
     base_url: str = "",
     captured_at_utc: str | None = None,
+    filter_parameters: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     if view == "profile":
         raise PlayerSnapshotError("La vista profile requiere el parser de identidad y trayectoria")
@@ -748,6 +755,7 @@ def _view_records(
         ) if fixture_table else ([], {})
         query = parse_qs(urlsplit(base_url).query, keep_blank_values=True)
         filters = {key: values[-1] for key, values in query.items()}
+        filters.update(filter_parameters or {})
         if individual_rows:
             detail_status = "INDIVIDUAL_MATCH_FIXTURE_ROWS_PRESENT"
         elif fixture_table and row_role_counts.get("header", 0):
@@ -829,6 +837,10 @@ def parse_player_html(
             player_id,
             base_url=url,
             captured_at_utc=str(metadata.get("captured_at_utc") or "") or None,
+            filter_parameters=(
+                {str(key): str(value) for key, value in metadata.get("filter_parameters", {}).items()}
+                if isinstance(metadata.get("filter_parameters"), dict) else None
+            ),
         )
     roles_observed = [table["table_role"] for table in tables]
     missing_roles = [
@@ -843,8 +855,17 @@ def parse_player_html(
         "table_roles_observed": roles_observed,
         "required_table_roles_missing": missing_roles,
         "interaction_coverage": (summary or {}).get("interaction_coverage", "UNKNOWN"),
-        "filters_pending": [control["id"] or control["name"] for control in _controls(soup, view)],
+        "filters_pending": [
+            control["id"] or control["name"] for control in _controls(soup, view)
+            if (control["id"] or control["name"])
+            not in (metadata.get("filter_parameters") or {})
+        ],
+        "filters_applied": metadata.get("filter_parameters", {}),
+        "is_base_view_snapshot": metadata.get("is_base_view_snapshot", _is_base_view_url(url, view)),
         "data_scope": (
+            "FILTERED_VARIANT_NOT_EXHAUSTIVE"
+            if metadata.get("is_base_view_snapshot") is False
+            else
             "CAREER_ROWS_PRESENT_NOT_CERTIFIED_COMPLETE" if view == "profile"
             else "SNAPSHOT_CONTENT_ONLY_FILTER_VARIANTS_NOT_TESTED"
         ),
@@ -944,11 +965,16 @@ def discover_player_snapshots(raw_root: Path) -> dict[tuple[str, str], list[dict
             "snapshot_sha256": actual_hash,
             "hash_status": hash_status,
             "filter_parameters": {
+                str(key): str(value)
+                for key, value in metadata.get("filter_parameters", {}).items()
+            } if isinstance(metadata.get("filter_parameters"), dict) else {
                 key: values[-1]
                 for key, values in parse_qs(urlsplit(url).query, keep_blank_values=True).items()
                 if not (view == "statistics" and key == "p" and values == ["stats"])
             },
-            "is_base_view_snapshot": _is_base_view_url(url, view),
+            "is_base_view_snapshot": metadata.get(
+                "is_base_view_snapshot", _is_base_view_url(url, view)
+            ),
             "usable": metadata.get("access_status") == "VALID" and metadata.get("http_status") == 200 and hash_status == "VALID",
         }
         result[(player_id, view)].append(item)
@@ -1018,7 +1044,7 @@ def build_player_acquisition_inventory(
                 "filters_status": "NOT_TESTED" if latest else (
                     "FILTERED_VARIANT_CAPTURED_NOT_INVESTIGATED" if filtered_valid else "NOT_CAPTURED"
                 ),
-                "variants_status": "NOT_INVESTIGATED",
+                "variants_status": "FILTERED_VARIANT_CAPTURED" if filtered_valid else "NOT_INVESTIGATED",
                 "snapshot_count": len(candidates),
                 "valid_snapshot_count": len(valid),
                 "base_valid_snapshot_count": len(base_valid),
@@ -1046,7 +1072,7 @@ def build_player_acquisition_inventory(
                         "FILTERED_VARIANT_ONLY" if filtered_valid else "PENDING_CAPTURE"
                     )
                 ),
-                "variants_status": "NOT_INVESTIGATED",
+                "variants_status": "FILTERED_VARIANT_CAPTURED" if filtered_valid else "NOT_INVESTIGATED",
                 "acquisition_status": "ALREADY_CAPTURED" if latest else (
                     "REQUIRES_REVALIDATION" if invalid else (
                         "PENDING_BASE_VIEW_CAPTURE" if filtered_valid else "PENDING_AUTHORIZED_ACCESS"
@@ -1183,3 +1209,33 @@ def parse_player_snapshot_inventory(
         snapshot_path = raw_root / selected["snapshot_directory"]
         parsed.append(parse_player_snapshot(snapshot_path, relative_to=raw_root, expected_player_id=player_id))
     return parsed
+
+
+def parse_player_snapshot_variants_inventory(
+    inventory: dict[tuple[str, str], list[dict[str, Any]]],
+    raw_root: Path,
+) -> list[dict[str, Any]]:
+    """Parse the latest valid snapshot for each explicit filter-parameter set."""
+    parsed: list[dict[str, Any]] = []
+    for (player_id, view), candidates in sorted(inventory.items()):
+        variants: dict[str, dict[str, Any]] = {}
+        for item in candidates:
+            if not item["usable"] or item.get("is_base_view_snapshot", True):
+                continue
+            parameters = item.get("filter_parameters", {})
+            key = json.dumps(parameters, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+            variants[key] = item
+        for selected in variants.values():
+            snapshot_path = raw_root / selected["snapshot_directory"]
+            parsed.append(parse_player_snapshot(
+                snapshot_path,
+                relative_to=raw_root,
+                expected_player_id=player_id,
+            ))
+    return sorted(
+        parsed,
+        key=lambda page: (
+            str(page.get("player_id")), str(page.get("view")),
+            json.dumps(page.get("source", {}).get("filter_parameters", {}), sort_keys=True),
+        ),
+    )

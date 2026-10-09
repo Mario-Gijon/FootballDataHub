@@ -32,6 +32,9 @@ _VIEW_MARKERS = {
 _VIEW_TITLE_MARKERS = {"profile": ("Futbolista",)}
 _VIEW_REQUIRED_SELECTORS = {"profile": ("h1", ".traject")}
 _VIEW_DOCUMENT_VALIDATORS = {"profile": missing_profile_field_evidence}
+_VIEW_FILTER_OPTIONS = {
+    "statistics": {"cats_milestones": {"2aB", "1rf", "CHA", "CNF", "COP"}},
+}
 _BASE_URL = "https://www.bdfutbol.com/es"
 
 
@@ -55,6 +58,10 @@ class PlayerAcquisitionStopped(RuntimeError):
         self.records = records
         self.reason = reason
         super().__init__(f"Adquisición detenida en {player_id}/{view}: {status} ({url})")
+
+
+class _PlayerVariantAccessBlocked(RuntimeError):
+    """A client-side player filter produced a challenge or denied request."""
 
 
 def player_view_url(player_id: str, view: str) -> str:
@@ -86,6 +93,20 @@ def _snapshot_matches(candidate: dict[str, Any], url: str) -> bool:
         and candidate.get("url") == url
         and candidate.get("requested_url") == url
         and candidate.get("final_url") == url
+    )
+
+
+def _variant_matches(
+    candidate: dict[str, Any], url: str, filter_parameters: dict[str, str]
+) -> bool:
+    return (
+        candidate.get("usable") is True
+        and candidate.get("hash_status") == "VALID"
+        and candidate.get("is_base_view_snapshot") is False
+        and candidate.get("url") == url
+        and candidate.get("requested_url") == url
+        and candidate.get("final_url") == url
+        and candidate.get("filter_parameters") == filter_parameters
     )
 
 
@@ -214,7 +235,12 @@ def _new_run_root(raw_root: Path) -> Path:
     return target
 
 
-def _validate_written_snapshot(directory: Path, url: str) -> tuple[str, int]:
+def _validate_written_snapshot(
+    directory: Path,
+    url: str,
+    *,
+    filter_parameters: dict[str, str] | None = None,
+) -> tuple[str, int]:
     metadata = json.loads((directory / "metadata.json").read_text(encoding="utf-8"))
     raw = (directory / "rendered.html").read_bytes()
     digest = hashlib.sha256(raw).hexdigest()
@@ -228,6 +254,12 @@ def _validate_written_snapshot(directory: Path, url: str) -> tuple[str, int]:
         raise ValueError("el SHA-256 del HTML no coincide con metadata")
     if metadata.get("rendered_html_bytes") != len(raw):
         raise ValueError("el tamaño del HTML no coincide con metadata")
+    if filter_parameters is not None and (
+        metadata.get("snapshot_kind") != "FILTERED_VARIANT"
+        or metadata.get("is_base_view_snapshot") is not False
+        or metadata.get("filter_parameters") != filter_parameters
+    ):
+        raise ValueError("la metadata de variante no coincide con los filtros solicitados")
     return digest, len(raw)
 
 
@@ -242,6 +274,7 @@ def capture_player_snapshots(
     reuse_existing: bool = True,
     refresh: bool = False,
     screenshot: bool = False,
+    filters: dict[str, str] | None = None,
 ) -> list[dict[str, Any]]:
     """Capture selected views for up to three players; stop on the first non-VALID page."""
     if not player_ids:
@@ -256,6 +289,24 @@ def capture_player_snapshots(
     invalid_views = [view for view in selected_views if view not in PLAYER_VIEWS]
     if invalid_views:
         raise ValueError(f"Vistas de jugador no admitidas: {', '.join(invalid_views)}")
+    filter_parameters = dict(sorted((filters or {}).items()))
+    if filter_parameters:
+        if views is None or len(selected_views) != 1:
+            raise ValueError("Una variante requiere exactamente una vista indicada con --view")
+        supported = _VIEW_FILTER_OPTIONS.get(selected_views[0], {})
+        unsupported = set(filter_parameters) - set(supported)
+        if unsupported:
+            raise ValueError(
+                f"Controles de variante no verificados para {selected_views[0]}: "
+                f"{', '.join(sorted(unsupported))}"
+            )
+        invalid_values = [
+            f"{control}={value}"
+            for control, value in filter_parameters.items()
+            if value not in supported[control]
+        ]
+        if invalid_values:
+            raise ValueError(f"Opciones de variante no verificadas: {', '.join(invalid_values)}")
     if settle_ms < 0:
         raise ValueError("settle_ms debe ser >= 0")
     ids = sorted(set(player_ids), key=_player_sort_key)
@@ -266,21 +317,37 @@ def capture_player_snapshots(
     raw_root = raw_root.expanduser().resolve()
     discovered = discover_player_snapshots(raw_root) if raw_root.is_dir() else {}
     existing: dict[str, dict[str, Any]] = {}
+    existing_variants: dict[str, dict[str, Any]] = {}
+    base_snapshots: dict[str, dict[str, Any]] = {}
     for player_id in ids:
         for view in selected_views:
             url = player_view_url(player_id, view)
-            valid = sorted(
-                (item for item in discovered.get((player_id, view), []) if _snapshot_matches(item, url)),
+            candidates = discovered.get((player_id, view), [])
+            valid_base = sorted(
+                (item for item in candidates if _snapshot_matches(item, url)),
                 key=lambda item: (str(item.get("captured_at_utc") or ""), str(item.get("snapshot_directory") or "")),
             )
-            if valid:
-                existing[url] = valid[-1]
+            if valid_base:
+                base_snapshots[url] = valid_base[-1]
+                existing[url] = valid_base[-1]
+            if filter_parameters:
+                valid_variants = sorted(
+                    (item for item in candidates if _variant_matches(item, url, filter_parameters)),
+                    key=lambda item: (str(item.get("captured_at_utc") or ""), str(item.get("snapshot_directory") or "")),
+                )
+                if valid_variants:
+                    existing_variants[url] = valid_variants[-1]
 
     records: list[dict[str, Any]] = []
     to_capture = [
         (player_id, view, player_view_url(player_id, view))
         for player_id in ids for view in selected_views
-        if refresh or not (reuse_existing and player_view_url(player_id, view) in existing)
+        if refresh or not (
+            reuse_existing
+            and player_view_url(player_id, view) in (
+                existing_variants if filter_parameters else existing
+            )
+        )
     ]
     if not to_capture:
         return [
@@ -288,9 +355,17 @@ def capture_player_snapshots(
                 "player_id": player_id,
                 "view": view,
                 "url": player_view_url(player_id, view),
-                "status": "REUSED_VALID",
-                "snapshot_directory": existing[player_view_url(player_id, view)]["snapshot_directory"],
-                "snapshot_sha256": existing[player_view_url(player_id, view)]["snapshot_sha256"],
+                "status": "REUSED_VALID_VARIANT" if filter_parameters else "REUSED_VALID",
+                "snapshot_kind": "FILTERED_VARIANT" if filter_parameters else "BASE_VIEW",
+                "filter_parameters": filter_parameters or None,
+                "base_snapshot_directory": base_snapshots.get(player_view_url(player_id, view), {}).get("snapshot_directory"),
+                "base_snapshot_sha256": base_snapshots.get(player_view_url(player_id, view), {}).get("snapshot_sha256"),
+                "snapshot_directory": (
+                    existing_variants if filter_parameters else existing
+                )[player_view_url(player_id, view)]["snapshot_directory"],
+                "snapshot_sha256": (
+                    existing_variants if filter_parameters else existing
+                )[player_view_url(player_id, view)]["snapshot_sha256"],
             }
             for player_id in ids for view in selected_views
         ]
@@ -309,20 +384,30 @@ def capture_player_snapshots(
             for player_id in ids:
                 for view in selected_views:
                     url = player_view_url(player_id, view)
-                    if reuse_existing and not refresh and url in existing:
-                        item = existing[url]
+                    selected_existing = existing_variants if filter_parameters else existing
+                    if reuse_existing and not refresh and url in selected_existing:
+                        item = selected_existing[url]
                         records.append({
                             "player_id": player_id,
                             "view": view,
                             "url": url,
-                            "status": "REUSED_VALID",
+                            "status": "REUSED_VALID_VARIANT" if filter_parameters else "REUSED_VALID",
+                            "snapshot_kind": "FILTERED_VARIANT" if filter_parameters else "BASE_VIEW",
+                            "filter_parameters": filter_parameters or None,
+                            "base_snapshot_directory": base_snapshots.get(url, {}).get("snapshot_directory"),
+                            "base_snapshot_sha256": base_snapshots.get(url, {}).get("snapshot_sha256"),
                             "snapshot_directory": item["snapshot_directory"],
                             "snapshot_sha256": item["snapshot_sha256"],
                         })
                         write_json(state_path, _state_payload(records, run_root))
                         continue
 
+                    variant_key = hashlib.sha256(
+                        json.dumps(filter_parameters, sort_keys=True, separators=(",", ":")).encode("utf-8")
+                    ).hexdigest()[:12]
                     output = run_root / player_id / view
+                    if filter_parameters:
+                        output = output / "variants" / variant_key
                     with access.open(
                         url,
                         required_markers=_VIEW_MARKERS[view],
@@ -347,13 +432,123 @@ def capture_player_snapshots(
                         try:
                             if classify_player_view(assessment.final_url or "") != (player_id, view):
                                 raise ValueError("la URL final no identifica el jugador y vista solicitados")
+                            interaction_requests: list[dict[str, Any]] = []
+                            page = result.visit.page
+                            if filter_parameters:
+                                from urllib.parse import urlsplit
+
+                                observed_responses: list[dict[str, Any]] = []
+
+                                def observe_request(request: Any) -> None:
+                                    if request.resource_type not in {"fetch", "xhr"}:
+                                        return
+                                    parts = urlsplit(request.url)
+                                    interaction_requests.append({
+                                        "resource_type": request.resource_type,
+                                        "host": parts.hostname,
+                                        "path": parts.path,
+                                        "event": "request",
+                                    })
+
+                                def observe_response(response: Any) -> None:
+                                    request = response.request
+                                    if request.resource_type not in {"fetch", "xhr"}:
+                                        return
+                                    parts = urlsplit(response.url)
+                                    observed_responses.append({
+                                        "resource_type": request.resource_type,
+                                        "host": parts.hostname,
+                                        "path": parts.path,
+                                        "status": response.status,
+                                        "event": "response",
+                                    })
+
+                                page.on("request", observe_request)
+                                page.on("response", observe_response)
+                                for control, value in filter_parameters.items():
+                                    locator = page.locator(f"#{control}")
+                                    if locator.count() != 1 or not locator.is_visible():
+                                        raise ValueError(f"El control {control} no está visible en la vista")
+                                    values = locator.locator("option").evaluate_all(
+                                        "options => options.map(option => option.value)"
+                                    )
+                                    if value not in values:
+                                        raise ValueError(f"La opción {control}={value} no está en el DOM")
+                                    locator.select_option(value=value, timeout=5000)
+                                page.wait_for_timeout(350)
+                                if page.url != url:
+                                    raise ValueError("La interacción del filtro cambió la URL; no se captura la variante")
+                                selected = {
+                                    control: page.locator(f"#{control}").input_value()
+                                    for control in filter_parameters
+                                }
+                                if selected != filter_parameters:
+                                    raise ValueError("El DOM no conserva las opciones de filtro solicitadas")
+                                challenge_text = page.locator("body").inner_text(timeout=3000).casefold()
+                                challenge_title = page.title().casefold()
+                                if (
+                                    any(marker in challenge_text for marker in (
+                                        "verificación de seguridad en curso",
+                                        "verificación de seguridad",
+                                        "checking your browser",
+                                        "verify you are human",
+                                        "verifying you are human",
+                                        "verifica que tú no eres un bot",
+                                        "please enable javascript and cookies to continue",
+                                        "cf-challenge",
+                                        "challenges.cloudflare.com",
+                                    ))
+                                    or any(title in challenge_title for title in (
+                                        "un momento", "just a moment", "attention required",
+                                    ))
+                                ):
+                                    raise _PlayerVariantAccessBlocked(
+                                        "La interacción mostró un marcador de desafío"
+                                    )
+                                if any(
+                                    item["status"] in {403, 429, 503}
+                                    and str(item.get("host") or "").endswith("bdfutbol.com")
+                                    for item in observed_responses
+                                ):
+                                    raise _PlayerVariantAccessBlocked(
+                                        "La petición asociada al filtro fue denegada por BDFutbol"
+                                    )
+                                interaction_requests.extend(observed_responses)
                             capture_dom_snapshot(
-                                page=result.visit.page,
+                                page=page,
                                 assessment=assessment,
                                 output_dir=output,
                                 screenshot=screenshot,
+                                filter_parameters=filter_parameters or None,
+                                interaction_requests=interaction_requests,
+                                base_snapshot_directory=base_snapshots.get(url, {}).get("snapshot_directory"),
+                                base_snapshot_sha256=base_snapshots.get(url, {}).get("snapshot_sha256"),
                             )
-                            digest, byte_count = _validate_written_snapshot(output, url)
+                            digest, byte_count = _validate_written_snapshot(
+                                output,
+                                url,
+                                filter_parameters=filter_parameters or None,
+                            )
+                        except _PlayerVariantAccessBlocked as exc:
+                            record = {
+                                "player_id": player_id,
+                                "view": view,
+                                "url": url,
+                                "status": AccessStatus.CHALLENGE_REQUIRED.value,
+                                "reason": str(exc),
+                                "filter_parameters": filter_parameters,
+                                "snapshot_kind": "FILTERED_VARIANT",
+                            }
+                            records.append(record)
+                            write_json(state_path, _state_payload(records, run_root))
+                            raise PlayerAcquisitionStopped(
+                                player_id=player_id,
+                                view=view,
+                                url=url,
+                                status=AccessStatus.CHALLENGE_REQUIRED.value,
+                                records=records.copy(),
+                                reason=str(exc),
+                            ) from exc
                         except Exception as exc:
                             record = {
                                 "player_id": player_id,
@@ -377,19 +572,20 @@ def capture_player_snapshots(
                         "player_id": player_id,
                         "view": view,
                         "url": url,
-                        "status": "CAPTURED_VALID",
+                        "status": "CAPTURED_VALID_VARIANT" if filter_parameters else "CAPTURED_VALID",
+                        "snapshot_kind": "FILTERED_VARIANT" if filter_parameters else "BASE_VIEW",
+                        "filter_parameters": filter_parameters or None,
                         "snapshot_directory": output.relative_to(raw_root).as_posix(),
                         "snapshot_sha256": digest,
                         "snapshot_bytes": byte_count,
-                        "previous_snapshot_directory": (
-                            existing[url]["snapshot_directory"] if url in existing else None
-                        ),
-                        "previous_snapshot_sha256": (
-                            existing[url]["snapshot_sha256"] if url in existing else None
-                        ),
+                        "base_snapshot_directory": base_snapshots.get(url, {}).get("snapshot_directory"),
+                        "base_snapshot_sha256": base_snapshots.get(url, {}).get("snapshot_sha256"),
+                        "previous_snapshot_directory": selected_existing.get(url, {}).get("snapshot_directory"),
+                        "previous_snapshot_sha256": selected_existing.get(url, {}).get("snapshot_sha256"),
                         "content_change_status": (
-                            "UNCHANGED" if url in existing and existing[url]["snapshot_sha256"] == digest
-                            else "CHANGED" if url in existing
+                            "UNCHANGED" if url in selected_existing and selected_existing[url]["snapshot_sha256"] == digest
+                            else "CHANGED" if url in selected_existing
+                            else "BASELINE_VARIANT" if filter_parameters
                             else "BASELINE_CAPTURE"
                         ),
                     })

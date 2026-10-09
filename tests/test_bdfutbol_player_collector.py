@@ -60,12 +60,60 @@ def _install_fake_browser(
     *,
     final_urls: list[str] | None = None,
     captured_html: bytes = b"<html><body>synthetic test snapshot</body></html>",
+    captured_variant_metadata: list[dict[str, object]] | None = None,
+    challenge_after_filter: bool = False,
 ) -> list[str]:
     from football_data_hub.core import browser_session
     from football_data_hub.providers.bdfutbol import access as access_module
     from football_data_hub.providers.bdfutbol import discovery
 
     calls: list[str] = []
+    variant_metadata = captured_variant_metadata if captured_variant_metadata is not None else []
+
+    class FakeLocator:
+        def __init__(self, page: "FakePage", selector: str) -> None:
+            self.page = page
+            self.selector = selector
+
+        def count(self) -> int:
+            return 1
+
+        def is_visible(self) -> bool:
+            return True
+
+        def locator(self, _selector: str) -> "FakeLocator":
+            return self
+
+        def evaluate_all(self, _script: str) -> list[str]:
+            return ["2aB", "1rf", "CHA", "CNF", "COP"]
+
+        def select_option(self, *, value: str, timeout: int) -> None:
+            assert timeout == 5000
+            self.page.selected[self.selector.removeprefix("#")] = value
+
+        def input_value(self) -> str:
+            return self.page.selected[self.selector.removeprefix("#")]
+
+        def inner_text(self, *, timeout: int) -> str:
+            assert timeout == 3000
+            return "Checking your browser" if challenge_after_filter else "Synthetic offline response"
+
+    class FakePage:
+        def __init__(self, url: str) -> None:
+            self.url = url
+            self.selected = {"cats_milestones": "2aB"}
+
+        def on(self, _event: str, _callback: object) -> None:
+            pass
+
+        def locator(self, selector: str) -> FakeLocator:
+            return FakeLocator(self, selector)
+
+        def wait_for_timeout(self, _milliseconds: int) -> None:
+            pass
+
+        def title(self) -> str:
+            return "Synthetic offline response"
 
     class Session:
         def __init__(self, _config: object) -> None:
@@ -80,7 +128,7 @@ def _install_fake_browser(
     class VisitContext:
         def __init__(self, assessment: AccessAssessment) -> None:
             self.assessment = assessment
-            self.visit = SimpleNamespace(page=object())
+            self.visit = SimpleNamespace(page=FakePage(assessment.requested_url))
 
         def __enter__(self) -> VisitContext:
             return self
@@ -102,8 +150,23 @@ def _install_fake_browser(
                 assessment = replace(assessment, final_url=final_urls[index])
             return VisitContext(assessment)
 
-    def capture(*, assessment: AccessAssessment, output_dir: Path, **_kwargs: object) -> dict:
+    def capture(*, assessment: AccessAssessment, output_dir: Path, **kwargs: object) -> dict:
         _write_valid_snapshot(output_dir, assessment.requested_url, captured_html)
+        parameters = kwargs.get("filter_parameters")
+        if isinstance(parameters, dict):
+            metadata_path = output_dir / "metadata.json"
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            metadata.update({
+                "snapshot_kind": "FILTERED_VARIANT",
+                "is_base_view_snapshot": False,
+                "filter_parameters": parameters,
+                "interaction_mode": "CLIENT_SIDE_SELECT",
+                "interaction_requests": kwargs.get("interaction_requests", []),
+                "base_snapshot_directory": kwargs.get("base_snapshot_directory"),
+                "base_snapshot_sha256": kwargs.get("base_snapshot_sha256"),
+            })
+            metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+            variant_metadata.append(metadata)
         return {}
 
     monkeypatch.setattr(browser_session, "BrowserSessionManager", Session)
@@ -217,6 +280,104 @@ def test_explicit_view_selection_captures_only_requested_profile(
     state = json.loads(state_path.read_text(encoding="utf-8"))
     assert state["resumable"] is True
     assert len(state["records"]) == 1
+
+
+def test_verified_statistics_filter_is_captured_as_immutable_reusable_variant(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    raw_root = tmp_path / "raw"
+    base_directory = raw_root / "canonical/j123/statistics"
+    _write_valid_snapshot(base_directory, player_view_url("j123", "statistics"))
+    base_hash = hashlib.sha256((base_directory / "rendered.html").read_bytes()).hexdigest()
+    captured_metadata: list[dict[str, object]] = []
+    calls = _install_fake_browser(
+        monkeypatch, [AccessStatus.VALID], captured_variant_metadata=captured_metadata,
+    )
+    filters = {"cats_milestones": "1rf"}
+
+    records = capture_player_snapshots(
+        player_ids=["j123"],
+        views=["statistics"],
+        filters=filters,
+        raw_root=raw_root,
+        profile_dir=tmp_path / "profile",
+    )
+
+    assert calls == [player_view_url("j123", "statistics")]
+    assert records[0]["status"] == "CAPTURED_VALID_VARIANT"
+    assert records[0]["snapshot_kind"] == "FILTERED_VARIANT"
+    assert records[0]["filter_parameters"] == filters
+    assert records[0]["base_snapshot_directory"] == "canonical/j123/statistics"
+    assert records[0]["base_snapshot_sha256"] == base_hash
+    assert "/variants/" in records[0]["snapshot_directory"]
+    metadata = json.loads(
+        (raw_root / records[0]["snapshot_directory"] / "metadata.json").read_text(encoding="utf-8")
+    )
+    assert metadata["is_base_view_snapshot"] is False
+    assert metadata["filter_parameters"] == filters
+    assert metadata["interaction_mode"] == "CLIENT_SIDE_SELECT"
+    assert metadata["base_snapshot_directory"] == "canonical/j123/statistics"
+    assert metadata["base_snapshot_sha256"] == base_hash
+    assert metadata["rendered_html_sha256"] == records[0]["snapshot_sha256"]
+    assert captured_metadata[0]["filter_parameters"] == filters
+
+    reused = capture_player_snapshots(
+        player_ids=["j123"],
+        views=["statistics"],
+        filters=filters,
+        raw_root=raw_root,
+        profile_dir=tmp_path / "profile",
+    )
+    assert reused[0]["status"] == "REUSED_VALID_VARIANT"
+    assert reused[0]["snapshot_directory"] == records[0]["snapshot_directory"]
+    assert reused[0]["base_snapshot_directory"] == "canonical/j123/statistics"
+    assert calls == [player_view_url("j123", "statistics")]
+
+
+def test_unverified_player_filter_is_rejected_before_opening_browser(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from football_data_hub.core import browser_session
+
+    def forbidden(*_args: object, **_kwargs: object) -> None:
+        pytest.fail("no se debe abrir el navegador para un filtro no verificado")
+
+    monkeypatch.setattr(browser_session, "BrowserSessionManager", forbidden)
+    with pytest.raises(ValueError, match="variante no verificadas"):
+        capture_player_snapshots(
+            player_ids=["j123"],
+            views=["statistics"],
+            filters={"cats_milestones": "UNKNOWN"},
+            raw_root=tmp_path / "raw",
+            profile_dir=tmp_path / "profile",
+        )
+
+
+def test_variant_challenge_stops_without_writing_a_valid_snapshot(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    raw_root = tmp_path / "raw"
+    calls = _install_fake_browser(
+        monkeypatch,
+        [AccessStatus.VALID],
+        challenge_after_filter=True,
+    )
+
+    with pytest.raises(PlayerAcquisitionStopped) as exc_info:
+        capture_player_snapshots(
+            player_ids=["j123"],
+            views=["statistics"],
+            filters={"cats_milestones": "1rf"},
+            raw_root=raw_root,
+            profile_dir=tmp_path / "profile",
+        )
+
+    assert calls == [player_view_url("j123", "statistics")]
+    assert exc_info.value.status == "CHALLENGE_REQUIRED"
+    assert not list(raw_root.rglob("rendered.html"))
+    state_path = next(raw_root.glob("*/acquisition_state.json"))
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    assert state["records"][0]["status"] == "CHALLENGE_REQUIRED"
 
 
 def test_live_cli_accepts_staged_view_selection() -> None:

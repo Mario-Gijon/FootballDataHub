@@ -160,15 +160,36 @@ def _rows_by_page(parsed_pages: list[dict[str, Any]], view: str, collection: str
     return result
 
 
+def _variant_export_row(page: dict[str, Any]) -> dict[str, Any]:
+    parameters = page.get("source", {}).get("filter_parameters", {})
+    parameter_key = hashlib.sha256(json.dumps(
+        parameters, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")).hexdigest()[:12]
+    return {
+        "player_id": page["player_id"],
+        "view": page["view"],
+        "snapshot_kind": "FILTERED_VARIANT",
+        "variant_key": parameter_key,
+        "filter_parameters": parameters,
+        "source": page["source"],
+        "coverage": page["coverage"],
+        "tables": page["tables"],
+        "relationships": page["relationships"],
+        "view_data": page["view_data"],
+    }
+
+
 def build_player_exports(
     *,
     inventory: dict[str, Any],
     parsed_pages: list[dict[str, Any]],
+    parsed_variants: list[dict[str, Any]] | None = None,
     source_audit: dict[str, Any],
     output_root: Path,
 ) -> Path:
     """Write normalized JSON/CSV gzip resources without copying any raw HTML."""
     coverage = _coverage_rows(inventory["coverage"], parsed_pages)
+    filtered_variants = [_variant_export_row(page) for page in (parsed_variants or [])]
     players = inventory["players"]
     memberships = inventory["memberships"]
     profiles = [
@@ -237,6 +258,14 @@ def build_player_exports(
         "trajectory_rows_parsed": len([item for item in trajectories if item.get("record_type") != "TOTAL_ROW"]),
         "statistics_rows_parsed": len(statistics),
         "source_snapshot_pages_parsed": len(parsed_pages),
+        "filtered_variant_snapshots_parsed": len(filtered_variants),
+        "filtered_variant_data_rows": sum(
+            len(row["view_data"].get(collection, []))
+            for row in filtered_variants
+            for collection in (
+                "statistics_rows", "match_summary_rows", "individual_match_rows", "rival_records"
+            )
+        ),
         "future_pilot_candidates_prepared": len(inventory.get("player_pilot_candidates", [])),
         "career_completeness_certified": False,
     }
@@ -247,6 +276,15 @@ def build_player_exports(
         "provider": "BDFutbol",
         "source_player_roster": "snapshot-f36c91119a98390766ff-parser-1.3.0",
         "source_page_snapshots": source_manifest,
+        "source_filtered_variants": [
+            {
+                "player_id": row["player_id"],
+                "view": row["view"],
+                "filter_parameters": row["filter_parameters"],
+                "source": row["source"],
+            }
+            for row in filtered_variants
+        ],
         "source_audit": {
             "competition_extraction_keys": [
                 item.get("extraction_key") for item in source_audit.get("hito1b", {}).get("candidates", [])
@@ -269,12 +307,18 @@ def build_player_exports(
         "acquisition_manifest": inventory["acquisition_manifest"],
         "player_pilot_candidates": inventory.get("player_pilot_candidates", []),
         "source_audit": [source_audit],
+        "filtered_variants": filtered_variants,
     }
     source_digest = hashlib.sha256(json.dumps(
         {
-            "sources": sorted((
-                page["player_id"], page["view"], page["source"].get("rendered_html_sha256")
+            "sources": sorted(json.dumps(
+                [page["player_id"], page["view"], page["source"]],
+                ensure_ascii=False, sort_keys=True, separators=(",", ":"),
             ) for page in parsed_pages),
+            "filtered_variants": sorted(json.dumps(
+                [row["player_id"], row["view"], row["variant_key"], row["source"]],
+                ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+            ) for row in filtered_variants),
             "inventory": {
                 "players": players,
                 "memberships": memberships,
@@ -298,6 +342,11 @@ def build_player_exports(
         contents[Path(f"{name}.csv.gz")] = _csv_bytes(rows)
     for page in parsed_pages:
         contents[Path("pages") / page["player_id"] / f"{page['view']}.json.gz"] = _json_bytes(page)
+    for variant in filtered_variants:
+        contents[
+            Path("variants") / variant["player_id"] / variant["view"]
+            / f"{variant['variant_key']}.json.gz"
+        ] = _json_bytes(variant)
 
     if output_dir.exists():
         for relative, expected in contents.items():

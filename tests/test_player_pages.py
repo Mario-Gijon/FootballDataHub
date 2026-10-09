@@ -18,6 +18,7 @@ from football_data_hub.parsers.player_pages import (
     parse_player_html,
     parse_player_snapshot,
     parse_player_snapshot_inventory,
+    parse_player_snapshot_variants_inventory,
 )
 from football_data_hub.storage.player_exports import build_player_exports
 
@@ -393,6 +394,84 @@ def test_filtered_snapshot_stays_a_variant_and_leaves_base_view_pending() -> Non
     assert matches["acquisition_status"] == "PENDING_BASE_VIEW_CAPTURE"
     assert matches["snapshot_count"] == 1
     assert matches["selected_snapshot_directory"] is None
+    assert matches["variants_status"] == "FILTERED_VARIANT_CAPTURED"
+
+
+def test_synthetic_statistics_variant_is_parsed_and_exported_separately(tmp_path: Path) -> None:
+    """Synthetic fixture: prove variant provenance/export isolation, not a BDFutbol claim."""
+    url = "https://www.bdfutbol.com/es/j/j123.html?p=stats"
+    html = """<html><head><title>Synthetic statistics fixture</title></head><body>
+      <table id="table-estadistiques-competicions"><tr><th>Comp</th><th>PJ</th></tr>
+        <tr><td>fixture competition</td><td>1</td></tr></table>
+      <table id="table-estadistiques-equips"><tr><th>Team</th><th>PJ</th></tr>
+        <tr><td>fixture team</td><td>1</td></tr></table>
+      <table class="taula-fites-jugador"><tr><th>Season</th><th>Event</th></tr>
+        <tr><td>synthetic season</td><td>synthetic filtered event</td></tr></table>
+      <select id="cats_milestones"><option value="1rf" selected>fixture option</option></select>
+    </body></html>"""
+    base_html = html.replace("synthetic filtered event", "synthetic baseline event")
+    base_metadata = _metadata(url, base_html)
+    base_metadata.update({"snapshot_kind": "BASE_VIEW", "is_base_view_snapshot": True})
+    variant_metadata = _metadata(url, html)
+    variant_metadata.update({
+        "snapshot_kind": "FILTERED_VARIANT",
+        "is_base_view_snapshot": False,
+        "filter_parameters": {"cats_milestones": "1rf"},
+        "interaction_mode": "CLIENT_SIDE_SELECT",
+    })
+
+    raw_root = tmp_path / "raw"
+    for relative, content, metadata in (
+        ("base/j123/statistics", base_html, base_metadata),
+        ("variant/j123/statistics/variants/cats-1rf", html, variant_metadata),
+    ):
+        snapshot = raw_root / relative
+        snapshot.mkdir(parents=True)
+        (snapshot / "rendered.html").write_text(content, encoding="utf-8")
+        (snapshot / "metadata.json").write_text(json.dumps(metadata), encoding="utf-8")
+
+    raw_inventory = discover_player_snapshots(raw_root)
+    base_pages = parse_player_snapshot_inventory(raw_inventory, raw_root)
+    variants = parse_player_snapshot_variants_inventory(raw_inventory, raw_root)
+
+    assert len(base_pages) == 1
+    assert base_pages[0]["source"]["is_base_view_snapshot"] is True
+    assert len(variants) == 1
+    variant = variants[0]
+    assert variant["source"]["filter_parameters"] == {"cats_milestones": "1rf"}
+    assert variant["coverage"]["data_scope"] == "FILTERED_VARIANT_NOT_EXHAUSTIVE"
+    assert "synthetic filtered event" in json.dumps(variant["view_data"])
+    assert "synthetic filtered event" not in json.dumps(base_pages[0]["view_data"])
+
+    inventory = build_player_acquisition_inventory([{
+        "player_id": "j123",
+        "player_url": "https://www.bdfutbol.com/es/j/j123.html",
+        "team_season_id": "t2026-271",
+        "club_id": "e1",
+        "name_raw": "Synthetic player",
+    }], raw_inventory)
+    export = build_player_exports(
+        inventory=inventory,
+        parsed_pages=base_pages,
+        parsed_variants=variants,
+        source_audit={},
+        output_root=tmp_path / "exports",
+    )
+    with gzip.open(export / "statistics.json.gz", "rt", encoding="utf-8") as stream:
+        canonical_rows = json.load(stream)["items"]
+    with gzip.open(export / "filtered_variants.json.gz", "rt", encoding="utf-8") as stream:
+        variant_rows = json.load(stream)["items"]
+    with gzip.open(export / "coverage.json.gz", "rt", encoding="utf-8") as stream:
+        coverage = json.load(stream)["items"]
+
+    assert len(canonical_rows) == len(base_pages[0]["view_data"]["statistics_rows"])
+    assert len(variant_rows) == 1
+    assert variant_rows[0]["filter_parameters"] == {"cats_milestones": "1rf"}
+    assert variant_rows[0]["variant_key"]
+    assert "synthetic filtered event" in json.dumps(variant_rows[0]["view_data"])
+    assert len(coverage) == 4
+    assert all(row["view"] != "statistics" or row["parse_status"] == "PARSED" for row in coverage)
+    assert len(list((export / "variants/j123/statistics").glob("*.json.gz"))) == 1
 
 
 def test_pilot_position_representative_uses_raw_position_as_unique_key() -> None:
@@ -458,7 +537,7 @@ def test_compact_exports_are_repeatable_and_do_not_embed_raw_html(tmp_path: Path
         output_root=tmp_path / "exports",
     )
     assert first == second
-    assert first.name.endswith("parser-0.2.1")
+    assert first.name.endswith("parser-0.2.2")
     assert sentinel.read_text(encoding="utf-8") == "previous immutable export"
     profiles = json.load(gzip.open(first / "profiles.json.gz", "rt", encoding="utf-8"))
     assert profiles["items"][0]["player_id"] == "j123"
