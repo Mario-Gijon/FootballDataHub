@@ -2,7 +2,7 @@
 
 ## Arquitectura
 
-La aplicación HTTP vive en `apps/api/football_data_hub_api/`. Carga los cuatro archivos configurados durante el startup, valida procedencia y referencias y conserva un único `BootstrapResponse` en memoria. Sus módulos no importan `football_data_hub`, el proveedor BDFutbol, Playwright ni el navegador. El extra opcional `api` permite instalar FastAPI sin instalar el extra de scraping.
+La aplicación HTTP vive en `apps/api/football_data_hub_api/`. Carga el dataset principal durante el startup y conserva su `BootstrapResponse` en memoria. Destacados y Árbitros se validan y cargan como capturas independientes: un fallo en cualquiera de ellas solo desactiva su endpoint. Sus módulos no importan el proveedor BDFutbol, Playwright ni el navegador. El extra opcional `api` permite instalar FastAPI sin instalar el extra de scraping.
 
 El API solo sirve datos preparados. No navega a BDFutbol, vuelve a leer los JSON por petición ni ejecuta el motor Python de clasificación. Los filtros interactivos y las tablas derivadas serán responsabilidad del frontend TypeScript. El motor Python de CLAS-01B continúa siendo una referencia para validación. `progress_context` identifica el contexto original de esas series y evita que el cliente las confunda con la tabla filtrada.
 
@@ -20,6 +20,8 @@ En el inicio se verifica que:
 - Los contadores de `matches.json` coincidan con los partidos.
 
 Ante error de configuración, JSON inválido o datasets mezclados, FastAPI sigue respondiendo a `/health` como proceso vivo con `dataset_ready: false`; `/ready` y las rutas de datos contestan `503`. La causa detallada se registra en el log del proceso, pero las respuestas HTTP no revelan rutas locales.
+
+Árbitros usa `FDH_GROUP2_REFEREES_ROOT` para seleccionar una captura REF-01 versionada y opcionalmente `FDH_GROUP2_REFEREES_MATCHES` para sustituir la ruta de Resultados declarada por la captura. El valor por defecto apunta al corte validado `20261010T171227.617128Z-4cfe71bc`. En el arranque verifica los tres HTML originales por SHA-256, la identidad de captura de los JSON, los recuentos declarados en `metadata/capture.json` y `validation/results.json`, estadísticas únicas por ID/temporada/ámbito, los agregados publicados y las referencias por `referee_id` al dataset de Resultados. El ETag lleva versión de contrato. Las capturas de Árbitros y Resultados conservan sus propios `capture_id`; una fecha distinta se informa como procedencia y no mezcla filas ni fuerza igualdad estadística.
 
 ## Instalar y arrancar
 
@@ -51,6 +53,7 @@ Para desarrollo/test en un entorno que también vaya a ejecutar el scraper, inst
 | `GET /ready` | Readiness; incluye `capture_id` y `dataset_version`, o 503 si falla la carga/validación. |
 | `GET /api/v1/group2/metadata` | Competición, corte, cobertura, versión y advertencias. |
 | `GET /api/v1/group2/bootstrap` | Catálogo de equipos, los 380 fixtures, 120 valores de progreso y la clasificación fuente de General J6. |
+| `GET /api/v1/group2/referees/bootstrap` | Catálogo sin duplicados, estadísticas publicadas por `all`/`group1`/`group2`, metadatos de captura, opciones y recuentos por ámbito. |
 
 Bootstrap excluye `source_fields`, referencias internas del scraper, HTML, JavaScript, perfiles de navegador y rutas del servidor. Las fechas son ISO 8601; los datos ausentes permanecen como `null`. `published_standings` identifica expresamente la tabla de BDFutbol para General J6 y no representa otros filtros. La respuesta lleva ETag de la versión preparada y admite `If-None-Match`.
 
@@ -159,6 +162,8 @@ La respuesta completa contiene 20 equipos, 380 partidos, 120 registros de progre
 ```
 
 El recorte omite campos y filas únicamente para que sea legible; los endpoints devuelven todos los registros. La clasificación fuente conserva `position_change` y `sports_zone` solo para este contexto.
+
+El bootstrap de Árbitros devuelve un único catálogo de personas y filas estadísticas que apuntan a ellas mediante `referee_id`. `all` es el agregado propio publicado por BDFutbol y no la concatenación de los dos grupos. Por ahora solo expone la temporada adquirida `2026-27`; no anuncia temporadas históricas listadas por la fuente. Las tarjetas son las mostradas en partidos dirigidos, no sanciones personales. Los datos nulos, incluidos edad, fecha de nacimiento y nacionalidad, se conservan como `null`.
 
 ## Consumo futuro desde TypeScript
 

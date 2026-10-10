@@ -15,6 +15,7 @@ from football_data_hub_api.schemas import (
     BootstrapResponse,
     DatasetMetadata,
     HealthResponse,
+    RefereeBootstrapResponse,
     ReadinessResponse,
     TopBootstrapResponse,
 )
@@ -22,6 +23,11 @@ from football_data_hub_api.top_dataset import (
     TopDatasetBundle,
     TopDatasetLoadError,
     load_top_dataset,
+)
+from football_data_hub_api.referee_dataset import (
+    RefereeDatasetBundle,
+    RefereeDatasetLoadError,
+    load_referee_dataset,
 )
 
 logger = logging.getLogger("football_data_hub_api")
@@ -36,6 +42,8 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         app.state.dataset_error = None
         app.state.top_dataset = None
         app.state.top_dataset_error = None
+        app.state.referee_dataset = None
+        app.state.referee_dataset_error = None
         try:
             app.state.dataset = load_dataset(configured)
         except (DatasetLoadError, KeyError, TypeError, ValueError) as exc:
@@ -51,6 +59,11 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         except (TopDatasetLoadError, KeyError, TypeError, ValueError) as exc:
             app.state.top_dataset_error = exc
             logger.exception("Destacados no está disponible; clasificación y resultados siguen aislados")
+        try:
+            app.state.referee_dataset = load_referee_dataset(configured)
+        except (RefereeDatasetLoadError, KeyError, TypeError, ValueError) as exc:
+            app.state.referee_dataset_error = exc
+            logger.exception("Árbitros no está disponible; el resto de secciones sigue aislado")
         yield
 
     app = FastAPI(
@@ -131,6 +144,21 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
             return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": bundle.etag})
         return bundle.bootstrap
 
+    @app.get(
+        "/api/v1/group2/referees/bootstrap",
+        response_model=RefereeBootstrapResponse,
+        tags=["group2", "referees"],
+        summary="Datos preparados de árbitros de la temporada 2026/27",
+    )
+    def group2_referees_bootstrap(
+        request: Request, response: Response
+    ) -> RefereeBootstrapResponse | Response:
+        bundle = _require_referee_dataset(request)
+        response.headers["ETag"] = bundle.etag
+        if _etag_matches(request.headers.get("if-none-match"), bundle.etag):
+            return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": bundle.etag})
+        return bundle.bootstrap
+
     return app
 
 
@@ -149,6 +177,17 @@ def _require_top_dataset(request: Request) -> TopDatasetBundle:
     if bundle is None:
         detail = "Destacados no está disponible: la captura independiente no superó la validación."
         error = request.app.state.top_dataset_error
+        if error:
+            detail = f"{detail} Diagnóstico: {error}"
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=detail)
+    return bundle
+
+
+def _require_referee_dataset(request: Request) -> RefereeDatasetBundle:
+    bundle = request.app.state.referee_dataset
+    if bundle is None:
+        detail = "Árbitros no está disponible: su captura independiente no superó la validación."
+        error = request.app.state.referee_dataset_error
         if error:
             detail = f"{detail} Diagnóstico: {error}"
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=detail)

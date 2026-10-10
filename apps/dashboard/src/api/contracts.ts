@@ -265,6 +265,139 @@ export const TopBootstrapSchema = z.object({
   }
 });
 
+export const RefereeScopeSchema = z.enum(["all", "group1", "group2"]);
+const RefereeSchema = z.object({
+  referee_id: z.string().regex(/^r\d+$/),
+  display_name: z.string().min(1),
+  full_name: z.string().nullable(),
+  profile_url: z.string().url(),
+  photo_url: z.string().url().nullable(),
+  flag_url: z.string().url().nullable(),
+  nationality: z.string().nullable(),
+  nationality_code: z.string().nullable(),
+  age_years: nullableInteger,
+  birth_date: dateOnly,
+  birthplace: z.string().nullable(),
+  province: z.string().nullable(),
+}).strict();
+
+const RefereeStatisticsSchema = z.object({
+  referee_id: z.string().regex(/^r\d+$/),
+  season: z.string(),
+  group_scope: RefereeScopeSchema,
+  published_order: z.number().int().positive(),
+  matches_officiated: nullableInteger,
+  yellow_cards: nullableInteger,
+  red_cards: nullableInteger,
+  statistics_url: z.string().url().nullable(),
+  source_page_url: z.string().url(),
+}).strict();
+
+const RefereeScopeSummarySchema = z.object({
+  group_scope: RefereeScopeSchema,
+  label: z.string(),
+  referee_count: z.number().int().nonnegative(),
+  matches_officiated: nullableInteger,
+  yellow_cards: nullableInteger,
+  red_cards: nullableInteger,
+}).strict();
+
+export const RefereeBootstrapSchema = z.object({
+  metadata: z.object({
+    source: z.string(),
+    url: z.string().url(),
+    competition: z.string(),
+    season: z.string(),
+    group: z.string(),
+    section: z.literal("referees"),
+    capture_id: z.string().min(1),
+    captured_at: z.string().datetime({ offset: true }),
+    extractor_version: z.string(),
+    dataset_version: z.string().min(1),
+    source_snapshot_sha256: z.record(RefereeScopeSchema, z.string().regex(/^[a-f0-9]{64}$/)),
+    related_matches_path: z.string().min(1),
+    related_matches_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    related_matches_capture_id: z.string().min(1),
+    related_matches_captured_at: z.string().datetime({ offset: true }),
+    match_reference_status: z.enum(["consistent", "discrepancies"]),
+  }).strict(),
+  availability: z.object({
+    catalog_referee_count: z.number().int().nonnegative(),
+    statistics_record_count: z.number().int().nonnegative(),
+    scope_counts: z.record(RefereeScopeSchema, RefereeScopeSummarySchema),
+  }).strict(),
+  seasons: z.array(z.object({
+    season: z.string(),
+    label: z.string(),
+    available: z.boolean(),
+  }).strict()),
+  groups: z.array(z.object({
+    group_scope: RefereeScopeSchema,
+    label: z.string(),
+    referee_count: z.number().int().nonnegative(),
+  }).strict()),
+  referees: z.array(RefereeSchema),
+  statistics: z.array(RefereeStatisticsSchema),
+  coverage_note: z.string(),
+  compatibility_warnings: z.array(z.string()),
+}).strict().superRefine((payload, context) => {
+  const refereeIds = new Set(payload.referees.map((referee) => referee.referee_id));
+  if (refereeIds.size !== payload.referees.length) {
+    context.addIssue({ code: "custom", message: "El catálogo de árbitros repite IDs." });
+  }
+  for (const referee of payload.referees) {
+    if (!new URL(referee.profile_url).pathname.endsWith(`/r/${referee.referee_id}.html`)) {
+      context.addIssue({ code: "custom", message: `El perfil no coincide con ${referee.referee_id}.` });
+    }
+  }
+  const keys = new Set<string>();
+  const byScope = new Map<string, typeof payload.statistics>();
+  for (const row of payload.statistics) {
+    const key = `${row.referee_id}|${row.season}|${row.group_scope}`;
+    if (keys.has(key)) context.addIssue({ code: "custom", message: "Hay estadísticas de árbitro duplicadas." });
+    keys.add(key);
+    if (!refereeIds.has(row.referee_id)) {
+      context.addIssue({ code: "custom", message: `Estadísticas sin árbitro ${row.referee_id}.` });
+    }
+    if (row.season !== payload.metadata.season) {
+      context.addIssue({ code: "custom", message: "Una estadística pertenece a otra temporada." });
+    }
+    byScope.set(row.group_scope, [...(byScope.get(row.group_scope) ?? []), row]);
+  }
+  const expectedScopes = ["all", "group1", "group2"] as const;
+  if (payload.seasons.length !== 1 || payload.seasons[0]?.season !== payload.metadata.season || !payload.seasons[0]?.available) {
+    context.addIssue({ code: "custom", message: "La temporada disponible no coincide con la captura." });
+  }
+  if (payload.groups.length !== expectedScopes.length || new Set(payload.groups.map((group) => group.group_scope)).size !== expectedScopes.length) {
+    context.addIssue({ code: "custom", message: "Las opciones de grupo están incompletas o duplicadas." });
+  }
+  if (payload.availability.catalog_referee_count !== payload.referees.length || payload.availability.statistics_record_count !== payload.statistics.length) {
+    context.addIssue({ code: "custom", message: "Los recuentos de Árbitros no coinciden con los registros." });
+  }
+  for (const scope of expectedScopes) {
+    const rows = byScope.get(scope) ?? [];
+    const summary = payload.availability.scope_counts[scope];
+    const option = payload.groups.find((group) => group.group_scope === scope);
+    if (!summary || !option || summary.referee_count !== rows.length || option.referee_count !== rows.length || summary.group_scope !== scope) {
+      context.addIssue({ code: "custom", message: `El resumen de ${scope} no coincide con sus registros.` });
+      continue;
+    }
+    for (const field of ["matches_officiated", "yellow_cards", "red_cards"] as const) {
+      const values = rows.map((row) => row[field]);
+      const expected = values.length === 0 || values.some((value) => value === null)
+        ? null
+        : values.reduce<number>((sum, value) => sum + (value ?? 0), 0);
+      if (summary[field] !== expected) {
+        context.addIssue({ code: "custom", message: `El total ${field} de ${scope} no coincide.` });
+      }
+    }
+    const orders = rows.map((row) => row.published_order);
+    if (new Set(orders).size !== orders.length) {
+      context.addIssue({ code: "custom", message: `published_order se repite en ${scope}.` });
+    }
+  }
+});
+
 export type Team = z.infer<typeof TeamSchema>;
 export type Match = z.infer<typeof MatchSchema>;
 export type ProgressRecord = z.infer<typeof ProgressSchema>;
@@ -276,3 +409,7 @@ export type TopRanking = z.infer<typeof TopRankingSchema>;
 export type TopProgressSeries = z.infer<typeof TopProgressSchema>;
 export type TopForeignPlayer = z.infer<typeof TopForeignPlayerSchema>;
 export type TopBootstrap = z.infer<typeof TopBootstrapSchema>;
+export type RefereeScope = z.infer<typeof RefereeScopeSchema>;
+export type Referee = z.infer<typeof RefereeSchema>;
+export type RefereeStatistics = z.infer<typeof RefereeStatisticsSchema>;
+export type RefereeBootstrap = z.infer<typeof RefereeBootstrapSchema>;

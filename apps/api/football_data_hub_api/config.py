@@ -11,6 +11,9 @@ DEFAULT_DATA_ROOT = Path("data/exports/bdfutbol/group2_classification")
 DEFAULT_TOP_CAPTURE = Path(
     "data/exports/bdfutbol/group2_top/20261010T155145.195266Z-c5b031a6"
 )
+DEFAULT_GROUP2_REFEREES_CAPTURE = Path(
+    "data/exports/bdfutbol/group2_referees/20261010T171227.617128Z-4cfe71bc"
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,6 +31,8 @@ class ApiSettings:
     top_validation_path: Path | None = None
     top_source_html_path: Path | None = None
     top_team_catalog_path: Path | None = None
+    referees_root: Path | None = None
+    referees_related_matches_path: Path | None = None
 
     @classmethod
     def from_env(cls) -> ApiSettings:
@@ -35,6 +40,15 @@ class ApiSettings:
         data_root = _resolve_path(Path(data_root_value), PROJECT_ROOT)
         top_root = _resolve_path(
             Path(os.getenv("FDH_GROUP2_TOP_ROOT", str(DEFAULT_TOP_CAPTURE))),
+            PROJECT_ROOT,
+        )
+        referees_root = _resolve_path(
+            Path(
+                os.getenv(
+                    "FDH_GROUP2_REFEREES_ROOT",
+                    str(DEFAULT_GROUP2_REFEREES_CAPTURE),
+                )
+            ),
             PROJECT_ROOT,
         )
 
@@ -67,6 +81,10 @@ class ApiSettings:
             top_validation_path=_configured_path("FDH_GROUP2_TOP_VALIDATION", top_root, "validation/results.json"),
             top_source_html_path=_configured_path("FDH_GROUP2_TOP_SOURCE_HTML", top_root, "raw/source.html"),
             top_team_catalog_path=_configured_optional_path("FDH_GROUP2_TOP_TEAM_CATALOG", PROJECT_ROOT),
+            referees_root=referees_root,
+            referees_related_matches_path=_configured_optional_path(
+                "FDH_GROUP2_REFEREES_MATCHES", PROJECT_ROOT
+            ),
             cors_origins=tuple(
                 origin.strip()
                 for origin in os.getenv("FDH_CORS_ORIGINS", "").split(",")

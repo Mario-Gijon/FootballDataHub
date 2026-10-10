@@ -10,8 +10,13 @@ import topPlayers from "../../../../data/exports/bdfutbol/group2_top/20261010T15
 import topRankings from "../../../../data/exports/bdfutbol/group2_top/20261010T155145.195266Z-c5b031a6/normalized/rankings.json";
 import topProgress from "../../../../data/exports/bdfutbol/group2_top/20261010T155145.195266Z-c5b031a6/normalized/progress.json";
 import topForeigners from "../../../../data/exports/bdfutbol/group2_top/20261010T155145.195266Z-c5b031a6/normalized/foreigners.json";
+import refereeCapture from "../../../../data/exports/bdfutbol/group2_referees/20261010T171227.617128Z-4cfe71bc/metadata/capture.json";
+import refereeCatalog from "../../../../data/exports/bdfutbol/group2_referees/20261010T171227.617128Z-4cfe71bc/normalized/referees.json";
+import refereeStatistics from "../../../../data/exports/bdfutbol/group2_referees/20261010T171227.617128Z-4cfe71bc/normalized/statistics.json";
+import refereeMatchReference from "../../../../data/exports/bdfutbol/group2_referees/20261010T171227.617128Z-4cfe71bc/validation/match_reference.json";
 import { buildTopProgressData, TopSection } from "../components/TopSection";
-import type { TopBootstrap } from "../api/contracts";
+import type { RefereeBootstrap, TopBootstrap } from "../api/contracts";
+import { RefereeBootstrapSchema } from "../api/contracts";
 import App from "../App";
 
 const publicMatches = matchesSource.matches.map((match) => ({
@@ -161,6 +166,62 @@ const topBootstrap = {
   },
   coverage_note: topRankings.coverage_note,
 };
+
+const refereeScopeLabels = { all: "Todos", group1: "Grupo I", group2: "Grupo II" } as const;
+const refereeScopeSummaries = Object.fromEntries(
+  (["all", "group1", "group2"] as const).map((scope) => {
+    const rows = refereeStatistics.records.filter((row) => row.group_scope === scope);
+    const total = (field: "matches_officiated" | "yellow_cards" | "red_cards") =>
+      rows.some((row) => row[field] === null)
+        ? null
+        : rows.reduce((sum, row) => sum + (row[field] ?? 0), 0);
+    return [scope, {
+      group_scope: scope,
+      label: refereeScopeLabels[scope],
+      referee_count: rows.length,
+      matches_officiated: total("matches_officiated"),
+      yellow_cards: total("yellow_cards"),
+      red_cards: total("red_cards"),
+    }];
+  }),
+);
+const refereeBootstrap = {
+  metadata: {
+    source: refereeCapture.source,
+    url: refereeCapture.url,
+    competition: refereeCapture.competition,
+    season: refereeCapture.season,
+    group: refereeCapture.group,
+    section: "referees",
+    capture_id: refereeCapture.capture_id,
+    captured_at: refereeCapture.captured_at_utc,
+    extractor_version: refereeCapture.extractor_version,
+    dataset_version: `${refereeCapture.capture_id}-test-fixture`,
+    source_snapshot_sha256: Object.fromEntries(
+      Object.entries(refereeCapture.scope_captures).map(([scope, capture]) => [scope, capture.source_snapshot_sha256]),
+    ),
+    related_matches_path: refereeCapture.related_match_dataset.path,
+    related_matches_sha256: refereeCapture.related_match_dataset.sha256,
+    related_matches_capture_id: refereeCapture.related_match_dataset.source_capture_id,
+    related_matches_captured_at: refereeCapture.related_match_dataset.source_captured_at_utc,
+    match_reference_status: refereeMatchReference.status,
+  },
+  availability: {
+    catalog_referee_count: refereeCatalog.records.length,
+    statistics_record_count: refereeStatistics.records.length,
+    scope_counts: refereeScopeSummaries,
+  },
+  seasons: [{ season: refereeCapture.season, label: "2026/27", available: true }],
+  groups: (["all", "group1", "group2"] as const).map((scope) => ({
+    group_scope: scope,
+    label: refereeScopeLabels[scope],
+    referee_count: refereeScopeSummaries[scope].referee_count,
+  })),
+  referees: refereeCatalog.records,
+  statistics: refereeStatistics.records,
+  coverage_note: "Las tarjetas son las mostradas en los partidos dirigidos. La nacionalidad no está verificada en esta captura.",
+  compatibility_warnings: [],
+} as RefereeBootstrap;
 
 function response(status: number, body: unknown) {
   return {
@@ -459,6 +520,97 @@ describe("dashboard de clasificación", () => {
     expect(screen.getByRole("button", { name: "Reintentar conexión" })).toBeInTheDocument();
   });
 
+  it("carga Árbitros al entrar una vez y cambia de ámbito con filas y totales locales", async () => {
+    fetchMock.mockImplementation((input: RequestInfo | URL) => Promise.resolve(
+      String(input).endsWith("/api/v1/group2/referees/bootstrap")
+        ? response(200, refereeBootstrap)
+        : response(200, apiBootstrap),
+    ));
+    expect(RefereeBootstrapSchema.safeParse(refereeBootstrap).success).toBe(true);
+    render(<App />);
+    await screen.findByRole("heading", { name: "General" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Árbitros" }));
+    expect(await screen.findByText("42 árbitros · Grupo II")).toBeInTheDocument();
+    expect(screen.getByLabelText("Temporada")).toHaveValue("2026-27");
+    expect(screen.getByLabelText("Temporada")).toBeDisabled();
+    expect(screen.getByLabelText("Grupo")).toHaveValue("group2");
+    const tableRegion = screen.getByRole("region", { name: "Árbitros y estadísticas por grupo" });
+    expect(within(tableRegion).getAllByRole("row")).toHaveLength(43);
+    expect(within(screen.getByRole("region", { name: "Resumen estadístico: Grupo II" })).getByText("59")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Grupo"), { target: { value: "all" } });
+    expect(within(tableRegion).getAllByRole("row")).toHaveLength(61);
+    expect(screen.getByText("60 árbitros · Todos")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Grupo"), { target: { value: "group1" } });
+    expect(within(tableRegion).getAllByRole("row")).toHaveLength(44);
+    expect(screen.getByText("43 árbitros · Grupo I")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Resultados" }));
+    expect(await screen.findByRole("heading", { name: "Resultados" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Árbitros" }));
+    expect(screen.getByLabelText("Grupo")).toHaveValue("group1");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("presenta datos nulos y ceros reales, enlaza la ficha y deja nulos al final en ambos órdenes", async () => {
+    fetchMock.mockImplementation((input: RequestInfo | URL) => Promise.resolve(
+      String(input).endsWith("/api/v1/group2/referees/bootstrap")
+        ? response(200, refereeBootstrap)
+        : response(200, apiBootstrap),
+    ));
+    const { container } = render(<App />);
+    await screen.findByRole("heading", { name: "General" });
+    fireEvent.click(screen.getByRole("tab", { name: "Árbitros" }));
+    await screen.findByText("42 árbitros · Grupo II");
+
+    const bejar = screen.getByText("Béjar Caballero").closest("tr");
+    expect(bejar?.children[2]).toHaveTextContent("—");
+    const profileLink = within(bejar as HTMLElement).getByRole("link");
+    expect(profileLink).toHaveAttribute("href", "https://www.bdfutbol.com/es/r/r602675.html");
+    expect(profileLink).toHaveAttribute("target", "_blank");
+    const photo = bejar?.querySelector("img.referee-photo");
+    expect(photo).not.toBeNull();
+    fireEvent.error(photo as HTMLImageElement);
+    expect(bejar?.querySelector(".referee-photo-fallback")).toBeInTheDocument();
+    expect(container.querySelector(".referees-table tbody td:nth-child(9)")).toHaveTextContent("0");
+
+    fireEvent.click(screen.getByRole("button", { name: /^Edad/ }));
+    let rows = Array.from(container.querySelectorAll(".referees-table tbody tr"));
+    expect(rows.at(-1)?.children[2]).toHaveTextContent("—");
+    fireEvent.click(screen.getByRole("button", { name: /^Edad/ }));
+    rows = Array.from(container.querySelectorAll(".referees-table tbody tr"));
+    expect(rows.at(-1)?.children[2]).toHaveTextContent("—");
+    expect(screen.getByText("21/01/1999")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("reintenta Árbitros sin afectar las secciones existentes y conserva el bootstrap en memoria", async () => {
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/group2/referees/bootstrap")) {
+        const attempts = fetchMock.mock.calls.filter(([path]) => String(path).endsWith("/api/v1/group2/referees/bootstrap")).length;
+        return Promise.resolve(attempts === 1 ? response(503, { detail: "invalid capture" }) : response(200, refereeBootstrap));
+      }
+      return Promise.resolve(response(200, apiBootstrap));
+    });
+    render(<App />);
+    await screen.findByRole("heading", { name: "General" });
+    fireEvent.click(screen.getByRole("tab", { name: "Árbitros" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Árbitros no está disponible");
+    fireEvent.click(screen.getByRole("tab", { name: "Clasificación" }));
+    expect(await screen.findByRole("heading", { name: "General" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Árbitros" }));
+    fireEvent.click(screen.getByRole("button", { name: "Reintentar" }));
+    expect(await screen.findByText("42 árbitros · Grupo II")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Resultados" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Árbitros" }));
+    expect(fetchMock.mock.calls.filter(([path]) => String(path).endsWith("/api/v1/group2/referees/bootstrap"))).toHaveLength(2);
+    expect(fetchMock.mock.calls.filter(([path]) => String(path).endsWith("/api/v1/group2/bootstrap"))).toHaveLength(1);
+  });
+
   it("carga Destacados solo al entrar, mantiene selecciones locales y presenta rankings reales", async () => {
     fetchMock.mockImplementation((input: RequestInfo | URL) => Promise.resolve(
       String(input).endsWith("/api/v1/group2/top/bootstrap")
@@ -534,7 +686,8 @@ describe("dashboard de clasificación", () => {
     const unknownPercentage = {
       ...topBootstrap,
       foreigners_summary: { ...topBootstrap.foreigners_summary, source_percentage: null },
-    } as TopBootstrap;
+} as TopBootstrap;
+
     const { rerender } = render(
       <TopSection data={unknownPercentage} loadState="ready" errorMessage="" onRetry={() => undefined} />,
     );

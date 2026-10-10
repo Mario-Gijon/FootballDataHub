@@ -1,10 +1,11 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { loadGroup2Bootstrap, loadGroup2TopBootstrap } from "./api/client";
-import type { Bootstrap, TopBootstrap } from "./api/contracts";
+import { loadGroup2Bootstrap, loadGroup2RefereesBootstrap, loadGroup2TopBootstrap } from "./api/client";
+import type { Bootstrap, RefereeBootstrap, TopBootstrap } from "./api/contracts";
 import { ClassificationControls } from "./components/ClassificationControls";
 const ProgressChart = lazy(() => import("./components/ProgressChart").then((module) => ({ default: module.ProgressChart })));
 import { StandingsTable } from "./components/StandingsTable";
 import { ResultsSection, type ResultsMatchday } from "./components/ResultsSection";
+import { RefereesSection } from "./components/RefereesSection";
 const TopSection = lazy(() => import("./components/TopSection").then((module) => ({ default: module.TopSection })));
 import {
   calculateStandings,
@@ -14,11 +15,12 @@ import {
 
 type LoadState = "loading" | "error" | "ready";
 type TopLoadState = "idle" | "loading" | "error" | "ready";
+type RefereesLoadState = "idle" | "loading" | "error" | "ready";
 
 export default function App() {
   const [data, setData] = useState<Bootstrap | null>(null);
   const [filters, setFilters] = useState<StandingsFilters | null>(null);
-  const [activeSection, setActiveSection] = useState<"standings" | "results" | "top">("standings");
+  const [activeSection, setActiveSection] = useState<"standings" | "results" | "top" | "referees">("standings");
   const [resultsMatchday, setResultsMatchday] = useState<ResultsMatchday>(1);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [errorMessage, setErrorMessage] = useState("");
@@ -26,6 +28,9 @@ export default function App() {
   const [topData, setTopData] = useState<TopBootstrap | null>(null);
   const [topLoadState, setTopLoadState] = useState<TopLoadState>("idle");
   const [topErrorMessage, setTopErrorMessage] = useState("");
+  const [refereesData, setRefereesData] = useState<RefereeBootstrap | null>(null);
+  const [refereesLoadState, setRefereesLoadState] = useState<RefereesLoadState>("idle");
+  const [refereesErrorMessage, setRefereesErrorMessage] = useState("");
 
   const indexes = useMemo(
     () => data ? createClassificationIndexes(data.teams, data.matches) : null,
@@ -65,6 +70,21 @@ export default function App() {
         setTopLoadState("error");
       });
   }, [activeSection, topData, topLoadState]);
+
+  useEffect(() => {
+    if (activeSection !== "referees" || refereesData || refereesLoadState !== "idle") return;
+    setRefereesLoadState("loading");
+    setRefereesErrorMessage("");
+    loadGroup2RefereesBootstrap()
+      .then((bootstrap) => {
+        setRefereesData(bootstrap);
+        setRefereesLoadState("ready");
+      })
+      .catch((error: unknown) => {
+        setRefereesErrorMessage(error instanceof Error ? error.message : "No se pudieron cargar los datos de Árbitros.");
+        setRefereesLoadState("error");
+      });
+  }, [activeSection, refereesData, refereesLoadState]);
 
   const table = useMemo(
     () => data && filters && indexes
@@ -138,6 +158,15 @@ export default function App() {
             onClick={() => setActiveSection("top")}
             type="button"
           >Destacados</button>
+          <button
+            id="referees-tab"
+            role="tab"
+            aria-selected={activeSection === "referees"}
+            aria-controls="referees-panel"
+            className={activeSection === "referees" ? "is-active" : ""}
+            onClick={() => setActiveSection("referees")}
+            type="button"
+          >Árbitros</button>
         </nav>
 
         {activeSection === "standings" ? (
@@ -191,6 +220,14 @@ export default function App() {
               onRetry={() => setTopLoadState("idle")}
             />
           </Suspense>
+        </div>
+        <div hidden={activeSection !== "referees"}>
+          <RefereesSection
+            data={refereesData}
+            loadState={refereesLoadState}
+            errorMessage={refereesErrorMessage}
+            onRetry={() => setRefereesLoadState("idle")}
+          />
         </div>
       </main>
 

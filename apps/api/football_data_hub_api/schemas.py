@@ -293,3 +293,94 @@ class TopBootstrapResponse(TopApiModel):
     foreigners: list[TopForeignPlayerResponse]
     foreigners_summary: TopForeignersSummary
     coverage_note: str
+
+
+RefereeScope = Literal["all", "group1", "group2"]
+
+
+class RefereeApiModel(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+
+class RefereeMetadataResponse(RefereeApiModel):
+    source: str
+    url: str
+    competition: str
+    season: str
+    group: str
+    section: Literal["referees"]
+    capture_id: str
+    captured_at: datetime
+    extractor_version: str
+    dataset_version: str
+    source_snapshot_sha256: dict[RefereeScope, str]
+    related_matches_path: str
+    related_matches_sha256: str
+    related_matches_capture_id: str
+    related_matches_captured_at: datetime
+    match_reference_status: Literal["consistent", "discrepancies"]
+
+
+class RefereeResponse(RefereeApiModel):
+    referee_id: str
+    display_name: str
+    full_name: str | None
+    profile_url: str
+    photo_url: str | None
+    flag_url: str | None
+    nationality: str | None
+    nationality_code: str | None
+    age_years: StrictInt | None
+    birth_date: date | None
+    birthplace: str | None
+    province: str | None
+
+
+class RefereeStatisticsResponse(RefereeApiModel):
+    referee_id: str
+    season: str
+    group_scope: RefereeScope
+    published_order: StrictInt
+    matches_officiated: OptionalInt
+    yellow_cards: OptionalInt
+    red_cards: OptionalInt
+    statistics_url: str | None
+    source_page_url: str
+
+
+class RefereeScopeSummary(RefereeApiModel):
+    group_scope: RefereeScope
+    label: str
+    referee_count: StrictInt
+    matches_officiated: OptionalInt
+    yellow_cards: OptionalInt
+    red_cards: OptionalInt
+
+
+class RefereeAvailability(RefereeApiModel):
+    catalog_referee_count: StrictInt
+    statistics_record_count: StrictInt
+    scope_counts: dict[RefereeScope, RefereeScopeSummary]
+
+
+class RefereeSeasonOption(RefereeApiModel):
+    season: str
+    label: str
+    available: bool
+
+
+class RefereeGroupOption(RefereeApiModel):
+    group_scope: RefereeScope
+    label: str
+    referee_count: StrictInt
+
+
+class RefereeBootstrapResponse(RefereeApiModel):
+    metadata: RefereeMetadataResponse
+    availability: RefereeAvailability
+    seasons: list[RefereeSeasonOption]
+    groups: list[RefereeGroupOption]
+    referees: list[RefereeResponse]
+    statistics: list[RefereeStatisticsResponse]
+    coverage_note: str
+    compatibility_warnings: list[str]
