@@ -66,11 +66,7 @@ class ApiSettings:
             top_capture_metadata_path=_configured_path("FDH_GROUP2_TOP_CAPTURE_METADATA", top_root, "metadata/capture.json"),
             top_validation_path=_configured_path("FDH_GROUP2_TOP_VALIDATION", top_root, "validation/results.json"),
             top_source_html_path=_configured_path("FDH_GROUP2_TOP_SOURCE_HTML", top_root, "raw/source.html"),
-            top_team_catalog_path=_configured_path(
-                "FDH_GROUP2_TOP_TEAM_CATALOG",
-                PROJECT_ROOT,
-                "data/exports/bdfutbol/group2_classification/derived-res01-20261010T102656Z/normalized/matches.json",
-            ),
+            top_team_catalog_path=_configured_optional_path("FDH_GROUP2_TOP_TEAM_CATALOG", PROJECT_ROOT),
             cors_origins=tuple(
                 origin.strip()
                 for origin in os.getenv("FDH_CORS_ORIGINS", "").split(",")
@@ -87,3 +83,8 @@ def _configured_path(variable: str, root: Path, default_relative: str) -> Path:
     configured = os.getenv(variable)
     path = Path(configured) if configured else Path(default_relative)
     return _resolve_path(path, root)
+
+
+def _configured_optional_path(variable: str, root: Path) -> Path | None:
+    configured = os.getenv(variable)
+    return _resolve_path(Path(configured), root) if configured else None

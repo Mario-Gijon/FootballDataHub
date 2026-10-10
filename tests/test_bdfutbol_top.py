@@ -118,6 +118,32 @@ def test_validation_rejects_a_series_that_disagrees_with_ranking(top_data):
     assert "progress_total_mismatch" in {issue["code"] for issue in result["issues"]}
 
 
+def test_validation_accepts_more_nationality_options_and_a_seventh_matchday(top_data):
+    extended_progress = tuple(
+        replace(
+            series,
+            points=(*series.points, replace(series.points[-1], matchday=7)),
+        )
+        for series in top_data.progress
+    )
+    extended_summary = replace(
+        top_data.foreigners_summary,
+        country_options=(*top_data.foreigners_summary.country_options, ("synthetic", "País Sintético")),
+    )
+    future_shape = replace(
+        top_data,
+        progress=extended_progress,
+        chart_matchdays=(*top_data.chart_matchdays, 7),
+        foreigners_summary=extended_summary,
+    )
+
+    result = validate_top_data(future_shape)
+
+    assert result["valid"] is True
+    assert result["summary"]["foreign_country_options"] == 45
+    assert result["summary"]["chart_matchdays"] == [1, 2, 3, 4, 5, 6, 7]
+
+
 def test_invalid_page_is_rejected_without_invented_rows():
     teams = json.loads(TEAM_DATASET.read_text(encoding="utf-8"))["teams"]
     with pytest.raises(TopParseError):

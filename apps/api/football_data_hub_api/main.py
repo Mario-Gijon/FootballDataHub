@@ -42,7 +42,12 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
             app.state.dataset_error = exc
             logger.exception("API arrancada sin dataset preparado")
         try:
-            app.state.top_dataset = load_top_dataset(configured)
+            active = app.state.dataset
+            app.state.top_dataset = load_top_dataset(
+                configured,
+                active_teams=active.bootstrap.teams if active is not None else None,
+                active_team_capture_id=active.bootstrap.metadata.capture_id if active is not None else None,
+            )
         except (TopDatasetLoadError, KeyError, TypeError, ValueError) as exc:
             app.state.top_dataset_error = exc
             logger.exception("Destacados no está disponible; clasificación y resultados siguen aislados")

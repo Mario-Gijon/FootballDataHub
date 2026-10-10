@@ -10,7 +10,8 @@ import topPlayers from "../../../../data/exports/bdfutbol/group2_top/20261010T15
 import topRankings from "../../../../data/exports/bdfutbol/group2_top/20261010T155145.195266Z-c5b031a6/normalized/rankings.json";
 import topProgress from "../../../../data/exports/bdfutbol/group2_top/20261010T155145.195266Z-c5b031a6/normalized/progress.json";
 import topForeigners from "../../../../data/exports/bdfutbol/group2_top/20261010T155145.195266Z-c5b031a6/normalized/foreigners.json";
-import { buildTopProgressData } from "../components/TopSection";
+import { buildTopProgressData, TopSection } from "../components/TopSection";
+import type { TopBootstrap } from "../api/contracts";
 import App from "../App";
 
 const publicMatches = matchesSource.matches.map((match) => ({
@@ -121,6 +122,7 @@ const topBootstrap = {
     source_snapshot_sha256: topCapture.source_snapshot_sha256,
     related_team_capture_id: topCapture.related_team_catalog.source_capture_id,
     related_team_catalog_sha256: topCapture.related_team_catalog.sha256,
+    active_team_capture_id: apiBootstrap.metadata.capture_id,
     dataset_version: `${topCapture.capture_id}-test-fixture`,
   },
   availability: {
@@ -144,7 +146,7 @@ const topBootstrap = {
   rankings: topRankings.records,
   progress: topProgress.records,
   foreigners: topForeigners.records.map((player, index) => ({
-    ...player,
+    player_id: player.player_id,
     statistics: {
       ...player.statistics,
       // Isolated UI fixture to distinguish a genuine zero from missing data.
@@ -526,6 +528,56 @@ describe("dashboard de clasificación", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Destacados" }));
     expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/group2/top/bootstrap"))).toHaveLength(2);
     expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/group2/bootstrap"))).toHaveLength(1);
+  });
+
+  it("muestra el porcentaje de extranjeros desconocido como guion y conserva el cero real", () => {
+    const unknownPercentage = {
+      ...topBootstrap,
+      foreigners_summary: { ...topBootstrap.foreigners_summary, source_percentage: null },
+    } as TopBootstrap;
+    const { rerender } = render(
+      <TopSection data={unknownPercentage} loadState="ready" errorMessage="" onRetry={() => undefined} />,
+    );
+    expect(screen.getByRole("heading", { name: "Extranjeros — 101 (—)" })).toBeInTheDocument();
+
+    const zeroPercentage = {
+      ...topBootstrap,
+      foreigners_summary: { ...topBootstrap.foreigners_summary, source_percentage: 0 },
+    } as TopBootstrap;
+    rerender(<TopSection data={zeroPercentage} loadState="ready" errorMessage="" onRetry={() => undefined} />);
+    expect(screen.getByRole("heading", { name: "Extranjeros — 101 (0,00 %)" })).toBeInTheDocument();
+  });
+
+  it("mantiene los valores nulos al final en ambos sentidos de ordenación", () => {
+    const goals = [5, 3, 2, 0, null, null];
+    const sortableFixture = {
+      ...topBootstrap,
+      foreigners_summary: { ...topBootstrap.foreigners_summary, source_count: goals.length },
+      foreigners: topBootstrap.foreigners.slice(0, goals.length).map((foreign, index) => ({
+        ...foreign,
+        statistics: { ...foreign.statistics, goals: goals[index]! },
+      })),
+    } as TopBootstrap;
+    const { container } = render(
+      <TopSection data={sortableFixture} loadState="ready" errorMessage="" onRetry={() => undefined} />,
+    );
+    const table = container.querySelector(".foreigners-table") as HTMLElement;
+    const goalsButton = within(table).getByRole("button", { name: /Goles/ });
+    const values = () => Array.from(table.querySelectorAll("tbody tr"))
+      .map((row) => row.children[6]?.textContent?.trim());
+    const lastTwoPlayerIds = () => Array.from(table.querySelectorAll("tbody tr"))
+      .slice(-2)
+      .map((row) => Number(row.querySelector("a")?.getAttribute("href")?.match(/j(\d+)\.html$/)?.[1]));
+    const expectedNullPlayerIds = sortableFixture.foreigners.slice(-2)
+      .map(({ player_id }) => player_id)
+      .sort((left, right) => left - right);
+
+    fireEvent.click(goalsButton);
+    expect(values()).toEqual(["0", "2", "3", "5", "—", "—"]);
+    expect(lastTwoPlayerIds()).toEqual(expectedNullPlayerIds);
+    fireEvent.click(goalsButton);
+    expect(values()).toEqual(["5", "3", "2", "0", "—", "—"]);
+    expect(lastTwoPlayerIds()).toEqual(expectedNullPlayerIds);
   });
 
   it("conserva los valores numéricos reales de las series de progreso", () => {

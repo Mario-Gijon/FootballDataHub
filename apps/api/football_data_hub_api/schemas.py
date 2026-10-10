@@ -192,6 +192,7 @@ class TopCaptureMetadata(TopApiModel):
     source_snapshot_sha256: str
     related_team_capture_id: str
     related_team_catalog_sha256: str
+    active_team_capture_id: str | None
     dataset_version: str
 
 
@@ -251,7 +252,8 @@ class TopForeignStatistics(TopApiModel):
     red_cards: OptionalInt
 
 
-class TopForeignPlayerResponse(TopPlayerResponse):
+class TopForeignPlayerResponse(TopApiModel):
+    player_id: StrictInt = Field(gt=0)
     statistics: TopForeignStatistics
 
 

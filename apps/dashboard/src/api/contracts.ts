@@ -193,7 +193,8 @@ const TopProgressSchema = z.object({
   graph_selected_by_default: z.boolean(),
 }).strict();
 
-const TopForeignPlayerSchema = TopPlayerSchema.extend({
+const TopForeignPlayerSchema = z.object({
+  player_id: positiveInteger,
   statistics: z.object({
     matches_played: nullableInteger,
     minutes_played: nullableInteger,
@@ -217,6 +218,7 @@ export const TopBootstrapSchema = z.object({
     source_snapshot_sha256: z.string().regex(/^[a-f0-9]{64}$/),
     related_team_capture_id: z.string().min(1),
     related_team_catalog_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    active_team_capture_id: z.string().min(1).nullable(),
     dataset_version: z.string().min(1),
   }).strict(),
   availability: z.object({

@@ -31,6 +31,7 @@ def validate_top_data(parsed: ParsedTop) -> dict[str, Any]:
         if any(record.metric_value < 0 for record in records):
             issues.append({"code": "negative_metric", "message": f"{category}: métrica negativa."})
     player_ids = {player.player_id for player in parsed.players}
+    players_by_id = {player.player_id: player for player in parsed.players}
     if len(player_ids) != len(parsed.players):
         issues.append({"code": "player_catalog_duplicate", "message": "El catálogo de jugadores contiene IDs duplicados."})
     referenced_ids = {record.player_id for record in parsed.rankings}
@@ -43,10 +44,25 @@ def validate_top_data(parsed: ParsedTop) -> dict[str, Any]:
         issues.append({"code": "foreign_count", "message": "El número de extranjeros no coincide con el encabezado fuente."})
     if len({record.player_id for record in parsed.foreigners}) != len(parsed.foreigners):
         issues.append({"code": "foreign_duplicate", "message": "La tabla de extranjeros contiene IDs duplicados."})
-    if len(parsed.foreigners_summary.country_options) != 44:
-        warnings.append(
-            "El número de opciones de nacionalidad difiere de las 44 observadas en la captura de referencia."
+    country_codes = [code for code, _ in parsed.foreigners_summary.country_options]
+    if not country_codes or country_codes[0] != "":
+        issues.append({"code": "foreign_country_options", "message": "La lista de nacionalidades no comienza con Todos."})
+    if len(country_codes) != len(set(country_codes)):
+        issues.append({"code": "foreign_country_options_duplicate", "message": "La lista de nacionalidades repite códigos."})
+    if parsed.foreigners_summary.source_percentage is not None and not 0 <= parsed.foreigners_summary.source_percentage <= 100:
+        issues.append({"code": "foreign_percentage", "message": "El porcentaje de extranjeros está fuera del rango 0–100."})
+    if parsed.foreigners_summary.denominator_count is not None and parsed.foreigners_summary.denominator_count < parsed.foreigners_summary.source_count:
+        issues.append({"code": "foreign_denominator", "message": "El denominador de extranjeros es inferior al numerador."})
+    country_code_set = set(country_codes)
+    if any(
+        (players_by_id.get(record.player_id) is None)
+        or (
+            players_by_id[record.player_id].nationality_code
+            and players_by_id[record.player_id].nationality_code not in country_code_set
         )
+        for record in parsed.foreigners
+    ):
+        issues.append({"code": "foreign_country_missing", "message": "Un jugador extranjero no aparece en las opciones de nacionalidad."})
     progress_by_category = Counter(series.category for series in parsed.progress)
     expected_progress = {
         "goals": category_counts.get("goals", 0),
@@ -54,9 +70,12 @@ def validate_top_data(parsed: ParsedTop) -> dict[str, Any]:
         "yellow_cards": category_counts.get("yellow_cards", 0),
         "red_cards": category_counts.get("red_cards", 0),
     }
-    if dict(progress_by_category) != expected_progress:
+    if {category: progress_by_category.get(category, 0) for category in expected_progress} != expected_progress:
         issues.append({"code": "progress_coverage", "message": "Las series no cubren todas las filas con gráfico."})
     for series in parsed.progress:
+        if not series.points:
+            issues.append({"code": "progress_empty", "message": f"Serie vacía para player_id={series.player_id}."})
+            continue
         if tuple(point.matchday for point in series.points) != parsed.chart_matchdays:
             issues.append({"code": "progress_matchdays", "message": f"Jornadas incoherentes para player_id={series.player_id}."})
         values = [point.value for point in series.points]

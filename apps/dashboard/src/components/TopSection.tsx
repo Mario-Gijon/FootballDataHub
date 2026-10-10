@@ -90,8 +90,10 @@ function TopDashboard({ data }: { data: TopBootstrap }) {
     [data.availability.matchdays, series, selected],
   );
   const displayedRankings = category === "goals" && !showAllGoals ? rankings.slice(0, 10) : rankings;
-  const foreignCountLabel = new Intl.NumberFormat("es-ES", { maximumFractionDigits: 2, minimumFractionDigits: 2 })
-    .format(data.foreigners_summary.source_percentage ?? 0);
+  const foreignCountLabel = data.foreigners_summary.source_percentage === null
+    ? "—"
+    : new Intl.NumberFormat("es-ES", { maximumFractionDigits: 2, minimumFractionDigits: 2 })
+      .format(data.foreigners_summary.source_percentage) + " %";
 
   function togglePlayer(playerId: number) {
     setSelectedByCategory((current) => {
@@ -219,35 +221,43 @@ function TopDashboard({ data }: { data: TopBootstrap }) {
 function ForeignersTable({ data, percentageLabel }: { data: TopBootstrap; percentageLabel: string }) {
   const [country, setCountry] = useState("");
   const [sort, setSort] = useState<{ field: ForeignSortField; direction: SortDirection }>({ field: "player", direction: "asc" });
+  const playersById = useMemo(() => new Map(data.players.map((player) => [player.player_id, player])), [data.players]);
   const filtered = useMemo(() => {
-    const source = data.foreigners.map((player, index) => ({ player, index })).filter(({ player }) => !country || player.nationality_code === country);
-    const textValue = (player: TopForeignPlayer, field: ForeignSortField) => field === "player"
+    const source = data.foreigners.flatMap((foreign, index) => {
+      const player = playersById.get(foreign.player_id);
+      return player && (!country || player.nationality_code === country)
+        ? [{ foreign, player, index }]
+        : [];
+    });
+    const textValue = (player: TopPlayer, field: ForeignSortField) => field === "player"
       ? player.full_name ?? player.display_name
       : field === "team" ? player.team_name ?? "" : "";
-    const numericValue = (player: TopForeignPlayer, field: ForeignSortField): number | null => {
+    const numericValue = (player: TopPlayer, foreign: TopForeignPlayer, field: ForeignSortField): number | null => {
       if (field === "age") return player.age_years;
-      if (field === "matches") return player.statistics.matches_played;
-      if (field === "minutes") return player.statistics.minutes_played;
-      if (field === "goals") return player.statistics.goals;
-      if (field === "yellow") return player.statistics.yellow_cards;
-      if (field === "red") return player.statistics.red_cards;
+      if (field === "matches") return foreign.statistics.matches_played;
+      if (field === "minutes") return foreign.statistics.minutes_played;
+      if (field === "goals") return foreign.statistics.goals;
+      if (field === "yellow") return foreign.statistics.yellow_cards;
+      if (field === "red") return foreign.statistics.red_cards;
       return null;
     };
     return source.sort((left, right) => {
-      const leftValue = numericValue(left.player, sort.field);
-      const rightValue = numericValue(right.player, sort.field);
+      const leftValue = numericValue(left.player, left.foreign, sort.field);
+      const rightValue = numericValue(right.player, right.foreign, sort.field);
+      const stableTieBreak = () => left.player.player_id - right.player.player_id || left.index - right.index;
       let comparison = 0;
       if (leftValue !== null || rightValue !== null) {
+        if (leftValue === null && rightValue === null) return stableTieBreak();
         if (leftValue === null) return 1;
         if (rightValue === null) return -1;
         comparison = leftValue - rightValue;
       } else {
         comparison = textValue(left.player, sort.field).localeCompare(textValue(right.player, sort.field), "es", { sensitivity: "base" });
       }
-      if (comparison === 0) comparison = left.player.player_id - right.player.player_id || left.index - right.index;
+      if (comparison === 0) return stableTieBreak();
       return sort.direction === "asc" ? comparison : -comparison;
     });
-  }, [country, data.foreigners, sort]);
+  }, [country, data.foreigners, playersById, sort]);
 
   function sortBy(field: ForeignSortField) {
     setSort((current) => ({ field, direction: current.field === field && current.direction === "asc" ? "desc" : "asc" }));
@@ -262,7 +272,7 @@ function ForeignersTable({ data, percentageLabel }: { data: TopBootstrap; percen
   return (
     <section className="foreigners-card" aria-labelledby="foreigners-title">
       <div className="section-heading foreigners-heading">
-        <div><span className="section-kicker">PLANTILLA INTERNACIONAL</span><h2 id="foreigners-title">Extranjeros — {data.foreigners_summary.source_count} ({percentageLabel} %)</h2></div>
+        <div><span className="section-kicker">PLANTILLA INTERNACIONAL</span><h2 id="foreigners-title">Extranjeros — {data.foreigners_summary.source_count} ({percentageLabel})</h2></div>
         <label className="country-filter">País
           <select aria-label="Filtrar extranjeros por país" value={country} onChange={(event) => setCountry(event.target.value)}>
             {data.foreigners_summary.country_options.map((option) => <option key={option.code} value={option.code}>{option.label}</option>)}
@@ -275,17 +285,17 @@ function ForeignersTable({ data, percentageLabel }: { data: TopBootstrap; percen
           <thead><tr>
             {sortableHeader("Jugador", "player")}<th scope="col">País</th><th scope="col">Pos.</th>{sortableHeader("Edad", "age")}{sortableHeader("PJ", "matches")}{sortableHeader("Min", "minutes")}{sortableHeader("Goles", "goals")}{sortableHeader("TA", "yellow")}{sortableHeader("TR", "red")}{sortableHeader("Club", "team")}
           </tr></thead>
-          <tbody>{filtered.map(({ player }) => (
-            <tr key={player.player_id}>
+          <tbody>{filtered.map(({ foreign, player }) => (
+            <tr key={foreign.player_id}>
               <td><PlayerLink player={player} /></td>
               <td>{player.nationality ?? <span className="muted-dash">—</span>}</td>
               <td>{player.position_name ?? <span className="muted-dash">—</span>}</td>
               <td className="foreign-number">{formatNullable(player.age_years)}</td>
-              <td className="foreign-number">{formatNullable(player.statistics.matches_played)}</td>
-              <td className="foreign-number">{formatNullable(player.statistics.minutes_played)}</td>
-              <td className="foreign-number">{formatNullable(player.statistics.goals)}</td>
-              <td className="foreign-number">{formatNullable(player.statistics.yellow_cards)}</td>
-              <td className="foreign-number">{formatNullable(player.statistics.red_cards)}</td>
+              <td className="foreign-number">{formatNullable(foreign.statistics.matches_played)}</td>
+              <td className="foreign-number">{formatNullable(foreign.statistics.minutes_played)}</td>
+              <td className="foreign-number">{formatNullable(foreign.statistics.goals)}</td>
+              <td className="foreign-number">{formatNullable(foreign.statistics.yellow_cards)}</td>
+              <td className="foreign-number">{formatNullable(foreign.statistics.red_cards)}</td>
               <td><TopTeamLink player={player} /></td>
             </tr>
           ))}</tbody>
