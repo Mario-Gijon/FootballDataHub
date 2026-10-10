@@ -18,7 +18,7 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
-from typing import IO
+from typing import IO, Literal
 
 
 class BrowserRuntimeError(RuntimeError):
@@ -32,7 +32,9 @@ class BrowserProfileInUse(BrowserRuntimeError):
 @dataclass(frozen=True, slots=True)
 class BrowserRuntimeConfig:
     profile_dir: Path
-    browser: str = "brave"
+    backend: Literal["seleniumbase-pure-cdp", "playwright-cdp"] = "seleniumbase-pure-cdp"
+    browser: str = "chromium"
+    browser_executable_path: Path | None = None
     use_xvfb: bool = True
     screen: str = "1920x1080x24"
     start_url: str = "about:blank"
@@ -41,6 +43,8 @@ class BrowserRuntimeConfig:
     browser_log_path: Path | None = None
 
     def __post_init__(self) -> None:
+        if self.backend not in {"seleniumbase-pure-cdp", "playwright-cdp"}:
+            raise ValueError(f"Backend de navegador no soportado: {self.backend}")
         if self.browser not in {"auto", "brave", "chrome", "chromium"}:
             raise ValueError(f"Navegador no soportado: {self.browser}")
         if self.startup_timeout_seconds <= 0 or self.shutdown_timeout_seconds <= 0:
@@ -202,7 +206,13 @@ def start_browser(config: BrowserRuntimeConfig) -> BrowserRuntime:
     process: subprocess.Popen[bytes] | None = None
     log_handle: IO[bytes] | None = None
     try:
-        path = find_browser(config.browser)
+        path = (
+            str(config.browser_executable_path.expanduser().resolve())
+            if config.browser_executable_path
+            else find_browser(config.browser)
+        )
+        if not Path(path).is_file():
+            raise BrowserRuntimeError(f"No existe el navegador configurado: {path}")
         port = reserve_loopback_port()
         command = build_command(config, path, port)
         env = os.environ.copy()

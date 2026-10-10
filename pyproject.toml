@@ -12,7 +12,8 @@ dependencies = []
 
 [project.optional-dependencies]
 api = ["fastapi>=0.115", "uvicorn[standard]>=0.34"]
-scraping = ["playwright>=1.55"]
+scraping = ["seleniumbase==4.55.2"]
+scraping-playwright = ["playwright>=1.55"]
 # Starlette 1.7's TestClient imports httpx2; httpx is only its deprecated fallback.
 dev = ["httpx2", "pytest", "ruff"]
 

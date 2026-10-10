@@ -89,11 +89,20 @@ class FakePage:
     def title(self):
         return self._title
 
-    def locator(self, selector):
+    def text(self, selector):
         assert selector == "body"
-        return SimpleNamespace(inner_text=lambda **kwargs: self._body)
+        return self._body
 
-    def wait_for_timeout(self, milliseconds):
+    def texts(self, selector):
+        return []
+
+    def exists(self, selector):
+        return False
+
+    def html(self):
+        return self._body
+
+    def wait(self, milliseconds):
         self.waits.append(milliseconds)
 
     def close(self):
@@ -114,7 +123,7 @@ class FakeSession:
         page = self.page
         status = self.response_status
         return SimpleNamespace(
-            page=page, final_url=page.url, response_status=status,
+            document=page, page=page, final_url=page.url, response_status=status,
             close=lambda: page.close(),
         )
 
@@ -132,15 +141,18 @@ def test_access_open_checks_page_title_and_dom_markers():
         def __init__(self):
             super().__init__(title="Team details | BDFutbol", body="Equipo local")
 
-        def locator(self, selector):
+        def text(self, selector):
             if selector == "body":
-                return SimpleNamespace(inner_text=lambda **kwargs: self._body)
-            if selector == "#content":
-                return SimpleNamespace(
-                    count=lambda: 1,
-                    all_text_contents=lambda: ["Equipo local · Temporada actual"],
-                )
+                return self._body
             raise AssertionError(f"Selector inesperado: {selector}")
+
+        def exists(self, selector):
+            return selector == "#content"
+
+        def texts(self, selector):
+            if selector == "#content":
+                return ["Equipo local · Temporada actual"]
+            return []
 
     session = FakeSession(MarkupPage())
     with mod.BDFutbolAccess(session).open(

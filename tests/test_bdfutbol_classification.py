@@ -217,27 +217,6 @@ def test_redacts_ephemeral_cdp_websocket_path(tmp_path):
     assert "<port>" in text and "[redacted]" in text
 
 
-class _FakeLocator:
-    def __init__(self, page, selector):
-        self.page = page
-        self.selector = selector
-
-    def count(self):
-        return 1 if self.selector in self.page.values else 0
-
-    def evaluate_all(self, _script):
-        return self.page.options[self.selector.removesuffix(" option")]
-
-    def select_option(self, value):
-        self.page.values[self.selector] = value
-
-    def input_value(self):
-        return self.page.values[self.selector]
-
-    def fill(self, value):
-        self.page.values[self.selector] = value
-
-
 class _FakeFilterPage:
     def __init__(self):
         jornada = {
@@ -271,13 +250,28 @@ class _FakeFilterPage:
         self.recalculations = 0
         self.waits = []
 
-    def locator(self, selector):
-        return _FakeLocator(self, selector)
+    def exists(self, selector):
+        return selector in self.options
+
+    def count(self, selector):
+        return int(selector in self.options)
+
+    def option_map(self, selector):
+        return self.options[selector]
+
+    def select(self, selector, value):
+        self.values[selector] = value
+
+    def fill(self, selector, value):
+        self.values[selector] = value
+
+    def value(self, selector):
+        return self.values[selector]
 
     def evaluate(self, _script):
         self.recalculations += 1
 
-    def wait_for_timeout(self, milliseconds):
+    def wait(self, milliseconds):
         self.waits.append(milliseconds)
 
 

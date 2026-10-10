@@ -31,15 +31,43 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--profile",
         type=Path,
         default=Path(os.environ.get(
-            "FDH_BDFUTBOL_PROFILE", str(Path.home() / ".football-data-hub-v2-probe")
+            "FDH_BDFUTBOL_PROFILE", str(Path.home() / ".football-data-hub-chromium-pure-cdp")
         )),
         help="Perfil persistente ya autorizado (o FDH_BDFUTBOL_PROFILE)",
     )
     parser.add_argument(
+        "--backend",
+        choices=("seleniumbase-pure-cdp", "playwright-cdp"),
+        default=os.environ.get("FDH_BDFUTBOL_BROWSER_BACKEND", "seleniumbase-pure-cdp"),
+    )
+    parser.add_argument(
         "--browser",
         choices=("brave", "chrome", "chromium", "auto"),
-        default=os.environ.get("FDH_BDFUTBOL_BROWSER", "brave"),
+        default=os.environ.get("FDH_BDFUTBOL_BROWSER", "chromium"),
     )
+    parser.add_argument(
+        "--browser-executable",
+        type=Path,
+        default=Path(os.environ["FDH_BDFUTBOL_BROWSER_EXECUTABLE"])
+        if os.environ.get("FDH_BDFUTBOL_BROWSER_EXECUTABLE") else None,
+    )
+    parser.add_argument(
+        "--startup-timeout-seconds",
+        type=float,
+        default=os.environ.get("FDH_BDFUTBOL_BROWSER_STARTUP_TIMEOUT_SECONDS", 35.0),
+    )
+    parser.add_argument(
+        "--navigation-timeout-ms",
+        type=int,
+        default=os.environ.get("FDH_BDFUTBOL_NAVIGATION_TIMEOUT_MS", 45_000),
+    )
+    parser.add_argument(
+        "--no-xvfb",
+        action="store_false",
+        dest="use_xvfb",
+        help="Usa un DISPLAY ya disponible; por defecto se espera Xvfb externo.",
+    )
+    parser.set_defaults(use_xvfb=True)
     parser.add_argument(
         "--output-root",
         type=Path,
@@ -86,7 +114,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         bundle = acquire_classification(
             request=request,
             profile_dir=args.profile,
+            backend=args.backend,
             browser=args.browser,
+            browser_executable_path=args.browser_executable,
+            startup_timeout_seconds=args.startup_timeout_seconds,
+            navigation_timeout_ms=args.navigation_timeout_ms,
+            use_xvfb=args.use_xvfb,
             browser_log_path=browser_log,
             capture_id=capture_id,
         )

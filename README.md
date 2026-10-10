@@ -1,95 +1,94 @@
 # FootballDataHub
 
-Base mínima para usar Brave con su perfil persistente mediante Playwright/CDP y comprobar el acceso normal a BDFutbol.
+Base modular para adquisición deportiva de BDFutbol, dominio, API y dashboard.
+El navegador predeterminado de adquisición es SeleniumBase Pure CDP con Chromium;
+Brave + Playwright/CDP permanece como backend explícito de regresión.
 
-## Preparar el entorno
+## Preparar el entorno de adquisición
 
-Se requiere Python 3.12 o posterior, Brave y `xvfb-run`/Xvfb. Instala el proyecto, el extra de navegador y las herramientas de desarrollo:
+Se requiere Python 3.12 o posterior, Chromium y Xvfb en Linux sin escritorio.
 
 ```bash
 python -m venv .venv
 .venv/bin/python -m pip install -e '.[scraping,dev]'
 ```
 
-Playwright se conecta al navegador instalado por CDP; no descarga ni administra otro navegador.
-
-## Ejecutar el smoke test
+El extra `scraping` fija SeleniumBase 4.55.2. Para utilizar el backend histórico:
 
 ```bash
-.venv/bin/python scripts/smoke_bdfutbol_session.py
+.venv/bin/python -m pip install -e '.[scraping-playwright]'
 ```
 
-El smoke conserva estos parámetros: `--profile`, `--browser`, `--output-root` y `--no-stats`. Por defecto usa Brave, el perfil `~/.football-data-hub-v2-probe` y guarda un informe local bajo `data/analysis/bdfutbol/session_smoke/`.
-
-## Brave, CDP y sesión
-
-`BrowserRuntime` inicia Brave con el perfil elegido y un puerto CDP ligado a loopback. `BrowserSessionManager` conecta Playwright a ese endpoint, crea páginas propias y cierra páginas, conexión CDP, Playwright y proceso al salir del bloque `with`. El runtime reserva un lock de FootballDataHub junto al perfil para evitar dos instancias administradas simultáneas.
-
-El perfil persistente no se copia ni se limpia. Cierra cualquier Brave que lo esté usando antes de iniciar el smoke. No borres sus archivos `Singleton*` ni modifiques los locks manualmente.
-
-## Comprobar BDFutbol
-
-`BDFutbolAccess` navega únicamente a URLs HTTPS de `bdfutbol.com`, inspecciona el título, el contenido y los marcadores que indique la llamada, y clasifica el resultado como válido, error, contenido inválido o desafío. Un HTTP 200 por sí solo no valida una página.
-
-Ejecuta el smoke solo cuando el acceso normal esté disponible. Si aparece un desafío o una denegación, el programa lo informa y no intenta resolverlo. No automatices CAPTCHA, no eludas controles de acceso y respeta los términos y límites del sitio.
-
-Las páginas y sesiones se cierran automáticamente con sus gestores de contexto; también puede llamarse a `close()` explícitamente.
-
-## API REST de Grupo II
-
-La API se instala por separado y no carga Playwright ni el proveedor de scraping:
+La API se instala por separado y no carga SeleniumBase ni Playwright:
 
 ```bash
 .venv/bin/python -m pip install -e '.[api]'
 ```
 
-Configura los datasets con `.env.example` y sigue [`docs/group2_api.md`](docs/group2_api.md) para arrancar Uvicorn. Las herramientas de navegador están en el extra `scraping`, así que un servidor de API puede instalar únicamente `.[api]`.
+## Smoke tests
+
+Prueba offline de HTML, JavaScript, HTTP 200/404 y perfil persistente:
+
+```bash
+PYTHONPATH=src xvfb-run -a -s '-screen 0 1920x1080x24' \
+  .venv/bin/python scripts/smoke_browser_local.py
+```
+
+Diagnóstico de acceso BDFutbol en una única navegación controlada:
+
+```bash
+PYTHONPATH=src xvfb-run -a -s '-screen 0 1920x1080x24' \
+  .venv/bin/python scripts/smoke_bdfutbol_session.py \
+  --backend seleniumbase-pure-cdp --browser chromium --group2-classification
+```
+
+Si aparece un desafío o una denegación, la prueba se detiene sin resolverlo. Un
+HTTP 200 por sí solo no valida el contenido deportivo.
 
 ## Clasificación del Grupo II
 
-El diccionario observado de columnas, filtros y progreso está en [`docs/bdfutbol_group2_classification_semantics.md`](docs/bdfutbol_group2_classification_semantics.md). El extractor realiza una navegación por ejecución, valida el título `2026-27`, el Grupo II y los 20 IDs de `table#classific`, y no intenta resolver desafíos.
-
-Para capturar la clasificación general de la jornada seleccionada actualmente en la página:
+El diccionario observado de columnas, filtros y progreso está en
+[`docs/bdfutbol_group2_classification_semantics.md`](docs/bdfutbol_group2_classification_semantics.md).
+El extractor valida el título `2026-27`, el Grupo II y los 20 IDs de
+`table#classific`; ejecuta una navegación por captura.
 
 ```bash
-PYTHONPATH=src .venv/bin/python scripts/scrape_bdfutbol_group2_classification.py \
-  --browser brave \
-  --profile "$HOME/.football-data-hub-v2-probe" \
+PYTHONPATH=src xvfb-run -a -s '-screen 0 1920x1080x24' \
+  .venv/bin/python scripts/scrape_bdfutbol_group2_classification.py \
+  --backend seleniumbase-pure-cdp \
+  --browser chromium \
+  --profile "$HOME/.football-data-hub-chromium-pure-cdp" \
   --classification-type general
 ```
 
-La última jornada se lee del selector durante la navegación; también se puede fijar con `--matchday 6`. Otros estados explícitos:
+El perfil predeterminado de Chromium es distinto del antiguo perfil Brave
+`~/.football-data-hub-v2-probe`; no reutilices la misma ruta entre backends.
+Las capturas se escriben en directorios versionados y nunca sustituyen las
+anteriores. Configuración adicional: `FDH_BDFUTBOL_PROFILE`,
+`FDH_BDFUTBOL_BROWSER_BACKEND`, `FDH_BDFUTBOL_BROWSER`,
+`FDH_BDFUTBOL_BROWSER_EXECUTABLE`,
+`FDH_BDFUTBOL_BROWSER_STARTUP_TIMEOUT_SECONDS`,
+`FDH_BDFUTBOL_NAVIGATION_TIMEOUT_MS` y
+`FDH_BDFUTBOL_CLASSIFICATION_OUTPUT`.
+
+Para la regresión técnica con Brave/Playwright:
 
 ```bash
-# Clasificación local, jornada 6, excluyendo aplazados
 PYTHONPATH=src .venv/bin/python scripts/scrape_bdfutbol_group2_classification.py \
-  --classification-type local --matchday 6 --exclude-postponed
-
-# Rango de fechas inclusivo
-PYTHONPATH=src .venv/bin/python scripts/scrape_bdfutbol_group2_classification.py \
-  --matchday 6 --range-type dates --date-start 2026-08-29 --date-end 2026-09-27
-
-# Rango de jornadas inclusivo, sin superar la jornada seleccionada
-PYTHONPATH=src .venv/bin/python scripts/scrape_bdfutbol_group2_classification.py \
-  --matchday 6 --range-type rounds --round-start 2 --round-end 4
+  --backend playwright-cdp --browser brave \
+  --profile "$HOME/.football-data-hub-v2-probe"
 ```
 
-Cada ejecución crea un directorio nuevo bajo `data/exports/bdfutbol/group2_classification/` (configurable con `--output-root` o `FDH_BDFUTBOL_CLASSIFICATION_OUTPUT`). Contiene `raw/source.html`, los JSON normalizados de clasificación y progreso, `metadata/capture.json`, `validation/results.json` y el log del navegador. El perfil se puede configurar con `--profile` o `FDH_BDFUTBOL_PROFILE`.
+En este backend el runtime existente inicia Xvfb, administra CDP y reserva un
+lock del perfil. En Pure CDP, Xvfb se administra fuera del proceso, por ejemplo
+con `xvfb-run`; el perfil persistente no se borra al cerrar.
 
-Pruebas offline: `PYTHONPATH=src .venv/bin/pytest -q`. La ejecución real de integración es el comando del scraper anterior y queda fuera de los tests automáticos; no recorre jornadas o combinaciones en lote.
+Los filtros deportivos y los formatos JSON se mantienen independientes del
+backend. Los detalles de instalación, versiones, perfiles y límites están en
+[`docs/browser_acquisition.md`](docs/browser_acquisition.md).
 
-En otro servidor hay que comprobar por separado que el navegador externo, Xvfb/CDP, el perfil autorizado y el acceso normal al sitio estén disponibles. El CLI registra errores de inicialización/acceso y no presupone que Brave/CDP ni el perfil local existan en la UJA.
+## API REST y dashboard
 
-## Dashboard de clasificación Grupo II
-
-La aplicación React/TypeScript independiente está en [`apps/dashboard/`](apps/dashboard/README.md). Consume una sola vez `GET /api/v1/group2/bootstrap`; filtros, rangos y ordenaciones se calculan en el navegador a partir de los datos del bootstrap. El gráfico utiliza las series históricas publicadas en la captura.
-
-En una terminal, arranca la API como se describe en [`docs/group2_api.md`](docs/group2_api.md). En otra:
-
-```bash
-cd apps/dashboard
-npm ci
-npm run dev
-```
-
-Abre [http://127.0.0.1:5173/](http://127.0.0.1:5173/). Durante desarrollo, Vite reenvía `/api` a `http://127.0.0.1:8000`; configura `VITE_API_BASE_URL` en `apps/dashboard/.env` para apuntar a otro origen.
+La API y el dashboard siguen siendo consumidores independientes de los datos
+preparados. Consulta [`docs/group2_api.md`](docs/group2_api.md) para arrancar
+FastAPI y [`apps/dashboard/README.md`](apps/dashboard/README.md) para Vite.

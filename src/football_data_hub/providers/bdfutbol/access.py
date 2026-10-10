@@ -207,23 +207,20 @@ class BDFutbolAccess:
                 AccessStatus.NAVIGATION_ERROR, url, None, None, "", reason=str(exc),
             ))
 
-        page = visit.page
+        page = visit.document
         if settle_ms:
-            page.wait_for_timeout(settle_ms)
+            page.wait(settle_ms)
         deadline = time.monotonic() + max_wait_seconds
         while True:
             try:
                 title = page.title()
-                body_text = page.locator("body").inner_text(timeout=3000)
+                body_text = page.text("body")
                 present_selectors = tuple(
-                    selector for selector in required_selectors
-                    if page.locator(selector).count() > 0
+                    selector for selector in required_selectors if page.exists(selector)
                 )
                 dom_text = ""
                 if required_dom_text_selector:
-                    dom_text = " ".join(
-                        page.locator(required_dom_text_selector).all_text_contents()
-                    )
+                    dom_text = " ".join(page.texts(required_dom_text_selector))
                 assessment = assess_bdfutbol_access(
                     requested_url=url,
                     final_url=visit.final_url,
@@ -239,7 +236,7 @@ class BDFutbolAccess:
                     dom_text=dom_text,
                 )
                 if document_validator and assessment.status is AccessStatus.VALID:
-                    missing_evidence = document_validator(page.content())
+                    missing_evidence = document_validator(page.html())
                     if missing_evidence:
                         assessment = assess_bdfutbol_access(
                             requested_url=url,
@@ -265,4 +262,4 @@ class BDFutbolAccess:
             waiting = assessment.status is AccessStatus.INVALID_CONTENT
             if not waiting or time.monotonic() >= deadline:
                 return BDFutbolVisit(assessment=assessment, visit=visit)
-            page.wait_for_timeout(400)
+            page.wait(400)

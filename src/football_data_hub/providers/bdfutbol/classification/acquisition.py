@@ -23,7 +23,7 @@ from .parser import parse_classification_page, validate_page_structure
 from .validation import validate_classification
 
 CLASSIFICATION_URL = "https://www.bdfutbol.com/es/t/t2026-271rf2.html"
-EXTRACTOR_VERSION = "0.1.0"
+EXTRACTOR_VERSION = "0.2.0"
 
 
 class AcquisitionStopped(RuntimeError):
@@ -48,6 +48,11 @@ class AcquisitionBundle:
     parsed: ParsedClassification
     validation: dict[str, Any]
     browser_executable: str
+    browser_backend: str = "seleniumbase-pure-cdp"
+    browser_version: str | None = None
+    automation_version: str | None = None
+    uses_xvfb: bool = True
+    xvfb_external: bool = True
 
 
 def create_capture_id(now: datetime | None = None) -> str:
@@ -74,7 +79,12 @@ def acquire_classification(
     *,
     request: ClassificationRequest,
     profile_dir: Path,
-    browser: str = "brave",
+    backend: str = "seleniumbase-pure-cdp",
+    browser: str = "chromium",
+    browser_executable_path: Path | None = None,
+    startup_timeout_seconds: float = 35.0,
+    navigation_timeout_ms: int = 45_000,
+    use_xvfb: bool = True,
     browser_log_path: Path | None = None,
     capture_id: str | None = None,
 ) -> AcquisitionBundle:
@@ -87,12 +97,18 @@ def acquire_classification(
     captured_at = datetime.now(timezone.utc).isoformat()
     config = BrowserRuntimeConfig(
         profile_dir=profile_dir,
+        backend=backend,
         browser=browser,
+        browser_executable_path=browser_executable_path,
+        startup_timeout_seconds=startup_timeout_seconds,
+        use_xvfb=use_xvfb,
         browser_log_path=browser_log_path,
     )
     bundle: AcquisitionBundle | None = None
     try:
-        with BrowserSessionManager(config) as session:
+        with BrowserSessionManager(
+            config, navigation_timeout_ms=navigation_timeout_ms
+        ) as session:
             opened = BDFutbolAccess(session).open(
                 CLASSIFICATION_URL,
                 required_markers=("Clasificación", "Grupo II"),
@@ -114,9 +130,9 @@ def acquire_classification(
                 if assessment.status is not AccessStatus.VALID or opened.visit is None:
                     raise AcquisitionStopped(assessment)
 
-                page = opened.visit.page
+                page = opened.visit.document
                 context = apply_filters(page, request)
-                raw_html = page.content()
+                raw_html = page.html()
                 parsed = parse_classification_page(raw_html, base_url=CLASSIFICATION_URL)
                 validation = validate_classification(
                     parsed.standings,
@@ -124,8 +140,10 @@ def acquire_classification(
                     played_matchdays=parsed.played_matchdays,
                 )
                 access = asdict(assessment)
-                runtime = session.runtime
-                browser_executable = runtime.browser_path if runtime else browser
+                browser_info = session.info
+                browser_executable = (
+                    browser_info.browser_executable if browser_info else browser
+                )
                 bundle = AcquisitionBundle(
                     capture_id=capture_id,
                     captured_at_utc=captured_at,
@@ -136,6 +154,11 @@ def acquire_classification(
                     parsed=parsed,
                     validation=validation,
                     browser_executable=browser_executable,
+                    browser_backend=browser_info.backend if browser_info else backend,
+                    browser_version=browser_info.browser_version if browser_info else None,
+                    automation_version=browser_info.automation_version if browser_info else None,
+                    uses_xvfb=browser_info.uses_xvfb if browser_info else use_xvfb,
+                    xvfb_external=browser_info.xvfb_external if browser_info else use_xvfb,
                 )
     finally:
         if browser_log_path is not None:

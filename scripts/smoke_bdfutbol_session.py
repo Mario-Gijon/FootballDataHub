@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Smoke test sin interfaz: Brave externo + Xvfb + CDP + BDFutbol.
+"""Smoke test controlado del acceso a BDFutbol con el backend configurado.
 
 No realiza scraping masivo ni gestiona verificaciones de Cloudflare.
-Requiere una sesión previamente autorizada y un perfil no usado por otro Brave.
+Requiere acceso previamente autorizado y un perfil no usado por otro proceso.
 """
 
 from __future__ import annotations
@@ -26,8 +26,13 @@ STATS_URL = PROFILE_URL + "?p=stats"
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--profile", type=Path, default=Path.home() / ".football-data-hub-v2-probe")
-    parser.add_argument("--browser", choices=("brave", "chrome", "chromium", "auto"), default="brave")
+    parser.add_argument("--profile", type=Path, default=Path.home() / ".football-data-hub-chromium-pure-cdp")
+    parser.add_argument(
+        "--backend",
+        choices=("seleniumbase-pure-cdp", "playwright-cdp"),
+        default="seleniumbase-pure-cdp",
+    )
+    parser.add_argument("--browser", choices=("brave", "chrome", "chromium", "auto"), default="chromium")
     parser.add_argument("--output-root", type=Path, default=Path("data/analysis/bdfutbol/session_smoke"))
     parser.add_argument("--no-stats", action="store_true", help="Solo comprobar la ficha principal")
     parser.add_argument(
@@ -45,11 +50,13 @@ def main() -> int:
     run_dir.mkdir(parents=True, exist_ok=False)
     config = BrowserRuntimeConfig(
         profile_dir=args.profile,
+        backend=args.backend,
         browser=args.browser,
         browser_log_path=run_dir / "browser.stderr.log",
     )
     results: list[dict] = []
     failure: str | None = None
+    browser_info: dict | None = None
     if args.group2_classification:
         resources = [
             (
@@ -67,7 +74,8 @@ def main() -> int:
 
     try:
         with BrowserSessionManager(config) as session:
-            print("Navegador invisible conectado por CDP.")
+            print("Navegador iniciado en la pantalla configurada y conectado por CDP.")
+            browser_info = asdict(session.info) if session.info else None
             access = BDFutbolAccess(session)
             for name, url, markers in resources:
                 access_options = {}
@@ -82,14 +90,22 @@ def main() -> int:
                     report = asdict(result.assessment)
                     report["resource"] = name
                     if result.visit is not None:
-                        page = result.visit.page
-                        report["table_count_diagnostic"] = page.locator("table").count()
+                        page = result.visit.document
+                        report["table_count_diagnostic"] = page.count("table")
                         if name == "group2_classification":
-                            ids = page.locator("#classific tr[data-ideq]").evaluate_all(
-                                "rows => rows.map(row => row.getAttribute('data-ideq'))"
+                            ids = page.evaluate(
+                                "Array.from(document.querySelectorAll('#classific tr[data-ideq]'))"
+                                ".map(row => row.getAttribute('data-ideq'))"
                             )
                             report["classification_team_count"] = len(ids)
                             report["unique_team_ids"] = len(set(ids))
+                            html = page.html()
+                            report["source_markers"] = {
+                                marker: marker in html for marker in ("SP", "SE", 'id="resultats"')
+                            }
+                            report["result_match_rows"] = page.count(
+                                "#resultats tr.jornadai"
+                            )
                     results.append(report)
                     print(
                         f"{name}: {result.assessment.status} "
@@ -111,7 +127,9 @@ def main() -> int:
         "run_id": run_id,
         "finished_at_utc": datetime.now(timezone.utc).isoformat(),
         "browser": args.browser,
-        "virtual_display": True,
+        "backend": args.backend,
+        "browser_info": browser_info,
+        "virtual_display_requested": config.use_xvfb,
         "planned_resources": len(resources),
         "results": results,
         "fatal_error": failure,
