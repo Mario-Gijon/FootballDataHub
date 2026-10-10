@@ -19,9 +19,9 @@ El contrato de respuesta se valida en ejecución con Zod antes de usarlo. Una re
 
 El motor de `src/domain/classification/engine.ts` reproduce las reglas documentadas del motor BDFutbol: general/local/visitante, tope de jornada, inclusión de partidos aplazados según la regla de la fuente, rangos inclusivos por fechas de partido o jornadas y desempates. Ignora encuentros no disputados y no trata un marcador ausente como 0–0. Si faltan tarjetas en una igualdad, conserva el orden del catálogo y expone una advertencia en vez de inventar el criterio disciplinario.
 
-La posición deportiva se calcula con los datos de resultados. El usuario puede ordenar visualmente por cualquier columna sin cambiar esa posición. El movimiento y las zonas se muestran únicamente cuando los filtros coinciden exactamente con el contexto de `published_standings`, incluido tipo, jornada y política de aplazamientos. El progreso general no se usa para inferir movimientos porque su política de aplazamientos es desconocida. No se extrapolan los marcadores de ascenso/descenso a otras jornadas.
+La posición deportiva se calcula con los datos de resultados. El usuario puede ordenar visualmente por cualquier columna sin cambiar esa posición. Las bandas de color siguen la posición deportiva: ascenso directo para el primero, promoción para el segundo al quinto y descenso para el decimosexto al vigésimo. Se etiquetan como referencias cuando el contexto no coincide exactamente con `published_standings`. Los movimientos y las zonas oficiales solo se muestran con coincidencia de tipo, jornada y política de aplazamientos. El progreso general no se usa para inferir movimientos porque su política de aplazamientos es desconocida.
 
-El gráfico usa las series históricas `progress` del bootstrap, no las recalcula a partir de resultados. Conserva los `null` publicados y no interpola ausencias. La captura disponible ofrece 120 valores (20 equipos hasta J6); la aplicación indica el contexto y el corte de esas series.
+El gráfico usa las series históricas `progress` del bootstrap, no las recalcula a partir de resultados. Conserva los `null` publicados y no interpola ausencias. Sus series mantienen su contexto original aunque cambien los filtros de la tabla.
 
 ## Desarrollo y pruebas
 

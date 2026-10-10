@@ -49,10 +49,6 @@ export default function App() {
     [data, filters, indexes],
   );
   const matchdays = useMemo(() => data ? buildMatchdayOptions(data) : [], [data]);
-  const publishedIsReference = useMemo(
-    () => data && filters && table ? isPublishedContext(data, filters, table) : false,
-    [data, filters, table],
-  );
 
   if (loadState === "error") {
     return (
@@ -80,51 +76,23 @@ export default function App() {
       <header className="topbar">
         <div className="topbar-inner">
           <Brand />
-          <nav className="main-nav" aria-label="Navegación principal">
-            <a aria-current="page" className="active" href="#clasificacion">Clasificación</a>
-            <span className="future-nav-label">Football · datos y análisis</span>
-          </nav>
-          <div className="topbar-status"><span className="status-dot" />Datos disponibles</div>
+          <div className="topbar-competition" aria-label="Primera Federación · Grupo II">
+            <span>Primera Federación</span>
+            <span className="topbar-divider" aria-hidden="true">/</span>
+            <span>Grupo II</span>
+          </div>
+          <div className="topbar-season">Temporada <strong>2026/27</strong></div>
         </div>
       </header>
 
       <main className="dashboard-main">
         <section className="competition-hero">
-          <div className="hero-copy">
-            <div className="eyebrow"><span />PRIMERA FEDERACIÓN <b>/</b> GRUPO II</div>
-            <h1>La clasificación<span>.</span></h1>
-            <p className="hero-subtitle">Cada punto cuenta. Sigue el pulso de la temporada 2026/27.</p>
-          </div>
-          <div className="hero-season" aria-label="Temporada 2026-27">
-            <span>TEMPORADA</span>
-            <strong>26<span>/</span>27</strong>
+          <h1>Clasificación</h1>
+          <div className="dataset-meta" aria-label="Actualización de los datos">
+            <span>Jornada {data.metadata.last_matchday_with_results ?? "—"} disponible</span>
+            <time dateTime={data.metadata.captured_at}>Actualizado {formatCaptureDate(data.metadata.captured_at)}</time>
           </div>
         </section>
-
-        <section className="capture-strip" aria-label="Corte de los datos">
-          <div className="capture-marker"><span className="capture-icon">◷</span></div>
-          <div className="capture-main">
-            <strong>Datos al cierre de la Jornada {data.metadata.last_matchday_with_results ?? "—"}</strong>
-            <span>Captura del {formatCaptureDate(data.metadata.captured_at)}</span>
-          </div>
-          <div className="capture-separator" />
-          <div className="capture-stat">
-            <strong>{table.matchesCounted}<small> / {data.metadata.availability.matches}</small></strong>
-            <span>partidos disputados</span>
-          </div>
-          <div className="capture-separator capture-wide-separator" />
-          <div className="capture-quality">
-            <span className="quality-mark">i</span>
-            <span>Los partidos sin marcador no se cuentan como 0–0.</span>
-          </div>
-        </section>
-
-        {data.metadata.warnings.length > 0 && (
-          <details className="quality-details">
-            <summary>Ver notas sobre esta captura <span>{data.metadata.warnings.length}</span></summary>
-            <ul>{data.metadata.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>
-          </details>
-        )}
 
         <ClassificationControls filters={filters} onChange={(next) => setFilters(next)} matchdays={matchdays} />
 
@@ -133,16 +101,9 @@ export default function App() {
             <span className="context-round">J{filters.matchdayCap}</span>
             <span className="context-description">
               {matchdayDate ? formatLongDate(matchdayDate) : "Sin fecha disponible"}
-              <span> · </span>{filters.rangeType === "all" ? "Todas las fechas" : filters.rangeType === "dates" ? "Rango de fechas" : "Rango de jornadas"}
+              {filters.rangeType !== "all" && <span> · {rangeDescription(filters)}</span>}
             </span>
           </div>
-          {publishedIsReference ? (
-            <span className="source-match-badge">
-              <span>✓</span> Coincide con la tabla publicada · {classificationLabel(data.published_standings!.context.classification_type)} J{data.published_standings!.context.matchday}
-            </span>
-          ) : (
-            <span className="calculation-badge">Orden deportivo calculado</span>
-          )}
         </div>
 
         <StandingsTable
@@ -151,27 +112,16 @@ export default function App() {
           table={table}
         />
 
-        <p className="calculation-note">
-          <span>ⓘ</span>
-          La tabla se calcula aquí a partir de los resultados capturados. Al cambiar un filtro no se consulta de nuevo la API.
-          {filters.classificationType === "general" && filters.rangeType === "all" && matchdayDate && (
-            <> La fecha del rango se refiere al día del partido; la jornada marca el tope del cálculo.</>
-          )}
-        </p>
-
-        <Suspense fallback={<div className="chart-loading" role="status">Preparando las series históricas…</div>}>
+        <Suspense fallback={<div className="chart-loading" role="status">Cargando gráfico…</div>}>
           <ProgressChart
             teams={data.teams}
             records={data.progress}
-            throughMatchday={data.metadata.progress_context.available_through_matchday}
           />
         </Suspense>
       </main>
 
       <footer className="page-footer">
-        <Brand />
-        <span>Datos deportivos · Fuente: BDFutbol · Captura {data.metadata.capture_id}</span>
-        <span>Las series de progreso mantienen su contexto general original.</span>
+        <span>Fuente <a href="https://www.bdfutbol.com/" target="_blank" rel="noreferrer">BDFutbol</a></span>
       </footer>
     </div>
   );
@@ -218,35 +168,6 @@ function buildMatchdayOptions(data: Bootstrap) {
   }));
 }
 
-function isPublishedContext(
-  data: Bootstrap,
-  filters: StandingsFilters,
-  table: ReturnType<typeof calculateStandings>,
-): boolean {
-  const source = data.published_standings;
-  if (!source || filters.rangeType !== source.context.range_type || filters.rangeType !== "all") return false;
-  if (
-    filters.classificationType !== source.context.classification_type ||
-    filters.matchdayCap !== source.context.matchday ||
-    filters.includePostponed !== (source.context.postponed_policy === "include")
-  ) return false;
-  const sourceRows = new Map(source.rows.map((row) => [row.team_id, row]));
-  return table.rows.every((row) => {
-    const original = sourceRows.get(row.team.team_id);
-    return Boolean(original) &&
-      original?.position === row.position &&
-      original.points === row.points &&
-      original.matches_played === row.matchesPlayed &&
-      original.wins === row.wins &&
-      original.draws === row.draws &&
-      original.losses === row.losses &&
-      original.goals_for === row.goalsFor &&
-      original.goals_against === row.goalsAgainst &&
-      original.yellow_cards === row.yellowCards &&
-      original.red_cards === row.redCards;
-  });
-}
-
 function formatCaptureDate(value: string): string {
   return new Intl.DateTimeFormat("es-ES", {
     day: "numeric",
@@ -256,8 +177,24 @@ function formatCaptureDate(value: string): string {
   }).format(new Date(value));
 }
 
-function classificationLabel(type: StandingsFilters["classificationType"]): string {
-  return type === "general" ? "General" : type === "local" ? "Local" : "Visitante";
+function rangeDescription(filters: StandingsFilters): string {
+  if (filters.rangeType === "dates") {
+    return `${formatShortDate(filters.dateStart)} – ${formatShortDate(filters.dateEnd)}`;
+  }
+  if (filters.rangeType === "rounds") {
+    return `J${filters.roundStart ?? 1} – J${filters.roundEnd ?? filters.matchdayCap}`;
+  }
+  return "";
+}
+
+function formatShortDate(value: string | null): string {
+  if (!value) return "—";
+  const [year, month, day] = value.split("-").map(Number);
+  return new Intl.DateTimeFormat("es-ES", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(year!, month! - 1, day!)));
 }
 
 function formatLongDate(isoDate: string): string {

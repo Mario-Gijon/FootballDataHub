@@ -155,34 +155,40 @@ afterEach(() => {
 });
 
 describe("dashboard de clasificación", () => {
-  it("carga el bootstrap real, inicia en J6 y destaca el Real Jaén", async () => {
+  it("carga el bootstrap, muestra la competición y destaca discretamente al Real Jaén", async () => {
     render(<App />);
 
-    expect(await screen.findByText("Coincide con la tabla publicada · General J6")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Clasificación" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "General" })).toBeInTheDocument();
-    expect(screen.getByText("Datos al cierre de la Jornada 6")).toBeInTheDocument();
+    expect(screen.getByText("Primera Federación")).toBeInTheDocument();
+    expect(screen.getByText("Grupo II")).toBeInTheDocument();
+    expect(screen.getByText("2026/27")).toBeInTheDocument();
+    expect(screen.getByText("Jornada 6 disponible")).toBeInTheDocument();
     expect(screen.getByRole("row", { name: /Jaén/ })).toHaveClass("is-jaen");
-    expect(screen.getByText("59 partidos contabilizados")).toBeInTheDocument();
+    expect(screen.getByText("59 partidos")).toBeInTheDocument();
     expect(screen.getAllByRole("row")).toHaveLength(21);
+    expect(screen.getByLabelText("Zonas deportivas publicadas")).toBeInTheDocument();
+    expect(screen.queryByText("Calculada localmente")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Cada punto cuenta/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Al cambiar un filtro no se consulta/)).not.toBeInTheDocument();
+    expect(screen.queryByText(new RegExp(captureSource.capture_id))).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("usa la jornada y el tipo publicados por el bootstrap en los indicadores", async () => {
+  it("usa la jornada de metadatos para el resumen compacto", async () => {
     fetchMock.mockResolvedValueOnce(response(200, bootstrapForGeneralJ5()));
     render(<App />);
 
-    expect(await screen.findByText("Coincide con la tabla publicada · General J5")).toBeInTheDocument();
-    expect(screen.getByText("Datos al cierre de la Jornada 5")).toBeInTheDocument();
+    expect(await screen.findByText("Jornada 5 disponible")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("recalcula filtros localmente y limita el rango de jornadas al tope", async () => {
     render(<App />);
-    await screen.findByText("Coincide con la tabla publicada · General J6");
+    await screen.findByRole("heading", { name: "General" });
 
     fireEvent.click(screen.getByRole("button", { name: "Local" }));
     expect(screen.getByRole("heading", { name: "Como local" })).toBeInTheDocument();
-    expect(screen.queryByText("Coincide con la tabla publicada · General J6")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Excluir" }));
     expect(screen.getByRole("button", { name: "Excluir" })).toHaveAttribute("aria-pressed", "true");
@@ -194,13 +200,13 @@ describe("dashboard de clasificación", () => {
     fireEvent.change(screen.getByLabelText("Tipo de rango"), { target: { value: "rounds" } });
     fireEvent.change(screen.getByLabelText("Jornada inicial"), { target: { value: "2" } });
     fireEvent.change(screen.getByLabelText("Jornada final"), { target: { value: "4" } });
-    await waitFor(() => expect(screen.getByText("30 partidos contabilizados")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("30 partidos")).toBeInTheDocument());
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("conserva rangos válidos al recorrer todas las transiciones de modo", async () => {
     render(<App />);
-    await screen.findByText("Coincide con la tabla publicada · General J6");
+    await screen.findByRole("heading", { name: "General" });
     const rangeType = screen.getByLabelText("Tipo de rango");
 
     fireEvent.change(rangeType, { target: { value: "dates" } });
@@ -232,21 +238,56 @@ describe("dashboard de clasificación", () => {
 
   it("oculta movimientos cuando el filtro de aplazados difiere del contexto publicado", async () => {
     const { container } = render(<App />);
-    await screen.findByText("Coincide con la tabla publicada · General J6");
+    await screen.findByRole("heading", { name: "General" });
     expect(container.querySelectorAll(".movement-cell [title]").length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("button", { name: "Excluir" }));
     expect(container.querySelectorAll(".movement-cell [title]")).toHaveLength(0);
     expect(container.querySelector(".movement-column span")).toHaveAttribute(
       "title",
-      "Sin movimiento: la serie original no confirma este contexto de filtros.",
+      "Movimiento no disponible para este filtro.",
     );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("mantiene las bandas visuales ligadas a la posición deportiva y marca las zonas calculadas como referencia", async () => {
+    const { container } = render(<App />);
+    await screen.findByRole("heading", { name: "General" });
+
+    const rowAtPosition = (position: number) => container.querySelector(`tr[data-position="${position}"]`);
+    expect(rowAtPosition(1)).toHaveAttribute("data-visual-zone", "direct");
+    expect(rowAtPosition(1)).toHaveAttribute("data-official-zone", "direct_promotion");
+    for (const position of [2, 3, 4, 5]) {
+      expect(rowAtPosition(position)).toHaveAttribute("data-visual-zone", "promotion");
+      expect(rowAtPosition(position)).toHaveAttribute("data-official-zone", "promotion");
+    }
+    for (const position of [6, 15]) {
+      expect(rowAtPosition(position)).toHaveAttribute("data-visual-zone", "stay");
+    }
+    for (const position of [16, 20]) {
+      expect(rowAtPosition(position)).toHaveAttribute("data-visual-zone", "relegation");
+      expect(rowAtPosition(position)).toHaveAttribute("data-official-zone", "relegation");
+    }
+
+    const jaenRow = screen.getByRole("row", { name: /Jaén/ });
+    expect(jaenRow).toHaveAttribute("data-position", "5");
+    expect(jaenRow).toHaveAttribute("data-visual-zone", "promotion");
+    fireEvent.click(screen.getByRole("button", { name: /Equipo/ }));
+    expect(container.querySelector(".standings-table tbody tr")).not.toHaveAttribute("data-team-id", "39");
+    expect(jaenRow).toHaveAttribute("data-position", "5");
+    expect(jaenRow).toHaveAttribute("data-visual-zone", "promotion");
+
+    fireEvent.click(screen.getByRole("button", { name: "Local" }));
+    expect(container.querySelectorAll(".standings-table tbody tr")).toHaveLength(20);
+    expect(screen.getByLabelText("Zonas de referencia por posición")).toBeInTheDocument();
+    expect(screen.getByText("Ascenso directo · ref.")).toBeInTheDocument();
+    expect(container.querySelectorAll("tr[data-official-zone]")).toHaveLength(0);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("ordena la visualización sin cambiar la posición deportiva", async () => {
     const { container } = render(<App />);
-    await screen.findByText("Coincide con la tabla publicada · General J6");
+    await screen.findByRole("heading", { name: "General" });
 
     const jaenRow = screen.getByRole("row", { name: /Jaén/ });
     expect(jaenRow.querySelector(".position-cell")).toHaveTextContent("5");
@@ -255,13 +296,13 @@ describe("dashboard de clasificación", () => {
     const firstTeam = container.querySelector(".standings-table tbody tr");
     expect(firstTeam).not.toHaveAttribute("data-team-id", "39");
     expect(jaenRow.querySelector(".position-cell")).toHaveTextContent("5");
-    expect(screen.getByText("Orden visual: Equipo ↑")).toBeInTheDocument();
+    expect(jaenRow).toHaveAttribute("data-visual-zone", "promotion");
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("mantiene la métrica y la selección de equipos independientes de los filtros", async () => {
     render(<App />);
-    await screen.findByText("Coincide con la tabla publicada · General J6");
+    await screen.findByRole("heading", { name: "General" });
 
     const pointsMetric = screen.getByRole("button", { name: "Puntos" });
     fireEvent.click(pointsMetric);

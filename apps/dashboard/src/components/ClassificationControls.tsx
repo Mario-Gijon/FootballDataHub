@@ -107,7 +107,7 @@ export function ClassificationControls({ filters, onChange, matchdays }: Props) 
         </fieldset>
 
         <label className="filter-group range-filter">
-          <span className="filter-label">Filtrar fechas</span>
+          <span className="filter-label">Rango</span>
           <select
             aria-label="Tipo de rango"
             value={filters.rangeType}
@@ -215,10 +215,6 @@ export function ClassificationControls({ filters, onChange, matchdays }: Props) 
         </div>
       )}
 
-      <div className="filter-footnote">
-        <span className="info-dot" aria-hidden="true">i</span>
-        <span>Rangos inclusivos · la jornada seleccionada actúa como límite superior.</span>
-      </div>
     </section>
   );
 }

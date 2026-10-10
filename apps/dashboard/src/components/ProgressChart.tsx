@@ -21,7 +21,6 @@ interface ChartPoint {
 interface Props {
   teams: Team[];
   records: ProgressRecord[];
-  throughMatchday: number;
 }
 
 const metrics: { id: ProgressMetric; label: string }[] = [
@@ -31,10 +30,7 @@ const metrics: { id: ProgressMetric; label: string }[] = [
   { id: "goals_against", label: "Goles en contra" },
 ];
 
-const lineColors = [
-  "#d8ff67", "#80d8ff", "#ff9f73", "#b69cff", "#6ce0bd", "#ffd166",
-  "#ff7ca8", "#9be564", "#87a9ff", "#f4a7e1", "#c0df74", "#75c9d1",
-];
+const lineColors = Array.from({ length: 12 }, (_, index) => `var(--chart-${index + 1})`);
 
 export function buildProgressSeriesData(
   records: ProgressRecord[],
@@ -55,7 +51,7 @@ export function buildProgressSeriesData(
   return [...points.values()].sort((a, b) => a.matchday - b.matchday);
 }
 
-export function ProgressChart({ teams, records, throughMatchday }: Props) {
+export function ProgressChart({ teams, records }: Props) {
   const [metric, setMetric] = useState<ProgressMetric>("position");
   const [selectedIds, setSelectedIds] = useState<number[]>(() => initialSelection(teams));
   const seriesData = useMemo(
@@ -76,9 +72,6 @@ export function ProgressChart({ teams, records, throughMatchday }: Props) {
         <div>
           <div className="section-kicker">EVOLUCIÓN POR JORNADA</div>
           <h2 id="progress-title">Progreso</h2>
-        </div>
-        <div className="progress-context-badge">
-          <span className="context-pulse" />Series generales · J1–J{throughMatchday}
         </div>
       </div>
 
@@ -103,19 +96,17 @@ export function ProgressChart({ teams, records, throughMatchday }: Props) {
         <div className="chart-area" aria-label={`Gráfico de ${metricLabel(metric)} por jornada`}>
           {selectedTeams.length === 0 ? (
             <div className="chart-empty">
-              <span className="empty-chart-mark">⌁</span>
-              <strong>Elige algún equipo para comparar</strong>
-              <span>Activa uno o más escudos en la lista.</span>
+              <strong>Elige algún equipo</strong>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%" minHeight={280}>
               <LineChart data={seriesData} margin={{ top: 14, right: 15, left: -10, bottom: 0 }}>
-                <CartesianGrid stroke="#29332d" strokeDasharray="3 5" vertical={false} />
+                <CartesianGrid stroke="var(--line-soft)" strokeDasharray="3 5" vertical={false} />
                 <XAxis
                   axisLine={false}
                   dataKey="matchday"
                   tickFormatter={(value: number) => `J${value}`}
-                  tick={{ fill: "#839088", fontSize: 11 }}
+                  tick={{ fill: "var(--text-muted)", fontSize: 11 }}
                   tickLine={false}
                   tickMargin={12}
                 />
@@ -124,17 +115,17 @@ export function ProgressChart({ teams, records, throughMatchday }: Props) {
                   domain={metric === "position" ? [1, 20] : ["auto", "auto"]}
                   orientation="left"
                   reversed={metric === "position"}
-                  tick={{ fill: "#839088", fontSize: 11 }}
+                  tick={{ fill: "var(--text-muted)", fontSize: 11 }}
                   tickFormatter={(value: number) => metric === "position" ? `${value}º` : String(value)}
                   tickLine={false}
                   width={39}
                 />
                 <Tooltip
                   contentStyle={{
-                    background: "#19211c",
-                    border: "1px solid #39463d",
+                    background: "var(--surface-raised)",
+                    border: "1px solid var(--border-strong)",
                     borderRadius: 12,
-                    color: "#f4f7ee",
+                    color: "var(--text)",
                     fontSize: 12,
                   }}
                   filterNull={false}
@@ -157,7 +148,7 @@ export function ProgressChart({ teams, records, throughMatchday }: Props) {
                     dot={{ r: 2.5, strokeWidth: 0 }}
                     key={team.team_id}
                     name={team.name}
-                    stroke={lineColors[index % lineColors.length]}
+                    stroke={team.team_id === 49 ? "var(--chart-jaen)" : lineColors[index % lineColors.length]}
                     strokeWidth={2.5}
                     type="monotone"
                   />
@@ -176,6 +167,7 @@ export function ProgressChart({ teams, records, throughMatchday }: Props) {
             {teams.map((team) => {
               const selected = selectedIds.includes(team.team_id);
               const colorIndex = Math.max(0, selectedTeams.findIndex((item) => item.team_id === team.team_id));
+              const teamColor = team.team_id === 49 ? "var(--chart-jaen)" : lineColors[colorIndex % lineColors.length];
               return (
                 <button
                   aria-pressed={selected}
@@ -187,16 +179,13 @@ export function ProgressChart({ teams, records, throughMatchday }: Props) {
                 >
                   <span
                     className="team-chip-mark"
-                    style={{ backgroundColor: selected ? lineColors[colorIndex % lineColors.length] : undefined }}
+                    style={{ backgroundColor: selected ? teamColor : undefined }}
                   />
                   <span>{team.name}</span>
                 </button>
               );
             })}
           </div>
-          <p className="chart-source-note">
-            Estas series son la progresión general publicada por la fuente. No cambian con los filtros de la tabla.
-          </p>
         </aside>
       </div>
     </section>

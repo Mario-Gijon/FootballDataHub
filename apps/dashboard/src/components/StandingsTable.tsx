@@ -84,20 +84,16 @@ export function StandingsTable({ table, filters, published }: Props) {
     );
   }
 
-  const zonesAvailable = publishedContextMatches && displayRows.some(
+  const officialZonesAvailable = publishedContextMatches && table.rows.every(
     (row) => publishedById.get(row.team.team_id)?.sports_zone,
   );
 
   return (
     <section className="standings-card" aria-labelledby="standings-title">
       <div className="section-heading standings-heading">
-        <div>
-          <div className="section-kicker">TABLA DE CLASIFICACIÓN</div>
-          <h2 id="standings-title">{classificationName(filters.classificationType)}</h2>
-        </div>
+        <h2 id="standings-title">{classificationName(filters.classificationType)}</h2>
         <div className="table-meta">
-          <span className="computed-badge"><span />Calculada localmente</span>
-          <span>{table.matchesCounted} partidos contabilizados</span>
+          <span>{table.matchesCounted} partidos</span>
         </div>
       </div>
 
@@ -138,7 +134,8 @@ export function StandingsTable({ table, filters, published }: Props) {
           <tbody>
             {displayRows.map((row) => {
               const sourceRow = publishedById.get(row.team.team_id);
-              const zone = publishedContextMatches ? sourceRow?.sports_zone ?? null : null;
+              const visualZone = zoneForPosition(row.position);
+              const officialZone = publishedContextMatches ? sourceRow?.sports_zone ?? null : null;
               const movement = resolveMovement(
                 publishedContextMatches,
                 sourceRow,
@@ -147,8 +144,11 @@ export function StandingsTable({ table, filters, published }: Props) {
               const isJaen = row.team.team_id === 49;
               return (
                 <tr
-                  className={`${zone ? `zone-${zone}` : ""} ${isJaen ? "is-jaen" : ""}`.trim()}
+                  className={`zone-${visualZone} ${isJaen ? "is-jaen" : ""}`.trim()}
+                  data-official-zone={officialZone ?? undefined}
+                  data-position={row.position}
                   data-team-id={row.team.team_id}
+                  data-visual-zone={visualZone}
                   key={row.team.team_id}
                 >
                   <td className={`movement-cell movement-${movement?.direction ?? "none"}`}>
@@ -187,8 +187,7 @@ export function StandingsTable({ table, filters, published }: Props) {
       </div>
 
       <div className="table-footer">
-        <span>{sort ? `Orden visual: ${columnLabel(sort.key)} ${sort.direction === "asc" ? "↑" : "↓"}` : "Orden deportivo · posición calculada"}</span>
-        {zonesAvailable && <ZoneLegend contextLabel={sourceContextLabel} />}
+        <ZoneLegend official={officialZonesAvailable} />
       </div>
     </section>
   );
@@ -250,24 +249,29 @@ function classificationName(type: StandingsFilters["classificationType"]): strin
   return type === "general" ? "General" : type === "local" ? "Como local" : "Como visitante";
 }
 
-function columnLabel(key: SortKey): string {
-  return columns.find((column) => column.key === key)?.label ?? key;
-}
-
 function movementDescription(sourceContextMatches: boolean, sourceContextLabel: string | null): string {
   if (sourceContextMatches) {
-    return `Cambio de posición publicado por BDFutbol para ${sourceContextLabel ?? "esta clasificación"}.`;
+    return `Movimiento publicado para ${sourceContextLabel ?? "esta clasificación"}.`;
   }
-  return "Sin movimiento: la serie original no confirma este contexto de filtros.";
+  return "Movimiento no disponible para este filtro.";
 }
 
-function ZoneLegend({ contextLabel }: { contextLabel: string | null }) {
+type VisualZone = "direct" | "promotion" | "stay" | "relegation";
+
+function zoneForPosition(position: number): VisualZone {
+  if (position === 1) return "direct";
+  if (position <= 5) return "promotion";
+  if (position <= 15) return "stay";
+  return "relegation";
+}
+
+function ZoneLegend({ official }: { official: boolean }) {
+  const suffix = official ? "" : " · ref.";
   return (
-    <div className="zone-legend" aria-label={`Zonas deportivas publicadas para ${contextLabel ?? "la clasificación"}`}>
-      <span><i className="legend-direct" />Ascenso directo</span>
-      <span><i className="legend-promotion" />Promoción</span>
-      <span><i className="legend-stay" />Permanencia</span>
-      <span><i className="legend-relegation" />Descenso</span>
+    <div className="zone-legend" aria-label={official ? "Zonas deportivas publicadas" : "Zonas de referencia por posición"}>
+      <span><i className="legend-direct" />{`Ascenso directo${suffix}`}</span>
+      <span><i className="legend-promotion" />{`Promoción ascenso${suffix}`}</span>
+      <span><i className="legend-relegation" />{`Descenso${suffix}`}</span>
     </div>
   );
 }
