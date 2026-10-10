@@ -24,6 +24,7 @@ dist/
 .env
 .env.*
 !.env.example
+!apps/dashboard/.env.example
 *.pem
 *.key
 *.p12
@@ -45,3 +46,5 @@ Thumbs.db
 *.log
 *.tmp
 *.temp
+node_modules/
+coverage/

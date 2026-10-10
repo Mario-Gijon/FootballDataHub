@@ -79,3 +79,17 @@ Cada ejecución crea un directorio nuevo bajo `data/exports/bdfutbol/group2_clas
 Pruebas offline: `PYTHONPATH=src .venv/bin/pytest -q`. La ejecución real de integración es el comando del scraper anterior y queda fuera de los tests automáticos; no recorre jornadas o combinaciones en lote.
 
 En otro servidor hay que comprobar por separado que el navegador externo, Xvfb/CDP, el perfil autorizado y el acceso normal al sitio estén disponibles. El CLI registra errores de inicialización/acceso y no presupone que Brave/CDP ni el perfil local existan en la UJA.
+
+## Dashboard de clasificación Grupo II
+
+La aplicación React/TypeScript independiente está en [`apps/dashboard/`](apps/dashboard/README.md). Consume una sola vez `GET /api/v1/group2/bootstrap`; filtros, rangos y ordenaciones se calculan en el navegador a partir de los datos del bootstrap. El gráfico utiliza las series históricas publicadas en la captura.
+
+En una terminal, arranca la API como se describe en [`docs/group2_api.md`](docs/group2_api.md). En otra:
+
+```bash
+cd apps/dashboard
+npm ci
+npm run dev
+```
+
+Abre [http://127.0.0.1:5173/](http://127.0.0.1:5173/). Durante desarrollo, Vite reenvía `/api` a `http://127.0.0.1:8000`; configura `VITE_API_BASE_URL` en `apps/dashboard/.env` para apuntar a otro origen.
