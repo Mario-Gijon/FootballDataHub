@@ -17,6 +17,7 @@ from football_data_hub_api.schemas import (
     HealthResponse,
     RefereeBootstrapResponse,
     ReadinessResponse,
+    StatisticsBootstrapResponse,
     TopBootstrapResponse,
 )
 from football_data_hub_api.top_dataset import (
@@ -28,6 +29,11 @@ from football_data_hub_api.referee_dataset import (
     RefereeDatasetBundle,
     RefereeDatasetLoadError,
     load_referee_dataset,
+)
+from football_data_hub_api.statistics_dataset import (
+    StatisticsDatasetBundle,
+    StatisticsDatasetLoadError,
+    load_statistics_dataset,
 )
 
 logger = logging.getLogger("football_data_hub_api")
@@ -44,6 +50,8 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         app.state.top_dataset_error = None
         app.state.referee_dataset = None
         app.state.referee_dataset_error = None
+        app.state.statistics_dataset = None
+        app.state.statistics_dataset_error = None
         try:
             app.state.dataset = load_dataset(configured)
         except (DatasetLoadError, KeyError, TypeError, ValueError) as exc:
@@ -64,6 +72,13 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         except (RefereeDatasetLoadError, KeyError, TypeError, ValueError) as exc:
             app.state.referee_dataset_error = exc
             logger.exception("Árbitros no está disponible; el resto de secciones sigue aislado")
+        try:
+            app.state.statistics_dataset = load_statistics_dataset(
+                configured, app.state.dataset
+            )
+        except (StatisticsDatasetLoadError, KeyError, TypeError, ValueError) as exc:
+            app.state.statistics_dataset_error = exc
+            logger.exception("Estadísticas no está disponible; el resto de secciones sigue aislado")
         yield
 
     app = FastAPI(
@@ -159,6 +174,21 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
             return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": bundle.etag})
         return bundle.bootstrap
 
+    @app.get(
+        "/api/v1/group2/statistics/bootstrap",
+        response_model=StatisticsBootstrapResponse,
+        tags=["group2", "statistics"],
+        summary="Estadísticas, récords, rachas y series de la competición",
+    )
+    def group2_statistics_bootstrap(
+        request: Request, response: Response
+    ) -> StatisticsBootstrapResponse | Response:
+        bundle = _require_statistics_dataset(request)
+        response.headers["ETag"] = bundle.etag
+        if _etag_matches(request.headers.get("if-none-match"), bundle.etag):
+            return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": bundle.etag})
+        return bundle.bootstrap
+
     return app
 
 
@@ -188,6 +218,17 @@ def _require_referee_dataset(request: Request) -> RefereeDatasetBundle:
     if bundle is None:
         detail = "Árbitros no está disponible: su captura independiente no superó la validación."
         error = request.app.state.referee_dataset_error
+        if error:
+            detail = f"{detail} Diagnóstico: {error}"
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=detail)
+    return bundle
+
+
+def _require_statistics_dataset(request: Request) -> StatisticsDatasetBundle:
+    bundle = request.app.state.statistics_dataset
+    if bundle is None:
+        detail = "Estadísticas no está disponible: la captura independiente no coincide con Resultados o no superó la validación."
+        error = request.app.state.statistics_dataset_error
         if error:
             detail = f"{detail} Diagnóstico: {error}"
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=detail)

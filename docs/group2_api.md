@@ -2,7 +2,7 @@
 
 ## Arquitectura
 
-La aplicación HTTP vive en `apps/api/football_data_hub_api/`. Carga el dataset principal durante el startup y conserva su `BootstrapResponse` en memoria. Destacados y Árbitros se validan y cargan como capturas independientes: un fallo en cualquiera de ellas solo desactiva su endpoint. Sus módulos no importan el proveedor BDFutbol, Playwright ni el navegador. El extra opcional `api` permite instalar FastAPI sin instalar el extra de scraping.
+La aplicación HTTP vive en `apps/api/football_data_hub_api/`. Carga el dataset principal durante el startup y conserva su `BootstrapResponse` en memoria. Destacados, Árbitros y Estadísticas se validan y cargan como capturas independientes: un fallo en cualquiera de ellas solo desactiva su endpoint. Sus módulos no importan el proveedor BDFutbol, Playwright ni el navegador. El extra opcional `api` permite instalar FastAPI sin instalar el extra de scraping.
 
 El API solo sirve datos preparados. No navega a BDFutbol, vuelve a leer los JSON por petición ni ejecuta el motor Python de clasificación. Los filtros interactivos y las tablas derivadas serán responsabilidad del frontend TypeScript. El motor Python de CLAS-01B continúa siendo una referencia para validación. `progress_context` identifica el contexto original de esas series y evita que el cliente las confunda con la tabla filtrada.
 
@@ -22,6 +22,8 @@ En el inicio se verifica que:
 Ante error de configuración, JSON inválido o datasets mezclados, FastAPI sigue respondiendo a `/health` como proceso vivo con `dataset_ready: false`; `/ready` y las rutas de datos contestan `503`. La causa detallada se registra en el log del proceso, pero las respuestas HTTP no revelan rutas locales.
 
 Árbitros usa `FDH_GROUP2_REFEREES_ROOT` para seleccionar una captura REF-01 versionada y opcionalmente `FDH_GROUP2_REFEREES_MATCHES` para sustituir la ruta de Resultados declarada por la captura. El valor por defecto apunta al corte validado `20261010T171227.617128Z-4cfe71bc`. En el arranque verifica los tres HTML originales por SHA-256, la identidad de captura de los JSON, los recuentos declarados en `metadata/capture.json` y `validation/results.json`, estadísticas únicas por ID/temporada/ámbito, los agregados publicados y las referencias por `referee_id` al dataset de Resultados. El ETag lleva versión de contrato. Las capturas de Árbitros y Resultados conservan sus propios `capture_id`; una fecha distinta se informa como procedencia y no mezcla filas ni fuerza igualdad estadística.
+
+Estadísticas usa `FDH_GROUP2_STATISTICS_ROOT` para la captura versionada de STAT-01. Comprueba hashes del HTML y del proveedor numérico del gráfico, los reportes de acceso y validación, la referencia y el SHA-256 del `matches.json` activo, y vuelve a ejecutar una sola vez el motor puro de estadísticas durante el arranque. El resultado debe coincidir con los agregados, récords y rachas preparados en STAT-01. Si la captura de partidos activa cambió, o los artefactos no pertenecen a una misma captura, Estadísticas responde 503 sin desactivar las demás rutas. Sus dos `capture_id` y fechas se exponen por separado. Los penaltis son datos exclusivos de la página; no se asignan a encuentros o personas.
 
 ## Instalar y arrancar
 
@@ -54,6 +56,7 @@ Para desarrollo/test en un entorno que también vaya a ejecutar el scraper, inst
 | `GET /api/v1/group2/metadata` | Competición, corte, cobertura, versión y advertencias. |
 | `GET /api/v1/group2/bootstrap` | Catálogo de equipos, los 380 fixtures, 120 valores de progreso y la clasificación fuente de General J6. |
 | `GET /api/v1/group2/referees/bootstrap` | Catálogo sin duplicados, estadísticas publicadas por `all`/`group1`/`group2`, metadatos de captura, opciones y recuentos por ámbito. |
+| `GET /api/v1/group2/statistics/bootstrap` | Totales derivados, cobertura por jornada, récords, rachas con empates, penaltis publicados, reconciliación y procedencia de ambas capturas. |
 
 Bootstrap excluye `source_fields`, referencias internas del scraper, HTML, JavaScript, perfiles de navegador y rutas del servidor. Las fechas son ISO 8601; los datos ausentes permanecen como `null`. `published_standings` identifica expresamente la tabla de BDFutbol para General J6 y no representa otros filtros. La respuesta lleva ETag de la versión preparada y admite `If-None-Match`.
 
@@ -165,6 +168,8 @@ El recorte omite campos y filas únicamente para que sea legible; los endpoints 
 
 El bootstrap de Árbitros devuelve un único catálogo de personas y filas estadísticas que apuntan a ellas mediante `referee_id`. `all` es el agregado propio publicado por BDFutbol y no la concatenación de los dos grupos. Por ahora solo expone la temporada adquirida `2026-27`; no anuncia temporadas históricas listadas por la fuente. Las tarjetas son las mostradas en partidos dirigidos, no sanciones personales. Los datos nulos, incluidos edad, fecha de nacimiento y nacionalidad, se conservan como `null`.
 
+El bootstrap de Estadísticas reutiliza el dataset activo de Resultados y no incluye una segunda copia de los partidos. Los récords solo contienen sus IDs, marcador y jornada; el cliente resuelve nombres, escudos y enlaces mediante las listas compartidas de equipos y encuentros. Las series por jornada conservan `null` y cobertura parcial. La reconciliación reporta que el gráfico publicado suma 153 goles en J1–J6 frente a 155 en el resumen; en J5 publica 19 mientras que los nueve partidos disputados suman 21. Se preservan ambos datos sin atribuir una causa. Las tarjetas rojas se muestran como tarjetas rojas, porque su equivalencia conceptual con «Expulsiones» no está demostrada.
+
 ## Consumo futuro desde TypeScript
 
-El dashboard puede cargar una vez `/api/v1/group2/bootstrap`, indexar `teams` por `team_id` y utilizar los mismos IDs en partidos, progreso y tabla fuente. TypeScript calculará General/Local/Visitante, jornadas, rangos y ordenación sin nuevas solicitudes. Las series de progreso publicadas se consumen tal cual; no se rellenan `null` con resultados calculados. La tabla fuente sirve como referencia para comprobar el futuro motor TypeScript en General J6.
+El dashboard carga de forma diferida los bootstrap de sección al primer acceso y conserva sus respuestas en memoria. Para Estadísticas, los IDs de récords y rachas se resuelven contra equipos y partidos del bootstrap principal; el gráfico usa las 38 filas por jornada incluidas en este endpoint. Los filtros de gráfico y los cambios de pestaña son locales y no vuelven a solicitar los datos. Las series de progreso de Clasificación se consumen tal cual; no se rellenan `null` con resultados calculados. La tabla fuente sirve como referencia para comprobar el futuro motor TypeScript en General J6.

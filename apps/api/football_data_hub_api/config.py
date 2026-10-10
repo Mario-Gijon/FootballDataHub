@@ -14,6 +14,9 @@ DEFAULT_TOP_CAPTURE = Path(
 DEFAULT_GROUP2_REFEREES_CAPTURE = Path(
     "data/exports/bdfutbol/group2_referees/20261010T171227.617128Z-4cfe71bc"
 )
+DEFAULT_GROUP2_STATISTICS_CAPTURE = Path(
+    "data/exports/bdfutbol/group2_statistics/20261010T182210.859321Z-28543363"
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,6 +36,7 @@ class ApiSettings:
     top_team_catalog_path: Path | None = None
     referees_root: Path | None = None
     referees_related_matches_path: Path | None = None
+    statistics_root: Path | None = None
 
     @classmethod
     def from_env(cls) -> ApiSettings:
@@ -47,6 +51,15 @@ class ApiSettings:
                 os.getenv(
                     "FDH_GROUP2_REFEREES_ROOT",
                     str(DEFAULT_GROUP2_REFEREES_CAPTURE),
+                )
+            ),
+            PROJECT_ROOT,
+        )
+        statistics_root = _resolve_path(
+            Path(
+                os.getenv(
+                    "FDH_GROUP2_STATISTICS_ROOT",
+                    str(DEFAULT_GROUP2_STATISTICS_CAPTURE),
                 )
             ),
             PROJECT_ROOT,
@@ -85,6 +98,7 @@ class ApiSettings:
             referees_related_matches_path=_configured_optional_path(
                 "FDH_GROUP2_REFEREES_MATCHES", PROJECT_ROOT
             ),
+            statistics_root=statistics_root,
             cors_origins=tuple(
                 origin.strip()
                 for origin in os.getenv("FDH_CORS_ORIGINS", "").split(",")

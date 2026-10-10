@@ -1,4 +1,4 @@
-import { BootstrapSchema, RefereeBootstrapSchema, TopBootstrapSchema, type Bootstrap, type RefereeBootstrap, type TopBootstrap } from "./contracts";
+import { BootstrapSchema, RefereeBootstrapSchema, StatisticsBootstrapSchema, TopBootstrapSchema, type Bootstrap, type RefereeBootstrap, type StatisticsBootstrap, type TopBootstrap } from "./contracts";
 
 const configuredBase = import.meta.env.VITE_API_BASE_URL?.trim() ?? "";
 const apiBase = configuredBase.replace(/\/$/, "");
@@ -13,6 +13,10 @@ export async function loadGroup2TopBootstrap(signal?: AbortSignal): Promise<TopB
 
 export async function loadGroup2RefereesBootstrap(signal?: AbortSignal): Promise<RefereeBootstrap> {
   return loadEndpoint("/api/v1/group2/referees/bootstrap", RefereeBootstrapSchema, signal, "No se pudieron cargar los datos de Árbitros.", "La respuesta de Árbitros no coincide con el contrato del dashboard.");
+}
+
+export async function loadGroup2StatisticsBootstrap(signal?: AbortSignal): Promise<StatisticsBootstrap> {
+  return loadEndpoint("/api/v1/group2/statistics/bootstrap", StatisticsBootstrapSchema, signal, "No se pudieron cargar las estadísticas.", "La respuesta de Estadísticas no coincide con el contrato del dashboard.");
 }
 
 async function loadEndpoint<T>(
@@ -30,7 +34,9 @@ async function loadEndpoint<T>(
     throw new Error(connectionError);
   }
   if (!response.ok) {
-    const detail = response.status === 503 && path.includes("/top/")
+    const detail = response.status === 503 && path.includes("/statistics/")
+      ? "Estadísticas no está disponible: su captura no coincide con Resultados o no superó la validación."
+      : response.status === 503 && path.includes("/top/")
       ? "Destacados no está disponible: su captura independiente no superó la validación."
       : response.status === 503 && path.includes("/referees/")
         ? "Árbitros no está disponible: su captura independiente no superó la validación."

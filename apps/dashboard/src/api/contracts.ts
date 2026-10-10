@@ -398,6 +398,182 @@ export const RefereeBootstrapSchema = z.object({
   }
 });
 
+const StatisticsCoverageSchema = z.object({
+  matches_played: z.number().int().nonnegative(),
+  matches_with_value: z.number().int().nonnegative(),
+  missing_match_ids: z.array(z.string()),
+}).strict();
+
+const StatisticsRoundSchema = z.object({
+  matchday: z.number().int().min(1).max(38),
+  scheduled_matches: z.number().int().nonnegative(),
+  played_matches: z.number().int().nonnegative(),
+  unplayed_matches: z.number().int().nonnegative(),
+  incomplete_matches: z.number().int().nonnegative(),
+  coverage: z.enum(["complete", "partial", "not_started", "incomplete"]),
+  goals: nullableInteger,
+  yellow_cards: nullableInteger,
+  red_cards: nullableInteger,
+  yellow_card_coverage: StatisticsCoverageSchema,
+  red_card_coverage: StatisticsCoverageSchema,
+}).strict();
+
+const StatisticsRecordMatchSchema = z.object({
+  match_id: z.string().min(1),
+  matchday: z.number().int().min(1).max(38),
+  home_team_id: positiveInteger,
+  away_team_id: positiveInteger,
+  home_goals: z.number().int().nonnegative(),
+  away_goals: z.number().int().nonnegative(),
+}).strict();
+
+const StatisticsReconciliationMetricSchema = z.object({
+  statistic: z.string(),
+  calculated: z.number().nullable(),
+  published: z.number().nullable(),
+  difference_published_minus_calculated: z.number().nullable(),
+  comparison_basis: z.string(),
+  status: z.string(),
+  cause: z.string().nullable(),
+}).strict();
+
+const StatisticsRoundCheckSchema = z.object({
+  matchday: z.number().int().min(1).max(38),
+  statistic: z.enum(["goals", "yellow_cards", "red_cards"]),
+  calculated: z.number().nullable(),
+  published: z.number().nullable(),
+  difference_published_minus_calculated: z.number().nullable(),
+  played_matches: z.number().int().nonnegative(),
+  scheduled_matches: z.number().int().nonnegative(),
+  coverage: z.enum(["complete", "partial", "not_started", "incomplete"]),
+  status: z.string(),
+  cause: z.string().nullable(),
+}).strict();
+
+export const StatisticsBootstrapSchema = z.object({
+  metadata: z.object({
+    source: z.string(),
+    url: z.string().url(),
+    competition: z.string(),
+    season: z.string(),
+    group: z.string(),
+    section: z.literal("statistics"),
+    capture_id: z.string().min(1),
+    captured_at: z.string().datetime({ offset: true }),
+    extractor_version: z.string(),
+    dataset_version: z.string().min(1),
+    source_snapshot_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    chart_data_provider_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    match_dataset_path: z.string(),
+    match_dataset_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    match_dataset_capture_id: z.string(),
+    match_dataset_captured_at: z.string().datetime({ offset: true }),
+    active_match_capture_id: z.string(),
+  }).strict(),
+  statistics: z.object({
+    competition: z.string(),
+    season: z.string(),
+    group: z.string(),
+    team_count: z.number().int().nonnegative(),
+    scheduled_matches: z.number().int().nonnegative(),
+    played_matches: z.number().int().nonnegative(),
+    unplayed_matches: z.number().int().nonnegative(),
+    incomplete_matches: z.number().int().nonnegative(),
+    home_wins: z.number().int().nonnegative(),
+    away_wins: z.number().int().nonnegative(),
+    draws: z.number().int().nonnegative(),
+    goals: nullableInteger,
+    goals_per_match: z.number().nullable(),
+    yellow_cards: nullableInteger,
+    yellow_cards_per_match: z.number().nullable(),
+    red_cards: nullableInteger,
+    red_cards_per_match: z.number().nullable(),
+    yellow_card_coverage: StatisticsCoverageSchema,
+    red_card_coverage: StatisticsCoverageSchema,
+    rounds: z.array(StatisticsRoundSchema),
+  }).strict(),
+  penalties: z.object({
+    penalties_awarded: z.number().int().nonnegative(),
+    penalties_scored: z.number().int().nonnegative(),
+    penalties_missed: z.number().int().nonnegative(),
+    source_labels: z.array(z.string()),
+    unit: z.literal("penalties"),
+    scope: z.literal("competition_total"),
+    source_url: z.string().url(),
+  }).strict(),
+  records: z.object({
+    match_records: z.array(z.object({
+      kind: z.enum(["largest_home_win", "largest_away_win", "most_goals"]),
+      measure: z.number().int().nonnegative(),
+      matches: z.array(StatisticsRecordMatchSchema).min(1),
+    }).strict()),
+    streaks: z.array(z.object({
+      team_id: positiveInteger,
+      kind: z.enum(["winning", "losing", "unbeaten", "winless"]),
+      match_count: z.number().int().positive(),
+      matchday_start: z.number().int().min(1).max(38),
+      matchday_end: z.number().int().min(1).max(38),
+      match_ids: z.array(z.string().min(1)).min(1),
+    }).strict()),
+  }).strict(),
+  reconciliation: z.object({
+    statistics_capture_id: z.string(),
+    statistics_captured_at_utc: z.string().datetime({ offset: true }),
+    match_dataset_capture_id: z.string(),
+    match_dataset_captured_at_utc: z.string().datetime({ offset: true }),
+    capture_windows_differ: z.boolean(),
+    temporal_comparison_status: z.string(),
+    match_data_alignment: z.record(z.string(), z.unknown()),
+    metrics: z.array(StatisticsReconciliationMetricSchema),
+    exclusive_penalties: z.object({
+      source: z.object({
+        penalties_awarded: z.number().int(),
+        penalties_scored: z.number().int(),
+        penalties_missed: z.number().int(),
+        source_labels: z.array(z.string()),
+      }).strict(),
+      status: z.string(),
+      equation_valid: z.boolean(),
+    }).strict(),
+    published_match_records: z.array(z.object({
+      kind: z.enum(["largest_home_win", "largest_away_win", "most_goals"]),
+      measure: z.number().int(),
+      match_id: z.string(),
+      home_goals: z.number().int(),
+      away_goals: z.number().int(),
+      source_url: z.string().url(),
+      home_team_id: positiveInteger,
+      away_team_id: positiveInteger,
+      calculated_measure: z.number().int(),
+      calculated_match_ids: z.array(z.string()),
+      status: z.string(),
+    }).strict()),
+    published_streaks: z.array(z.object({
+      kind: z.enum(["winning", "losing", "unbeaten", "winless"]),
+      published_team_name: z.string(),
+      resolved_team_id: positiveInteger,
+      published_match_count: z.number().int(),
+      published_matchday_start: z.number().int(),
+      published_matchday_end: z.number().int(),
+      calculated_max_match_count: z.number().int(),
+      calculated_tied_team_ids: z.array(positiveInteger),
+      calculated_match_ids: z.array(z.array(z.string())),
+      status: z.string(),
+    }).strict()),
+    round_series: z.array(StatisticsRoundCheckSchema),
+    summary: z.object({
+      metric_count: z.number().int(),
+      metric_matches: z.number().int(),
+      metric_differences: z.number().int(),
+      metric_semantics_unverified: z.number().int(),
+      record_statuses: z.record(z.string(), z.string()),
+      round_series_differences: z.number().int(),
+    }).strict(),
+  }).strict(),
+  methodology: z.record(z.string(), z.string()),
+  limitations: z.array(z.string()),
+}).strict();
+
 export type Team = z.infer<typeof TeamSchema>;
 export type Match = z.infer<typeof MatchSchema>;
 export type ProgressRecord = z.infer<typeof ProgressSchema>;
@@ -413,3 +589,4 @@ export type RefereeScope = z.infer<typeof RefereeScopeSchema>;
 export type Referee = z.infer<typeof RefereeSchema>;
 export type RefereeStatistics = z.infer<typeof RefereeStatisticsSchema>;
 export type RefereeBootstrap = z.infer<typeof RefereeBootstrapSchema>;
+export type StatisticsBootstrap = z.infer<typeof StatisticsBootstrapSchema>;

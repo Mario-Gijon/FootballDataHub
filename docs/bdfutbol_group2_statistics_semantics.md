@@ -142,9 +142,10 @@ están en el objeto JavaScript del gráfico serial, `categoryField="jornada"`,
 `dataProvider`, y no se reconstruyeron desde píxeles del SVG. Los campos de las
 tres líneas son `VG` (Goles), `VTG` (Tarjetas amarillas) y `VTV` (Tarjetas rojas).
 
-Las observaciones son totales de la jornada, no acumulados: goles por jornada
-suman el agregado publicado de 155, y las tarjetas de las jornadas observadas
-coinciden con las agregaciones de los partidos. J1–J6 publicados:
+Las observaciones son totales de la jornada, no acumulados. Los seis puntos de
+goles publicados para J1–J6 suman **153**, mientras que el resumen general de
+BDFutbol publica **155**. Las tarjetas de las jornadas observadas coinciden con
+las agregaciones de los partidos. J1–J6 publicados:
 
 | Jornada | Goles fuente | Goles derivados | Amarillas fuente/derivadas | Rojas fuente/derivadas | Cobertura de partidos |
 | ---: | ---: | ---: | ---: | ---: | --- |
@@ -160,7 +161,9 @@ dataset de partidos y el `SP/#resultats` embebido en la misma captura contienen
 los mismos 380 registros por ID, y los 9 resultados disputados suman 21 goles.
 Por tanto, la diferencia no se explica por un cambio en la selección de partidos
 entre capturas; la causa dentro de la fuente sigue sin determinarse. Se conserva
-como discrepancia de dos goles y no se corrige ninguna de las dos cifras.
+como discrepancia de dos goles y no se corrige ninguna de las dos cifras. No se
+ha atribuido una causa a la diferencia entre la suma gráfica (153) y el resumen
+publicado (155).
 
 AmCharts incluye las categorías 7–38 pero sin valor para las tres series. Se
 normalizan como `null`; no son observaciones de cero. Las series calculadas

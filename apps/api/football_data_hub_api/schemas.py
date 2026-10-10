@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictFloat, StrictInt, model_validator
 
 OptionalInt = StrictInt | None
 
@@ -384,3 +384,210 @@ class RefereeBootstrapResponse(RefereeApiModel):
     statistics: list[RefereeStatisticsResponse]
     coverage_note: str
     compatibility_warnings: list[str]
+
+
+class StatisticsApiModel(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+
+StatisticsNumber = StrictInt | StrictFloat | None
+
+
+class StatisticsCaptureMetadata(StatisticsApiModel):
+    source: str
+    url: str
+    competition: str
+    season: str
+    group: str
+    section: Literal["statistics"]
+    capture_id: str
+    captured_at: datetime
+    extractor_version: str
+    dataset_version: str
+    source_snapshot_sha256: str
+    chart_data_provider_sha256: str
+    match_dataset_path: str
+    match_dataset_sha256: str
+    match_dataset_capture_id: str
+    match_dataset_captured_at: datetime
+    active_match_capture_id: str
+
+
+class StatisticsMetricCoverage(StatisticsApiModel):
+    matches_played: StrictInt = Field(ge=0)
+    matches_with_value: StrictInt = Field(ge=0)
+    missing_match_ids: list[str]
+
+
+class StatisticsRoundResponse(StatisticsApiModel):
+    matchday: StrictInt = Field(ge=1, le=38)
+    scheduled_matches: StrictInt = Field(ge=0)
+    played_matches: StrictInt = Field(ge=0)
+    unplayed_matches: StrictInt = Field(ge=0)
+    incomplete_matches: StrictInt = Field(ge=0)
+    coverage: Literal["complete", "partial", "not_started", "incomplete"]
+    goals: OptionalInt
+    yellow_cards: OptionalInt
+    red_cards: OptionalInt
+    yellow_card_coverage: StatisticsMetricCoverage
+    red_card_coverage: StatisticsMetricCoverage
+
+
+class CompetitionStatisticsResponse(StatisticsApiModel):
+    competition: str
+    season: str
+    group: str
+    team_count: StrictInt = Field(ge=0)
+    scheduled_matches: StrictInt = Field(ge=0)
+    played_matches: StrictInt = Field(ge=0)
+    unplayed_matches: StrictInt = Field(ge=0)
+    incomplete_matches: StrictInt = Field(ge=0)
+    home_wins: StrictInt = Field(ge=0)
+    away_wins: StrictInt = Field(ge=0)
+    draws: StrictInt = Field(ge=0)
+    goals: OptionalInt
+    goals_per_match: StrictFloat | None
+    yellow_cards: OptionalInt
+    yellow_cards_per_match: StrictFloat | None
+    red_cards: OptionalInt
+    red_cards_per_match: StrictFloat | None
+    yellow_card_coverage: StatisticsMetricCoverage
+    red_card_coverage: StatisticsMetricCoverage
+    rounds: list[StatisticsRoundResponse]
+
+
+class StatisticsMatchRecord(StatisticsApiModel):
+    match_id: str
+    matchday: StrictInt = Field(ge=1, le=38)
+    home_team_id: StrictInt = Field(gt=0)
+    away_team_id: StrictInt = Field(gt=0)
+    home_goals: StrictInt = Field(ge=0)
+    away_goals: StrictInt = Field(ge=0)
+
+
+class StatisticsRecordSet(StatisticsApiModel):
+    kind: Literal["largest_home_win", "largest_away_win", "most_goals"]
+    measure: StrictInt = Field(ge=0)
+    matches: list[StatisticsMatchRecord] = Field(min_length=1)
+
+
+class StatisticsStreak(StatisticsApiModel):
+    team_id: StrictInt = Field(gt=0)
+    kind: Literal["winning", "losing", "unbeaten", "winless"]
+    match_count: StrictInt = Field(ge=1)
+    matchday_start: StrictInt = Field(ge=1, le=38)
+    matchday_end: StrictInt = Field(ge=1, le=38)
+    match_ids: list[str] = Field(min_length=1)
+
+
+class StatisticsRecords(StatisticsApiModel):
+    match_records: list[StatisticsRecordSet]
+    streaks: list[StatisticsStreak]
+
+
+class StatisticsPenalties(StatisticsApiModel):
+    penalties_awarded: StrictInt = Field(ge=0)
+    penalties_scored: StrictInt = Field(ge=0)
+    penalties_missed: StrictInt = Field(ge=0)
+    source_labels: list[str]
+    unit: Literal["penalties"]
+    scope: Literal["competition_total"]
+    source_url: str
+
+
+class StatisticsPublishedMetric(StatisticsApiModel):
+    statistic: str
+    calculated: StatisticsNumber
+    published: StatisticsNumber
+    difference_published_minus_calculated: StatisticsNumber
+    comparison_basis: str
+    status: str
+    cause: str | None
+
+
+class StatisticsPenaltyCheckValues(StatisticsApiModel):
+    penalties_awarded: StrictInt
+    penalties_scored: StrictInt
+    penalties_missed: StrictInt
+    source_labels: list[str]
+
+
+class StatisticsPublishedPenaltyCheck(StatisticsApiModel):
+    source: StatisticsPenaltyCheckValues
+    status: str
+    equation_valid: bool
+
+
+class StatisticsPublishedRecordCheck(StatisticsApiModel):
+    kind: Literal["largest_home_win", "largest_away_win", "most_goals"]
+    measure: StrictInt
+    match_id: str
+    home_goals: StrictInt
+    away_goals: StrictInt
+    source_url: str
+    home_team_id: StrictInt
+    away_team_id: StrictInt
+    calculated_measure: StrictInt
+    calculated_match_ids: list[str]
+    status: str
+
+
+class StatisticsPublishedStreakCheck(StatisticsApiModel):
+    kind: Literal["winning", "losing", "unbeaten", "winless"]
+    published_team_name: str
+    resolved_team_id: StrictInt
+    published_match_count: StrictInt
+    published_matchday_start: StrictInt
+    published_matchday_end: StrictInt
+    calculated_max_match_count: StrictInt
+    calculated_tied_team_ids: list[StrictInt]
+    calculated_match_ids: list[list[str]]
+    status: str
+
+
+class StatisticsRoundCheck(StatisticsApiModel):
+    matchday: StrictInt = Field(ge=1, le=38)
+    statistic: Literal["goals", "yellow_cards", "red_cards"]
+    calculated: StatisticsNumber
+    published: StatisticsNumber
+    difference_published_minus_calculated: StatisticsNumber
+    played_matches: StrictInt = Field(ge=0)
+    scheduled_matches: StrictInt = Field(ge=0)
+    coverage: Literal["complete", "partial", "not_started", "incomplete"]
+    status: str
+    cause: str | None
+
+
+class StatisticsReconciliationSummary(StatisticsApiModel):
+    metric_count: StrictInt = Field(ge=0)
+    metric_matches: StrictInt = Field(ge=0)
+    metric_differences: StrictInt = Field(ge=0)
+    metric_semantics_unverified: StrictInt = Field(ge=0)
+    record_statuses: dict[str, str]
+    round_series_differences: StrictInt = Field(ge=0)
+
+
+class StatisticsReconciliation(StatisticsApiModel):
+    statistics_capture_id: str
+    statistics_captured_at_utc: datetime
+    match_dataset_capture_id: str
+    match_dataset_captured_at_utc: datetime
+    capture_windows_differ: bool
+    temporal_comparison_status: str
+    match_data_alignment: dict[str, object]
+    metrics: list[StatisticsPublishedMetric]
+    exclusive_penalties: StatisticsPublishedPenaltyCheck
+    published_match_records: list[StatisticsPublishedRecordCheck]
+    published_streaks: list[StatisticsPublishedStreakCheck]
+    round_series: list[StatisticsRoundCheck]
+    summary: StatisticsReconciliationSummary
+
+
+class StatisticsBootstrapResponse(StatisticsApiModel):
+    metadata: StatisticsCaptureMetadata
+    statistics: CompetitionStatisticsResponse
+    penalties: StatisticsPenalties
+    records: StatisticsRecords
+    reconciliation: StatisticsReconciliation
+    methodology: dict[str, str]
+    limitations: list[str]

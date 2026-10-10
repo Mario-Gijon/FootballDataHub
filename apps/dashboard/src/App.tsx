@@ -1,11 +1,12 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { loadGroup2Bootstrap, loadGroup2RefereesBootstrap, loadGroup2TopBootstrap } from "./api/client";
-import type { Bootstrap, RefereeBootstrap, TopBootstrap } from "./api/contracts";
+import { loadGroup2Bootstrap, loadGroup2RefereesBootstrap, loadGroup2StatisticsBootstrap, loadGroup2TopBootstrap } from "./api/client";
+import type { Bootstrap, RefereeBootstrap, StatisticsBootstrap, TopBootstrap } from "./api/contracts";
 import { ClassificationControls } from "./components/ClassificationControls";
 const ProgressChart = lazy(() => import("./components/ProgressChart").then((module) => ({ default: module.ProgressChart })));
 import { StandingsTable } from "./components/StandingsTable";
 import { ResultsSection, type ResultsMatchday } from "./components/ResultsSection";
 import { RefereesSection } from "./components/RefereesSection";
+const StatisticsSection = lazy(() => import("./components/StatisticsSection").then((module) => ({ default: module.StatisticsSection })));
 const TopSection = lazy(() => import("./components/TopSection").then((module) => ({ default: module.TopSection })));
 import {
   calculateStandings,
@@ -16,11 +17,12 @@ import {
 type LoadState = "loading" | "error" | "ready";
 type TopLoadState = "idle" | "loading" | "error" | "ready";
 type RefereesLoadState = "idle" | "loading" | "error" | "ready";
+type StatisticsLoadState = "idle" | "loading" | "error" | "ready";
 
 export default function App() {
   const [data, setData] = useState<Bootstrap | null>(null);
   const [filters, setFilters] = useState<StandingsFilters | null>(null);
-  const [activeSection, setActiveSection] = useState<"standings" | "results" | "top" | "referees">("standings");
+  const [activeSection, setActiveSection] = useState<"standings" | "results" | "top" | "referees" | "statistics">("standings");
   const [resultsMatchday, setResultsMatchday] = useState<ResultsMatchday>(1);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [errorMessage, setErrorMessage] = useState("");
@@ -31,6 +33,9 @@ export default function App() {
   const [refereesData, setRefereesData] = useState<RefereeBootstrap | null>(null);
   const [refereesLoadState, setRefereesLoadState] = useState<RefereesLoadState>("idle");
   const [refereesErrorMessage, setRefereesErrorMessage] = useState("");
+  const [statisticsData, setStatisticsData] = useState<StatisticsBootstrap | null>(null);
+  const [statisticsLoadState, setStatisticsLoadState] = useState<StatisticsLoadState>("idle");
+  const [statisticsErrorMessage, setStatisticsErrorMessage] = useState("");
 
   const indexes = useMemo(
     () => data ? createClassificationIndexes(data.teams, data.matches) : null,
@@ -85,6 +90,21 @@ export default function App() {
         setRefereesLoadState("error");
       });
   }, [activeSection, refereesData, refereesLoadState]);
+
+  useEffect(() => {
+    if (activeSection !== "statistics" || statisticsData || statisticsLoadState !== "idle") return;
+    setStatisticsLoadState("loading");
+    setStatisticsErrorMessage("");
+    loadGroup2StatisticsBootstrap()
+      .then((bootstrap) => {
+        setStatisticsData(bootstrap);
+        setStatisticsLoadState("ready");
+      })
+      .catch((error: unknown) => {
+        setStatisticsErrorMessage(error instanceof Error ? error.message : "No se pudieron cargar las estadísticas.");
+        setStatisticsLoadState("error");
+      });
+  }, [activeSection, statisticsData, statisticsLoadState]);
 
   const table = useMemo(
     () => data && filters && indexes
@@ -167,6 +187,15 @@ export default function App() {
             onClick={() => setActiveSection("referees")}
             type="button"
           >Árbitros</button>
+          <button
+            id="statistics-tab"
+            role="tab"
+            aria-selected={activeSection === "statistics"}
+            aria-controls="statistics-panel"
+            className={activeSection === "statistics" ? "is-active" : ""}
+            onClick={() => setActiveSection("statistics")}
+            type="button"
+          >Estadísticas</button>
         </nav>
 
         {activeSection === "standings" ? (
@@ -228,6 +257,18 @@ export default function App() {
             errorMessage={refereesErrorMessage}
             onRetry={() => setRefereesLoadState("idle")}
           />
+        </div>
+        <div hidden={activeSection !== "statistics"}>
+          <Suspense fallback={<div className="chart-loading" role="status">Cargando Estadísticas…</div>}>
+            <StatisticsSection
+              data={statisticsData}
+              teams={data.teams}
+              matches={data.matches}
+              loadState={statisticsLoadState}
+              errorMessage={statisticsErrorMessage}
+              onRetry={() => setStatisticsLoadState("idle")}
+            />
+          </Suspense>
         </div>
       </main>
 

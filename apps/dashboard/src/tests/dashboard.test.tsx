@@ -14,9 +14,13 @@ import refereeCapture from "../../../../data/exports/bdfutbol/group2_referees/20
 import refereeCatalog from "../../../../data/exports/bdfutbol/group2_referees/20261010T171227.617128Z-4cfe71bc/normalized/referees.json";
 import refereeStatistics from "../../../../data/exports/bdfutbol/group2_referees/20261010T171227.617128Z-4cfe71bc/normalized/statistics.json";
 import refereeMatchReference from "../../../../data/exports/bdfutbol/group2_referees/20261010T171227.617128Z-4cfe71bc/validation/match_reference.json";
+import statisticsCapture from "../../../../data/exports/bdfutbol/group2_statistics/20261010T182210.859321Z-28543363/metadata/capture.json";
+import statisticsDerived from "../../../../data/exports/bdfutbol/group2_statistics/20261010T182210.859321Z-28543363/normalized/derived_statistics.json";
+import statisticsExclusive from "../../../../data/exports/bdfutbol/group2_statistics/20261010T182210.859321Z-28543363/normalized/exclusive_statistics.json";
+import statisticsReconciliation from "../../../../data/exports/bdfutbol/group2_statistics/20261010T182210.859321Z-28543363/validation/reconciliation.json";
 import { buildTopProgressData, TopSection } from "../components/TopSection";
-import type { RefereeBootstrap, TopBootstrap } from "../api/contracts";
-import { RefereeBootstrapSchema } from "../api/contracts";
+import type { RefereeBootstrap, StatisticsBootstrap, TopBootstrap } from "../api/contracts";
+import { RefereeBootstrapSchema, StatisticsBootstrapSchema } from "../api/contracts";
 import App from "../App";
 
 const publicMatches = matchesSource.matches.map((match) => ({
@@ -222,6 +226,43 @@ const refereeBootstrap = {
   coverage_note: "Las tarjetas son las mostradas en los partidos dirigidos. La nacionalidad no está verificada en esta captura.",
   compatibility_warnings: [],
 } as RefereeBootstrap;
+
+const statisticsBootstrap = {
+  metadata: {
+    source: statisticsCapture.source,
+    url: statisticsCapture.final_url,
+    competition: statisticsCapture.competition,
+    season: statisticsCapture.season,
+    group: statisticsCapture.group,
+    section: "statistics",
+    capture_id: statisticsCapture.capture_id,
+    captured_at: statisticsCapture.captured_at_utc,
+    extractor_version: statisticsCapture.extractor_version,
+    dataset_version: `${statisticsCapture.capture_id}-test-fixture`,
+    source_snapshot_sha256: statisticsCapture.source_html_sha256,
+    chart_data_provider_sha256: statisticsCapture.chart_data_provider_sha256,
+    match_dataset_path: statisticsCapture.match_dataset.path,
+    match_dataset_sha256: statisticsCapture.match_dataset.sha256,
+    match_dataset_capture_id: statisticsCapture.match_dataset.source_capture_id,
+    match_dataset_captured_at: statisticsCapture.match_dataset.source_captured_at_utc,
+    active_match_capture_id: apiBootstrap.metadata.capture_id,
+  },
+  statistics: {
+    ...statisticsDerived.statistics.context,
+    ...Object.fromEntries(Object.entries(statisticsDerived.statistics).filter(([key]) => key !== "context")),
+  },
+  penalties: {
+    ...statisticsExclusive.items.penalties,
+  },
+  records: statisticsDerived.records,
+  reconciliation: Object.fromEntries(Object.entries(statisticsReconciliation).filter(([key]) => key !== "schema_version")),
+  methodology: statisticsDerived.methodology,
+  limitations: [
+    "La continuidad de rachas ante aplazamientos no está verificada.",
+    "Las tarjetas rojas coinciden numéricamente con «Expulsiones»; la equivalencia conceptual queda pendiente.",
+    "La serie publicada presenta diferencias con los valores derivados desde Resultados.",
+  ],
+} as StatisticsBootstrap;
 
 function response(status: number, body: unknown) {
   return {
@@ -739,5 +780,75 @@ describe("dashboard de clasificación", () => {
     expect(data[0]?.matchday).toBe(1);
     expect(data[0]?.[`player_${sourceSeries.player_id}`]).toBe(sourceSeries.points[0]?.value);
     expect(data[1]?.[`player_${sourceSeries.player_id}`]).toBe(sourceSeries.points[1]?.value);
+  });
+
+  it("valida el contrato de Estadísticas y la carga diferida no repite solicitudes", async () => {
+    expect(StatisticsBootstrapSchema.safeParse(statisticsBootstrap).success).toBe(true);
+    fetchMock.mockImplementation((input: RequestInfo | URL) => Promise.resolve(
+      String(input).endsWith("/api/v1/group2/statistics/bootstrap")
+        ? response(200, statisticsBootstrap)
+        : response(200, apiBootstrap),
+    ));
+    render(<App />);
+    await screen.findByRole("heading", { name: "General" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Estadísticas" }));
+    expect(await screen.findByRole("heading", { name: "Estadísticas" })).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(String(fetchMock.mock.calls[1]?.[0])).toContain("/api/v1/group2/statistics/bootstrap");
+
+    fireEvent.click(within(screen.getByRole("group", { name: "Series del gráfico" })).getByRole("button", { name: "Tarjetas rojas" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Clasificación" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Estadísticas" }));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("presenta totales y medias, conserva empates y señala dinámicamente la diferencia de J5", async () => {
+    fetchMock.mockImplementation((input: RequestInfo | URL) => Promise.resolve(
+      String(input).endsWith("/api/v1/group2/statistics/bootstrap")
+        ? response(200, statisticsBootstrap)
+        : response(200, apiBootstrap),
+    ));
+    const { container } = render(<App />);
+    await screen.findByRole("heading", { name: "General" });
+    fireEvent.click(screen.getByRole("tab", { name: "Estadísticas" }));
+    await screen.findByRole("heading", { name: "Estadísticas" });
+
+    expect(within(screen.getByLabelText("Resultados generales")).getByText("59")).toBeInTheDocument();
+    expect(within(screen.getByLabelText("Goles y tarjetas")).getByText("155")).toBeInTheDocument();
+    expect(within(screen.getByLabelText("Goles y tarjetas")).getByText("2,63")).toBeInTheDocument();
+    const penalties = screen.getByRole("heading", { name: "Penaltis" }).closest("section");
+    expect(penalties).not.toBeNull();
+    expect(within(penalties as HTMLElement).getByText("24")).toBeInTheDocument();
+    expect(within(penalties as HTMLElement).getByText("21")).toBeInTheDocument();
+    expect(within(penalties as HTMLElement).getByText("3")).toBeInTheDocument();
+    expect(screen.getAllByText("0 – 3")).toHaveLength(2);
+    const winlessCard = container.querySelectorAll(".streak-card")[3] as HTMLElement;
+    expect(within(winlessCard).getAllByText("6 partidos")).toHaveLength(2);
+    expect(container.querySelector(".statistics-discrepancies p")?.textContent).toMatch(/J5 \(9 de 10 partidos\).*19 goles.*21/);
+    expect(screen.getByText(/Resultados.*2026/)).toBeInTheDocument();
+    expect(screen.getByText(/Datos exclusivos.*2026/)).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("permite reintentar Estadísticas de forma independiente", async () => {
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      if (String(input).endsWith("/api/v1/group2/statistics/bootstrap")) {
+        const attempts = fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/group2/statistics/bootstrap")).length;
+        return Promise.resolve(attempts === 1 ? response(503, { detail: "capture mismatch" }) : response(200, statisticsBootstrap));
+      }
+      return Promise.resolve(response(200, apiBootstrap));
+    });
+    render(<App />);
+    await screen.findByRole("heading", { name: "General" });
+    fireEvent.click(screen.getByRole("tab", { name: "Estadísticas" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Estadísticas no está disponible");
+    fireEvent.click(screen.getByRole("button", { name: "Reintentar Estadísticas" }));
+    expect(await screen.findByRole("heading", { name: "Estadísticas" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Resultados" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Estadísticas" }));
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/group2/statistics/bootstrap"))).toHaveLength(2);
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/group2/bootstrap"))).toHaveLength(1);
   });
 });
