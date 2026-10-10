@@ -1,1 +1,0 @@
-"""Persistencia y versionado futuros."""

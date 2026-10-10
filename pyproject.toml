@@ -5,18 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "football-data-hub"
 version = "0.2.0"
-description = "Base de adquisición y auditoría de datos de fútbol."
+description = "Base de navegador Brave/CDP y diagnóstico de acceso a BDFutbol."
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = [
-    "beautifulsoup4>=4.13",
-    "lxml>=5.0",
-]
+dependencies = ["playwright>=1.55"]
 
 [project.optional-dependencies]
-browser = ["playwright>=1.55"]
-dev = ["pytest", "ruff", "playwright>=1.55"]
-dev-explorer = ["streamlit>=1.53", "pandas>=2.2"]
+dev = ["pytest", "ruff"]
 
 [tool.setuptools]
 package-dir = {"" = "src"}

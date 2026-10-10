@@ -1,4 +1,4 @@
-# Python and test caches
+# Python, tests and build output
 .venv/
 __pycache__/
 **/__pycache__/
@@ -8,48 +8,19 @@ __pycache__/
 .mypy_cache/
 .coverage
 htmlcov/
-
-# Build artifacts
 build/
 dist/
 *.egg-info/
 
-# Generated data and snapshots (keep directory placeholders)
-/data/raw/*
-!/data/raw/.gitkeep
-/data/parsed/*
-!/data/parsed/.gitkeep
-/data/normalized/*
-!/data/normalized/.gitkeep
-/data/media/*
-!/data/media/.gitkeep
-/data/analysis/*
-!/data/analysis/.gitkeep
-
-# Requested audit catalog is versionable; timestamped capture runs stay ignored.
-!/data/analysis/bdfutbol/
-/data/analysis/bdfutbol/*
-!/data/analysis/bdfutbol/luna_audit/
-/data/analysis/bdfutbol/luna_audit/*
-!/data/analysis/bdfutbol/luna_audit/resource_catalog.json
-
-# Exhaustive discovery catalogs are versioned; live diagnostics stay local.
-!/data/analysis/bdfutbol/discovery/
-/data/analysis/bdfutbol/discovery/*
-!/data/analysis/bdfutbol/discovery/resource_catalog.json
-!/data/analysis/bdfutbol/discovery/field_catalog.json
-!/data/analysis/bdfutbol/discovery/filter_catalog.json
-!/data/analysis/bdfutbol/discovery/relationship_catalog.json
-!/data/analysis/bdfutbol/discovery/coverage_gaps.json
-!/data/analysis/bdfutbol/discovery/discovery_manifest.json
-
-# Browser profiles and Playwright state
+# Smoke reports and browser profiles/state
+/data/analysis/
 .football-data-hub-browser/
 **/_browser_profile/
 **/browser-profile/
 **/playwright/.auth/
+.*.fdh.lock
 
-# Local credentials and secrets
+# Local credentials
 .env
 .env.*
 !.env.example
