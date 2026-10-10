@@ -1,10 +1,11 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { loadGroup2Bootstrap } from "./api/client";
-import type { Bootstrap } from "./api/contracts";
+import { loadGroup2Bootstrap, loadGroup2TopBootstrap } from "./api/client";
+import type { Bootstrap, TopBootstrap } from "./api/contracts";
 import { ClassificationControls } from "./components/ClassificationControls";
 const ProgressChart = lazy(() => import("./components/ProgressChart").then((module) => ({ default: module.ProgressChart })));
 import { StandingsTable } from "./components/StandingsTable";
 import { ResultsSection, type ResultsMatchday } from "./components/ResultsSection";
+const TopSection = lazy(() => import("./components/TopSection").then((module) => ({ default: module.TopSection })));
 import {
   calculateStandings,
   createClassificationIndexes,
@@ -12,15 +13,19 @@ import {
 } from "./domain/classification/engine";
 
 type LoadState = "loading" | "error" | "ready";
+type TopLoadState = "idle" | "loading" | "error" | "ready";
 
 export default function App() {
   const [data, setData] = useState<Bootstrap | null>(null);
   const [filters, setFilters] = useState<StandingsFilters | null>(null);
-  const [activeSection, setActiveSection] = useState<"standings" | "results">("standings");
+  const [activeSection, setActiveSection] = useState<"standings" | "results" | "top">("standings");
   const [resultsMatchday, setResultsMatchday] = useState<ResultsMatchday>(1);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [errorMessage, setErrorMessage] = useState("");
   const [retryCount, setRetryCount] = useState(0);
+  const [topData, setTopData] = useState<TopBootstrap | null>(null);
+  const [topLoadState, setTopLoadState] = useState<TopLoadState>("idle");
+  const [topErrorMessage, setTopErrorMessage] = useState("");
 
   const indexes = useMemo(
     () => data ? createClassificationIndexes(data.teams, data.matches) : null,
@@ -45,6 +50,21 @@ export default function App() {
       });
     return () => controller.abort();
   }, [retryCount]);
+
+  useEffect(() => {
+    if (activeSection !== "top" || topData || topLoadState !== "idle") return;
+    setTopLoadState("loading");
+    setTopErrorMessage("");
+    loadGroup2TopBootstrap()
+      .then((bootstrap) => {
+        setTopData(bootstrap);
+        setTopLoadState("ready");
+      })
+      .catch((error: unknown) => {
+        setTopErrorMessage(error instanceof Error ? error.message : "No se pudieron cargar los datos de Destacados.");
+        setTopLoadState("error");
+      });
+  }, [activeSection, topData, topLoadState]);
 
   const table = useMemo(
     () => data && filters && indexes
@@ -109,6 +129,15 @@ export default function App() {
             onClick={() => setActiveSection("results")}
             type="button"
           >Resultados</button>
+          <button
+            id="top-tab"
+            role="tab"
+            aria-selected={activeSection === "top"}
+            aria-controls="top-panel"
+            className={activeSection === "top" ? "is-active" : ""}
+            onClick={() => setActiveSection("top")}
+            type="button"
+          >Destacados</button>
         </nav>
 
         {activeSection === "standings" ? (
@@ -146,13 +175,23 @@ export default function App() {
           />
         </Suspense>
         </section>
-        ) : (
+        ) : activeSection === "results" ? (
           <ResultsSection
             data={data}
             matchday={resultsMatchday}
             onMatchdayChange={setResultsMatchday}
           />
-        )}
+        ) : null}
+        <div hidden={activeSection !== "top"}>
+          <Suspense fallback={<div className="chart-loading" role="status">Cargando Destacados…</div>}>
+            <TopSection
+              data={topData}
+              loadState={topLoadState}
+              errorMessage={topErrorMessage}
+              onRetry={() => setTopLoadState("idle")}
+            />
+          </Suspense>
+        </div>
       </main>
 
       <footer className="page-footer">

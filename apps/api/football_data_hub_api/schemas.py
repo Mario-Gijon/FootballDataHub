@@ -166,3 +166,128 @@ class ReadinessResponse(ApiModel):
     status: Literal["ready"]
     capture_id: str
     dataset_version: str
+
+
+TopCategory = Literal[
+    "goals", "minutes", "yellow_cards", "red_cards", "youngest", "oldest"
+]
+TopMetric = Literal["goals", "minutes_played", "yellow_cards", "red_cards", "age_years"]
+ProgressMetric = Literal["goals", "minutes_played", "yellow_cards", "red_cards"]
+
+
+class TopApiModel(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+
+class TopCaptureMetadata(TopApiModel):
+    source: str
+    url: str
+    competition: str
+    season: str
+    group: str
+    section: Literal["top"]
+    capture_id: str
+    captured_at: datetime
+    extractor_version: str
+    source_snapshot_sha256: str
+    related_team_capture_id: str
+    related_team_catalog_sha256: str
+    dataset_version: str
+
+
+class TopPlayerResponse(TopApiModel):
+    player_id: StrictInt = Field(gt=0)
+    display_name: str = Field(min_length=1)
+    full_name: str | None
+    profile_url: str | None
+    photo_url: str | None
+    nationality_code: str | None
+    nationality: str | None
+    position_code: str | None
+    position_name: str | None
+    age_years: OptionalInt
+    team_id: StrictInt | None
+    team_name: str | None
+    team_url: str | None
+    crest_url: str | None
+
+
+class TopRankingResponse(TopApiModel):
+    category: TopCategory
+    rank: StrictInt = Field(ge=1)
+    player_id: StrictInt = Field(gt=0)
+    metric: TopMetric
+    metric_value: StrictInt = Field(ge=0)
+    unit: Literal["goals", "minutes", "cards", "years"]
+    matches_played: OptionalInt
+    source_record: Literal["html_table", "destacats_js_lg"]
+    graph_selected_by_default: bool | None
+
+
+class TopProgressPoint(TopApiModel):
+    matchday: StrictInt = Field(ge=1, le=38)
+    value: OptionalInt
+
+
+class TopProgressSeries(TopApiModel):
+    category: Literal["goals", "minutes", "yellow_cards", "red_cards"]
+    player_id: StrictInt = Field(gt=0)
+    metric: ProgressMetric
+    unit: Literal["goals", "minutes", "cards"]
+    points: list[TopProgressPoint]
+    graph_selected_by_default: bool
+
+
+class TopCountryOption(TopApiModel):
+    code: str
+    label: str
+
+
+class TopForeignStatistics(TopApiModel):
+    matches_played: OptionalInt
+    minutes_played: OptionalInt
+    goals: OptionalInt
+    yellow_cards: OptionalInt
+    red_cards: OptionalInt
+
+
+class TopForeignPlayerResponse(TopPlayerResponse):
+    statistics: TopForeignStatistics
+
+
+class TopForeignersSummary(TopApiModel):
+    source_count: StrictInt = Field(ge=0)
+    source_percentage: float | None
+    denominator_count: StrictInt | None
+    country_options: list[TopCountryOption]
+
+
+class TopCategoryOption(TopApiModel):
+    source_value: str
+    category: TopCategory
+    label: str
+    available_count: StrictInt = Field(ge=0)
+    graph_available: bool
+    see_all_available: bool
+
+
+class TopAvailability(TopApiModel):
+    players: StrictInt = Field(ge=0)
+    ranking_records: StrictInt = Field(ge=0)
+    progress_series: StrictInt = Field(ge=0)
+    progress_points: StrictInt = Field(ge=0)
+    foreign_players: StrictInt = Field(ge=0)
+    categories: dict[TopCategory, StrictInt]
+    matchdays: list[StrictInt]
+
+
+class TopBootstrapResponse(TopApiModel):
+    metadata: TopCaptureMetadata
+    availability: TopAvailability
+    categories: list[TopCategoryOption]
+    players: list[TopPlayerResponse]
+    rankings: list[TopRankingResponse]
+    progress: list[TopProgressSeries]
+    foreigners: list[TopForeignPlayerResponse]
+    foreigners_summary: TopForeignersSummary
+    coverage_note: str

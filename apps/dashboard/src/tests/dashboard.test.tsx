@@ -1,10 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import captureSource from "../../../../data/exports/bdfutbol/group2_classification/20261010T102656.252222Z-72f200ad/metadata/capture.json";
 import classificationSource from "../../../../data/exports/bdfutbol/group2_classification/20261010T102656.252222Z-72f200ad/normalized/classification.json";
 import matchesSource from "../../../../data/exports/bdfutbol/group2_classification/derived-res01-20261010T102656Z/normalized/matches.json";
 import progressSource from "../../../../data/exports/bdfutbol/group2_classification/20261010T102656.252222Z-72f200ad/normalized/progress.json";
 import referenceSource from "../../../../data/exports/bdfutbol/group2_classification/derived-clas01b-20261010T102656Z/validation/bdfutbol_js_reference.json";
+import topCapture from "../../../../data/exports/bdfutbol/group2_top/20261010T155145.195266Z-c5b031a6/metadata/capture.json";
+import topPlayers from "../../../../data/exports/bdfutbol/group2_top/20261010T155145.195266Z-c5b031a6/normalized/players.json";
+import topRankings from "../../../../data/exports/bdfutbol/group2_top/20261010T155145.195266Z-c5b031a6/normalized/rankings.json";
+import topProgress from "../../../../data/exports/bdfutbol/group2_top/20261010T155145.195266Z-c5b031a6/normalized/progress.json";
+import topForeigners from "../../../../data/exports/bdfutbol/group2_top/20261010T155145.195266Z-c5b031a6/normalized/foreigners.json";
+import { buildTopProgressData } from "../components/TopSection";
 import App from "../App";
 
 const publicMatches = matchesSource.matches.map((match) => ({
@@ -96,6 +102,62 @@ const apiBootstrap = {
       sports_zone: row.sports_zone,
     })),
   },
+};
+
+const categoryBySourceValue: Record<string, string> = {
+  "1": "goals", "2": "minutes", "3": "yellow_cards", "4": "red_cards", "8": "youngest", "9": "oldest",
+};
+const topBootstrap = {
+  metadata: {
+    source: topCapture.source,
+    url: topCapture.url,
+    competition: topCapture.competition,
+    season: topCapture.season,
+    group: topCapture.group,
+    section: "top",
+    capture_id: topCapture.capture_id,
+    captured_at: topCapture.captured_at_utc,
+    extractor_version: topCapture.extractor_version,
+    source_snapshot_sha256: topCapture.source_snapshot_sha256,
+    related_team_capture_id: topCapture.related_team_catalog.source_capture_id,
+    related_team_catalog_sha256: topCapture.related_team_catalog.sha256,
+    dataset_version: `${topCapture.capture_id}-test-fixture`,
+  },
+  availability: {
+    players: topPlayers.records.length,
+    ranking_records: topRankings.records.length,
+    progress_series: topProgress.records.length,
+    progress_points: topProgress.records.reduce((count, series) => count + series.points.length, 0),
+    foreign_players: topForeigners.records.length,
+    categories: topRankings.category_source_counts,
+    matchdays: topProgress.matchdays,
+  },
+  categories: topCapture.category_options.map((option) => ({
+    source_value: option.value,
+    category: categoryBySourceValue[option.value],
+    label: option.label,
+    available_count: topRankings.category_source_counts[categoryBySourceValue[option.value]],
+    graph_available: ["goals", "minutes", "yellow_cards", "red_cards"].includes(categoryBySourceValue[option.value]),
+    see_all_available: option.value === "1" && topCapture.see_all_available_for_goals,
+  })),
+  players: topPlayers.records,
+  rankings: topRankings.records,
+  progress: topProgress.records,
+  foreigners: topForeigners.records.map((player, index) => ({
+    ...player,
+    statistics: {
+      ...player.statistics,
+      // Isolated UI fixture to distinguish a genuine zero from missing data.
+      ...(index === 0 ? { matches_played: null } : {}),
+    },
+  })),
+  foreigners_summary: {
+    source_count: topForeigners.summary.source_count,
+    source_percentage: topForeigners.summary.source_percentage,
+    denominator_count: topForeigners.summary.denominator_count,
+    country_options: topForeigners.summary.country_options.map(([code, label]) => ({ code, label })),
+  },
+  coverage_note: topRankings.coverage_note,
 };
 
 function response(status: number, body: unknown) {
@@ -393,5 +455,84 @@ describe("dashboard de clasificación", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("La API todavía no tiene un dataset preparado.");
     expect(screen.getByRole("button", { name: "Reintentar conexión" })).toBeInTheDocument();
+  });
+
+  it("carga Destacados solo al entrar, mantiene selecciones locales y presenta rankings reales", async () => {
+    fetchMock.mockImplementation((input: RequestInfo | URL) => Promise.resolve(
+      String(input).endsWith("/api/v1/group2/top/bootstrap")
+        ? response(200, topBootstrap)
+        : response(200, apiBootstrap),
+    ));
+    const { container } = render(<App />);
+    await screen.findByRole("heading", { name: "General" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Destacados" }));
+    expect(await screen.findByRole("heading", { name: "Destacados" })).toBeInTheDocument();
+    expect(screen.getByText("217 jugadores identificados")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Extranjeros — 101 \(19,65 %\)/ })).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(String(fetchMock.mock.calls[1]?.[0])).toContain("/api/v1/group2/top/bootstrap");
+
+    const goalTable = container.querySelector(".top-ranking-table");
+    expect(goalTable?.querySelectorAll("tbody tr")).toHaveLength(10);
+    const firstCheckbox = screen.getAllByRole("checkbox", { name: /Incluir a/ })[0]!;
+    const originalSelection = (firstCheckbox as HTMLInputElement).checked;
+    fireEvent.click(firstCheckbox);
+    fireEvent.click(screen.getByRole("button", { name: "Ver todos (107)" }));
+    expect(goalTable?.querySelectorAll("tbody tr")).toHaveLength(107);
+
+    fireEvent.click(screen.getByRole("button", { name: "Más joven" }));
+    expect(screen.getByRole("heading", { name: "Más joven" })).toBeInTheDocument();
+    expect(container.querySelector(".top-chart-panel")).toBeNull();
+    expect(screen.queryByRole("checkbox", { name: /Incluir a/ })).toBeNull();
+    fireEvent.click(within(screen.getByRole("group", { name: "Categoría de destacados" })).getByRole("button", { name: "Goles" }));
+    expect((screen.getAllByRole("checkbox", { name: /Incluir a/ })[0] as HTMLInputElement).checked).toBe(!originalSelection);
+
+    fireEvent.change(screen.getByLabelText("Filtrar extranjeros por país"), { target: { value: "argentina" } });
+    const filteredRows = container.querySelectorAll(".foreigners-table tbody tr");
+    expect(filteredRows.length).toBeGreaterThan(0);
+    expect(filteredRows.length).toBeLessThan(101);
+    const gazzaniga = screen.getByText("Gianfranco Gazzaniga Farías").closest("tr");
+    expect(gazzaniga?.children[4]).toHaveTextContent("—");
+    expect(gazzaniga?.children[6]).toHaveTextContent("0");
+    fireEvent.click(within(container.querySelector(".foreigners-table") as HTMLElement).getByRole("button", { name: /Goles/ }));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Resultados" }));
+    fireEvent.change(screen.getByLabelText("Jornada de resultados"), { target: { value: "all" } });
+    fireEvent.click(screen.getByRole("tab", { name: "Destacados" }));
+    expect(await screen.findByRole("heading", { name: "Destacados" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Resultados" }));
+    expect(screen.getByLabelText("Jornada de resultados")).toHaveValue("all");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("reintenta solo la carga de Destacados y no recarga sus datos al volver a entrar", async () => {
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      if (String(input).endsWith("/api/v1/group2/top/bootstrap")) {
+        const topCalls = fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/group2/top/bootstrap")).length;
+        return Promise.resolve(topCalls === 1 ? response(503, { detail: "invalid capture" }) : response(200, topBootstrap));
+      }
+      return Promise.resolve(response(200, apiBootstrap));
+    });
+    render(<App />);
+    await screen.findByRole("heading", { name: "General" });
+    fireEvent.click(screen.getByRole("tab", { name: "Destacados" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Destacados no está disponible");
+    fireEvent.click(screen.getByRole("button", { name: "Reintentar Destacados" }));
+    expect(await screen.findByRole("heading", { name: "Destacados" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Clasificación" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Destacados" }));
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/group2/top/bootstrap"))).toHaveLength(2);
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/group2/bootstrap"))).toHaveLength(1);
+  });
+
+  it("conserva los valores numéricos reales de las series de progreso", () => {
+    const sourceSeries = topProgress.records[0]!;
+    const data = buildTopProgressData([1, 2], [sourceSeries], [sourceSeries.player_id]);
+    expect(data[0]?.matchday).toBe(1);
+    expect(data[0]?.[`player_${sourceSeries.player_id}`]).toBe(sourceSeries.points[0]?.value);
+    expect(data[1]?.[`player_${sourceSeries.player_id}`]).toBe(sourceSeries.points[1]?.value);
   });
 });

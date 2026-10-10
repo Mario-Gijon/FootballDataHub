@@ -16,6 +16,12 @@ from football_data_hub_api.schemas import (
     DatasetMetadata,
     HealthResponse,
     ReadinessResponse,
+    TopBootstrapResponse,
+)
+from football_data_hub_api.top_dataset import (
+    TopDatasetBundle,
+    TopDatasetLoadError,
+    load_top_dataset,
 )
 
 logger = logging.getLogger("football_data_hub_api")
@@ -28,11 +34,18 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.dataset = None
         app.state.dataset_error = None
+        app.state.top_dataset = None
+        app.state.top_dataset_error = None
         try:
             app.state.dataset = load_dataset(configured)
         except (DatasetLoadError, KeyError, TypeError, ValueError) as exc:
             app.state.dataset_error = exc
             logger.exception("API arrancada sin dataset preparado")
+        try:
+            app.state.top_dataset = load_top_dataset(configured)
+        except (TopDatasetLoadError, KeyError, TypeError, ValueError) as exc:
+            app.state.top_dataset_error = exc
+            logger.exception("Destacados no está disponible; clasificación y resultados siguen aislados")
         yield
 
     app = FastAPI(
@@ -100,6 +113,19 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
             return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": bundle.etag})
         return bundle.bootstrap
 
+    @app.get(
+        "/api/v1/group2/top/bootstrap",
+        response_model=TopBootstrapResponse,
+        tags=["group2", "top"],
+        summary="Datos preparados de rankings y jugadores destacados",
+    )
+    def group2_top_bootstrap(request: Request, response: Response) -> TopBootstrapResponse | Response:
+        bundle = _require_top_dataset(request)
+        response.headers["ETag"] = bundle.etag
+        if _etag_matches(request.headers.get("if-none-match"), bundle.etag):
+            return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": bundle.etag})
+        return bundle.bootstrap
+
     return app
 
 
@@ -110,6 +136,17 @@ def _require_dataset(request: Request) -> DatasetBundle:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="El dataset configurado no está disponible o no superó la validación.",
         )
+    return bundle
+
+
+def _require_top_dataset(request: Request) -> TopDatasetBundle:
+    bundle = request.app.state.top_dataset
+    if bundle is None:
+        detail = "Destacados no está disponible: la captura independiente no superó la validación."
+        error = request.app.state.top_dataset_error
+        if error:
+            detail = f"{detail} Diagnóstico: {error}"
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=detail)
     return bundle
 
 

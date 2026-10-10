@@ -148,8 +148,129 @@ export const BootstrapSchema = z.object({
   }
 });
 
+export const TopCategorySchema = z.enum([
+  "goals", "minutes", "yellow_cards", "red_cards", "youngest", "oldest",
+]);
+
+const TopPlayerSchema = z.object({
+  player_id: positiveInteger,
+  display_name: z.string().min(1),
+  full_name: z.string().nullable(),
+  profile_url: z.string().url().nullable(),
+  photo_url: z.string().url().nullable(),
+  nationality_code: z.string().nullable(),
+  nationality: z.string().nullable(),
+  position_code: z.string().nullable(),
+  position_name: z.string().nullable(),
+  age_years: nullableInteger,
+  team_id: positiveInteger.nullable(),
+  team_name: z.string().nullable(),
+  team_url: z.string().url().nullable(),
+  crest_url: z.string().url().nullable(),
+}).strict();
+
+const TopRankingSchema = z.object({
+  category: TopCategorySchema,
+  rank: z.number().int().positive(),
+  player_id: positiveInteger,
+  metric: z.enum(["goals", "minutes_played", "yellow_cards", "red_cards", "age_years"]),
+  metric_value: z.number().int().nonnegative(),
+  unit: z.enum(["goals", "minutes", "cards", "years"]),
+  matches_played: nullableInteger,
+  source_record: z.enum(["html_table", "destacats_js_lg"]),
+  graph_selected_by_default: z.boolean().nullable(),
+}).strict();
+
+const TopProgressSchema = z.object({
+  category: z.enum(["goals", "minutes", "yellow_cards", "red_cards"]),
+  player_id: positiveInteger,
+  metric: z.enum(["goals", "minutes_played", "yellow_cards", "red_cards"]),
+  unit: z.enum(["goals", "minutes", "cards"]),
+  points: z.array(z.object({
+    matchday: z.number().int().min(1).max(38),
+    value: nullableInteger,
+  }).strict()),
+  graph_selected_by_default: z.boolean(),
+}).strict();
+
+const TopForeignPlayerSchema = TopPlayerSchema.extend({
+  statistics: z.object({
+    matches_played: nullableInteger,
+    minutes_played: nullableInteger,
+    goals: nullableInteger,
+    yellow_cards: nullableInteger,
+    red_cards: nullableInteger,
+  }).strict(),
+}).strict();
+
+export const TopBootstrapSchema = z.object({
+  metadata: z.object({
+    source: z.string(),
+    url: z.string().url(),
+    competition: z.string(),
+    season: z.string(),
+    group: z.string(),
+    section: z.literal("top"),
+    capture_id: z.string().min(1),
+    captured_at: z.string().datetime({ offset: true }),
+    extractor_version: z.string(),
+    source_snapshot_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    related_team_capture_id: z.string().min(1),
+    related_team_catalog_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    dataset_version: z.string().min(1),
+  }).strict(),
+  availability: z.object({
+    players: z.number().int().nonnegative(),
+    ranking_records: z.number().int().nonnegative(),
+    progress_series: z.number().int().nonnegative(),
+    progress_points: z.number().int().nonnegative(),
+    foreign_players: z.number().int().nonnegative(),
+    categories: z.record(TopCategorySchema, z.number().int().nonnegative()),
+    matchdays: z.array(z.number().int().min(1).max(38)),
+  }).strict(),
+  categories: z.array(z.object({
+    source_value: z.string(),
+    category: TopCategorySchema,
+    label: z.string(),
+    available_count: z.number().int().nonnegative(),
+    graph_available: z.boolean(),
+    see_all_available: z.boolean(),
+  }).strict()),
+  players: z.array(TopPlayerSchema),
+  rankings: z.array(TopRankingSchema),
+  progress: z.array(TopProgressSchema),
+  foreigners: z.array(TopForeignPlayerSchema),
+  foreigners_summary: z.object({
+    source_count: z.number().int().nonnegative(),
+    source_percentage: z.number().nullable(),
+    denominator_count: nullableInteger,
+    country_options: z.array(z.object({ code: z.string(), label: z.string() }).strict()),
+  }).strict(),
+  coverage_note: z.string(),
+}).strict().superRefine((top, context) => {
+  const playerIds = new Set(top.players.map((player) => player.player_id));
+  if (playerIds.size !== top.players.length) {
+    context.addIssue({ code: "custom", message: "La captura TOP contiene IDs de jugador repetidos." });
+  }
+  if (top.rankings.some((ranking) => !playerIds.has(ranking.player_id))) {
+    context.addIssue({ code: "custom", message: "Un ranking TOP referencia un jugador inexistente." });
+  }
+  if (top.progress.some((series) => !playerIds.has(series.player_id))) {
+    context.addIssue({ code: "custom", message: "Una serie TOP referencia un jugador inexistente." });
+  }
+  if (top.foreigners.some((player) => !playerIds.has(player.player_id))) {
+    context.addIssue({ code: "custom", message: "La tabla de extranjeros referencia un jugador inexistente." });
+  }
+});
+
 export type Team = z.infer<typeof TeamSchema>;
 export type Match = z.infer<typeof MatchSchema>;
 export type ProgressRecord = z.infer<typeof ProgressSchema>;
 export type PublishedStanding = z.infer<typeof PublishedStandingSchema>;
 export type Bootstrap = z.infer<typeof BootstrapSchema>;
+export type TopCategory = z.infer<typeof TopCategorySchema>;
+export type TopPlayer = z.infer<typeof TopPlayerSchema>;
+export type TopRanking = z.infer<typeof TopRankingSchema>;
+export type TopProgressSeries = z.infer<typeof TopProgressSchema>;
+export type TopForeignPlayer = z.infer<typeof TopForeignPlayerSchema>;
+export type TopBootstrap = z.infer<typeof TopBootstrapSchema>;
