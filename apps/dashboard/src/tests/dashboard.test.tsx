@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import captureSource from "../../../../data/exports/bdfutbol/group2_classification/20261010T102656.252222Z-72f200ad/metadata/capture.json";
 import classificationSource from "../../../../data/exports/bdfutbol/group2_classification/20261010T102656.252222Z-72f200ad/normalized/classification.json";
-import matchesSource from "../../../../data/exports/bdfutbol/group2_classification/derived-clas01b-20261010T102656Z/normalized/matches.json";
+import matchesSource from "../../../../data/exports/bdfutbol/group2_classification/derived-res01-20261010T102656Z/normalized/matches.json";
 import progressSource from "../../../../data/exports/bdfutbol/group2_classification/20261010T102656.252222Z-72f200ad/normalized/progress.json";
 import referenceSource from "../../../../data/exports/bdfutbol/group2_classification/derived-clas01b-20261010T102656Z/validation/bdfutbol_js_reference.json";
 import App from "../App";
@@ -23,6 +23,13 @@ const publicMatches = matchesSource.matches.map((match) => ({
   status: match.status,
   unplayed_state: match.unplayed_state,
   postponed_by_source_rule: match.postponed_by_source_rule,
+  source_match_url: match.source_match_url,
+  stadium_id: match.stadium_id,
+  stadium_name: match.stadium_name,
+  stadium_url: match.stadium_url,
+  referee_id: match.referee_id,
+  referee_name: match.referee_name,
+  referee_url: match.referee_url,
 }));
 
 const apiBootstrap = {
@@ -312,6 +319,71 @@ describe("dashboard de clasificación", () => {
     expect(jaenSeries).toHaveAttribute("aria-pressed", "true");
     fireEvent.click(jaenSeries);
     expect(screen.getByRole("button", { name: "Mostrar Jaén en el gráfico" })).toHaveAttribute("aria-pressed", "false");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("muestra diez fixtures de la última jornada con resultados y sus datos enriquecidos", async () => {
+    const { container } = render(<App />);
+    await screen.findByRole("heading", { name: "General" });
+    fireEvent.click(screen.getByRole("tab", { name: "Resultados" }));
+
+    expect(await screen.findByRole("heading", { name: "Resultados" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Jornada de resultados")).toHaveValue("6");
+    expect(container.querySelectorAll(".results-match-row")).toHaveLength(10);
+    expect(screen.getByRole("columnheader", { name: "Estadio" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Árbitro" })).toBeInTheDocument();
+    expect(screen.getByText("Nuevo Mirador")).toBeInTheDocument();
+    expect(screen.getByText("Caro Mogío")).toBeInTheDocument();
+    expect(container.querySelectorAll('.results-match-row.is-jaen-match')).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("cambia jornadas, permite Todas y conserva resultados y matriz sin nuevas peticiones", async () => {
+    const { container } = render(<App />);
+    await screen.findByRole("heading", { name: "General" });
+    fireEvent.click(screen.getByRole("tab", { name: "Resultados" }));
+    const selector = screen.getByLabelText("Jornada de resultados");
+
+    fireEvent.change(selector, { target: { value: "1" } });
+    expect(container.querySelectorAll(".results-match-row")).toHaveLength(10);
+    expect(screen.getByRole("button", { name: "Jornada anterior" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Jornada siguiente" }));
+    expect(selector).toHaveValue("2");
+
+    fireEvent.change(selector, { target: { value: "38" } });
+    expect(screen.getByRole("button", { name: "Jornada siguiente" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Jornada anterior" }));
+    expect(selector).toHaveValue("37");
+
+    fireEvent.change(selector, { target: { value: "all" } });
+    expect(container.querySelectorAll(".results-match-row")).toHaveLength(380);
+    expect(container.querySelectorAll(".results-round-divider")).toHaveLength(38);
+    expect(container.querySelectorAll(".result-pending")).toHaveLength(321);
+    const pending = container.querySelector(".results-match-row:has(.result-pending)");
+    expect(pending?.querySelector(".result-score")).toBeNull();
+
+    const matrixRows = [...container.querySelectorAll(".results-matrix tbody tr")];
+    expect(matrixRows).toHaveLength(20);
+    expect(matrixRows.every((row) => row.querySelectorAll("td").length === 20)).toBe(true);
+    expect(container.querySelectorAll(".results-matrix .matrix-result-cell")).toHaveLength(380);
+    expect(container.querySelectorAll(".results-matrix .matrix-diagonal")).toHaveLength(20);
+    expect(container.querySelectorAll(".results-matrix .is-pending")).toHaveLength(321);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("conserva los filtros de Clasificación al cambiar de sección", async () => {
+    render(<App />);
+    await screen.findByRole("heading", { name: "General" });
+    fireEvent.change(screen.getByLabelText("Tipo de rango"), { target: { value: "dates" } });
+    fireEvent.change(screen.getByLabelText("Fecha inicial"), { target: { value: "2026-09-05" } });
+    fireEvent.change(screen.getByLabelText("Fecha final"), { target: { value: "2026-09-20" } });
+    fireEvent.click(screen.getByRole("tab", { name: "Resultados" }));
+    expect(await screen.findByRole("heading", { name: "Resultados" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Clasificación" }));
+    expect(await screen.findByRole("heading", { name: "General" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Tipo de rango")).toHaveValue("dates");
+    expect(screen.getByLabelText("Fecha inicial")).toHaveValue("2026-09-05");
+    expect(screen.getByLabelText("Fecha final")).toHaveValue("2026-09-20");
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 

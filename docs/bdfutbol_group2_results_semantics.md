@@ -4,7 +4,7 @@
 
 La referencia local es la captura CLAS-01 `20261010T102656.252222Z-72f200ad`, tomada el 10/10/2026. Se inspeccionó primero `raw/source.html`, sin modificarlo. El snapshot contiene `SE`, `SP` y `div#resultats`: 20 equipos, 38 jornadas, diez filas por jornada y 380 partidos. Hay 59 marcadores y 321 filas sin resultado.
 
-La captura principal abre la vista de clasificación. El enlace de navegación de Resultados apunta a `?tab=results`, pero la tabla `#resultats` ya está incluida en el HTML con `display:none`. El snapshot no contiene el selector visible ni una tabla de matriz. Se intentó una única apertura de la pestaña Resultados con Brave/CDP/Xvfb existentes para inspeccionar lo ausente; BDFutbol respondió HTTP 403 y `Just a moment...` (`CHALLENGE_REQUIRED`). La navegación se detuvo sin resolver el desafío ni reintentar.
+La captura principal abre la vista de clasificación. El enlace de navegación de Resultados apunta a `?tab=results`, pero la tabla `#resultats` ya está incluida en el HTML con `display:none`. El snapshot no contiene el selector visible ni una tabla de matriz. Una prueba histórica con Brave/CDP/Xvfb recibió HTTP 403 y `Just a moment...` (`CHALLENGE_REQUIRED`); esa navegación se detuvo sin resolver el desafío ni reintentar. En una comprobación posterior, Pure CDP abrió Resultados con HTTP 200 y contenido deportivo válido. Son resultados de navegadores/sesiones distintos y no se deben confundir.
 
 | Área | Estado | Evidencia o límite |
 |---|---|---|
@@ -12,9 +12,10 @@ La captura principal abre la vista de clasificación. El enlace de navegación d
 | Marcadores, jornadas y fechas | Verificados contra el extractor actual | `SP` y `#resultats` se reconcilian para los 380 partidos. Hay 59 marcadores; las 321 filas restantes no se interpretan como 0-0. |
 | Estadio y árbitro | Explorados y verificados en el snapshot | Ambos aparecen en celdas 5 y 6 (índices 4 y 5) de las 59 filas con resultado. Se identificaron 19 IDs de estadio y 42 IDs de árbitro en sus enlaces. Las otras 321 filas están vacías. |
 | Escudos | Ya disponibles en el catálogo | `Team.crest_url` se obtiene de la tabla de clasificación. El HTML de resultados también incluye imágenes `escut-mini` junto a los nombres, pero no hace falta duplicarlas en cada partido. |
-| Selector de jornadas en la pestaña | Pendiente de verificar en la interfaz | El snapshot solo confirma que todas las jornadas están en el DOM; no incluye un selector de Resultados que permita conocer valores, navegación o eventos. |
-| Opción «Todas» y cambios de jornada | Pendientes de verificar en la interfaz | La consulta local define `matchday=None` como los 380 partidos. No se presenta como semántica observada del control BDFutbol. |
-| Matriz y colores | Pendientes de verificar con BDFutbol | No hay elementos ni código de matriz en el snapshot. No se afirma que la web use una orientación o paleta concreta. |
+| Selector de jornadas en la pestaña | Explorados en la página viva | `select#jornada1` ofrece «Todas» (`jornada=-`) y las jornadas 1–38; en la carga observada J6 estaba seleccionada (`jornada=6`). Cada valor apunta a la URL de Resultados con su parámetro `jornada`. |
+| Opción «Todas» y cambios de jornada | «Todas» verificada; interacción anterior/siguiente pendiente | El informe previo confirmó que «Todas» presenta 380 partidos. En esta inspección se encontraron controles anterior/siguiente con nombres accesibles; no se activaron para medir recarga, cambios de DOM o red. |
+| Matriz | Exploración estructural verificada | Hay una tabla de 21 filas (cabecera y 20 equipos) con abreviaturas de equipos en ambos ejes y resultados o guiones. No se captura como un segundo conjunto de partidos. |
+| Orientación exacta, colores, enlaces y respuesta de la matriz al selector | Parcialmente explorados / pendientes | La inspección guardada no permite verificar con fiabilidad la semántica de cada color, el destino de cada celda ni si la matriz cambia con la jornada. La interfaz de FootballDataHub declara explícitamente su orientación y paleta propias. |
 
 ## Estructura disponible para el listado
 
@@ -42,15 +43,11 @@ La fecha de una jornada se mantiene separada de la fecha de partido: por ejemplo
 
 ## Matriz de enfrentamientos
 
-La captura no trae la matriz ni sus reglas de presentación: no se encontraron tabla, selector o código con referencias a una matriz. Por la respuesta 403 de la única navegación a `?tab=results`, siguen sin verificar con BDFutbol:
+El snapshot original no trae la matriz ni sus reglas de presentación. La página viva abierta con Pure CDP sí contiene una tabla de matriz: una cabecera más 20 filas de equipos, con abreviaturas de los equipos y valores de marcador o guion. En la tabla de Resultados también se observaron 418 filas `.jornadai`: 380 fixtures y 38 filas de encabezado de jornada, no 418 partidos. Las filas de partido contienen fecha, local, resultado, visitante, estadio y árbitro. Para validar goles se deben leer los dos nodos `.resultat-gols`; el texto agregado de la celda del resultado puede concatenar los dígitos y no es un marcador semántico seguro.
 
-- qué equipo aparece en cada eje y cuál es la orientación exacta de sus celdas;
-- si se colorea desde la perspectiva local o visitante y los colores asignados;
-- cómo dibuja la fuente los empates, pendientes y la diagonal;
-- si una celda enlaza a la ficha del partido;
-- si la matriz es de toda la temporada o cambia al elegir jornada.
+La evidencia preservada no permite certificar todavía la paleta original ni la acción de cada enlace de la matriz. Tampoco se probó si cambiar la jornada modifica la matriz. El selector observado es `select#jornada1`: la opción «Todas» usa `jornada=-`, las opciones de jornada usan 1–38 y la carga observada estaba en J6. Los controles de jornada anterior/siguiente existen y tienen nombres accesibles, pero no se activaron durante esta comprobación. Por tanto, su efecto exacto de navegación/red queda pendiente de una futura inspección permitida.
 
-El modelo local implementa el contrato conceptual especificado para FootballDataHub: fila = local, columna = visitante, una celda vinculada por `match_id`; un resultado disputado recibe una categoría derivada desde la perspectiva del local (`home_win`, `draw`, `home_loss`). Un partido sin marcador conserva estado `unplayed`, celdas sin goles y sin categoría de resultado. La diagonal usa estado `diagonal`, separado de un partido. Este mapeo es un modelo de dominio para nuestra futura interfaz, no una afirmación sobre el HTML/CSS de BDFutbol. La ausencia de un par en un subconjunto se representa como `missing`, no como partido pendiente.
+El modelo de FootballDataHub declara expresamente su propia convención: fila = local, columna = visitante, una celda vinculada por `match_id`; un resultado disputado recibe una categoría derivada desde la perspectiva del local (`home_win`, `draw`, `home_loss`). No atribuimos esa orientación ni los colores verde/ámbar/rojo a BDFutbol. Un partido sin marcador conserva estado `unplayed`, celdas sin goles y sin categoría de resultado. La diagonal usa estado `diagonal`, separado de un partido. La ausencia de un par en un subconjunto se representa como `missing`, no como partido pendiente.
 
 Para la captura completa, la validación de la matriz comprueba 20 filas y columnas, cero colisiones, una aparición por ID de partido, 380 celdas de fixture fuera de la diagonal, 59 con resultado y 321 sin marcador. Es una validación estructural de nuestro conjunto de partidos; no valida la representación visual de BDFutbol.
 
@@ -79,14 +76,36 @@ Los partidos se amplían en el mismo contrato de dominio `MatchResult`; no se in
 
 `matches.json` v1 sigue siendo legible y asigna `null` a los campos de enriquecimiento ausentes. Las exportaciones con el contrato aditivo usan v2. No se completan nombres ni IDs para los partidos futuros y no se visitan fichas de estadio, árbitro o partido.
 
-La exportación nueva de esta tarea quedó en `data/exports/bdfutbol/group2_classification/derived-res01-20261010T102656Z/`. Su metadata referencia `source_capture_id=20261010T102656.252222Z-72f200ad`; no reemplaza ningún archivo CLAS-01/01B. El loader admite tanto versiones 1 como 2. El API actual no se modificó: para servir los nuevos campos, una tarea posterior debe incluirlos en su DTO público de partidos y exponer las consultas de resultados/matriz sin conectar el dominio con FastAPI.
+La exportación de RES-01 quedó en `data/exports/bdfutbol/group2_classification/derived-res01-20261010T102656Z/`. Su metadata referencia `source_capture_id=20261010T102656.252222Z-72f200ad`; no reemplaza ningún archivo CLAS-01/01B. El loader admite tanto versiones 1 como 2. En esa entrega RES-01, el API todavía no exponía los campos añadidos; la sección de integración posterior documenta el contrato ya incorporado en RES-02/03.
 
 ## Validación realizada y pendiente
 
 - Verificado offline: 20 equipos; 38 jornadas × diez partidos; IDs únicos; 59 marcadores; campos de estadio y árbitro presentes en las 59 filas con resultado y ausentes en las 321 filas sin resultado; 19 estadios y 42 árbitros distintos; consistencia de local/visitante, fecha y marcador entre `SP` y `#resultats`.
 - Verificado offline: las diez filas normalizadas de J6 y la asociación de las 380 filas a un único par local/visitante.
 - Implementado y probado en dominio: lista por jornada o completa con orden estable; matriz local orientada local/visitante, diagonal, fixture pendiente, ausencia de par y rechazo de colisiones.
-- No validado con la fuente: selector visible, navegación entre jornadas, peticiones de red al cambiar selección, matriz visual/orientación/colores/enlaces y respuesta de matriz a jornada.
-- Acceso en vivo: detenido en HTTP 403 / `CHALLENGE_REQUIRED`; no se intentó resolver ni repetir.
+- Verificado en la fuente viva mediante una navegación Pure CDP: HTTP 200, título/temporada/grupo válidos, selector J6 y opciones Todas/1–38, 380 partidos y matriz de 20 equipos. La lista tiene además 38 filas de encabezado que no son partidos.
+- Pendiente de verificar con la fuente: activación de anterior/siguiente, cambios y peticiones de red al cambiar selección, paleta de la matriz, asociación de colores, destinos de enlaces de celda y respuesta de la matriz a la jornada.
+- Acceso: el intento histórico de Brave recibió 403; la comprobación posterior de Pure CDP fue válida. No se resolvieron desafíos ni se repitieron navegaciones tras denegación.
 
-Para cerrar los puntos pendientes basta una captura autorizada de la pestaña Resultados que incluya controles y matriz, después de restablecerse el acceso normal. Esa observación no exige crear un scraper separado ni visitar los partidos individuales.
+Para cerrar esos puntos pendientes basta una inspección autorizada de la página de Resultados que active los controles visibles y revise los atributos de la matriz. No exige crear un scraper separado ni visitar fichas individuales.
+
+## Integración RES-02/03 — contrato y presentación local
+
+La integración reutiliza `matches.json` v2 de RES-01, con `source_capture_id=20261010T102656.252222Z-72f200ad`. No se ha adquirido una segunda copia de partidos ni se ha modificado el export. El bootstrap conserva un único registro por `match_id` y ahora incluye, cuando están disponibles, `source_match_url`, `stadium_id/name/url` y `referee_id/name/url`. En matches v1 estos siete campos se exponen como `null`; en v2 se exige que las claves existan, aunque su valor legítimo pueda ser `null`. La clasificación y el progreso continúan requiriendo esquema v1, y los tres datasets deben pertenecer al mismo `source_capture_id`.
+
+| Elemento de Resultados | Estado frente al dataset | Uso en la interfaz |
+|---|---|---|
+| Jornada, fecha del partido y fecha de jornada | Ya disponible; fechas distintas y preservadas | Se agrupa por `matchday`; cada fila muestra solo `source_match_date`. |
+| Local, visitante y escudos | Ya disponible en el catálogo de 20 equipos; unión por ID | Nombre, escudo y enlace de equipo. Real Jaén (`team_id=49`) recibe un acento discreto. |
+| Marcador y estado | Ya disponible para 59 jugados; 321 sin resultado siguen sin goles | Un partido no disputado se muestra como Pendiente; nunca se convierte en 0–0. El estado incompleto queda diferenciado. |
+| Estadio y árbitro | Enriquecimiento RES-01 v2 para las 59 filas jugadas; `null` en las demás | Nombres y enlaces BDFutbol cuando existen. No se visitan las fichas. |
+| Enlace a ficha del partido | Ya disponible para las filas con enlace en la fuente | Se usa en el marcador y en las celdas de matriz correspondientes. |
+| Filtro de jornada y opción Todas | La exploración previa registró J6, Todas y las 380 filas; los datos locales bastan para su comportamiento | Jornada inicial = última con resultados en los metadatos; Todas agrupa por las jornadas presentes. Anterior/siguiente cambia el selector localmente. |
+| Matriz 20 × 20 | Derivable de los mismos partidos; no se persiste otra tabla de marcadores | Fila = local y columna = visitante. 380 fixtures más 20 diagonales. Colores verdes/ámbar/rojos se definen aquí desde el resultado del local y son una decisión visual de FootballDataHub, no una convención atribuida a BDFutbol. |
+| Horarios, estados oficiales de aplazamiento y detalles no capturados | No disponibles o no verificados en el export | No se inventan ni se presentan como confirmados. |
+
+El bootstrap sigue siendo la única llamada del frontend. El selector de jornada, navegación anterior/siguiente, opción Todas y matriz se calculan en TypeScript desde `teams` y `matches`; cambiar de sección conserva los filtros de Clasificación. La matriz no añade almacenamiento ni marcador duplicado.
+
+El export predeterminado de la API cambia al matches v2 de RES-01. Se conserva el soporte explícito de v1 para despliegues configurados con la captura anterior. Si se sirven ficheros configurados manualmente, matches, clasificación, progreso y metadata deben compartir captura de origen; no se combinan capturas nuevas con tablas o progreso previos.
+
+Durante esta tarea, la primera invocación Pure CDP no llegó a iniciar el navegador porque el `.venv` local no tenía instalado el extra opcional ya declarado (`ModuleNotFoundError: seleniumbase`); no se hizo una petición HTTP en ese intento. Tras instalar ese extra en el entorno local, una navegación autorizada a `?tab=results` respondió HTTP 200 y permitió validar la página y su estructura. La instalación no cambió dependencias declaradas, archivos de producción ni datasets. La matriz local usa una orientación y colores propios; la paleta y los enlaces exactos de la matriz BDFutbol siguen sin verificación concluyente.

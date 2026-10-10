@@ -4,6 +4,7 @@ import type { Bootstrap } from "./api/contracts";
 import { ClassificationControls } from "./components/ClassificationControls";
 const ProgressChart = lazy(() => import("./components/ProgressChart").then((module) => ({ default: module.ProgressChart })));
 import { StandingsTable } from "./components/StandingsTable";
+import { ResultsSection, type ResultsMatchday } from "./components/ResultsSection";
 import {
   calculateStandings,
   createClassificationIndexes,
@@ -15,6 +16,8 @@ type LoadState = "loading" | "error" | "ready";
 export default function App() {
   const [data, setData] = useState<Bootstrap | null>(null);
   const [filters, setFilters] = useState<StandingsFilters | null>(null);
+  const [activeSection, setActiveSection] = useState<"standings" | "results">("standings");
+  const [resultsMatchday, setResultsMatchday] = useState<ResultsMatchday>(1);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [errorMessage, setErrorMessage] = useState("");
   const [retryCount, setRetryCount] = useState(0);
@@ -32,6 +35,7 @@ export default function App() {
       .then((bootstrap) => {
         setData(bootstrap);
         setFilters(initialFilters(bootstrap));
+        setResultsMatchday(bootstrap.metadata.last_matchday_with_results ?? 1);
         setLoadState("ready");
       })
       .catch((error: unknown) => {
@@ -86,6 +90,29 @@ export default function App() {
       </header>
 
       <main className="dashboard-main">
+        <nav className="section-tabs" role="tablist" aria-label="Secciones de competición">
+          <button
+            id="standings-tab"
+            role="tab"
+            aria-selected={activeSection === "standings"}
+            aria-controls="standings-panel"
+            className={activeSection === "standings" ? "is-active" : ""}
+            onClick={() => setActiveSection("standings")}
+            type="button"
+          >Clasificación</button>
+          <button
+            id="results-tab"
+            role="tab"
+            aria-selected={activeSection === "results"}
+            aria-controls="results-panel"
+            className={activeSection === "results" ? "is-active" : ""}
+            onClick={() => setActiveSection("results")}
+            type="button"
+          >Resultados</button>
+        </nav>
+
+        {activeSection === "standings" ? (
+        <section role="tabpanel" id="standings-panel" aria-labelledby="standings-tab">
         <section className="competition-hero">
           <h1>Clasificación</h1>
           <div className="dataset-meta" aria-label="Actualización de los datos">
@@ -118,6 +145,14 @@ export default function App() {
             records={data.progress}
           />
         </Suspense>
+        </section>
+        ) : (
+          <ResultsSection
+            data={data}
+            matchday={resultsMatchday}
+            onMatchdayChange={setResultsMatchday}
+          />
+        )}
       </main>
 
       <footer className="page-footer">

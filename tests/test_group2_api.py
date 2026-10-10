@@ -18,8 +18,9 @@ DATA_ROOT = ROOT / "data/exports/bdfutbol/group2_classification"
 CAPTURE_DIRECTORY = DATA_ROOT / "20261010T102656.252222Z-72f200ad"
 MATCHES_FILE = (
     DATA_ROOT
-    / "derived-clas01b-20261010T102656Z/normalized/matches.json"
+    / "derived-res01-20261010T102656Z/normalized/matches.json"
 )
+MATCHES_V1_FILE = DATA_ROOT / "derived-clas01b-20261010T102656Z/normalized/matches.json"
 
 
 def settings_for(
@@ -55,6 +56,21 @@ def test_settings_support_project_relative_roots_and_absolute_files(
     assert configured.capture_metadata_path == data_root / "capture/metadata.json"
     assert configured.cors_origins == ("https://dashboard.example",)
     assert not str(configured.matches_path).startswith(str(PROJECT_ROOT / "home"))
+
+
+def test_default_matches_dataset_is_the_res01_enriched_export(monkeypatch: pytest.MonkeyPatch) -> None:
+    for variable in (
+        "FDH_DATA_ROOT",
+        "FDH_GROUP2_MATCHES",
+        "FDH_GROUP2_CLASSIFICATION",
+        "FDH_GROUP2_PROGRESS",
+        "FDH_GROUP2_CAPTURE_METADATA",
+    ):
+        monkeypatch.delenv(variable, raising=False)
+    configured = ApiSettings.from_env()
+    assert configured.matches_path == (
+        DATA_ROOT / "derived-res01-20261010T102656Z/normalized/matches.json"
+    )
 
 
 @pytest.fixture
@@ -106,6 +122,12 @@ def test_health_readiness_metadata_and_bootstrap_contract(client: TestClient) ->
         "source_fields" not in match and "source_references" not in match
         for match in bootstrap["matches"]
     )
+    enriched = next(match for match in bootstrap["matches"] if match["status"] == "played")
+    assert enriched["source_match_url"].startswith("https://www.bdfutbol.com/")
+    assert enriched["stadium_name"]
+    assert enriched["stadium_url"].startswith("https://www.bdfutbol.com/")
+    assert enriched["referee_name"]
+    assert enriched["referee_url"].startswith("https://www.bdfutbol.com/")
 
 
 def test_null_values_and_published_table_context_are_preserved(client: TestClient) -> None:
@@ -125,6 +147,20 @@ def test_null_values_and_published_table_context_are_preserved(client: TestClien
         or row["goals_for"] is None
         or row["goals_against"] is None
         for row in bootstrap["progress"]
+    )
+    assert all(
+        match[key] is None
+        for match in bootstrap["matches"]
+        if match["status"] == "unplayed"
+        for key in (
+            "source_match_url",
+            "stadium_id",
+            "stadium_name",
+            "stadium_url",
+            "referee_id",
+            "referee_name",
+            "referee_url",
+        )
     )
     assert all(
         row["sports_zone"] in {"direct_promotion", "promotion", "stay", "relegation", None}
@@ -188,6 +224,36 @@ def test_corrupt_json_is_not_served(tmp_path: Path) -> None:
     broken_matches.write_text("{not json", encoding="utf-8")
 
     with TestClient(create_app(settings_for(matches=broken_matches))) as invalid_client:
+        assert invalid_client.get("/health").json()["dataset_ready"] is False
+        assert invalid_client.get("/api/v1/group2/bootstrap").status_code == 503
+
+
+def test_matches_v1_remains_compatible_and_missing_enrichment_is_null() -> None:
+    source_matches = json.loads(MATCHES_V1_FILE.read_text(encoding="utf-8"))["matches"]
+    with TestClient(create_app(settings_for(matches=MATCHES_V1_FILE))) as legacy_client:
+        response = legacy_client.get("/api/v1/group2/bootstrap")
+    assert response.status_code == 200
+    matches = response.json()["matches"]
+    assert len(matches) == 380
+    optional_fields = (
+            "source_match_url",
+            "stadium_id",
+            "stadium_name",
+            "stadium_url",
+            "referee_id",
+            "referee_name",
+            "referee_url",
+    )
+    for source_match, public_match in zip(source_matches, matches, strict=True):
+        assert all(public_match[key] == source_match.get(key) for key in optional_fields)
+
+
+def test_matches_v2_requires_explicit_enrichment_fields(tmp_path: Path) -> None:
+    copied = tmp_path / "matches-v2.json"
+    payload = json.loads(MATCHES_FILE.read_text(encoding="utf-8"))
+    del payload["matches"][0]["stadium_name"]
+    copied.write_text(json.dumps(payload), encoding="utf-8")
+    with TestClient(create_app(settings_for(matches=copied))) as invalid_client:
         assert invalid_client.get("/health").json()["dataset_ready"] is False
         assert invalid_client.get("/api/v1/group2/bootstrap").status_code == 503
 

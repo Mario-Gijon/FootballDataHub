@@ -27,7 +27,7 @@ class ApiSettings:
             matches_path=_configured_path(
                 "FDH_GROUP2_MATCHES",
                 data_root,
-                "derived-clas01b-20261010T102656Z/normalized/matches.json",
+                "derived-res01-20261010T102656Z/normalized/matches.json",
             ),
             classification_path=_configured_path(
                 "FDH_GROUP2_CLASSIFICATION",
@@ -60,4 +60,3 @@ def _configured_path(variable: str, root: Path, default_relative: str) -> Path:
     configured = os.getenv(variable)
     path = Path(configured) if configured else Path(default_relative)
     return _resolve_path(path, root)
-

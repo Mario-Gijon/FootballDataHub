@@ -39,6 +39,13 @@ class MatchResponse(ApiModel):
         "scheduled", "result_unavailable_at_capture", "unknown"
     ] | None
     postponed_by_source_rule: bool | None
+    source_match_url: str | None = None
+    stadium_id: str | None = None
+    stadium_name: str | None = None
+    stadium_url: str | None = None
+    referee_id: str | None = None
+    referee_name: str | None = None
+    referee_url: str | None = None
 
     @model_validator(mode="after")
     def validate_match_state(self) -> MatchResponse:

@@ -183,9 +183,34 @@ def _decode_json(payload: bytes, path: Path) -> dict[str, Any]:
     return result
 
 
-def _check_schema_versions(*datasets: dict[str, Any]) -> None:
-    if any(dataset.get("schema_version") != 1 for dataset in datasets):
-        raise DatasetLoadError("Hay una versión de esquema no compatible")
+def _check_schema_versions(
+    matches: dict[str, Any], classification: dict[str, Any], progress: dict[str, Any]
+) -> None:
+    if matches.get("schema_version") not in {1, 2}:
+        raise DatasetLoadError("La versión de matches.json no es compatible")
+    if any(
+        dataset.get("schema_version") != 1
+        for dataset in (classification, progress)
+    ):
+        raise DatasetLoadError("Hay una versión de clasificación o progreso no compatible")
+    if matches["schema_version"] == 2:
+        enrichment_fields = {
+            "source_match_url",
+            "stadium_id",
+            "stadium_name",
+            "stadium_url",
+            "referee_id",
+            "referee_name",
+            "referee_url",
+        }
+        records = matches.get("matches")
+        if not isinstance(records, list) or any(
+            not isinstance(record, dict) or not enrichment_fields.issubset(record)
+            for record in records
+        ):
+            raise DatasetLoadError(
+                "matches.json v2 no contiene todos los campos de enriquecimiento"
+            )
 
 
 def _check_capture_compatibility(
@@ -328,6 +353,13 @@ def _match_public_fields(match: dict[str, Any]) -> dict[str, Any]:
             "status",
             "unplayed_state",
             "postponed_by_source_rule",
+            "source_match_url",
+            "stadium_id",
+            "stadium_name",
+            "stadium_url",
+            "referee_id",
+            "referee_name",
+            "referee_url",
         )
     }
 

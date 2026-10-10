@@ -27,6 +27,13 @@ export const MatchSchema = z.object({
   status: z.enum(["played", "unplayed", "incomplete"]),
   unplayed_state: z.enum(["scheduled", "result_unavailable_at_capture", "unknown"]).nullable(),
   postponed_by_source_rule: z.boolean().nullable(),
+  source_match_url: z.string().url().nullable(),
+  stadium_id: z.string().nullable(),
+  stadium_name: z.string().nullable(),
+  stadium_url: z.string().url().nullable(),
+  referee_id: z.string().nullable(),
+  referee_name: z.string().nullable(),
+  referee_url: z.string().url().nullable(),
 }).strict().superRefine((match, context) => {
   if (match.home_team_id === match.away_team_id) {
     context.addIssue({ code: "custom", message: "El partido no puede enfrentar al mismo equipo." });
