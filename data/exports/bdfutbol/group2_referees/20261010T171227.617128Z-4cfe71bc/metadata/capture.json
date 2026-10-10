@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "capture_id": "20261010T171227.617128Z-4cfe71bc",
+  "parent_capture_id": "ref01-real-inspection-20261010",
+  "source": "BDFutbol",
+  "url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html?tab=referees",
+  "final_url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html?tab=referees",
+  "competition": "Primera Federación",
+  "season": "2026-27",
+  "group": "II",
+  "section": "referees",
+  "captured_at_utc": "2026-10-10T17:12:19.678105+00:00",
+  "capture_timestamp_basis": "each scope timestamp follows HTML serialization; captured_at_utc is the first scope",
+  "extractor_version": "0.1.0",
+  "browser": {
+    "backend": "seleniumbase-pure-cdp",
+    "browser_name": "Chromium",
+    "browser_executable": "/usr/bin/chromium",
+    "browser_version": "Chromium 152.0.7977.82 Arch Linux",
+    "automation_version": "4.55.2",
+    "display": ":99",
+    "uses_xvfb": true,
+    "xvfb_external": true
+  },
+  "profile_dir": null,
+  "scope_captures": {
+    "all": {
+      "scope": "all",
+      "file": "raw/source_all.html",
+      "requested_url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html?tab=referees",
+      "final_url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html?tab=referees",
+      "http_status": 200,
+      "page_title": "Clasificación 1ª RFEF Grupo II 2026-27 | BDFutbol",
+      "captured_at_utc": "2026-10-10T17:12:19.678105+00:00",
+      "access": {
+        "status": "VALID",
+        "requested_url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html?tab=referees",
+        "final_url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html?tab=referees",
+        "http_status": 200,
+        "page_title": "Clasificación 1ª RFEF Grupo II 2026-27 | BDFutbol",
+        "missing_markers": [],
+        "reason": null,
+        "missing_title_markers": [],
+        "missing_selectors": [],
+        "missing_dom_markers": [],
+        "missing_dom_evidence": []
+      },
+      "source_snapshot_sha256": "69741536b8e19c51c8ab0a490a810e36f9faea61d3f9f4bf2a863fa4e75a4f76"
+    },
+    "group1": {
+      "scope": "group1",
+      "file": "raw/source_group1.html",
+      "requested_url": "https://www.bdfutbol.com/es/t/t2026-271rf1.html?tab=referees&grups=1",
+      "final_url": "https://www.bdfutbol.com/es/t/t2026-271rf1.html?tab=referees&grups=1",
+      "http_status": 200,
+      "page_title": "Clasificación 1ª RFEF Grupo I 2026-27 | BDFutbol",
+      "captured_at_utc": "2026-10-10T17:12:19.683268+00:00",
+      "access": {
+        "status": "VALID",
+        "requested_url": "https://www.bdfutbol.com/es/t/t2026-271rf1.html?tab=referees&grups=1",
+        "final_url": "https://www.bdfutbol.com/es/t/t2026-271rf1.html?tab=referees&grups=1",
+        "http_status": 200,
+        "page_title": "Clasificación 1ª RFEF Grupo I 2026-27 | BDFutbol",
+        "missing_markers": [],
+        "reason": null,
+        "missing_title_markers": [],
+        "missing_selectors": [],
+        "missing_dom_markers": [],
+        "missing_dom_evidence": []
+      },
+      "source_snapshot_sha256": "de213db8c39872fbd657ad1bd0622736eb7df2f6980f6344e45d983b3fc670d0"
+    },
+    "group2": {
+      "scope": "group2",
+      "file": "raw/source_group2.html",
+      "requested_url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html?tab=referees&grups=1",
+      "final_url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html?tab=referees&grups=1",
+      "http_status": 200,
+      "page_title": "Clasificación 1ª RFEF Grupo II 2026-27 | BDFutbol",
+      "captured_at_utc": "2026-10-10T17:12:19.688433+00:00",
+      "access": {
+        "status": "VALID",
+        "requested_url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html?tab=referees&grups=1",
+        "final_url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html?tab=referees&grups=1",
+        "http_status": 200,
+        "page_title": "Clasificación 1ª RFEF Grupo II 2026-27 | BDFutbol",
+        "missing_markers": [],
+        "reason": null,
+        "missing_title_markers": [],
+        "missing_selectors": [],
+        "missing_dom_markers": [],
+        "missing_dom_evidence": []
+      },
+      "source_snapshot_sha256": "29e6bf74fcb097644783d0d0d536146f2a43272ba6d3b362715932b7be1b6194"
+    }
+  },
+  "scope_counts": {
+    "all": 60,
+    "group1": 43,
+    "group2": 42
+  },
+  "referee_count": 60,
+  "statistics_count": 145,
+  "related_match_dataset": {
+    "path": "data/exports/bdfutbol/group2_classification/derived-res01-20261010T102656Z/normalized/matches.json",
+    "sha256": "ac355bf8fff808cea9aa093ebfb274d9313f3137ae89b84132ca11a3e70c7a84",
+    "source_capture_id": "20261010T102656.252222Z-72f200ad",
+    "source_captured_at_utc": "2026-10-10T10:26:56.252397+00:00"
+  },
+  "created_at_utc": "2026-10-10T17:12:28.154471+00:00"
+}

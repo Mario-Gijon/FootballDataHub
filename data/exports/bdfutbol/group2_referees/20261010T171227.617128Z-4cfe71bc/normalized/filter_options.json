@@ -1,0 +1,723 @@
+{
+  "schema_version": 1,
+  "metadata": {
+    "source": "BDFutbol",
+    "url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html?tab=referees",
+    "competition": "Primera Federación",
+    "season": "2026-27",
+    "group": "II",
+    "section": "referees",
+    "capture_id": "20261010T171227.617128Z-4cfe71bc",
+    "captured_at_utc": "2026-10-10T17:12:19.678105+00:00",
+    "extractor_version": "0.1.0",
+    "related_match_dataset": {
+      "path": "data/exports/bdfutbol/group2_classification/derived-res01-20261010T102656Z/normalized/matches.json",
+      "sha256": "ac355bf8fff808cea9aa093ebfb274d9313f3137ae89b84132ca11a3e70c7a84",
+      "source_capture_id": "20261010T102656.252222Z-72f200ad",
+      "source_captured_at_utc": "2026-10-10T10:26:56.252397+00:00"
+    },
+    "scope_counts": {
+      "all": 60,
+      "group1": 43,
+      "group2": 42
+    }
+  },
+  "season_options": [
+    {
+      "label": "1928-29",
+      "value": "t1928-29.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1928-29.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1929-30",
+      "value": "t1929-30.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1929-30.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1930-31",
+      "value": "t1930-31.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1930-31.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1931-32",
+      "value": "t1931-32.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1931-32.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1932-33",
+      "value": "t1932-33.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1932-33.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1933-34",
+      "value": "t1933-34.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1933-34.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1934-35",
+      "value": "t1934-35.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1934-35.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1935-36",
+      "value": "t1935-36.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1935-36.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1939-40",
+      "value": "t1939-40.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1939-40.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1940-41",
+      "value": "t1940-41.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1940-41.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1941-42",
+      "value": "t1941-42.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1941-42.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1942-43",
+      "value": "t1942-43.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1942-43.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1943-44",
+      "value": "t1943-44.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1943-44.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1944-45",
+      "value": "t1944-45.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1944-45.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1945-46",
+      "value": "t1945-46.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1945-46.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1946-47",
+      "value": "t1946-47.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1946-47.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1947-48",
+      "value": "t1947-48.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1947-48.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1948-49",
+      "value": "t1948-49.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1948-49.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1949-50",
+      "value": "t1949-50.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1949-50.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1950-51",
+      "value": "t1950-51.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1950-51.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1951-52",
+      "value": "t1951-52.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1951-52.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1952-53",
+      "value": "t1952-53.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1952-53.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1953-54",
+      "value": "t1953-54.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1953-54.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1954-55",
+      "value": "t1954-55.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1954-55.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1955-56",
+      "value": "t1955-56.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1955-56.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1956-57",
+      "value": "t1956-57.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1956-57.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1957-58",
+      "value": "t1957-58.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1957-58.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1958-59",
+      "value": "t1958-59.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1958-59.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1959-60",
+      "value": "t1959-60.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1959-60.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1960-61",
+      "value": "t1960-61.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1960-61.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1961-62",
+      "value": "t1961-62.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1961-62.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1962-63",
+      "value": "t1962-63.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1962-63.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1963-64",
+      "value": "t1963-64.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1963-64.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1964-65",
+      "value": "t1964-65.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1964-65.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1965-66",
+      "value": "t1965-66.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1965-66.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1966-67",
+      "value": "t1966-67.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1966-67.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1967-68",
+      "value": "t1967-68.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1967-68.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1968-69",
+      "value": "t1968-69.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1968-69.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1969-70",
+      "value": "t1969-70.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1969-70.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1970-71",
+      "value": "t1970-71.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1970-71.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1971-72",
+      "value": "t1971-72.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1971-72.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1972-73",
+      "value": "t1972-73.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1972-73.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1973-74",
+      "value": "t1973-74.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1973-74.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1974-75",
+      "value": "t1974-75.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1974-75.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1975-76",
+      "value": "t1975-76.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1975-76.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1976-77",
+      "value": "t1976-77.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1976-77.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1977-78",
+      "value": "t1977-78.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1977-78.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1978-79",
+      "value": "t1978-79.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1978-79.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1979-80",
+      "value": "t1979-80.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1979-80.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1980-81",
+      "value": "t1980-81.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1980-81.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1981-82",
+      "value": "t1981-82.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1981-82.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1982-83",
+      "value": "t1982-83.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1982-83.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1983-84",
+      "value": "t1983-84.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1983-84.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1984-85",
+      "value": "t1984-85.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1984-85.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1985-86",
+      "value": "t1985-86.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1985-86.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1986-87",
+      "value": "t1986-87.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1986-87.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1987-88",
+      "value": "t1987-88.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1987-88.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1988-89",
+      "value": "t1988-89.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1988-89.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1989-90",
+      "value": "t1989-90.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1989-90.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1990-91",
+      "value": "t1990-91.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1990-91.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1991-92",
+      "value": "t1991-92.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1991-92.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1992-93",
+      "value": "t1992-93.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1992-93.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1993-94",
+      "value": "t1993-94.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1993-94.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1994-95",
+      "value": "t1994-95.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1994-95.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1995-96",
+      "value": "t1995-96.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1995-96.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1996-97",
+      "value": "t1996-97.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1996-97.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1997-98",
+      "value": "t1997-98.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1997-98.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1998-99",
+      "value": "t1998-99.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1998-99.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "1999-00",
+      "value": "t1999-00.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t1999-00.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "2000-01",
+      "value": "t2000-01.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t2000-01.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "2001-02",
+      "value": "t2001-02.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t2001-02.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "2002-03",
+      "value": "t2002-03.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t2002-03.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "2003-04",
+      "value": "t2003-04.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t2003-04.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "2004-05",
+      "value": "t2004-05.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t2004-05.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "2005-06",
+      "value": "t2005-06.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t2005-06.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "2006-07",
+      "value": "t2006-07.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t2006-07.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "2007-08",
+      "value": "t2007-08.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t2007-08.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "2008-09",
+      "value": "t2008-09.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t2008-09.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "2009-10",
+      "value": "t2009-10.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t2009-10.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "2010-11",
+      "value": "t2010-11.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t2010-11.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "2011-12",
+      "value": "t2011-12.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t2011-12.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "2012-13",
+      "value": "t2012-13.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t2012-13.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "2013-14",
+      "value": "t2013-14.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t2013-14.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "2014-15",
+      "value": "t2014-15.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t2014-15.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "2015-16",
+      "value": "t2015-16.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t2015-16.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "2016-17",
+      "value": "t2016-17.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t2016-17.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "2017-18",
+      "value": "t2017-18.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t2017-18.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "2018-19",
+      "value": "t2018-19.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t2018-19.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "2019-20",
+      "value": "t2019-20.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t2019-20.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "2020-21",
+      "value": "t2020-21.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t2020-21.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "2021-22",
+      "value": "t2021-22.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t2021-22.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "2022-23",
+      "value": "t2022-23.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t2022-23.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "2023-24",
+      "value": "t2023-24.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t2023-24.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "2024-25",
+      "value": "t2024-25.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t2024-25.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "2025-26",
+      "value": "t2025-26.html?tab=referees",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t2025-26.html?tab=referees",
+      "scope": null
+    },
+    {
+      "label": "2026-27",
+      "value": "t2026-27.html?tab=referees",
+      "selected": true,
+      "target_url": "https://www.bdfutbol.com/es/t/t2026-27.html?tab=referees",
+      "scope": null
+    }
+  ],
+  "group_options": [
+    {
+      "label": "Todos",
+      "value": "../t/t2026-271rf2.html?tab=referees",
+      "selected": true,
+      "target_url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html?tab=referees",
+      "scope": "all"
+    },
+    {
+      "label": "Grupo 1",
+      "value": "t2026-271rf1.html?tab=referees&grups=1",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t2026-271rf1.html?tab=referees&grups=1",
+      "scope": "group1"
+    },
+    {
+      "label": "Grupo 2",
+      "value": "t2026-271rf2.html?tab=referees&grups=1",
+      "selected": false,
+      "target_url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html?tab=referees&grups=1",
+      "scope": "group2"
+    }
+  ],
+  "supported_season": "2026-27"
+}

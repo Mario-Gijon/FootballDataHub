@@ -1,0 +1,35 @@
+{
+  "valid": true,
+  "issues": [],
+  "warnings": [],
+  "summary": {
+    "referees": 60,
+    "statistics": 145,
+    "scope_counts": {
+      "all": 60,
+      "group1": 43,
+      "group2": 42
+    },
+    "unique_ids": 60
+  },
+  "checks": {
+    "ids_unique": true,
+    "profile_ids_match": true,
+    "statistics_keys_unique": true,
+    "all_scopes_present": true,
+    "all_equals_group_sum": {
+      "matches_officiated": {
+        "compared": 60,
+        "mismatches": []
+      },
+      "yellow_cards": {
+        "compared": 60,
+        "mismatches": []
+      },
+      "red_cards": {
+        "compared": 60,
+        "mismatches": []
+      }
+    }
+  }
+}
