@@ -30,7 +30,7 @@ def make_match_dataset(
     *, teams: tuple[Team, ...], matches: tuple[MatchResult, ...], metadata: dict[str, Any]
 ) -> dict[str, Any]:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "metadata": metadata,
         "counts": {
             "teams": len(teams),
@@ -56,7 +56,7 @@ def make_match_dataset(
 
 def load_match_dataset(path: Path) -> tuple[dict[str, Any], tuple[Team, ...], tuple[MatchResult, ...]]:
     payload = json.loads(path.read_text(encoding="utf-8"))
-    if payload.get("schema_version") != 1:
+    if payload.get("schema_version") not in {1, 2}:
         raise ValueError("Versión de matches.json no compatible")
     teams = tuple(Team(**item) for item in payload["teams"])
     matches = tuple(

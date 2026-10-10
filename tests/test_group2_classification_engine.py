@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import socket
 from collections import Counter
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
 
@@ -13,6 +14,10 @@ from football_data_hub.domain.classification.models import (
     ClassificationFilter,
     MatchResult,
     Team,
+)
+from football_data_hub.domain.classification.results import (
+    build_group2_results_matrix,
+    list_group2_results,
 )
 from football_data_hub.domain.classification.validation import validate_match_set
 from football_data_hub.providers.bdfutbol.classification.match_io import (
@@ -111,6 +116,27 @@ def test_extracts_all_matchdays_with_stable_ids_and_source_references(source_dat
     assert all(match.home_team_id != match.away_team_id for match in matches)
 
 
+def test_extracts_stadium_and_referee_only_where_the_source_provides_them(source_data):
+    _, _, matches = source_data
+    played = [match for match in matches if match.status == "played"]
+    unplayed = [match for match in matches if match.status == "unplayed"]
+    assert len(played) == 59
+    assert all(match.stadium_name and match.stadium_id and match.stadium_url for match in played)
+    assert all(match.referee_name and match.referee_id and match.referee_url for match in played)
+    assert len({match.stadium_id for match in played}) == 19
+    assert len({match.referee_id for match in played}) == 42
+    assert all(
+        match.stadium_id is match.stadium_name is match.stadium_url is None
+        and match.referee_id is match.referee_name is match.referee_url is None
+        for match in unplayed
+    )
+    first = next(match for match in matches if match.match_id == "272516")
+    assert (first.stadium_id, first.stadium_name) == ("55", "Nuevo Mirador")
+    assert first.stadium_url == "https://www.bdfutbol.com/es/s/55.html"
+    assert (first.referee_id, first.referee_name) == ("r601469", "Ramo Andrés")
+    assert first.referee_url == "https://www.bdfutbol.com/es/r/r601469.html"
+
+
 def test_unplayed_matches_keep_null_scores_and_cards(source_data):
     _, _, matches = source_data
     unplayed = next(match for match in matches if match.status == "unplayed")
@@ -136,6 +162,89 @@ def test_cross_checks_sp_against_resultats_and_rejects_conflicting_rows(source_h
     changed_score = source_html.replace('"g1":"1","g2":"3"', '"g1":"2","g2":"3"', 1)
     with pytest.raises(MatchParseError, match="Marcador distinto"):
         extract_matches(changed_score, parsed, base_url=URL)
+
+
+def test_matchday_six_result_list_matches_source_rows_by_id(source_data):
+    _, teams, matches = source_data
+    entries = list_group2_results(teams, matches, matchday=6)
+    assert len(entries) == 10
+    assert [entry.match.match_id for entry in entries] == [
+        "272572", "272566", "272568", "272569", "272567",
+        "272570", "272571", "272573", "272574", "272575",
+    ]
+    expected = {
+        "272572": ("Real Madrid Castilla", "Atlético Madrileño", 3, 2),
+        "272566": ("Alcorcón", "Juventud de Torremolinos", 5, 0),
+        "272568": ("FC Cartagena", "Águilas FC", 4, 1),
+        "272569": ("Hércules", "Jaén", 0, 0),
+        "272567": ("Algeciras", "Rayo Majadahonda", 1, 0),
+        "272570": ("Huesca", "Europa", 3, 1),
+        "272571": ("Murcia", "Gimnàstic de Tarragona", 2, 0),
+        "272573": ("Sant Andreu", "Antequera", 2, 2),
+        "272574": ("Villarreal B", "UD Ibiza", 0, 1),
+        "272575": ("Zaragoza", "Teruel", 4, 1),
+    }
+    observed = {
+        entry.match.match_id: (
+            entry.home_team.name,
+            entry.away_team.name,
+            entry.match.home_goals,
+            entry.match.away_goals,
+        )
+        for entry in entries
+    }
+    assert observed == expected
+    assert all(entry.home_team.crest_url for entry in entries)
+    assert all(entry.away_team.crest_url for entry in entries)
+    all_entries = list_group2_results(teams, matches)
+    assert len(all_entries) == 380
+    dates = [entry.match.source_match_date for entry in all_entries]
+    assert dates == sorted(dates)
+    assert all(entry.match.match_id for entry in all_entries)
+
+
+def test_results_matrix_has_one_cell_per_fixture_and_null_pending_scores(source_data):
+    _, teams, matches = source_data
+    matrix = build_group2_results_matrix(teams, matches)
+    assert len(matrix.rows) == 20
+    assert len(matrix.teams) == 20
+    assert all(len(row.cells) == 20 for row in matrix.rows)
+    cells = [cell for row in matrix.rows for cell in row.cells]
+    assert sum(cell.state == "diagonal" for cell in cells) == 20
+    fixture_cells = [cell for cell in cells if cell.state == "fixture"]
+    assert len(fixture_cells) == 380
+    assert sum(cell.match_status == "played" for cell in fixture_cells) == 59
+    assert sum(cell.match_status == "unplayed" for cell in fixture_cells) == 321
+    assert len({cell.match_id for cell in fixture_cells}) == 380
+    assert not any(cell.state == "missing" for cell in cells)
+    matrix_by_pair = {
+        (cell.row_team_id, cell.column_team_id): cell
+        for row in matrix.rows
+        for cell in row.cells
+    }
+    match_by_id = {match.match_id: match for match in matches}
+    def cell_for(match_id: str):
+        match = match_by_id[match_id]
+        return matrix_by_pair[(match.home_team_id, match.away_team_id)]
+
+    assert cell_for("272574").outcome == "home_loss"
+    assert cell_for("272573").outcome == "draw"
+    assert cell_for("272575").outcome == "home_win"
+    pending = cell_for("272576")
+    assert pending.match_id == "272576"
+    assert pending.match_status == "unplayed"
+    assert pending.home_goals is pending.away_goals is pending.outcome is None
+
+
+def test_results_matrix_rejects_collisions_and_marks_absent_pairs_explicitly():
+    teams = (Team(1, "Home"), Team(2, "Away"), Team(3, "Other"))
+    match = _match("one", 1, date(2026, 8, 30), 1, 2, 1, 0)
+    matrix = build_group2_results_matrix(teams, (match,))
+    assert matrix.rows[0].cells[0].state == "diagonal"
+    assert matrix.rows[0].cells[1].state == "fixture"
+    assert matrix.rows[0].cells[2].state == "missing"
+    with pytest.raises(ValueError, match="Fixture local/visitante duplicado"):
+        build_group2_results_matrix(teams, (match, replace(match, match_id="duplicate")))
 
 
 def test_match_set_invariants_for_full_snapshot(source_data):
@@ -317,6 +426,7 @@ def test_matches_json_export_load_and_offline_calculation(tmp_path, source_data,
         "source": "BDFutbol",
     }
     payload = make_match_dataset(teams=teams, matches=matches, metadata=metadata)
+    assert payload["schema_version"] == 2
     path = export_match_dataset(tmp_path / "normalized" / "matches.json", payload)
     loaded_metadata, loaded_teams, loaded_matches = load_match_dataset(path)
 
@@ -333,6 +443,9 @@ def test_matches_json_export_load_and_offline_calculation(tmp_path, source_data,
         source_snapshot=loaded_metadata["source_snapshot"],
     )
     assert json.loads(path.read_text(encoding="utf-8"))["counts"]["played"] == 59
+    first_loaded = next(match for match in loaded_matches if match.match_id == "272516")
+    assert first_loaded.stadium_name == "Nuevo Mirador"
+    assert first_loaded.referee_id == "r601469"
     assert result.source_capture_id == CAPTURE_ID
     assert result.source_snapshot == SNAPSHOT_RELATIVE
     assert result.rows[0].team.team_id == 39

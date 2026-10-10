@@ -18,7 +18,7 @@ from football_data_hub.providers.bdfutbol.classification.parser import (
 )
 from football_data_hub.domain.classification.validation import validate_match_set
 
-MATCH_EXTRACTOR_VERSION = "0.1.0"
+MATCH_EXTRACTOR_VERSION = "0.2.0"
 
 
 def _repo_relative(path: Path, root: Path) -> str:

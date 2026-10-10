@@ -8,7 +8,7 @@ from collections import Counter
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from html.parser import HTMLParser
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlsplit
 
 from football_data_hub.domain.classification.models import MatchResult, Team
 
@@ -39,6 +39,17 @@ class _Cell:
 class _Row:
     attrs: dict[str, str | None]
     cells: list[_Cell]
+
+
+@dataclass(frozen=True, slots=True)
+class _ResultRowData:
+    match_url: str | None
+    stadium_id: str | None
+    stadium_name: str | None
+    stadium_url: str | None
+    referee_id: str | None
+    referee_name: str | None
+    referee_url: str | None
 
 
 class _ResultatsParser(HTMLParser):
@@ -209,6 +220,32 @@ def _source_ids(row: _Row) -> set[str]:
     }
 
 
+def _source_entity_link(
+    cell: _Cell,
+    *,
+    base_url: str,
+    field: str,
+    route: str,
+) -> tuple[str | None, str | None]:
+    """Return a source ID inferred from its route and an absolute source URL."""
+    unique_hrefs = tuple(dict.fromkeys(cell.links))
+    if len(unique_hrefs) > 1:
+        raise MatchParseError(f"Enlaces ambiguos en #resultats.{field}: {unique_hrefs}")
+    if not unique_hrefs:
+        return None, None
+    absolute_url = urljoin(base_url, unique_hrefs[0])
+    route_id = re.search(
+        rf"/{re.escape(route)}/([^/]+)\.html$",
+        urlsplit(absolute_url).path,
+    )
+    return (route_id.group(1) if route_id else None), absolute_url
+
+
+def _optional_cell_text(cell: _Cell) -> str | None:
+    value = _cell_text(cell)
+    return value or None
+
+
 def _validate_result_row(
     row: _Row,
     *,
@@ -221,7 +258,7 @@ def _validate_result_row(
     played: bool,
     source_fields: dict[str, str],
     base_url: str,
-) -> str | None:
+) -> _ResultRowData:
     if len(row.cells) < 6:
         raise MatchParseError(
             f"#resultats J{matchday} fila {matchday_row_index} tiene menos de seis celdas"
@@ -258,23 +295,37 @@ def _validate_result_row(
         ids = _source_ids(row)
         if ids != {match_id}:
             raise MatchParseError(f"ID de partido distinto entre SP y #resultats: {ids} / {match_id}")
-        href = next(
-            (
-                href
-                for cell in row.cells
-                for href in cell.links
-                if re.search(r"[?&]id=\d+", href)
-            ),
-            None,
-        )
-        return urljoin(base_url, href) if href else None
+    else:
+        if goals:
+            raise MatchParseError(f"#resultats muestra marcador pero SP no para id={match_id}")
+        ids = _source_ids(row)
+        if ids and ids != {match_id}:
+            raise MatchParseError(f"ID distinto en fila no disputada de #resultats: {ids}")
 
-    if goals:
-        raise MatchParseError(f"#resultats muestra marcador pero SP no para id={match_id}")
-    ids = _source_ids(row)
-    if ids and ids != {match_id}:
-        raise MatchParseError(f"ID distinto en fila no disputada de #resultats: {ids}")
-    return None
+    match_href = next(
+        (
+            href
+            for cell in row.cells
+            for href in cell.links
+            if re.search(r"[?&]id=\d+", href)
+        ),
+        None,
+    )
+    stadium_id, stadium_url = _source_entity_link(
+        row.cells[4], base_url=base_url, field="stadium", route="s"
+    )
+    referee_id, referee_url = _source_entity_link(
+        row.cells[5], base_url=base_url, field="referee", route="r"
+    )
+    return _ResultRowData(
+        match_url=urljoin(base_url, match_href) if match_href else None,
+        stadium_id=stadium_id,
+        stadium_name=_optional_cell_text(row.cells[4]),
+        stadium_url=stadium_url,
+        referee_id=referee_id,
+        referee_name=_optional_cell_text(row.cells[5]),
+        referee_url=referee_url,
+    )
 
 
 def extract_matches(
@@ -413,7 +464,7 @@ def extract_matches(
                     raise MatchParseError(f"Fixture de SP no aparece en #resultats: {fixture_ref}")
             row_index, result_row = result_row_ref
             consumed_result_rows.add((matchday, row_index))
-            match_url = _validate_result_row(
+            result_row_data = _validate_result_row(
                 result_row,
                 matchday=matchday,
                 matchday_row_index=row_index,
@@ -447,17 +498,29 @@ def extract_matches(
                     status=status,
                     unplayed_state=unplayed_state,
                     postponed_by_source_rule=postponed,
-                    source_match_url=match_url,
+                    source_match_url=result_row_data.match_url,
                     source_references=(
                         f"SP[{matchday}].push(id={match_id})",
                         f"#resultats[data-jornada={matchday}] match-row={row_index}",
                     ),
                     source_fields=fields,
+                    stadium_id=result_row_data.stadium_id,
+                    stadium_name=result_row_data.stadium_name,
+                    stadium_url=result_row_data.stadium_url,
+                    referee_id=result_row_data.referee_id,
+                    referee_name=result_row_data.referee_name,
+                    referee_url=result_row_data.referee_url,
                 )
             )
 
-    observed_id_count = sum(len(_source_ids(row)) for rows in rows_by_round.values() for _, row in rows)
-    if observed_id_count != sum(match.status == "played" for match in matches):
+    observed_ids = [
+        match_id
+        for rows in rows_by_round.values()
+        for _, row in rows
+        for match_id in _source_ids(row)
+    ]
+    linked_match_ids = {match.match_id for match in matches if match.source_match_url}
+    if len(observed_ids) != len(set(observed_ids)) or set(observed_ids) != linked_match_ids:
         raise MatchParseError("#resultats contiene IDs inesperados o duplicados")
     expected_row_keys = {
         (matchday, row_index)

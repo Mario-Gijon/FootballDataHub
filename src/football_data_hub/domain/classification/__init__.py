@@ -8,12 +8,26 @@ from .models import (
     MatchResult,
     Team,
 )
+from .results import (
+    MatchListEntry,
+    ResultsMatrix,
+    ResultsMatrixCell,
+    ResultsMatrixRow,
+    build_group2_results_matrix,
+    list_group2_results,
+)
 
 __all__ = [
     "CalculatedStanding",
     "CalculatedTable",
     "ClassificationFilter",
     "MatchResult",
+    "MatchListEntry",
+    "ResultsMatrix",
+    "ResultsMatrixCell",
+    "ResultsMatrixRow",
     "Team",
+    "build_group2_results_matrix",
     "calculate_standings",
+    "list_group2_results",
 ]

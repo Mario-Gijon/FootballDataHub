@@ -28,7 +28,11 @@ class Team:
 
 @dataclass(frozen=True, slots=True)
 class MatchResult:
-    """Resultado de una jornada; un partido sin marcador conserva nulls."""
+    """Resultado de una jornada; un partido sin marcador conserva nulls.
+
+    Venue and referee references are optional enrichment from a source match
+    row. They do not affect classification calculations.
+    """
 
     match_id: str
     matchday: int
@@ -48,6 +52,12 @@ class MatchResult:
     source_match_url: str | None = None
     source_references: tuple[str, ...] = ()
     source_fields: dict[str, str] = field(default_factory=dict)
+    stadium_id: str | None = None
+    stadium_name: str | None = None
+    stadium_url: str | None = None
+    referee_id: str | None = None
+    referee_name: str | None = None
+    referee_url: str | None = None
 
     def __post_init__(self) -> None:
         if not self.match_id.strip():

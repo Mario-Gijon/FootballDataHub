@@ -259,13 +259,10 @@ class BDFutbolAccess:
             except Exception:
                 visit.close()
                 raise
-            # Cloudflare can show an intermediate challenge which the browser
-            # completes on its own. Observe briefly; never click CAPTCHA,
-            # reload the challenge, or attempt to bypass it.
-            waiting = assessment.status in {
-                AccessStatus.INVALID_CONTENT,
-                AccessStatus.CHALLENGE_REQUIRED,
-            }
+            # A security challenge or denial ends this acquisition immediately.
+            # The bounded wait is only for ordinary page content that has not
+            # finished rendering; it never waits for a challenge to clear.
+            waiting = assessment.status is AccessStatus.INVALID_CONTENT
             if not waiting or time.monotonic() >= deadline:
                 return BDFutbolVisit(assessment=assessment, visit=visit)
             page.wait_for_timeout(400)
