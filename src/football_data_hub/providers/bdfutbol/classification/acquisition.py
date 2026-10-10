@@ -16,13 +16,18 @@ from football_data_hub.providers.bdfutbol.access import (
     AccessStatus,
     BDFutbolAccess,
 )
+from football_data_hub.providers.bdfutbol.context import (
+    CompetitionContext,
+    get_competition_context,
+)
 
 from .models import ClassificationContext, ClassificationRequest, ParsedClassification
 from .navigation import apply_filters
 from .parser import parse_classification_page, validate_page_structure
 from .validation import validate_classification
 
-CLASSIFICATION_URL = "https://www.bdfutbol.com/es/t/t2026-271rf2.html"
+GROUP2_CONTEXT = get_competition_context(group=2)
+CLASSIFICATION_URL = GROUP2_CONTEXT.section_url("classification")
 EXTRACTOR_VERSION = "0.2.0"
 
 
@@ -53,6 +58,7 @@ class AcquisitionBundle:
     automation_version: str | None = None
     uses_xvfb: bool = True
     xvfb_external: bool = True
+    competition: CompetitionContext = GROUP2_CONTEXT
 
 
 def create_capture_id(now: datetime | None = None) -> str:
@@ -78,6 +84,7 @@ def _redact_browser_log(path: Path) -> None:
 def acquire_classification(
     *,
     request: ClassificationRequest,
+    competition: CompetitionContext | None = None,
     profile_dir: Path,
     backend: str = "seleniumbase-pure-cdp",
     browser: str = "chromium",
@@ -93,6 +100,7 @@ def acquire_classification(
     Access assessment has no challenge wait/retry. A challenge or denial raises
     ``AcquisitionStopped`` without interacting with the page.
     """
+    competition = competition or GROUP2_CONTEXT
     capture_id = capture_id or create_capture_id()
     captured_at = datetime.now(timezone.utc).isoformat()
     config = BrowserRuntimeConfig(
@@ -110,9 +118,9 @@ def acquire_classification(
             config, navigation_timeout_ms=navigation_timeout_ms
         ) as session:
             opened = BDFutbolAccess(session).open(
-                CLASSIFICATION_URL,
-                required_markers=("Clasificación", "Grupo II"),
-                required_title_markers=("Grupo II", "2026-27"),
+                competition.section_url("classification"),
+                required_markers=("Clasificación", competition.group_label),
+                required_title_markers=(competition.group_label, competition.season),
                 required_selectors=(
                     "table#classific",
                     "#classitip",
@@ -133,7 +141,10 @@ def acquire_classification(
                 page = opened.visit.document
                 context = apply_filters(page, request)
                 raw_html = page.html()
-                parsed = parse_classification_page(raw_html, base_url=CLASSIFICATION_URL)
+                parsed = parse_classification_page(
+                    raw_html,
+                    base_url=competition.section_url("classification"),
+                )
                 validation = validate_classification(
                     parsed.standings,
                     parsed.progress,
@@ -151,6 +162,7 @@ def acquire_classification(
                     page_title=assessment.page_title,
                     access=access,
                     context=context,
+                    competition=competition,
                     parsed=parsed,
                     validation=validation,
                     browser_executable=browser_executable,

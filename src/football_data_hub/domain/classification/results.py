@@ -1,4 +1,4 @@
-"""Pure local queries for the Group II results list and matchup matrix."""
+"""Pure local queries for competition results and matchup matrices."""
 
 from __future__ import annotations
 
@@ -54,7 +54,7 @@ class ResultsMatrix:
     rows: tuple[ResultsMatrixRow, ...]
 
 
-def list_group2_results(
+def list_competition_results(
     teams: tuple[Team, ...] | list[Team],
     matches: tuple[MatchResult, ...] | list[MatchResult],
     *,
@@ -86,7 +86,7 @@ def list_group2_results(
     return tuple(sorted(entries, key=lambda entry: _match_sort_key(entry.match)))
 
 
-def build_group2_results_matrix(
+def build_results_matrix(
     teams: tuple[Team, ...] | list[Team],
     matches: tuple[MatchResult, ...] | list[MatchResult],
 ) -> ResultsMatrix:
@@ -170,6 +170,24 @@ def build_group2_results_matrix(
             )
         rows.append(ResultsMatrixRow(team=row_team, cells=tuple(cells)))
     return ResultsMatrix(teams=team_catalog, rows=tuple(rows))
+
+
+def list_group2_results(
+    teams: tuple[Team, ...] | list[Team],
+    matches: tuple[MatchResult, ...] | list[MatchResult],
+    *,
+    matchday: int | None = None,
+) -> tuple[MatchListEntry, ...]:
+    """Backward-compatible alias for the former Group II query name."""
+    return list_competition_results(teams, matches, matchday=matchday)
+
+
+def build_group2_results_matrix(
+    teams: tuple[Team, ...] | list[Team],
+    matches: tuple[MatchResult, ...] | list[MatchResult],
+) -> ResultsMatrix:
+    """Backward-compatible alias for the former Group II matrix name."""
+    return build_results_matrix(teams, matches)
 
 
 def _team_index(teams: tuple[Team, ...] | list[Team]) -> dict[int, Team]:

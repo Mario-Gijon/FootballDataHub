@@ -1,0 +1,62 @@
+{
+  "valid": true,
+  "summary": {
+    "checks": 8,
+    "failures": 0,
+    "warnings_or_exceptions": 0
+  },
+  "checks": [
+    {
+      "name": "team_count",
+      "status": "pass",
+      "message": "Se encontraron 20 filas; se esperaban 20.",
+      "expected": 20,
+      "actual": 20
+    },
+    {
+      "name": "unique_team_ids",
+      "status": "pass",
+      "message": "Los identificadores BDFutbol son únicos."
+    },
+    {
+      "name": "unique_positions",
+      "status": "pass",
+      "message": "Los puestos son únicos."
+    },
+    {
+      "name": "matches_played_equation",
+      "status": "pass",
+      "message": "PJ = PG + PE + PP",
+      "mismatches": [],
+      "incomplete_team_ids": []
+    },
+    {
+      "name": "ordinary_points_formula",
+      "status": "pass",
+      "message": "PTS = 3 × PG + PE en todas las filas completas.",
+      "differences": [],
+      "incomplete_team_ids": [],
+      "auto_corrected": false
+    },
+    {
+      "name": "null_source_values",
+      "status": "pass",
+      "message": "No faltan valores numéricos en las filas observadas.",
+      "counts": {}
+    },
+    {
+      "name": "progress_series_shape",
+      "status": "pass",
+      "message": "Las series cubren cada equipo y jornada una sola vez.",
+      "expected_records": 120,
+      "actual_records": 120
+    },
+    {
+      "name": "progress_values_present",
+      "status": "pass",
+      "message": "Las métricas de progreso están presentes para todas las jornadas.",
+      "missing_positions": [],
+      "missing_metrics": []
+    }
+  ]
+}

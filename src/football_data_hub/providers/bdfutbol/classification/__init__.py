@@ -1,4 +1,4 @@
-"""Extracción semántica de la clasificación de Primera Federación Grupo II."""
+"""Extracción semántica de la clasificación de Primera Federación."""
 
 from .models import ClassificationRequest, ParsedClassification
 from .parser import ClassificationParseError, parse_classification_page

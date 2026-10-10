@@ -15,11 +15,16 @@ from football_data_hub.providers.bdfutbol.access import (
     AccessStatus,
     BDFutbolAccess,
 )
+from football_data_hub.providers.bdfutbol.context import (
+    CompetitionContext,
+    get_competition_context,
+)
 
 from .models import ParsedBDFutbolStatistics
-from .parser import STATISTICS_URL, parse_statistics_page, validate_statistics_page_html
+from .parser import parse_statistics_page, validate_statistics_page_html
 
-EXTRACTOR_VERSION = "0.1.0"
+GROUP2_CONTEXT = get_competition_context(group=2)
+EXTRACTOR_VERSION = "0.2.0"
 
 
 class StatisticsAcquisitionStopped(RuntimeError):
@@ -54,12 +59,16 @@ def create_statistics_capture_id(now: datetime | None = None) -> str:
     return f"{now.strftime('%Y%m%dT%H%M%S.%fZ')}-{uuid4().hex[:8]}"
 
 
-def _valid_html_structure(source_html: str) -> tuple[str, ...]:
-    return validate_statistics_page_html(source_html)
+def _valid_html_structure(
+    source_html: str,
+    competition: CompetitionContext = GROUP2_CONTEXT,
+) -> tuple[str, ...]:
+    return validate_statistics_page_html(source_html, competition)
 
 
 def acquire_statistics_page(
     *,
+    competition: CompetitionContext | None = None,
     profile_dir: Path,
     browser_executable_path: Path | None = None,
     startup_timeout_seconds: float = 35.0,
@@ -67,6 +76,8 @@ def acquire_statistics_page(
     use_xvfb: bool = True,
 ) -> StatisticsAcquisitionBundle:
     """Navega una vez a Estadísticas; se detiene en desafío o contenido inválido."""
+    competition = competition or GROUP2_CONTEXT
+    source_url = competition.section_url("statistics")
     config = BrowserRuntimeConfig(
         profile_dir=profile_dir,
         backend="seleniumbase-pure-cdp",
@@ -77,20 +88,20 @@ def acquire_statistics_page(
     )
     with BrowserSessionManager(config, navigation_timeout_ms=navigation_timeout_ms) as session:
         opened = BDFutbolAccess(session).open(
-            STATISTICS_URL,
+            source_url,
             required_markers=(
                 "1ª RFEF",
-                "Grupo II",
-                "2026-27",
+                competition.group_label,
+                competition.season,
                 "Penaltis pitados",
                 "Penaltis marcados",
                 "Penaltis fallados",
                 "Expulsiones",
                 "Máxima victoria local",
             ),
-            required_title_markers=("Grupo II", "2026-27"),
+            required_title_markers=(competition.group_label, competition.season),
             required_selectors=(".tab-divs.pt-3", "#grf_stats", "table.taula_estil"),
-            document_validator=_valid_html_structure,
+            document_validator=lambda html: _valid_html_structure(html, competition),
             settle_ms=750,
             max_wait_seconds=5,
         )
@@ -99,20 +110,30 @@ def acquire_statistics_page(
                 raise StatisticsAcquisitionStopped(opened.assessment)
             page = opened.visit.document
             source_html = page.html()
-            chart_runtime = page.evaluate(_CHART_RUNTIME_EXPRESSION)
-            if not isinstance(chart_runtime, dict):
+            chart_data = page.evaluate(_CHART_RUNTIME_EXPRESSION)
+            if not isinstance(chart_data, dict):
                 raise ValueError("AmCharts no devolvió el objeto de gráfico esperado")
+            if chart_data.get("error"):
+                raise ValueError(f"AmCharts: {chart_data['error']}")
+            captured_at = datetime.now(timezone.utc)
+            capture_id = create_statistics_capture_id(captured_at)
+            chart_runtime = {
+                "capture_id": capture_id,
+                "captured_at_utc": captured_at.isoformat(),
+                "source_url": source_url,
+                "chart": chart_data,
+            }
             parsed = parse_statistics_page(
                 source_html,
                 chart_runtime,
-                source_url=STATISTICS_URL,
+                source_url=source_url,
+                competition=competition,
             )
             info = session.info
-            captured_at = datetime.now(timezone.utc)
             return StatisticsAcquisitionBundle(
-                capture_id=create_statistics_capture_id(captured_at),
+                capture_id=capture_id,
                 captured_at_utc=captured_at.isoformat(),
-                requested_url=STATISTICS_URL,
+                requested_url=source_url,
                 final_url=opened.visit.final_url,
                 http_status=opened.visit.response_status,
                 page_title=opened.assessment.page_title,

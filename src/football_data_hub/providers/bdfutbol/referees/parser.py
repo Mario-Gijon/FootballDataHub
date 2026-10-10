@@ -8,6 +8,8 @@ from datetime import date, datetime
 from html.parser import HTMLParser
 from urllib.parse import urljoin
 
+from ..context import SUPPORTED_SEASON, get_competition_context
+
 from .models import (
     ParsedRefereePage,
     ParsedReferees,
@@ -18,8 +20,7 @@ from .models import (
     RefereeStatistics,
 )
 
-REFEREES_URL = "https://www.bdfutbol.com/es/t/t2026-271rf2.html?tab=referees"
-SUPPORTED_SEASON = "2026-27"
+REFEREES_URL = get_competition_context(group=2).section_url("referees")
 _REFEREE_ID = re.compile(r"(?:^|/)r/(r\d+)\.html(?:$|[?#])")
 _SEASON_LABEL = re.compile(r"^\d{4}-\d{2}$")
 _GROUP_SCOPES: dict[str, RefereeScope] = {

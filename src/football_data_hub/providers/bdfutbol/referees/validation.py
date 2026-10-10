@@ -147,8 +147,11 @@ def build_match_reference_report(
     *,
     reference_path: str,
     reference_sha256: str,
+    group_scope: str = "group2",
 ) -> dict[str, Any]:
     """Compara IDs exactos; el informe nunca une por nombre aproximado."""
+    if group_scope not in {"group1", "group2"}:
+        raise ValueError("group_scope debe ser group1 o group2")
     matches = matches_payload.get("matches")
     if not isinstance(matches, list):
         raise ValueError("El JSON de Resultados no contiene una lista matches")
@@ -162,13 +165,13 @@ def build_match_reference_report(
             continue
         groups[referee_id].append(match)
 
-    group2 = {
+    scope_statistics = {
         item.referee_id: item
         for item in parsed.statistics
-        if item.group_scope == "group2"
+        if item.group_scope == group_scope
     }
     match_ids = set(groups)
-    referee_ids = set(group2)
+    referee_ids = set(scope_statistics)
     identity_conflicts: list[dict[str, Any]] = []
     statistic_differences: list[dict[str, Any]] = []
     for referee_id in sorted(match_ids & referee_ids):
@@ -212,7 +215,7 @@ def build_match_reference_report(
             ),
         }
         for field, expected_value in expected.items():
-            actual_value = getattr(group2[referee_id], field)
+            actual_value = getattr(scope_statistics[referee_id], field)
             if expected_value is not None and actual_value is not None and expected_value != actual_value:
                 statistic_differences.append({
                     "referee_id": referee_id,
@@ -228,6 +231,32 @@ def build_match_reference_report(
     total_red = _sum_complete(played, ("home_red_cards", "away_red_cards"))
     status = "consistent" if not (catalog_only or matches_only or identity_conflicts or statistic_differences) else "discrepancies"
     reference_metadata = matches_payload.get("metadata", {})
+    counts = {
+        "source_matches": len(matches),
+        "played_matches": len(played),
+        "played_matches_with_referee_id": len(played_with_referee),
+        "played_matches_without_referee_id": len(played) - len(played_with_referee),
+        "unplayed_matches": len(unplayed),
+        "unplayed_matches_with_referee_id": sum(bool(match.get("referee_id")) for match in unplayed),
+        "unique_match_referee_ids": len(match_ids),
+        f"{group_scope}_table_referee_ids": len(referee_ids),
+        "matched_referee_ids": len(match_ids & referee_ids),
+        f"{group_scope}_table_referees_without_played_match": len(catalog_only),
+        f"played_match_referees_missing_from_{group_scope}_table": len(matches_only),
+        "played_matches_with_card_data": sum(
+            all(match.get(field) is not None for field in (
+                "home_yellow_cards", "away_yellow_cards", "home_red_cards", "away_red_cards"
+            )) for match in played
+        ),
+        "played_yellow_cards": total_yellow,
+        "played_red_cards": total_red,
+    }
+    if group_scope == "group2":
+        counts.update({
+            "group2_table_referee_ids": len(referee_ids),
+            "group2_table_referees_without_played_match": len(catalog_only),
+            "played_match_referees_missing_from_group2_table": len(matches_only),
+        })
     return {
         "status": status,
         "reference_dataset": {
@@ -237,29 +266,11 @@ def build_match_reference_report(
             "source_captured_at_utc": reference_metadata.get("source_captured_at_utc"),
         },
         "method": "exact referee_id; no name-based matching",
-        "counts": {
-            "source_matches": len(matches),
-            "played_matches": len(played),
-            "played_matches_with_referee_id": len(played_with_referee),
-            "played_matches_without_referee_id": len(played) - len(played_with_referee),
-            "unplayed_matches": len(unplayed),
-            "unplayed_matches_with_referee_id": sum(bool(match.get("referee_id")) for match in unplayed),
-            "unique_match_referee_ids": len(match_ids),
-            "group2_table_referee_ids": len(referee_ids),
-            "matched_referee_ids": len(match_ids & referee_ids),
-            "group2_table_referees_without_played_match": len(catalog_only),
-            "played_match_referees_missing_from_group2_table": len(matches_only),
-            "played_matches_with_card_data": sum(
-                all(match.get(field) is not None for field in (
-                    "home_yellow_cards", "away_yellow_cards", "home_red_cards", "away_red_cards"
-                )) for match in played
-            ),
-            "played_yellow_cards": total_yellow,
-            "played_red_cards": total_red,
-        },
+        "group_scope": group_scope,
+        "counts": counts,
         "matched_referee_ids": sorted(match_ids & referee_ids),
-        "group2_table_referees_without_played_match_ids": catalog_only,
-        "played_match_referees_missing_from_group2_table_ids": matches_only,
+        f"{group_scope}_table_referees_without_played_match_ids": catalog_only,
+        f"played_match_referees_missing_from_{group_scope}_table_ids": matches_only,
         "identity_conflicts": identity_conflicts,
         "statistic_differences": statistic_differences,
         "limitations": [

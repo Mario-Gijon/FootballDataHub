@@ -29,6 +29,19 @@ class TopPlayer:
 
 
 @dataclass(frozen=True, slots=True)
+class TeamAffiliationEvidence:
+    team_id: int
+    team_name: str
+    source_records: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class PlayerAffiliationConflict:
+    player_id: int
+    affiliations: tuple[TeamAffiliationEvidence, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class RankingRecord:
     category: TopCategory
     rank: int
@@ -88,3 +101,4 @@ class ParsedTop:
     chart_matchdays: tuple[int, ...]
     see_all_available: bool
     warnings: tuple[str, ...] = ()
+    affiliation_conflicts: tuple[PlayerAffiliationConflict, ...] = ()

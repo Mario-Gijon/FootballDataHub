@@ -1,0 +1,162 @@
+{
+  "capture_id": "20261010T202515.613199Z-6c6e0fd9",
+  "captured_at_utc": "2026-10-10T20:25:15.613199+00:00",
+  "source_url": "https://www.bdfutbol.com/es/t/t2026-271rf1.html?tab=stats",
+  "chart": {
+    "library": "amCharts",
+    "chart_index": 1,
+    "chart_type": "serial",
+    "category_field": "jornada",
+    "graph_fields": [
+      {
+        "title": "Goles",
+        "value_field": "VG",
+        "line_color": "#1166FF"
+      },
+      {
+        "title": "Tarjetas amarillas",
+        "value_field": "VTG",
+        "line_color": "#e3e302"
+      },
+      {
+        "title": "Tarjetas rojas",
+        "value_field": "VTV",
+        "line_color": "#FF6611"
+      }
+    ],
+    "data_provider": [
+      {
+        "jornada": 1,
+        "VG": 20,
+        "VTG": 46,
+        "VTV": 3
+      },
+      {
+        "jornada": 2,
+        "VG": 28,
+        "VTG": 41,
+        "VTV": 3
+      },
+      {
+        "jornada": 3,
+        "VG": 32,
+        "VTG": 43,
+        "VTV": 3
+      },
+      {
+        "jornada": 4,
+        "VG": 25,
+        "VTG": 42,
+        "VTV": 5
+      },
+      {
+        "jornada": 5,
+        "VG": 28,
+        "VTG": 55,
+        "VTV": 1
+      },
+      {
+        "jornada": 6,
+        "VG": 23,
+        "VTG": 46,
+        "VTV": 5
+      },
+      {
+        "jornada": 7
+      },
+      {
+        "jornada": 8
+      },
+      {
+        "jornada": 9
+      },
+      {
+        "jornada": 10
+      },
+      {
+        "jornada": 11
+      },
+      {
+        "jornada": 12
+      },
+      {
+        "jornada": 13
+      },
+      {
+        "jornada": 14
+      },
+      {
+        "jornada": 15
+      },
+      {
+        "jornada": 16
+      },
+      {
+        "jornada": 17
+      },
+      {
+        "jornada": 18
+      },
+      {
+        "jornada": 19
+      },
+      {
+        "jornada": 20
+      },
+      {
+        "jornada": 21
+      },
+      {
+        "jornada": 22
+      },
+      {
+        "jornada": 23
+      },
+      {
+        "jornada": 24
+      },
+      {
+        "jornada": 25
+      },
+      {
+        "jornada": 26
+      },
+      {
+        "jornada": 27
+      },
+      {
+        "jornada": 28
+      },
+      {
+        "jornada": 29
+      },
+      {
+        "jornada": 30
+      },
+      {
+        "jornada": 31
+      },
+      {
+        "jornada": 32
+      },
+      {
+        "jornada": 33
+      },
+      {
+        "jornada": 34
+      },
+      {
+        "jornada": 35
+      },
+      {
+        "jornada": 36
+      },
+      {
+        "jornada": 37
+      },
+      {
+        "jornada": 38
+      }
+    ]
+  }
+}

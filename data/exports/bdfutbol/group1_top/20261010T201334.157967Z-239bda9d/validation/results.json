@@ -1,0 +1,37 @@
+{
+  "valid": true,
+  "summary": {
+    "categories": 6,
+    "ranking_records": 149,
+    "players": 180,
+    "progress_series": 129,
+    "progress_points": 774,
+    "foreign_players": 59,
+    "foreign_country_options": 36,
+    "chart_matchdays": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "affiliation_conflicts": 1
+  },
+  "category_counts": {
+    "goals": 99,
+    "minutes": 10,
+    "yellow_cards": 10,
+    "red_cards": 10,
+    "youngest": 10,
+    "oldest": 10
+  },
+  "issues": [],
+  "warnings": [
+    "Las categorías distintas de Goles solo exponen las diez filas publicadas en sus tablas.",
+    "La edad se conserva como edad mostrada al capturar; BDFutbol no publica aquí su fecha de referencia.",
+    "El denominador del porcentaje de extranjeros no está publicado; el valor implícito es solo una inferencia.",
+    "#tab_estran expone 59 registros, pero el encabezado publica 60; no se ha completado la fila ausente.",
+    "Afiliación de equipo ambigua para player_id=304291; se conserva como null en el catálogo y las fuentes/IDs están en affiliation_conflicts."
+  ]
+}

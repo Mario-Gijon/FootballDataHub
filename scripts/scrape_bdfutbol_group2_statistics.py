@@ -13,7 +13,7 @@ from typing import Any
 
 from football_data_hub.domain.classification.validation import validate_match_set
 from football_data_hub.domain.statistics.engine import calculate_competition_statistics
-from football_data_hub.domain.statistics.models import CompetitionContext
+from football_data_hub.domain.statistics.models import CompetitionContext as DomainCompetitionContext
 from football_data_hub.providers.bdfutbol.classification.match_io import load_match_dataset
 from football_data_hub.providers.bdfutbol.classification.matches import extract_matches
 from football_data_hub.providers.bdfutbol.classification.parser import parse_classification_page
@@ -23,7 +23,6 @@ from football_data_hub.providers.bdfutbol.statistics.acquisition import (
 )
 from football_data_hub.providers.bdfutbol.statistics.export import export_statistics_capture
 from football_data_hub.providers.bdfutbol.statistics.parser import (
-    STATISTICS_URL,
     parse_statistics_page,
     validate_statistics_page_html,
 )
@@ -32,13 +31,18 @@ from football_data_hub.providers.bdfutbol.statistics.validation import (
     build_reconciliation_report,
     validate_statistics,
 )
+from football_data_hub.providers.bdfutbol.context import (
+    SUPPORTED_SEASON,
+    CompetitionContext as BDFutbolCompetitionContext,
+    get_competition_context,
+)
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_MATCHES = Path(
+DEFAULT_GROUP2_MATCHES = Path(
     "data/exports/bdfutbol/group2_classification/derived-res01-20261010T102656Z/"
     "normalized/matches.json"
 )
-DEFAULT_EXPORT_ROOT = Path("data/exports/bdfutbol/group2_statistics")
+DEFAULT_GROUP2_EXPORT_ROOT = Path("data/exports/bdfutbol/group2_statistics")
 
 
 def _sha256(path: Path) -> str:
@@ -46,7 +50,10 @@ def _sha256(path: Path) -> str:
 
 
 def _load_offline_capture(
-    snapshot: Path, chart_snapshot: Path, access_report: Path
+    snapshot: Path,
+    chart_snapshot: Path,
+    access_report: Path,
+    competition: BDFutbolCompetitionContext,
 ) -> tuple[str, dict[str, Any], dict[str, Any]]:
     access = json.loads(access_report.read_text(encoding="utf-8"))
     chart = json.loads(chart_snapshot.read_text(encoding="utf-8"))
@@ -56,9 +63,10 @@ def _load_offline_capture(
         raise ValueError("El informe offline no contiene estado de acceso VALID")
     if access.get("http_status") != 200:
         raise ValueError("La captura offline no registra HTTP 200")
-    if access.get("requested_url") != STATISTICS_URL or access.get("final_url") != STATISTICS_URL:
+    source_url = competition.section_url("statistics")
+    if access.get("requested_url") != source_url or access.get("final_url") != source_url:
         raise ValueError("La captura no corresponde a la URL exacta de Estadísticas")
-    if chart.get("source_url") != STATISTICS_URL:
+    if chart.get("source_url") != source_url:
         raise ValueError("El gráfico no corresponde a la URL de Estadísticas")
     if access.get("capture_id") != chart.get("capture_id"):
         raise ValueError("El HTML y el gráfico tienen capture_id diferentes")
@@ -127,16 +135,18 @@ def _align_current_source_matches(
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--season", choices=(SUPPORTED_SEASON,), default=SUPPORTED_SEASON)
+    parser.add_argument("--group", type=int, choices=(1, 2), default=2)
     parser.add_argument(
         "--matches",
         type=Path,
-        default=Path(os.environ.get("FDH_GROUP2_MATCHES", str(DEFAULT_MATCHES))),
-        help="Ruta al dataset existente normalized/matches.json",
+        default=None,
+        help="Ruta al dataset normalized/matches.json del mismo grupo",
     )
     parser.add_argument(
         "--output-root",
         type=Path,
-        default=Path(os.environ.get("FDH_STATISTICS_EXPORT_ROOT", str(DEFAULT_EXPORT_ROOT))),
+        default=None,
         help="Raíz de los exports versionados",
     )
     parser.add_argument("--snapshot", type=Path, help="HTML previamente capturado")
@@ -157,10 +167,34 @@ def _parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
+    competition = get_competition_context(args.season, args.group)
+    group_matches_env = os.environ.get(
+        f"FDH_BDFUTBOL_{competition.group_key.upper()}_MATCHES"
+    ) or os.environ.get(f"FDH_{competition.group_key.upper()}_MATCHES")
+    if args.matches is not None:
+        matches_path = args.matches.expanduser().resolve()
+    elif group_matches_env:
+        matches_path = Path(group_matches_env).expanduser().resolve()
+    elif competition.group_number == 2:
+        matches_path = DEFAULT_GROUP2_MATCHES.resolve()
+    else:
+        raise SystemExit("Grupo I requiere --matches con su propio dataset de Resultados")
+    output_env = os.environ.get(
+        f"FDH_BDFUTBOL_{competition.group_key.upper()}_STATISTICS_OUTPUT"
+    )
+    if not output_env and competition.group_number == 2:
+        output_env = os.environ.get("FDH_STATISTICS_EXPORT_ROOT")
+    if args.output_root is not None:
+        output_root = args.output_root
+    elif output_env:
+        output_root = Path(output_env)
+    else:
+        output_root = competition.export_directory(
+            Path("data/exports/bdfutbol"), "statistics"
+        )
     offline_args = (args.snapshot, args.chart_snapshot, args.access_report)
     if any(offline_args) and not all(offline_args):
         raise SystemExit("El modo offline requiere --snapshot, --chart-snapshot y --access-report")
-    matches_path = args.matches.expanduser().resolve()
     if not matches_path.is_file():
         raise SystemExit(f"No existe el dataset de partidos: {matches_path}")
     dataset_metadata, teams, matches = load_match_dataset(matches_path)
@@ -174,7 +208,7 @@ def main(argv: list[str] | None = None) -> int:
         chart_path = args.chart_snapshot.expanduser().resolve()
         access_path = args.access_report.expanduser().resolve()
         raw_html, chart_runtime, access = _load_offline_capture(
-            snapshot, chart_path, access_path
+            snapshot, chart_path, access_path, competition
         )
         capture_id = str(access["capture_id"])
         captured_at = str(access["captured_at_utc"])
@@ -187,6 +221,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         try:
             bundle = acquire_statistics_page(
+                competition=competition,
                 profile_dir=args.profile.expanduser(),
                 browser_executable_path=args.browser_executable,
                 startup_timeout_seconds=args.startup_timeout_seconds,
@@ -217,17 +252,28 @@ def main(argv: list[str] | None = None) -> int:
             "source_snapshot_sha256": hashlib.sha256(raw_html.encode("utf-8")).hexdigest(),
         }
 
-    structure_errors = validate_statistics_page_html(raw_html)
+    structure_errors = validate_statistics_page_html(raw_html, competition)
     if structure_errors:
         raise SystemExit("HTML rechazado: " + "; ".join(structure_errors))
-    parsed = parse_statistics_page(raw_html, chart_runtime, source_url=STATISTICS_URL)
+    parsed = parse_statistics_page(
+        raw_html,
+        chart_runtime,
+        source_url=competition.section_url("statistics"),
+        competition=competition,
+    )
     if (dataset_metadata.get("competition"), dataset_metadata.get("season"), dataset_metadata.get("group")) != (
         parsed.competition, parsed.season, parsed.group
     ):
         raise SystemExit("El dataset de Resultados no corresponde a competición/temporada/grupo")
 
-    context = CompetitionContext(parsed.competition, parsed.season, parsed.group)
-    calculated = calculate_competition_statistics(teams, matches, context)
+    if (dataset_metadata.get("competition"), dataset_metadata.get("season"), dataset_metadata.get("group")) != (
+        competition.competition, competition.season, competition.group_roman
+    ):
+        raise SystemExit("El dataset de Resultados no pertenece al grupo solicitado")
+    domain_context = DomainCompetitionContext(
+        parsed.competition, parsed.season, parsed.group
+    )
+    calculated = calculate_competition_statistics(teams, matches, domain_context)
     published_validation = validate_statistics(parsed)
     validation = {
         "schema_version": 1,
@@ -266,9 +312,9 @@ def main(argv: list[str] | None = None) -> int:
         match_dataset=dataset_metadata,
     )
     export_path = export_statistics_capture(
-        output_root=(REPOSITORY_ROOT / args.output_root).expanduser()
-        if not args.output_root.is_absolute()
-        else args.output_root.expanduser(),
+        output_root=(REPOSITORY_ROOT / output_root).expanduser()
+        if not output_root.is_absolute()
+        else output_root.expanduser(),
         capture_id=capture_id,
         captured_at_utc=captured_at,
         requested_url=requested_url,

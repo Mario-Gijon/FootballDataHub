@@ -38,10 +38,21 @@ def validate_top_data(parsed: ParsedTop) -> dict[str, Any]:
     referenced_ids.update(record.player_id for record in parsed.foreigners)
     if referenced_ids.difference(player_ids):
         issues.append({"code": "orphan_player", "message": "Hay registros sin jugador normalizado."})
-    if any(player.team_id is None for player in parsed.players):
-        issues.append({"code": "unresolved_team", "message": "Hay jugadores sin ID de equipo verificado."})
-    if len(parsed.foreigners) != parsed.foreigners_summary.source_count:
-        issues.append({"code": "foreign_count", "message": "El número de extranjeros no coincide con el encabezado fuente."})
+    conflict_ids = {conflict.player_id for conflict in parsed.affiliation_conflicts}
+    for player in parsed.players:
+        if player.team_id is None:
+            if player.player_id not in conflict_ids:
+                issues.append({"code": "unresolved_team", "message": f"player_id={player.player_id} no tiene team_id verificado ni conflicto documentado."})
+            elif any(value is not None for value in (player.team_name, player.team_url, player.crest_url)):
+                issues.append({"code": "ambiguous_team_fields", "message": f"player_id={player.player_id} conserva datos de equipo aunque su afiliación es ambigua."})
+    if conflict_ids.difference(player_ids):
+        issues.append({"code": "orphan_affiliation_conflict", "message": "Un conflicto de afiliación referencia un jugador desconocido."})
+    if any(
+        len(conflict.affiliations) < 2
+        or len({item.team_id for item in conflict.affiliations}) != len(conflict.affiliations)
+        for conflict in parsed.affiliation_conflicts
+    ):
+        issues.append({"code": "invalid_affiliation_conflict", "message": "Un conflicto de afiliación no contiene IDs de equipo distintos."})
     if len({record.player_id for record in parsed.foreigners}) != len(parsed.foreigners):
         issues.append({"code": "foreign_duplicate", "message": "La tabla de extranjeros contiene IDs duplicados."})
     country_codes = [code for code, _ in parsed.foreigners_summary.country_options]
@@ -106,6 +117,7 @@ def validate_top_data(parsed: ParsedTop) -> dict[str, Any]:
             "foreign_players": len(parsed.foreigners),
             "foreign_country_options": len(parsed.foreigners_summary.country_options),
             "chart_matchdays": list(parsed.chart_matchdays),
+            "affiliation_conflicts": len(parsed.affiliation_conflicts),
         },
         "category_counts": dict(category_counts),
         "issues": issues,

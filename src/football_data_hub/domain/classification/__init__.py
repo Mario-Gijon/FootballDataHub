@@ -14,6 +14,8 @@ from .results import (
     ResultsMatrixCell,
     ResultsMatrixRow,
     build_group2_results_matrix,
+    build_results_matrix,
+    list_competition_results,
     list_group2_results,
 )
 
@@ -28,6 +30,8 @@ __all__ = [
     "ResultsMatrixRow",
     "Team",
     "build_group2_results_matrix",
+    "build_results_matrix",
     "calculate_standings",
+    "list_competition_results",
     "list_group2_results",
 ]

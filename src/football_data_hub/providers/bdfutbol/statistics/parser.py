@@ -7,6 +7,8 @@ from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from urllib.parse import parse_qs, urljoin, urlsplit
 
+from ..context import CompetitionContext, get_competition_context
+
 from .models import (
     ParsedBDFutbolStatistics,
     PublishedChart,
@@ -17,8 +19,8 @@ from .models import (
     PublishedStreak,
 )
 
-STATISTICS_URL = "https://www.bdfutbol.com/es/t/t2026-271rf2.html?tab=stats"
-_TARGET_TITLE_MARKERS = ("grupo ii", "2026-27")
+GROUP2_CONTEXT = get_competition_context(group=2)
+STATISTICS_URL = GROUP2_CONTEXT.section_url("statistics")
 _SUMMARY_LABELS = (
     "Equipos",
     "Partidos",
@@ -106,8 +108,12 @@ class _TreeParser(HTMLParser):
             self.stack[-1].parts.append(data.strip())
 
 
-def validate_statistics_page_html(source_html: str) -> tuple[str, ...]:
+def validate_statistics_page_html(
+    source_html: str,
+    competition: CompetitionContext | None = None,
+) -> tuple[str, ...]:
     """Valida contenido y estructura antes de aceptar una captura como válida."""
+    competition = competition or GROUP2_CONTEXT
     try:
         root = _parse_tree(source_html)
     except (RecursionError, ValueError) as exc:
@@ -130,8 +136,10 @@ def validate_statistics_page_html(source_html: str) -> tuple[str, ...]:
         for prefix in _RECORD_PREFIXES:
             if prefix.casefold() not in table_text.casefold():
                 errors.append(f"Falta el récord o racha {prefix!r}")
-    if "Grupo II" not in root.text() or "2026-27" not in root.text():
-        errors.append("El documento no identifica Grupo II 2026-27")
+    if competition.group_label not in root.text() or competition.season not in root.text():
+        errors.append(
+            f"El documento no identifica {competition.group_label} {competition.season}"
+        )
     return tuple(errors)
 
 
@@ -139,23 +147,30 @@ def parse_statistics_page(
     source_html: str,
     chart_runtime: dict[str, object],
     *,
-    source_url: str = STATISTICS_URL,
+    source_url: str | None = None,
+    competition: CompetitionContext | None = None,
 ) -> ParsedBDFutbolStatistics:
+    competition = competition or GROUP2_CONTEXT
+    source_url = source_url or competition.section_url("statistics")
     parts = urlsplit(source_url)
     if (
         parts.scheme != "https"
         or parts.hostname != "www.bdfutbol.com"
-        or parts.path != "/es/t/t2026-271rf2.html"
+        or source_url != competition.section_url("statistics")
         or parse_qs(parts.query).get("tab") != ["stats"]
     ):
-        raise StatisticsParseError("La URL no corresponde a Estadísticas Grupo II 2026-27")
-    missing = validate_statistics_page_html(source_html)
+        raise StatisticsParseError(
+            f"La URL no corresponde a Estadísticas {competition.group_label} {competition.season}"
+        )
+    missing = validate_statistics_page_html(source_html, competition)
     if missing:
         raise StatisticsParseError("; ".join(missing))
     root = _parse_tree(source_html)
     title = _page_title(root).casefold()
-    if any(marker not in title for marker in _TARGET_TITLE_MARKERS):
-        raise StatisticsParseError("El título no confirma Grupo II 2026-27")
+    if competition.group_label.casefold() not in title or competition.season not in title:
+        raise StatisticsParseError(
+            f"El título no confirma {competition.group_label} {competition.season}"
+        )
     stats = _statistics_container(root)
     assert stats is not None
     text = _normalized_text(stats.text())
@@ -165,9 +180,9 @@ def parse_statistics_page(
     chart = _parse_chart(stats, chart_runtime)
     return ParsedBDFutbolStatistics(
         source_url=source_url,
-        competition="Primera Federación",
-        season="2026-27",
-        group="II",
+        competition=competition.competition,
+        season=competition.season,
+        group=competition.group_roman,
         source_summary=published,
         exclusive_penalties=penalties,
         match_records=records,

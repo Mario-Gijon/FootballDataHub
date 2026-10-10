@@ -15,12 +15,17 @@ from football_data_hub.providers.bdfutbol.access import (
     AccessStatus,
     BDFutbolAccess,
 )
+from football_data_hub.providers.bdfutbol.context import (
+    CompetitionContext,
+    get_competition_context,
+)
 
 from .models import ParsedTop
-from .parser import TOP_URL, parse_top_page
+from .parser import parse_top_page
 from .validation import validate_top_data
 
-EXTRACTOR_VERSION = "0.1.0"
+GROUP2_CONTEXT = get_competition_context(group=2)
+EXTRACTOR_VERSION = "0.2.0"
 
 
 class TopAcquisitionStopped(RuntimeError):
@@ -44,6 +49,7 @@ class TopAcquisitionBundle:
     browser: dict[str, Any]
     parsed: ParsedTop
     validation: dict[str, Any]
+    competition: CompetitionContext = GROUP2_CONTEXT
 
 
 def create_top_capture_id(now: datetime | None = None) -> str:
@@ -70,6 +76,7 @@ def validate_top_structure(source_html: str) -> tuple[str, ...]:
 def acquire_top(
     *,
     team_catalog: list[dict[str, Any]],
+    competition: CompetitionContext | None = None,
     profile_dir: Path,
     browser: str = "chromium",
     browser_executable_path: Path | None = None,
@@ -79,6 +86,7 @@ def acquire_top(
     capture_id: str | None = None,
 ) -> TopAcquisitionBundle:
     """Open Destacados once; never retries or interacts with challenges."""
+    competition = competition or GROUP2_CONTEXT
     capture_id = capture_id or create_top_capture_id()
     config = BrowserRuntimeConfig(
         profile_dir=profile_dir,
@@ -90,9 +98,9 @@ def acquire_top(
     )
     with BrowserSessionManager(config, navigation_timeout_ms=navigation_timeout_ms) as session:
         opened = BDFutbolAccess(session).open(
-            TOP_URL,
+            competition.section_url("top"),
             required_markers=("Extranjeros", "Goles"),
-            required_title_markers=("Grupo II", "2026-27"),
+            required_title_markers=(competition.group_label, competition.season),
             required_selectors=(
                 "#tipdest", "#jugs1 table", "#jugs2 table", "#jugs3 table",
                 "#jugs4 table", "#jugs8 table", "#jugs9 table",
@@ -107,7 +115,11 @@ def acquire_top(
                 raise TopAcquisitionStopped(opened.assessment)
             page = opened.visit.document
             source_html = page.html()
-            parsed = parse_top_page(source_html, team_catalog=team_catalog)
+            parsed = parse_top_page(
+                source_html,
+                team_catalog=team_catalog,
+                base_url=competition.section_url("top"),
+            )
             validation = validate_top_data(parsed)
             if not validation["valid"]:
                 raise ValueError(f"Validación de Destacados fallida: {validation['issues']}")
@@ -130,4 +142,5 @@ def acquire_top(
                 },
                 parsed=parsed,
                 validation=validation,
+                competition=competition,
             )

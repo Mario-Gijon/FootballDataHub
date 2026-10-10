@@ -1,0 +1,1533 @@
+{
+  "schema_version": 1,
+  "metadata": {
+    "source": "BDFutbol",
+    "url": "https://www.bdfutbol.com/es/t/t2026-271rf1.html?tab=top",
+    "competition": "Primera Federación",
+    "season": "2026-27",
+    "group": "I",
+    "section": "top",
+    "capture_id": "20261010T201334.157967Z-239bda9d",
+    "captured_at_utc": "2026-10-10T20:13:34.157967+00:00",
+    "extractor_version": "0.2.0",
+    "source_snapshot_sha256": "0d85cdd59eab59891a89f5fda6ea256c69bfb0e7a54b195e65700424f60a1168",
+    "related_team_catalog": {
+      "path": "data/exports/bdfutbol/group1_classification/20261010T200928.923226Z-dbe3bd79/normalized/matches.json",
+      "group": "I",
+      "source_capture_id": "20261010T200928.923226Z-dbe3bd79",
+      "source_captured_at_utc": "2026-10-10T20:09:28.923425+00:00",
+      "sha256": "22110b1665a4f776410b04cf706e8d29dd6011d0155d937f611520281497176b"
+    }
+  },
+  "summary": {
+    "source_count": 60,
+    "source_percentage": 11.9,
+    "denominator_count": null,
+    "implied_denominator_count": 504,
+    "country_options": [
+      [
+        "",
+        "Todos"
+      ],
+      [
+        "alemania",
+        "Alemania"
+      ],
+      [
+        "andorra",
+        "Andorra"
+      ],
+      [
+        "argelia",
+        "Argelia"
+      ],
+      [
+        "argentina",
+        "Argentina"
+      ],
+      [
+        "benin",
+        "Benín"
+      ],
+      [
+        "bolivia",
+        "Bolivia"
+      ],
+      [
+        "brasil",
+        "Brasil"
+      ],
+      [
+        "caboverde",
+        "Cabo Verde"
+      ],
+      [
+        "camerun",
+        "Camerún"
+      ],
+      [
+        "chile",
+        "Chile"
+      ],
+      [
+        "costademarfil",
+        "Costa de Marfil"
+      ],
+      [
+        "dinamarca",
+        "Dinamarca"
+      ],
+      [
+        "ecuador",
+        "Ecuador"
+      ],
+      [
+        "etiopia",
+        "Etiopía"
+      ],
+      [
+        "francia",
+        "Francia"
+      ],
+      [
+        "georgia",
+        "Georgia"
+      ],
+      [
+        "ghana",
+        "Ghana"
+      ],
+      [
+        "guineabissau",
+        "Guinea-Bisáu"
+      ],
+      [
+        "guineaecuatorial",
+        "Guinea Ecuatorial"
+      ],
+      [
+        "hungria",
+        "Hungría"
+      ],
+      [
+        "iran",
+        "Irán"
+      ],
+      [
+        "islandia",
+        "Islandia"
+      ],
+      [
+        "italia",
+        "Italia"
+      ],
+      [
+        "lituania",
+        "Lituania"
+      ],
+      [
+        "mali",
+        "Mali"
+      ],
+      [
+        "marruecos",
+        "Marruecos"
+      ],
+      [
+        "mexico",
+        "México"
+      ],
+      [
+        "montenegro",
+        "Montenegro"
+      ],
+      [
+        "nigeria",
+        "Nigeria"
+      ],
+      [
+        "portugal",
+        "Portugal"
+      ],
+      [
+        "republicadominicana",
+        "República Dominicana"
+      ],
+      [
+        "rumania",
+        "Rumanía"
+      ],
+      [
+        "senegal",
+        "Senegal"
+      ],
+      [
+        "turquia",
+        "Turquía"
+      ],
+      [
+        "uruguay",
+        "Uruguay"
+      ]
+    ]
+  },
+  "records": [
+    {
+      "player_id": 207727,
+      "display_name": "Csenterics",
+      "full_name": "Adrián Dany Hammad Csenterics",
+      "profile_url": "https://www.bdfutbol.com/es/j/j207727.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/207727.png",
+      "nationality_code": "hungria",
+      "nationality": "Hungría",
+      "position_code": "por",
+      "position_name": "Portero",
+      "age_years": 22,
+      "team_id": 359,
+      "team_name": "Mérida AD",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-27359.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/359b.png",
+      "statistics": {
+        "matches_played": 6,
+        "minutes_played": 540,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 34233,
+      "display_name": "Lucero",
+      "full_name": "Rufino Lucero",
+      "profile_url": "https://www.bdfutbol.com/es/j/j34233.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/34233.png",
+      "nationality_code": "argentina",
+      "nationality": "Argentina",
+      "position_code": "mig",
+      "position_name": "Centrocampista",
+      "age_years": 24,
+      "team_id": 76,
+      "team_name": "Lugo",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2776.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/76.png",
+      "statistics": {
+        "matches_played": 6,
+        "minutes_played": 540,
+        "goals": 0,
+        "yellow_cards": 1,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 1055825,
+      "display_name": "Jelbat",
+      "full_name": "Aymane Jelbat",
+      "profile_url": "https://www.bdfutbol.com/es/j/j1055825.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/1055825.png",
+      "nationality_code": "marruecos",
+      "nationality": "Marruecos",
+      "position_code": "def",
+      "position_name": "Defensa",
+      "age_years": 26,
+      "team_id": 62,
+      "team_name": "Ponferradina",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2762.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/62.png",
+      "statistics": {
+        "matches_played": 6,
+        "minutes_played": 517,
+        "goals": 1,
+        "yellow_cards": 1,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 209584,
+      "display_name": "Riki de Moraes",
+      "full_name": "Said Ricardo de Moraes de Morais",
+      "profile_url": "https://www.bdfutbol.com/es/j/j209584.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/209584.png",
+      "nationality_code": "brasil",
+      "nationality": "Brasil",
+      "position_code": "mig",
+      "position_name": "Centrocampista",
+      "age_years": 22,
+      "team_id": 145,
+      "team_name": "Mirandés",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-27145.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/145.png",
+      "statistics": {
+        "matches_played": 6,
+        "minutes_played": 500,
+        "goals": 2,
+        "yellow_cards": 1,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 300975,
+      "display_name": "Chit",
+      "full_name": "Oussama Chit",
+      "profile_url": "https://www.bdfutbol.com/es/j/j300975.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/300975.png",
+      "nationality_code": "argelia",
+      "nationality": "Argelia",
+      "position_code": "dav",
+      "position_name": "Delantero",
+      "age_years": 26,
+      "team_id": 149,
+      "team_name": "Cacereño",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-27149.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/149.png",
+      "statistics": {
+        "matches_played": 6,
+        "minutes_played": 482,
+        "goals": 2,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 209697,
+      "display_name": "Gael Akogo",
+      "full_name": "Gael Joel Akogo Esono Nchama",
+      "profile_url": "https://www.bdfutbol.com/es/j/j209697.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/209697.png",
+      "nationality_code": "guineaecuatorial",
+      "nationality": "Guinea Ecuatorial",
+      "position_code": "mig",
+      "position_name": "Centrocampista",
+      "age_years": 23,
+      "team_id": 87,
+      "team_name": "Arenas de Getxo",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2787.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/87.png",
+      "statistics": {
+        "matches_played": 5,
+        "minutes_played": 430,
+        "goals": 0,
+        "yellow_cards": 1,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 210530,
+      "display_name": "Latif Basir",
+      "full_name": "Latif Basir Issman Hamidu",
+      "profile_url": "https://www.bdfutbol.com/es/j/j210530.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/210530.png",
+      "nationality_code": "costademarfil",
+      "nationality": "Costa de Marfil",
+      "position_code": "mig",
+      "position_name": "Centrocampista",
+      "age_years": 20,
+      "team_id": 178,
+      "team_name": "UD Logroñés",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-27178.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/178.png",
+      "statistics": {
+        "matches_played": 6,
+        "minutes_played": 373,
+        "goals": 0,
+        "yellow_cards": 2,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 23610,
+      "display_name": "Dauda",
+      "full_name": "Mohammed Dauda",
+      "profile_url": "https://www.bdfutbol.com/es/j/j23610.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/23610.png",
+      "nationality_code": "ghana",
+      "nationality": "Ghana",
+      "position_code": "dav",
+      "position_name": "Delantero",
+      "age_years": 28,
+      "team_id": 76,
+      "team_name": "Lugo",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2776.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/76.png",
+      "statistics": {
+        "matches_played": 6,
+        "minutes_played": 365,
+        "goals": 0,
+        "yellow_cards": 1,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 209330,
+      "display_name": "Embadje",
+      "full_name": "Fernando Embadje",
+      "profile_url": "https://www.bdfutbol.com/es/j/j209330.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/209330.png",
+      "nationality_code": "guineabissau",
+      "nationality": "Guinea-Bisáu",
+      "position_code": "por",
+      "position_name": "Portero",
+      "age_years": 23,
+      "team_id": 76,
+      "team_name": "Lugo",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2776.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/76.png",
+      "statistics": {
+        "matches_played": 4,
+        "minutes_played": 360,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 209744,
+      "display_name": "Mba",
+      "full_name": "Domingo Mba Mba Ayecaba",
+      "profile_url": "https://www.bdfutbol.com/es/j/j209744.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/209744.png",
+      "nationality_code": "guineaecuatorial",
+      "nationality": "Guinea Ecuatorial",
+      "position_code": "dav",
+      "position_name": "Delantero",
+      "age_years": 26,
+      "team_id": 58,
+      "team_name": "Pontevedra",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2758.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/58.png",
+      "statistics": {
+        "matches_played": 6,
+        "minutes_played": 343,
+        "goals": 1,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 704121,
+      "display_name": "Geovanny Almeida",
+      "full_name": "Geovanny Miguel Bastos Almeida",
+      "profile_url": "https://www.bdfutbol.com/es/j/j704121.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/704121.png",
+      "nationality_code": "portugal",
+      "nationality": "Portugal",
+      "position_code": "mig",
+      "position_name": "Centrocampista",
+      "age_years": 22,
+      "team_id": 359,
+      "team_name": "Mérida AD",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-27359.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/359b.png",
+      "statistics": {
+        "matches_played": 4,
+        "minutes_played": 343,
+        "goals": 0,
+        "yellow_cards": 1,
+        "red_cards": 2
+      }
+    },
+    {
+      "player_id": 104213,
+      "display_name": "Rui Pedro",
+      "full_name": "Rui Pedro Fernandes Ferreira",
+      "profile_url": "https://www.bdfutbol.com/es/j/j104213.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/104213.png",
+      "nationality_code": "portugal",
+      "nationality": "Portugal",
+      "position_code": "def",
+      "position_name": "Defensa",
+      "age_years": 24,
+      "team_id": 58,
+      "team_name": "Pontevedra",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2758.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/58.png",
+      "statistics": {
+        "matches_played": 4,
+        "minutes_played": 341,
+        "goals": 1,
+        "yellow_cards": 1,
+        "red_cards": 1
+      }
+    },
+    {
+      "player_id": 208661,
+      "display_name": "El Ftouhi",
+      "full_name": "Sofiane El Ftouhi",
+      "profile_url": "https://www.bdfutbol.com/es/j/j208661.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/208661.png",
+      "nationality_code": "francia",
+      "nationality": "Francia",
+      "position_code": "dav",
+      "position_name": "Delantero",
+      "age_years": 25,
+      "team_id": 359,
+      "team_name": "Mérida AD",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-27359.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/359b.png",
+      "statistics": {
+        "matches_played": 6,
+        "minutes_played": 310,
+        "goals": 3,
+        "yellow_cards": 3,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 211079,
+      "display_name": "Palma",
+      "full_name": "Arturo Adolfo Palma Cisneros",
+      "profile_url": "https://www.bdfutbol.com/es/j/j211079.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/211079.png",
+      "nationality_code": "mexico",
+      "nationality": "México",
+      "position_code": "dav",
+      "position_name": "Delantero",
+      "age_years": 24,
+      "team_id": 76,
+      "team_name": "Lugo",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2776.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/76.png",
+      "statistics": {
+        "matches_played": 4,
+        "minutes_played": 303,
+        "goals": 1,
+        "yellow_cards": 1,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 22587,
+      "display_name": "Jerin",
+      "full_name": "Jerin Marcolino Ramos Santos",
+      "profile_url": "https://www.bdfutbol.com/es/j/j22587.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/22587.png",
+      "nationality_code": "caboverde",
+      "nationality": "Cabo Verde",
+      "position_code": "mig",
+      "position_name": "Centrocampista",
+      "age_years": 30,
+      "team_id": 58,
+      "team_name": "Pontevedra",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2758.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/58.png",
+      "statistics": {
+        "matches_played": 6,
+        "minutes_played": 291,
+        "goals": 0,
+        "yellow_cards": 3,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 34910,
+      "display_name": "Lečić",
+      "full_name": "Luka Lečić",
+      "profile_url": "https://www.bdfutbol.com/es/j/j34910.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/34910.png",
+      "nationality_code": "montenegro",
+      "nationality": "Montenegro",
+      "position_code": "mig",
+      "position_name": "Centrocampista",
+      "age_years": 21,
+      "team_id": 515,
+      "team_name": "CD Extremadura",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-27515.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/515.png",
+      "statistics": {
+        "matches_played": 4,
+        "minutes_played": 278,
+        "goals": 0,
+        "yellow_cards": 1,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 209019,
+      "display_name": "Reda",
+      "full_name": "Reda Ergouai",
+      "profile_url": "https://www.bdfutbol.com/es/j/j209019.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/209019.png",
+      "nationality_code": "marruecos",
+      "nationality": "Marruecos",
+      "position_code": "def",
+      "position_name": "Defensa",
+      "age_years": 23,
+      "team_id": 58,
+      "team_name": "Pontevedra",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2758.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/58.png",
+      "statistics": {
+        "matches_played": 6,
+        "minutes_played": 274,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 304291,
+      "display_name": "Luisao",
+      "full_name": "Jhoansel-Luisao Macías Chiliguano",
+      "profile_url": "https://www.bdfutbol.com/es/j/j304291.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/304291.png",
+      "nationality_code": "brasil",
+      "nationality": "Brasil",
+      "position_code": "dav",
+      "position_name": "Delantero",
+      "age_years": 22,
+      "team_id": null,
+      "team_name": null,
+      "team_url": null,
+      "crest_url": null,
+      "statistics": {
+        "matches_played": 4,
+        "minutes_played": 273,
+        "goals": 1,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 108962,
+      "display_name": "El Arbaoui",
+      "full_name": "Ilyas El Arbaoui El Youbi Zagmouti",
+      "profile_url": "https://www.bdfutbol.com/es/j/j108962.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/108962.png",
+      "nationality_code": "marruecos",
+      "nationality": "Marruecos",
+      "position_code": "def",
+      "position_name": "Defensa",
+      "age_years": 18,
+      "team_id": 72,
+      "team_name": "Bilbao Athletic",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2772.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/6b.png",
+      "statistics": {
+        "matches_played": 4,
+        "minutes_played": 264,
+        "goals": 0,
+        "yellow_cards": 1,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 404827,
+      "display_name": "Koné",
+      "full_name": "Lacine Adams Kader Koné",
+      "profile_url": "https://www.bdfutbol.com/es/j/j404827.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/404827.png",
+      "nationality_code": "costademarfil",
+      "nationality": "Costa de Marfil",
+      "position_code": "dav",
+      "position_name": "Delantero",
+      "age_years": 24,
+      "team_id": 359,
+      "team_name": "Mérida AD",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-27359.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/359b.png",
+      "statistics": {
+        "matches_played": 5,
+        "minutes_played": 250,
+        "goals": 1,
+        "yellow_cards": 1,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 27775,
+      "display_name": "Benji",
+      "full_name": "Benjamín Rafael Núñez Rodríguez",
+      "profile_url": "https://www.bdfutbol.com/es/j/j27775.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/27775.png",
+      "nationality_code": "republicadominicana",
+      "nationality": "República Dominicana",
+      "position_code": "def",
+      "position_name": "Defensa",
+      "age_years": 31,
+      "team_id": 473,
+      "team_name": "CD Coria",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-27473.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/473.png",
+      "statistics": {
+        "matches_played": 6,
+        "minutes_played": 231,
+        "goals": 0,
+        "yellow_cards": 1,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 13836,
+      "display_name": "Willy",
+      "full_name": "Willy Tomás Chatiliez",
+      "profile_url": "https://www.bdfutbol.com/es/j/j13836.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/13836.png",
+      "nationality_code": "chile",
+      "nationality": "Chile",
+      "position_code": "mig",
+      "position_name": "Centrocampista",
+      "age_years": 21,
+      "team_id": 411,
+      "team_name": "Unionistas de Salamanca",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-27411.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/411.png",
+      "statistics": {
+        "matches_played": 6,
+        "minutes_played": 230,
+        "goals": 0,
+        "yellow_cards": 2,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 52558,
+      "display_name": "Faye",
+      "full_name": "Sérigné Faye",
+      "profile_url": "https://www.bdfutbol.com/es/j/j52558.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/52558.png",
+      "nationality_code": "senegal",
+      "nationality": "Senegal",
+      "position_code": "dav",
+      "position_name": "Delantero",
+      "age_years": 22,
+      "team_id": 62,
+      "team_name": "Ponferradina",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2762.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/62.png",
+      "statistics": {
+        "matches_played": 3,
+        "minutes_played": 214,
+        "goals": 1,
+        "yellow_cards": 1,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 405432,
+      "display_name": "Eto'o",
+      "full_name": "Etienne Eto'o Pineda",
+      "profile_url": "https://www.bdfutbol.com/es/j/j405432.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/405432.png",
+      "nationality_code": "camerun",
+      "nationality": "Camerún",
+      "position_code": "dav",
+      "position_name": "Delantero",
+      "age_years": 24,
+      "team_id": 48,
+      "team_name": "Racing de Ferrol",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2748.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/48.png",
+      "statistics": {
+        "matches_played": 5,
+        "minutes_played": 184,
+        "goals": 1,
+        "yellow_cards": 2,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 49109,
+      "display_name": "Hallsson",
+      "full_name": "Sigurður Bjartur Hallsson",
+      "profile_url": "https://www.bdfutbol.com/es/j/j49109.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/49109.png",
+      "nationality_code": "islandia",
+      "nationality": "Islandia",
+      "position_code": "dav",
+      "position_name": "Delantero",
+      "age_years": 27,
+      "team_id": 359,
+      "team_name": "Mérida AD",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-27359.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/359b.png",
+      "statistics": {
+        "matches_played": 5,
+        "minutes_played": 175,
+        "goals": 1,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 211097,
+      "display_name": "Chibozo",
+      "full_name": "Ange Josué Chibozo",
+      "profile_url": "https://www.bdfutbol.com/es/j/j211097.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/211097.png",
+      "nationality_code": "benin",
+      "nationality": "Benín",
+      "position_code": "mig",
+      "position_name": "Centrocampista",
+      "age_years": 23,
+      "team_id": 62,
+      "team_name": "Ponferradina",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2762.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/62.png",
+      "statistics": {
+        "matches_played": 5,
+        "minutes_played": 167,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 1080836,
+      "display_name": "Quicala",
+      "full_name": "Algassimo Quicala Bari",
+      "profile_url": "https://www.bdfutbol.com/es/j/j1080836.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/1080836.png",
+      "nationality_code": "guineabissau",
+      "nationality": "Guinea-Bisáu",
+      "position_code": "dav",
+      "position_name": "Delantero",
+      "age_years": 24,
+      "team_id": 62,
+      "team_name": "Ponferradina",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2762.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/62.png",
+      "statistics": {
+        "matches_played": 6,
+        "minutes_played": 158,
+        "goals": 0,
+        "yellow_cards": 1,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 34862,
+      "display_name": "Nordin",
+      "full_name": "Nordin Al Lal Milud",
+      "profile_url": "https://www.bdfutbol.com/es/j/j34862.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/34862.png",
+      "nationality_code": "marruecos",
+      "nationality": "Marruecos",
+      "position_code": "dav",
+      "position_name": "Delantero",
+      "age_years": 21,
+      "team_id": 515,
+      "team_name": "CD Extremadura",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-27515.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/515.png",
+      "statistics": {
+        "matches_played": 4,
+        "minutes_played": 135,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 204242,
+      "display_name": "Efe",
+      "full_name": "Efe Korkut Martin",
+      "profile_url": "https://www.bdfutbol.com/es/j/j204242.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/204242.png",
+      "nationality_code": "turquia",
+      "nationality": "Turquía",
+      "position_code": "mig",
+      "position_name": "Centrocampista",
+      "age_years": 20,
+      "team_id": 72,
+      "team_name": "Bilbao Athletic",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2772.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/6b.png",
+      "statistics": {
+        "matches_played": 3,
+        "minutes_played": 126,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 207940,
+      "display_name": "Dibrani",
+      "full_name": "Benjamin Dibrani",
+      "profile_url": "https://www.bdfutbol.com/es/j/j207940.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/207940.png",
+      "nationality_code": "alemania",
+      "nationality": "Alemania",
+      "position_code": "mig",
+      "position_name": "Centrocampista",
+      "age_years": 22,
+      "team_id": 359,
+      "team_name": "Mérida AD",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-27359.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/359b.png",
+      "statistics": {
+        "matches_played": 4,
+        "minutes_played": 119,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 210650,
+      "display_name": "Guagua",
+      "full_name": "Darwin Johan Guagua Silva",
+      "profile_url": "https://www.bdfutbol.com/es/j/j210650.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/210650.png",
+      "nationality_code": "ecuador",
+      "nationality": "Ecuador",
+      "position_code": "mig",
+      "position_name": "Centrocampista",
+      "age_years": 19,
+      "team_id": 359,
+      "team_name": "Mérida AD",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-27359.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/359b.png",
+      "statistics": {
+        "matches_played": 3,
+        "minutes_played": 116,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 110318,
+      "display_name": "Assane",
+      "full_name": "Assane Ndiaye Dione",
+      "profile_url": "https://www.bdfutbol.com/es/j/j110318.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/110318.png",
+      "nationality_code": "senegal",
+      "nationality": "Senegal",
+      "position_code": "mig",
+      "position_name": "Centrocampista",
+      "age_years": 27,
+      "team_id": 84,
+      "team_name": "Cultural Leonesa",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2784.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/84.png",
+      "statistics": {
+        "matches_played": 3,
+        "minutes_played": 112,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 208967,
+      "display_name": "Tallal",
+      "full_name": "Yassin Tallal Amiri",
+      "profile_url": "https://www.bdfutbol.com/es/j/j208967.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/208967.png",
+      "nationality_code": "marruecos",
+      "nationality": "Marruecos",
+      "position_code": "mig",
+      "position_name": "Centrocampista",
+      "age_years": 21,
+      "team_id": 88,
+      "team_name": "Real Unión",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2788.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/88.png",
+      "statistics": {
+        "matches_played": 4,
+        "minutes_played": 101,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 27713,
+      "display_name": "De León",
+      "full_name": "José Alejandro de León Gómez",
+      "profile_url": "https://www.bdfutbol.com/es/j/j27713.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/27713.png",
+      "nationality_code": "republicadominicana",
+      "nationality": "República Dominicana",
+      "position_code": "dav",
+      "position_name": "Delantero",
+      "age_years": 22,
+      "team_id": 62,
+      "team_name": "Ponferradina",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2762.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/62.png",
+      "statistics": {
+        "matches_played": 2,
+        "minutes_played": 100,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 24651,
+      "display_name": "Zarfino",
+      "full_name": "Jorge Giovanni Zarfino Calandria",
+      "profile_url": "https://www.bdfutbol.com/es/j/j24651.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/24651.png",
+      "nationality_code": "uruguay",
+      "nationality": "Uruguay",
+      "position_code": "mig",
+      "position_name": "Centrocampista",
+      "age_years": 35,
+      "team_id": 515,
+      "team_name": "CD Extremadura",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-27515.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/515.png",
+      "statistics": {
+        "matches_played": 2,
+        "minutes_played": 99,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 307839,
+      "display_name": "N'tji",
+      "full_name": "Ntji Tounkara Diarra",
+      "profile_url": "https://www.bdfutbol.com/es/j/j307839.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/307839.png",
+      "nationality_code": "mali",
+      "nationality": "Mali",
+      "position_code": "mig",
+      "position_name": "Centrocampista",
+      "age_years": 21,
+      "team_id": 62,
+      "team_name": "Ponferradina",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2762.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/62.png",
+      "statistics": {
+        "matches_played": 4,
+        "minutes_played": 92,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 110226,
+      "display_name": "Rodrigo",
+      "full_name": "Aron Rodrigo Tapia",
+      "profile_url": "https://www.bdfutbol.com/es/j/j110226.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/110226.png",
+      "nationality_code": "andorra",
+      "nationality": "Andorra",
+      "position_code": "dav",
+      "position_name": "Delantero",
+      "age_years": 22,
+      "team_id": 145,
+      "team_name": "Mirandés",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-27145.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/145.png",
+      "statistics": {
+        "matches_played": 3,
+        "minutes_played": 79,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 58173,
+      "display_name": "Jansonas",
+      "full_name": "Romualdas Jansonas",
+      "profile_url": "https://www.bdfutbol.com/es/j/j58173.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/58173.png",
+      "nationality_code": "lituania",
+      "nationality": "Lituania",
+      "position_code": "dav",
+      "position_name": "Delantero",
+      "age_years": 21,
+      "team_id": 510,
+      "team_name": "UD Ourense",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-27510.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/510.png",
+      "statistics": {
+        "matches_played": 2,
+        "minutes_played": 55,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 202328,
+      "display_name": "Rafa Núñez",
+      "full_name": "Rafael Leonardo Núñez Mata",
+      "profile_url": "https://www.bdfutbol.com/es/j/j202328.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/202328.png",
+      "nationality_code": "republicadominicana",
+      "nationality": "República Dominicana",
+      "position_code": "dav",
+      "position_name": "Delantero",
+      "age_years": 24,
+      "team_id": 473,
+      "team_name": "CD Coria",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-27473.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/473.png",
+      "statistics": {
+        "matches_played": 2,
+        "minutes_played": 53,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 403942,
+      "display_name": "Berto Rosas",
+      "full_name": "Albert Rosas Ubach",
+      "profile_url": "https://www.bdfutbol.com/es/j/j403942.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/403942.png",
+      "nationality_code": "andorra",
+      "nationality": "Andorra",
+      "position_code": "dav",
+      "position_name": "Delantero",
+      "age_years": 24,
+      "team_id": 178,
+      "team_name": "UD Logroñés",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-27178.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/178.png",
+      "statistics": {
+        "matches_played": 2,
+        "minutes_played": 43,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 709173,
+      "display_name": "Omoregbe",
+      "full_name": "Bob Murphy Omoregbe",
+      "profile_url": "https://www.bdfutbol.com/es/j/j709173.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/709173.png",
+      "nationality_code": "italia",
+      "nationality": "Italia",
+      "position_code": "dav",
+      "position_name": "Delantero",
+      "age_years": 23,
+      "team_id": 58,
+      "team_name": "Pontevedra",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2758.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/58.png",
+      "statistics": {
+        "matches_played": 3,
+        "minutes_played": 34,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 211057,
+      "display_name": "Saidi",
+      "full_name": "Abderrezzek Saidi",
+      "profile_url": "https://www.bdfutbol.com/es/j/j211057.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/211057.png",
+      "nationality_code": "argelia",
+      "nationality": "Argelia",
+      "position_code": "def",
+      "position_name": "Defensa",
+      "age_years": 21,
+      "team_id": 411,
+      "team_name": "Unionistas de Salamanca",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-27411.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/411.png",
+      "statistics": {
+        "matches_played": 3,
+        "minutes_played": 32,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 111364,
+      "display_name": "Gøthler",
+      "full_name": "Alfred Gøthler",
+      "profile_url": "https://www.bdfutbol.com/es/j/j111364.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/111364.png",
+      "nationality_code": "dinamarca",
+      "nationality": "Dinamarca",
+      "position_code": "dav",
+      "position_name": "Delantero",
+      "age_years": 19,
+      "team_id": 515,
+      "team_name": "CD Extremadura",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-27515.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/515.png",
+      "statistics": {
+        "matches_played": 2,
+        "minutes_played": 19,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 210622,
+      "display_name": "Achore",
+      "full_name": "Achore Nilo Sánchez Martínez",
+      "profile_url": "https://www.bdfutbol.com/es/j/j210622.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/210622.png",
+      "nationality_code": "etiopia",
+      "nationality": "Etiopía",
+      "position_code": "def",
+      "position_name": "Defensa",
+      "age_years": 21,
+      "team_id": 76,
+      "team_name": "Lugo",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2776.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/76.png",
+      "statistics": {
+        "matches_played": 1,
+        "minutes_played": 19,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 55335,
+      "display_name": "Morchiladze",
+      "full_name": "Tornike Morchiladze",
+      "profile_url": "https://www.bdfutbol.com/es/j/j55335.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/55335.png",
+      "nationality_code": "georgia",
+      "nationality": "Georgia",
+      "position_code": "mig",
+      "position_name": "Centrocampista",
+      "age_years": 24,
+      "team_id": 76,
+      "team_name": "Lugo",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2776.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/76.png",
+      "statistics": {
+        "matches_played": 1,
+        "minutes_played": 18,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 1
+      }
+    },
+    {
+      "player_id": 210405,
+      "display_name": "Djanbou",
+      "full_name": "Sekou Djanbou",
+      "profile_url": "https://www.bdfutbol.com/es/j/j210405.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/210405.png",
+      "nationality_code": "mali",
+      "nationality": "Mali",
+      "position_code": "mig",
+      "position_name": "Centrocampista",
+      "age_years": 22,
+      "team_id": 48,
+      "team_name": "Racing de Ferrol",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2748.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/48.png",
+      "statistics": {
+        "matches_played": 1,
+        "minutes_played": 14,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 210495,
+      "display_name": "Mustapha",
+      "full_name": "Mustapha Hussaini Muhammad",
+      "profile_url": "https://www.bdfutbol.com/es/j/j210495.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/210495.png",
+      "nationality_code": "nigeria",
+      "nationality": "Nigeria",
+      "position_code": "dav",
+      "position_name": "Delantero",
+      "age_years": 20,
+      "team_id": 88,
+      "team_name": "Real Unión",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2788.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/88.png",
+      "statistics": {
+        "matches_played": 2,
+        "minutes_played": 13,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 111296,
+      "display_name": "Fersura",
+      "full_name": "João Gabriel Fersura Feu",
+      "profile_url": "https://www.bdfutbol.com/es/j/j111296.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/111296.png",
+      "nationality_code": "brasil",
+      "nationality": "Brasil",
+      "position_code": "dav",
+      "position_name": "Delantero",
+      "age_years": 21,
+      "team_id": 84,
+      "team_name": "Cultural Leonesa",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2784.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/84.png",
+      "statistics": {
+        "matches_played": 1,
+        "minutes_played": 12,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 13798,
+      "display_name": "Papa",
+      "full_name": "Papa Dame Ba",
+      "profile_url": "https://www.bdfutbol.com/es/j/j13798.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/13798.png",
+      "nationality_code": "senegal",
+      "nationality": "Senegal",
+      "position_code": "dav",
+      "position_name": "Delantero",
+      "age_years": 22,
+      "team_id": 178,
+      "team_name": "UD Logroñés",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-27178.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/178.png",
+      "statistics": {
+        "matches_played": 1,
+        "minutes_played": 8,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 211626,
+      "display_name": "Magueye",
+      "full_name": "Papa Magueye Gaye",
+      "profile_url": "https://www.bdfutbol.com/es/j/j211626.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/211626.png",
+      "nationality_code": "senegal",
+      "nationality": "Senegal",
+      "position_code": "dav",
+      "position_name": "Delantero",
+      "age_years": 20,
+      "team_id": 58,
+      "team_name": "Pontevedra",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2758.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/58.png",
+      "statistics": {
+        "matches_played": 0,
+        "minutes_played": 0,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 104210,
+      "display_name": "Juhász",
+      "full_name": "Istvan Bence Juhász",
+      "profile_url": "https://www.bdfutbol.com/es/j/j104210.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/104210.png",
+      "nationality_code": "hungria",
+      "nationality": "Hungría",
+      "position_code": "por",
+      "position_name": "Portero",
+      "age_years": 21,
+      "team_id": 359,
+      "team_name": "Mérida AD",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-27359.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/359b.png",
+      "statistics": {
+        "matches_played": 0,
+        "minutes_played": 0,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 111323,
+      "display_name": "Macazaga",
+      "full_name": "Lucas Dionis Macazaga Ojopi",
+      "profile_url": "https://www.bdfutbol.com/es/j/j111323.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/111323.png",
+      "nationality_code": "bolivia",
+      "nationality": "Bolivia",
+      "position_code": "def",
+      "position_name": "Defensa",
+      "age_years": 20,
+      "team_id": 62,
+      "team_name": "Ponferradina",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2762.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/62.png",
+      "statistics": {
+        "matches_played": 0,
+        "minutes_played": 0,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 29049,
+      "display_name": "Abedzadeh",
+      "full_name": "Amir Abedzadeh",
+      "profile_url": "https://www.bdfutbol.com/es/j/j29049.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/29049.png",
+      "nationality_code": "iran",
+      "nationality": "Irán",
+      "position_code": "por",
+      "position_name": "Portero",
+      "age_years": 33,
+      "team_id": 62,
+      "team_name": "Ponferradina",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2762.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/62.png",
+      "statistics": {
+        "matches_played": 0,
+        "minutes_played": 0,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 210255,
+      "display_name": "Dipanda",
+      "full_name": "Rodrigue Dipanda Ndongo Essono",
+      "profile_url": "https://www.bdfutbol.com/es/j/j210255.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/210255.png",
+      "nationality_code": "camerun",
+      "nationality": "Camerún",
+      "position_code": "dav",
+      "position_name": "Delantero",
+      "age_years": 20,
+      "team_id": 104,
+      "team_name": "Deportivo Fabril",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-27104.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/13l.png",
+      "statistics": {
+        "matches_played": 0,
+        "minutes_played": 0,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 211037,
+      "display_name": "Gabriel Costa",
+      "full_name": "Gabriel Santos Costa",
+      "profile_url": "https://www.bdfutbol.com/es/j/j211037.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/211037.png",
+      "nationality_code": "portugal",
+      "nationality": "Portugal",
+      "position_code": "mig",
+      "position_name": "Centrocampista",
+      "age_years": 20,
+      "team_id": 76,
+      "team_name": "Lugo",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2776.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/76.png",
+      "statistics": {
+        "matches_played": 0,
+        "minutes_played": 0,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 55319,
+      "display_name": "Țîru",
+      "full_name": "Bogdan Ionuț Țîru",
+      "profile_url": "https://www.bdfutbol.com/es/j/j55319.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/55319.png",
+      "nationality_code": "rumania",
+      "nationality": "Rumanía",
+      "position_code": "def",
+      "position_name": "Defensa",
+      "age_years": 32,
+      "team_id": 84,
+      "team_name": "Cultural Leonesa",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2784.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/84.png",
+      "statistics": {
+        "matches_played": 0,
+        "minutes_played": 0,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 13194,
+      "display_name": "Edgar",
+      "full_name": "Edgar Climent Pujol Portorreal",
+      "profile_url": "https://www.bdfutbol.com/es/j/j13194.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/13194.png",
+      "nationality_code": "republicadominicana",
+      "nationality": "República Dominicana",
+      "position_code": "def",
+      "position_name": "Defensa",
+      "age_years": 22,
+      "team_id": 48,
+      "team_name": "Racing de Ferrol",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2748.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/48.png",
+      "statistics": {
+        "matches_played": 0,
+        "minutes_played": 0,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 41814,
+      "display_name": "Johaneko",
+      "full_name": "Johaneko Louis-Jean",
+      "profile_url": "https://www.bdfutbol.com/es/j/j41814.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/41814.png",
+      "nationality_code": "francia",
+      "nationality": "Francia",
+      "position_code": "def",
+      "position_name": "Defensa",
+      "age_years": 22,
+      "team_id": 72,
+      "team_name": "Bilbao Athletic",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2772.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/6b.png",
+      "statistics": {
+        "matches_played": 0,
+        "minutes_played": 0,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    },
+    {
+      "player_id": 211623,
+      "display_name": "Cherif",
+      "full_name": "Mayoro Cherif Ndiaye",
+      "profile_url": "https://www.bdfutbol.com/es/j/j211623.html",
+      "photo_url": null,
+      "nationality_code": "senegal",
+      "nationality": "Senegal",
+      "position_code": "def",
+      "position_name": "Defensa",
+      "age_years": null,
+      "team_id": 95,
+      "team_name": "Zamora",
+      "team_url": "https://www.bdfutbol.com/es/t/t2026-2795.html",
+      "crest_url": "https://www.bdfutbol.com/i/eg/95.png",
+      "statistics": {
+        "matches_played": 0,
+        "minutes_played": 0,
+        "goals": 0,
+        "yellow_cards": 0,
+        "red_cards": 0
+      }
+    }
+  ]
+}

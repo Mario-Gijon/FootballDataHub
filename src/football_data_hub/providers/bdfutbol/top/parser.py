@@ -10,17 +10,20 @@ from pathlib import PurePosixPath
 from typing import Any, Iterable
 from urllib.parse import urljoin, urlsplit
 
+from ..context import get_competition_context
 from .models import (
     ForeignPlayerStatistics,
     ForeignersSummary,
+    PlayerAffiliationConflict,
     ParsedTop,
     ProgressPoint,
     ProgressSeries,
     RankingRecord,
+    TeamAffiliationEvidence,
     TopPlayer,
 )
 
-TOP_URL = "https://www.bdfutbol.com/es/t/t2026-271rf2.html?tab=top"
+TOP_URL = get_competition_context(group=2).section_url("top")
 _POSITION_NAMES = {
     "por": "Portero",
     "def": "Defensa",
@@ -326,6 +329,7 @@ def _link_url(cell: _Cell, base_url: str, pattern: str) -> str | None:
 
 def _merge_player(
     players: dict[int, dict[str, Any]],
+    affiliation_evidence: dict[int, dict[int, dict[str, Any]]],
     *,
     player_id: int,
     display_name: str,
@@ -338,7 +342,14 @@ def _merge_player(
     position_name: str | None,
     age_years: int | None,
     team: dict[str, Any],
+    source_record: str,
 ) -> None:
+    team_id = int(team["team_id"])
+    evidence = affiliation_evidence.setdefault(player_id, {}).setdefault(
+        team_id,
+        {"team_name": str(team["name"]), "source_records": set()},
+    )
+    evidence["source_records"].add(source_record)
     candidate = {
         "player_id": player_id,
         "display_name": display_name,
@@ -350,7 +361,7 @@ def _merge_player(
         "position_code": position_code,
         "position_name": position_name,
         "age_years": age_years,
-        "team_id": int(team["team_id"]),
+        "team_id": team_id,
         "team_name": str(team["name"]),
         "team_url": team.get("team_url"),
         "crest_url": team.get("crest_url"),
@@ -359,7 +370,7 @@ def _merge_player(
     if existing is None:
         players[player_id] = candidate
         return
-    for key in ("nationality_code", "age_years", "team_id"):
+    for key in ("nationality_code", "age_years"):
         old, new = existing.get(key), candidate.get(key)
         if old is not None and new is not None and old != new:
             raise TopParseError(
@@ -370,6 +381,8 @@ def _merge_player(
     if full_name:
         existing["full_name"] = full_name
     for key, value in candidate.items():
+        if key in {"team_id", "team_name", "team_url", "crest_url"}:
+            continue
         if existing.get(key) is None and value is not None:
             existing[key] = value
 
@@ -486,6 +499,7 @@ def _source_goals_tail(
     countries: dict[str, str],
     teams_by_crest: dict[str, dict[str, Any]],
     players: dict[int, dict[str, Any]],
+    affiliation_evidence: dict[int, dict[int, dict[str, Any]]],
 ) -> list[tuple[int, int, bool]]:
     results: list[tuple[int, int, bool]] = []
     seen: set[int] = set()
@@ -519,6 +533,7 @@ def _source_goals_tail(
         )
         _merge_player(
             players,
+            affiliation_evidence,
             player_id=player_id,
             display_name=str(display_name),
             full_name=None,
@@ -530,6 +545,7 @@ def _source_goals_tail(
             position_name=_POSITION_NAMES[position_code],
             age_years=age_years,
             team=team,
+            source_record="DESTACATS_JS.LG",
         )
         results.append((player_id, goals, False))
     return results
@@ -565,6 +581,7 @@ def parse_top_page(
 
     js_data = _extract_destacats_js(source_html)
     players: dict[int, dict[str, Any]] = {}
+    affiliation_evidence: dict[int, dict[int, dict[str, Any]]] = {}
     rankings: list[RankingRecord] = []
     ranking_player_ids: dict[str, list[int]] = {}
     category_counts: dict[str, int] = {}
@@ -587,7 +604,12 @@ def parse_top_page(
                 countries=countries,
                 teams_by_crest=team_catalog_by_crest,
             )
-            _merge_player(players, **player)
+            _merge_player(
+                players,
+                affiliation_evidence,
+                **player,
+                source_record=f"ranking:#jugs{category_id}",
+            )
             player_id = player["player_id"]
             parsed_rows.append((player_id, metric_value, selected))
             rankings.append(
@@ -620,6 +642,7 @@ def parse_top_page(
         countries=countries,
         teams_by_crest=team_catalog_by_crest,
         players=players,
+        affiliation_evidence=affiliation_evidence,
     )
     start_rank = category_counts["goals"] + 1
     for offset, (player_id, goal_value, selected) in enumerate(goals_tail):
@@ -698,6 +721,7 @@ def parse_top_page(
         profile_url = _absolute(base_url, str(player_link.attrs.get("href")))
         _merge_player(
             players,
+            affiliation_evidence,
             player_id=player_id,
             display_name=display_name,
             full_name=full_name,
@@ -709,6 +733,7 @@ def parse_top_page(
             position_name=position_name,
             age_years=age,
             team=team,
+            source_record="table#tab_estran",
         )
         foreign_records.append(
             ForeignPlayerStatistics(
@@ -733,11 +758,6 @@ def parse_top_page(
     source_foreigner_count = int(heading_match.group(1))
     source_percentage = float(heading_match.group(2).replace(",", "."))
     implied_denominator = round(source_foreigner_count / (source_percentage / 100)) if source_percentage else None
-    if source_foreigner_count != len(foreign_records):
-        raise TopParseError(
-            f"#tab_estran contiene {len(foreign_records)} filas pero el encabezado indica {source_foreigner_count}"
-        )
-
     progress: list[ProgressSeries] = []
     for category_id in ("1", "2", "3", "4"):
         definition = _CATEGORY_DEFINITIONS[category_id]
@@ -782,10 +802,42 @@ def parse_top_page(
     all_points = {point.matchday for series in progress for point in series.points}
     if not all_points or all_points != set(range(1, max(all_points) + 1)):
         raise TopParseError("Las jornadas del gráfico no forman una secuencia desde la jornada 1")
+    affiliation_conflicts = tuple(
+        PlayerAffiliationConflict(
+            player_id=player_id,
+            affiliations=tuple(
+                TeamAffiliationEvidence(
+                    team_id=team_id,
+                    team_name=str(item["team_name"]),
+                    source_records=tuple(sorted(item["source_records"])),
+                )
+                for team_id, item in sorted(affiliations.items())
+            ),
+        )
+        for player_id, affiliations in sorted(affiliation_evidence.items())
+        if len(affiliations) > 1
+    )
+    for conflict in affiliation_conflicts:
+        player = players[conflict.player_id]
+        for field_name in ("team_id", "team_name", "team_url", "crest_url"):
+            player[field_name] = None
     warnings = (
         "Las categorías distintas de Goles solo exponen las diez filas publicadas en sus tablas.",
         "La edad se conserva como edad mostrada al capturar; BDFutbol no publica aquí su fecha de referencia.",
         "El denominador del porcentaje de extranjeros no está publicado; el valor implícito es solo una inferencia.",
+        *(
+            (
+                f"#tab_estran expone {len(foreign_records)} registros, pero el encabezado publica "
+                f"{source_foreigner_count}; no se ha completado la fila ausente."
+            ,)
+            if len(foreign_records) != source_foreigner_count
+            else ()
+        ),
+        *(
+            f"Afiliación de equipo ambigua para player_id={conflict.player_id}; "
+            "se conserva como null en el catálogo y las fuentes/IDs están en affiliation_conflicts."
+            for conflict in affiliation_conflicts
+        ),
     )
     return ParsedTop(
         players=tuple(TopPlayer(**players[player_id]) for player_id in sorted(players)),
@@ -804,4 +856,5 @@ def parse_top_page(
         chart_matchdays=tuple(sorted(all_points)),
         see_all_available=document.see_all,
         warnings=warnings,
+        affiliation_conflicts=affiliation_conflicts,
     )

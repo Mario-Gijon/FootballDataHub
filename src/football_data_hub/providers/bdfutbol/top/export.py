@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Any
 
 from .acquisition import EXTRACTOR_VERSION, TopAcquisitionBundle
-from .parser import TOP_URL
 
 
 def create_run_directory(output_root: Path, capture_id: str) -> Path:
@@ -44,12 +43,14 @@ def export_top_capture(
         "schema_version": 1,
         "capture_id": bundle.capture_id,
         "source": "BDFutbol",
-        "url": TOP_URL,
+        "url": bundle.competition.section_url("top"),
         "final_url": bundle.access.get("final_url"),
         "page_title": bundle.page_title,
-        "competition": "Primera Federación",
-        "season": "2026-27",
-        "group": "II",
+        "competition": bundle.competition.competition,
+        "season": bundle.competition.season,
+        "group": bundle.competition.group_roman,
+        "group_number": bundle.competition.group_number,
+        "bdfutbol_code": bundle.competition.bdfutbol_code,
         "section": "top",
         "captured_at_utc": bundle.captured_at_utc,
         "capture_timestamp_basis": capture_timestamp_basis,
@@ -67,6 +68,9 @@ def export_top_capture(
         "chart_matchdays": list(bundle.parsed.chart_matchdays),
         "see_all_available_for_goals": bundle.parsed.see_all_available,
         "foreigners_summary": asdict(bundle.parsed.foreigners_summary),
+        "affiliation_conflicts": [
+            asdict(conflict) for conflict in bundle.parsed.affiliation_conflicts
+        ],
         "created_at_utc": datetime.now(timezone.utc).isoformat(),
     }
     metadata_path = run_dir / "metadata" / "capture.json"

@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "source": "BDFutbol",
+  "capture_id": "20261010T201338.470165Z-8c4bc6c8",
+  "captured_at_utc": "2026-10-10T20:13:38.470165+00:00",
+  "requested_url": "https://www.bdfutbol.com/es/t/t2026-271rf1.html?tab=stats",
+  "final_url": "https://www.bdfutbol.com/es/t/t2026-271rf1.html?tab=stats",
+  "http_status": 200,
+  "page_title": "",
+  "source_html_sha256": "e3ccdb32c15d5709398df6667d6787f224ddc7719c4b8958ff8747cf6d9f75fc",
+  "chart_data_provider_sha256": "81d697a1487239cce19babf7c372b4f8377c968afe7cc4a74b29472a6412195b",
+  "competition": "Primera Federación",
+  "season": "2026-27",
+  "group": "I",
+  "extractor_version": "0.1.0",
+  "browser": {
+    "backend": "seleniumbase-pure-cdp",
+    "browser_name": "Chromium",
+    "browser_executable": "/usr/bin/chromium",
+    "xvfb_external": true
+  },
+  "match_dataset": {
+    "path": "data/exports/bdfutbol/group1_classification/20261010T200928.923226Z-dbe3bd79/normalized/matches.json",
+    "sha256": "22110b1665a4f776410b04cf706e8d29dd6011d0155d937f611520281497176b",
+    "source_capture_id": "20261010T200928.923226Z-dbe3bd79",
+    "source_captured_at_utc": "2026-10-10T20:09:28.923425+00:00",
+    "counts": {
+      "teams": 20,
+      "matches": 380,
+      "played": 60,
+      "unplayed": 320,
+      "incomplete": 0,
+      "postponed_by_source_rule": 0,
+      "unplayed_states": {
+        "scheduled": 320
+      }
+    },
+    "schema_version": 2
+  }
+}

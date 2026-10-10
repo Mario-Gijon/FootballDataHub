@@ -1,0 +1,31 @@
+{
+  "status": "VALID",
+  "requested_url": "https://www.bdfutbol.com/es/t/t2026-271rf1.html?tab=stats",
+  "final_url": "https://www.bdfutbol.com/es/t/t2026-271rf1.html?tab=stats",
+  "http_status": 200,
+  "page_title": "Clasificación 1ª RFEF Grupo I 2026-27 | BDFutbol",
+  "missing_markers": [],
+  "reason": null,
+  "missing_title_markers": [],
+  "missing_selectors": [],
+  "missing_dom_markers": [],
+  "missing_dom_evidence": [],
+  "capture_id": "20261010T202515.613199Z-6c6e0fd9",
+  "captured_at_utc": "2026-10-10T20:25:15.613199+00:00",
+  "browser": {
+    "backend": "seleniumbase-pure-cdp",
+    "browser_name": "Chromium",
+    "browser_executable": "/usr/bin/chromium",
+    "browser_version": "Chromium 152.0.7977.82 Arch Linux",
+    "automation_version": "4.55.2",
+    "display": ":0",
+    "uses_xvfb": true,
+    "xvfb_external": true
+  },
+  "html_valid": true,
+  "chart_valid": true,
+  "source_snapshot_sha256": "2644f6da18947d3d3a91574fac9388bee72208403150dbacb086c000edc307ad",
+  "source_snapshot": "raw/source.html",
+  "chart_snapshot": "raw/chart_data_provider.json",
+  "chart_snapshot_sha256": "c660d4eaec033a3adfa16f84dae9cd4417ad2e654a3b27d1141444c966d4ebdc"
+}

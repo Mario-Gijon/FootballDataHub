@@ -1,4 +1,4 @@
-"""CLI para una captura explícita de la clasificación del Grupo II."""
+"""CLI para una captura explícita de clasificación de un grupo."""
 
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ from typing import Sequence
 from .acquisition import AcquisitionStopped, acquire_classification, create_capture_id
 from .export import create_run_directory, export_acquisition, write_access_failure
 from .models import ClassificationRequest
+from ..context import SUPPORTED_SEASON, get_competition_context
 
 
 def _parse_date(value: str) -> date:
@@ -27,6 +28,8 @@ def _parse_date(value: str) -> date:
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--season", choices=(SUPPORTED_SEASON,), default=SUPPORTED_SEASON)
+    parser.add_argument("--group", type=int, choices=(1, 2), default=2)
     parser.add_argument(
         "--profile",
         type=Path,
@@ -71,10 +74,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--output-root",
         type=Path,
-        default=Path(os.environ.get(
-            "FDH_BDFUTBOL_CLASSIFICATION_OUTPUT",
-            "data/exports/bdfutbol/group2_classification",
-        )),
+        default=None,
     )
     parser.add_argument(
         "--classification-type", choices=("general", "local", "visitor"), default="general"
@@ -91,6 +91,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
+    competition = get_competition_context(args.season, args.group)
     try:
         request = ClassificationRequest(
             classification_type=args.classification_type,
@@ -107,12 +108,25 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 2
 
     capture_id = create_capture_id()
-    run_dir = create_run_directory(args.output_root, capture_id)
+    output_root = args.output_root
+    if output_root is None:
+        group_env = f"FDH_BDFUTBOL_{competition.group_key.upper()}_CLASSIFICATION_OUTPUT"
+        configured_root = os.environ.get(group_env)
+        if not configured_root and competition.group_number == 2:
+            configured_root = os.environ.get("FDH_BDFUTBOL_CLASSIFICATION_OUTPUT")
+        output_root = Path(
+            configured_root
+            or competition.export_directory(
+                Path("data/exports/bdfutbol"), "classification"
+            )
+        )
+    run_dir = create_run_directory(output_root, capture_id)
     browser_log = run_dir / "logs" / "browser.stderr.log"
     browser_log.parent.mkdir(parents=True, exist_ok=True)
     try:
         bundle = acquire_classification(
             request=request,
+            competition=competition,
             profile_dir=args.profile,
             backend=args.backend,
             browser=args.browser,
@@ -150,6 +164,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(json.dumps({
         "capture_id": capture_id,
         "classification_rows": len(bundle.parsed.standings),
+        "group": competition.group_label,
+        "season": competition.season,
         "progress_records": len(bundle.parsed.progress),
         "played_matchdays": bundle.parsed.played_matchdays,
         "validation": bundle.validation["summary"],

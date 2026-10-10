@@ -1,0 +1,2075 @@
+{
+  "schema_version": 1,
+  "kind": "derived_from_matches",
+  "derived_at_utc": "2026-10-10T20:25:17.329779+00:00",
+  "algorithm": "football_data_hub.domain.statistics.engine",
+  "algorithm_version": "0.1.0",
+  "match_dataset": {
+    "path": "data/exports/bdfutbol/group1_classification/20261010T202500.293648Z-b770724f/normalized/matches.json",
+    "sha256": "1f9fb43796001c87186d7a8c1f4270d924f32f4dbdba704f39428d6d8201fd0f",
+    "source_capture_id": "20261010T202500.293648Z-b770724f",
+    "source_captured_at_utc": "2026-10-10T20:25:00.293798+00:00",
+    "counts": {
+      "teams": 20,
+      "matches": 380,
+      "played": 60,
+      "unplayed": 320,
+      "incomplete": 0,
+      "postponed_by_source_rule": 0,
+      "unplayed_states": {
+        "scheduled": 320
+      }
+    },
+    "schema_version": 2
+  },
+  "statistics": {
+    "context": {
+      "competition": "Primera Federación",
+      "season": "2026-27",
+      "group": "I"
+    },
+    "team_count": 20,
+    "scheduled_matches": 380,
+    "played_matches": 60,
+    "unplayed_matches": 320,
+    "incomplete_matches": 0,
+    "home_wins": 29,
+    "away_wins": 16,
+    "draws": 15,
+    "goals": 156,
+    "goals_per_match": 2.6,
+    "yellow_cards": 273,
+    "yellow_cards_per_match": 4.55,
+    "red_cards": 20,
+    "red_cards_per_match": 0.3333333333333333,
+    "yellow_card_coverage": {
+      "matches_played": 60,
+      "matches_with_value": 60,
+      "missing_match_ids": []
+    },
+    "red_card_coverage": {
+      "matches_played": 60,
+      "matches_with_value": 60,
+      "missing_match_ids": []
+    },
+    "rounds": [
+      {
+        "matchday": 1,
+        "scheduled_matches": 10,
+        "played_matches": 10,
+        "unplayed_matches": 0,
+        "incomplete_matches": 0,
+        "coverage": "complete",
+        "goals": 20,
+        "yellow_cards": 46,
+        "red_cards": 3,
+        "yellow_card_coverage": {
+          "matches_played": 10,
+          "matches_with_value": 10,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 10,
+          "matches_with_value": 10,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 2,
+        "scheduled_matches": 10,
+        "played_matches": 10,
+        "unplayed_matches": 0,
+        "incomplete_matches": 0,
+        "coverage": "complete",
+        "goals": 28,
+        "yellow_cards": 41,
+        "red_cards": 3,
+        "yellow_card_coverage": {
+          "matches_played": 10,
+          "matches_with_value": 10,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 10,
+          "matches_with_value": 10,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 3,
+        "scheduled_matches": 10,
+        "played_matches": 10,
+        "unplayed_matches": 0,
+        "incomplete_matches": 0,
+        "coverage": "complete",
+        "goals": 32,
+        "yellow_cards": 43,
+        "red_cards": 3,
+        "yellow_card_coverage": {
+          "matches_played": 10,
+          "matches_with_value": 10,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 10,
+          "matches_with_value": 10,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 4,
+        "scheduled_matches": 10,
+        "played_matches": 10,
+        "unplayed_matches": 0,
+        "incomplete_matches": 0,
+        "coverage": "complete",
+        "goals": 25,
+        "yellow_cards": 42,
+        "red_cards": 5,
+        "yellow_card_coverage": {
+          "matches_played": 10,
+          "matches_with_value": 10,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 10,
+          "matches_with_value": 10,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 5,
+        "scheduled_matches": 10,
+        "played_matches": 10,
+        "unplayed_matches": 0,
+        "incomplete_matches": 0,
+        "coverage": "complete",
+        "goals": 28,
+        "yellow_cards": 55,
+        "red_cards": 1,
+        "yellow_card_coverage": {
+          "matches_played": 10,
+          "matches_with_value": 10,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 10,
+          "matches_with_value": 10,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 6,
+        "scheduled_matches": 10,
+        "played_matches": 10,
+        "unplayed_matches": 0,
+        "incomplete_matches": 0,
+        "coverage": "complete",
+        "goals": 23,
+        "yellow_cards": 46,
+        "red_cards": 5,
+        "yellow_card_coverage": {
+          "matches_played": 10,
+          "matches_with_value": 10,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 10,
+          "matches_with_value": 10,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 7,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 8,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 9,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 10,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 11,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 12,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 13,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 14,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 15,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 16,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 17,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 18,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 19,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 20,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 21,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 22,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 23,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 24,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 25,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 26,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 27,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 28,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 29,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 30,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 31,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 32,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 33,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 34,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 35,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 36,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 37,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      },
+      {
+        "matchday": 38,
+        "scheduled_matches": 10,
+        "played_matches": 0,
+        "unplayed_matches": 10,
+        "incomplete_matches": 0,
+        "coverage": "not_started",
+        "goals": null,
+        "yellow_cards": null,
+        "red_cards": null,
+        "yellow_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        },
+        "red_card_coverage": {
+          "matches_played": 0,
+          "matches_with_value": 0,
+          "missing_match_ids": []
+        }
+      }
+    ]
+  },
+  "records": {
+    "match_records": [
+      {
+        "kind": "largest_home_win",
+        "measure": 3,
+        "matches": [
+          {
+            "match_id": "269415",
+            "matchday": 1,
+            "home_team_id": 88,
+            "away_team_id": 473,
+            "home_goals": 4,
+            "away_goals": 1
+          },
+          {
+            "match_id": "269420",
+            "matchday": 2,
+            "home_team_id": 473,
+            "away_team_id": 99,
+            "home_goals": 4,
+            "away_goals": 1
+          },
+          {
+            "match_id": "269421",
+            "matchday": 2,
+            "home_team_id": 58,
+            "away_team_id": 87,
+            "home_goals": 4,
+            "away_goals": 1
+          },
+          {
+            "match_id": "269440",
+            "matchday": 4,
+            "home_team_id": 149,
+            "away_team_id": 87,
+            "home_goals": 3,
+            "away_goals": 0
+          }
+        ]
+      },
+      {
+        "kind": "largest_away_win",
+        "measure": 3,
+        "matches": [
+          {
+            "match_id": "269435",
+            "matchday": 3,
+            "home_team_id": 510,
+            "away_team_id": 178,
+            "home_goals": 0,
+            "away_goals": 3
+          },
+          {
+            "match_id": "269448",
+            "matchday": 5,
+            "home_team_id": 87,
+            "away_team_id": 72,
+            "home_goals": 0,
+            "away_goals": 3
+          }
+        ]
+      },
+      {
+        "kind": "most_goals",
+        "measure": 8,
+        "matches": [
+          {
+            "match_id": "269454",
+            "matchday": 5,
+            "home_team_id": 359,
+            "away_team_id": 178,
+            "home_goals": 3,
+            "away_goals": 5
+          }
+        ]
+      }
+    ],
+    "streaks": [
+      {
+        "team_id": 81,
+        "kind": "losing",
+        "match_count": 2,
+        "matchday_start": 1,
+        "matchday_end": 2,
+        "match_ids": [
+          "269408",
+          "269425"
+        ]
+      },
+      {
+        "team_id": 104,
+        "kind": "losing",
+        "match_count": 1,
+        "matchday_start": 1,
+        "matchday_end": 1,
+        "match_ids": [
+          "269412"
+        ]
+      },
+      {
+        "team_id": 145,
+        "kind": "losing",
+        "match_count": 1,
+        "matchday_start": 1,
+        "matchday_end": 1,
+        "match_ids": [
+          "269409"
+        ]
+      },
+      {
+        "team_id": 411,
+        "kind": "losing",
+        "match_count": 3,
+        "matchday_start": 1,
+        "matchday_end": 3,
+        "match_ids": [
+          "269416",
+          "269422",
+          "269437"
+        ]
+      },
+      {
+        "team_id": 473,
+        "kind": "losing",
+        "match_count": 1,
+        "matchday_start": 1,
+        "matchday_end": 1,
+        "match_ids": [
+          "269415"
+        ]
+      },
+      {
+        "team_id": 510,
+        "kind": "losing",
+        "match_count": 4,
+        "matchday_start": 1,
+        "matchday_end": 4,
+        "match_ids": [
+          "269410",
+          "269419",
+          "269435",
+          "269446"
+        ]
+      },
+      {
+        "team_id": 48,
+        "kind": "losing",
+        "match_count": 1,
+        "matchday_start": 2,
+        "matchday_end": 2,
+        "match_ids": [
+          "269426"
+        ]
+      },
+      {
+        "team_id": 87,
+        "kind": "losing",
+        "match_count": 4,
+        "matchday_start": 2,
+        "matchday_end": 5,
+        "match_ids": [
+          "269421",
+          "269428",
+          "269440",
+          "269448"
+        ]
+      },
+      {
+        "team_id": 95,
+        "kind": "losing",
+        "match_count": 1,
+        "matchday_start": 2,
+        "matchday_end": 2,
+        "match_ids": [
+          "269427"
+        ]
+      },
+      {
+        "team_id": 99,
+        "kind": "losing",
+        "match_count": 1,
+        "matchday_start": 2,
+        "matchday_end": 2,
+        "match_ids": [
+          "269420"
+        ]
+      },
+      {
+        "team_id": 359,
+        "kind": "losing",
+        "match_count": 4,
+        "matchday_start": 2,
+        "matchday_end": 5,
+        "match_ids": [
+          "269424",
+          "269434",
+          "269444",
+          "269454"
+        ]
+      },
+      {
+        "team_id": 58,
+        "kind": "losing",
+        "match_count": 1,
+        "matchday_start": 3,
+        "matchday_end": 3,
+        "match_ids": [
+          "269436"
+        ]
+      },
+      {
+        "team_id": 62,
+        "kind": "losing",
+        "match_count": 1,
+        "matchday_start": 3,
+        "matchday_end": 3,
+        "match_ids": [
+          "269431"
+        ]
+      },
+      {
+        "team_id": 84,
+        "kind": "losing",
+        "match_count": 1,
+        "matchday_start": 3,
+        "matchday_end": 3,
+        "match_ids": [
+          "269430"
+        ]
+      },
+      {
+        "team_id": 88,
+        "kind": "losing",
+        "match_count": 1,
+        "matchday_start": 3,
+        "matchday_end": 3,
+        "match_ids": [
+          "269432"
+        ]
+      },
+      {
+        "team_id": 473,
+        "kind": "losing",
+        "match_count": 1,
+        "matchday_start": 3,
+        "matchday_end": 3,
+        "match_ids": [
+          "269433"
+        ]
+      },
+      {
+        "team_id": 515,
+        "kind": "losing",
+        "match_count": 3,
+        "matchday_start": 3,
+        "matchday_end": 5,
+        "match_ids": [
+          "269429",
+          "269441",
+          "269452"
+        ]
+      },
+      {
+        "team_id": 95,
+        "kind": "losing",
+        "match_count": 1,
+        "matchday_start": 4,
+        "matchday_end": 4,
+        "match_ids": [
+          "269447"
+        ]
+      },
+      {
+        "team_id": 99,
+        "kind": "losing",
+        "match_count": 1,
+        "matchday_start": 4,
+        "matchday_end": 4,
+        "match_ids": [
+          "269442"
+        ]
+      },
+      {
+        "team_id": 48,
+        "kind": "losing",
+        "match_count": 1,
+        "matchday_start": 5,
+        "matchday_end": 5,
+        "match_ids": [
+          "269453"
+        ]
+      },
+      {
+        "team_id": 88,
+        "kind": "losing",
+        "match_count": 1,
+        "matchday_start": 5,
+        "matchday_end": 5,
+        "match_ids": [
+          "269451"
+        ]
+      },
+      {
+        "team_id": 58,
+        "kind": "losing",
+        "match_count": 1,
+        "matchday_start": 6,
+        "matchday_end": 6,
+        "match_ids": [
+          "269460"
+        ]
+      },
+      {
+        "team_id": 72,
+        "kind": "losing",
+        "match_count": 1,
+        "matchday_start": 6,
+        "matchday_end": 6,
+        "match_ids": [
+          "269458"
+        ]
+      },
+      {
+        "team_id": 84,
+        "kind": "losing",
+        "match_count": 1,
+        "matchday_start": 6,
+        "matchday_end": 6,
+        "match_ids": [
+          "269466"
+        ]
+      },
+      {
+        "team_id": 104,
+        "kind": "losing",
+        "match_count": 1,
+        "matchday_start": 6,
+        "matchday_end": 6,
+        "match_ids": [
+          "269465"
+        ]
+      },
+      {
+        "team_id": 145,
+        "kind": "losing",
+        "match_count": 1,
+        "matchday_start": 6,
+        "matchday_end": 6,
+        "match_ids": [
+          "269464"
+        ]
+      },
+      {
+        "team_id": 149,
+        "kind": "losing",
+        "match_count": 1,
+        "matchday_start": 6,
+        "matchday_end": 6,
+        "match_ids": [
+          "269461"
+        ]
+      },
+      {
+        "team_id": 473,
+        "kind": "losing",
+        "match_count": 1,
+        "matchday_start": 6,
+        "matchday_end": 6,
+        "match_ids": [
+          "269467"
+        ]
+      },
+      {
+        "team_id": 58,
+        "kind": "unbeaten",
+        "match_count": 2,
+        "matchday_start": 1,
+        "matchday_end": 2,
+        "match_ids": [
+          "269408",
+          "269421"
+        ]
+      },
+      {
+        "team_id": 72,
+        "kind": "unbeaten",
+        "match_count": 5,
+        "matchday_start": 1,
+        "matchday_end": 5,
+        "match_ids": [
+          "269413",
+          "269425",
+          "269436",
+          "269438",
+          "269448"
+        ]
+      },
+      {
+        "team_id": 76,
+        "kind": "unbeaten",
+        "match_count": 6,
+        "matchday_start": 1,
+        "matchday_end": 6,
+        "match_ids": [
+          "269416",
+          "269418",
+          "269433",
+          "269447",
+          "269453",
+          "269462"
+        ]
+      },
+      {
+        "team_id": 84,
+        "kind": "unbeaten",
+        "match_count": 2,
+        "matchday_start": 1,
+        "matchday_end": 2,
+        "match_ids": [
+          "269414",
+          "269424"
+        ]
+      },
+      {
+        "team_id": 87,
+        "kind": "unbeaten",
+        "match_count": 1,
+        "matchday_start": 1,
+        "matchday_end": 1,
+        "match_ids": [
+          "269411"
+        ]
+      },
+      {
+        "team_id": 88,
+        "kind": "unbeaten",
+        "match_count": 2,
+        "matchday_start": 1,
+        "matchday_end": 2,
+        "match_ids": [
+          "269415",
+          "269422"
+        ]
+      },
+      {
+        "team_id": 149,
+        "kind": "unbeaten",
+        "match_count": 5,
+        "matchday_start": 1,
+        "matchday_end": 5,
+        "match_ids": [
+          "269409",
+          "269423",
+          "269430",
+          "269440",
+          "269456"
+        ]
+      },
+      {
+        "team_id": 178,
+        "kind": "unbeaten",
+        "match_count": 6,
+        "matchday_start": 1,
+        "matchday_end": 6,
+        "match_ids": [
+          "269417",
+          "269427",
+          "269435",
+          "269445",
+          "269454",
+          "269465"
+        ]
+      },
+      {
+        "team_id": 359,
+        "kind": "unbeaten",
+        "match_count": 1,
+        "matchday_start": 1,
+        "matchday_end": 1,
+        "match_ids": [
+          "269412"
+        ]
+      },
+      {
+        "team_id": 104,
+        "kind": "unbeaten",
+        "match_count": 4,
+        "matchday_start": 2,
+        "matchday_end": 5,
+        "match_ids": [
+          "269423",
+          "269431",
+          "269438",
+          "269451"
+        ]
+      },
+      {
+        "team_id": 145,
+        "kind": "unbeaten",
+        "match_count": 4,
+        "matchday_start": 2,
+        "matchday_end": 5,
+        "match_ids": [
+          "269419",
+          "269434",
+          "269443",
+          "269455"
+        ]
+      },
+      {
+        "team_id": 515,
+        "kind": "unbeaten",
+        "match_count": 1,
+        "matchday_start": 2,
+        "matchday_end": 2,
+        "match_ids": [
+          "269426"
+        ]
+      },
+      {
+        "team_id": 48,
+        "kind": "unbeaten",
+        "match_count": 2,
+        "matchday_start": 3,
+        "matchday_end": 4,
+        "match_ids": [
+          "269432",
+          "269442"
+        ]
+      },
+      {
+        "team_id": 81,
+        "kind": "unbeaten",
+        "match_count": 3,
+        "matchday_start": 3,
+        "matchday_end": 5,
+        "match_ids": [
+          "269437",
+          "269439",
+          "269449"
+        ]
+      },
+      {
+        "team_id": 58,
+        "kind": "unbeaten",
+        "match_count": 2,
+        "matchday_start": 4,
+        "matchday_end": 5,
+        "match_ids": [
+          "269445",
+          "269457"
+        ]
+      },
+      {
+        "team_id": 62,
+        "kind": "unbeaten",
+        "match_count": 3,
+        "matchday_start": 4,
+        "matchday_end": 6,
+        "match_ids": [
+          "269444",
+          "269457",
+          "269464"
+        ]
+      },
+      {
+        "team_id": 84,
+        "kind": "unbeaten",
+        "match_count": 2,
+        "matchday_start": 4,
+        "matchday_end": 5,
+        "match_ids": [
+          "269441",
+          "269450"
+        ]
+      },
+      {
+        "team_id": 411,
+        "kind": "unbeaten",
+        "match_count": 1,
+        "matchday_start": 4,
+        "matchday_end": 4,
+        "match_ids": [
+          "269446"
+        ]
+      },
+      {
+        "team_id": 473,
+        "kind": "unbeaten",
+        "match_count": 2,
+        "matchday_start": 4,
+        "matchday_end": 5,
+        "match_ids": [
+          "269439",
+          "269450"
+        ]
+      },
+      {
+        "team_id": 95,
+        "kind": "unbeaten",
+        "match_count": 2,
+        "matchday_start": 5,
+        "matchday_end": 6,
+        "match_ids": [
+          "269452",
+          "269467"
+        ]
+      },
+      {
+        "team_id": 99,
+        "kind": "unbeaten",
+        "match_count": 2,
+        "matchday_start": 5,
+        "matchday_end": 6,
+        "match_ids": [
+          "269449",
+          "269459"
+        ]
+      },
+      {
+        "team_id": 510,
+        "kind": "unbeaten",
+        "match_count": 2,
+        "matchday_start": 5,
+        "matchday_end": 6,
+        "match_ids": [
+          "269456",
+          "269463"
+        ]
+      },
+      {
+        "team_id": 87,
+        "kind": "unbeaten",
+        "match_count": 1,
+        "matchday_start": 6,
+        "matchday_end": 6,
+        "match_ids": [
+          "269459"
+        ]
+      },
+      {
+        "team_id": 359,
+        "kind": "unbeaten",
+        "match_count": 1,
+        "matchday_start": 6,
+        "matchday_end": 6,
+        "match_ids": [
+          "269461"
+        ]
+      },
+      {
+        "team_id": 411,
+        "kind": "unbeaten",
+        "match_count": 1,
+        "matchday_start": 6,
+        "matchday_end": 6,
+        "match_ids": [
+          "269466"
+        ]
+      },
+      {
+        "team_id": 515,
+        "kind": "unbeaten",
+        "match_count": 1,
+        "matchday_start": 6,
+        "matchday_end": 6,
+        "match_ids": [
+          "269458"
+        ]
+      },
+      {
+        "team_id": 48,
+        "kind": "winless",
+        "match_count": 2,
+        "matchday_start": 1,
+        "matchday_end": 2,
+        "match_ids": [
+          "269411",
+          "269426"
+        ]
+      },
+      {
+        "team_id": 72,
+        "kind": "winless",
+        "match_count": 1,
+        "matchday_start": 1,
+        "matchday_end": 1,
+        "match_ids": [
+          "269413"
+        ]
+      },
+      {
+        "team_id": 87,
+        "kind": "winless",
+        "match_count": 6,
+        "matchday_start": 1,
+        "matchday_end": 6,
+        "match_ids": [
+          "269411",
+          "269421",
+          "269428",
+          "269440",
+          "269448",
+          "269459"
+        ]
+      },
+      {
+        "team_id": 95,
+        "kind": "winless",
+        "match_count": 2,
+        "matchday_start": 1,
+        "matchday_end": 2,
+        "match_ids": [
+          "269413",
+          "269427"
+        ]
+      },
+      {
+        "team_id": 104,
+        "kind": "winless",
+        "match_count": 2,
+        "matchday_start": 1,
+        "matchday_end": 2,
+        "match_ids": [
+          "269412",
+          "269423"
+        ]
+      },
+      {
+        "team_id": 145,
+        "kind": "winless",
+        "match_count": 1,
+        "matchday_start": 1,
+        "matchday_end": 1,
+        "match_ids": [
+          "269409"
+        ]
+      },
+      {
+        "team_id": 411,
+        "kind": "winless",
+        "match_count": 3,
+        "matchday_start": 1,
+        "matchday_end": 3,
+        "match_ids": [
+          "269416",
+          "269422",
+          "269437"
+        ]
+      },
+      {
+        "team_id": 510,
+        "kind": "winless",
+        "match_count": 6,
+        "matchday_start": 1,
+        "matchday_end": 6,
+        "match_ids": [
+          "269410",
+          "269419",
+          "269435",
+          "269446",
+          "269456",
+          "269463"
+        ]
+      },
+      {
+        "team_id": 62,
+        "kind": "winless",
+        "match_count": 2,
+        "matchday_start": 2,
+        "matchday_end": 3,
+        "match_ids": [
+          "269418",
+          "269431"
+        ]
+      },
+      {
+        "team_id": 76,
+        "kind": "winless",
+        "match_count": 1,
+        "matchday_start": 2,
+        "matchday_end": 2,
+        "match_ids": [
+          "269418"
+        ]
+      },
+      {
+        "team_id": 359,
+        "kind": "winless",
+        "match_count": 4,
+        "matchday_start": 2,
+        "matchday_end": 5,
+        "match_ids": [
+          "269424",
+          "269434",
+          "269444",
+          "269454"
+        ]
+      },
+      {
+        "team_id": 58,
+        "kind": "winless",
+        "match_count": 4,
+        "matchday_start": 3,
+        "matchday_end": 6,
+        "match_ids": [
+          "269436",
+          "269445",
+          "269457",
+          "269460"
+        ]
+      },
+      {
+        "team_id": 88,
+        "kind": "winless",
+        "match_count": 4,
+        "matchday_start": 3,
+        "matchday_end": 6,
+        "match_ids": [
+          "269432",
+          "269443",
+          "269451",
+          "269463"
+        ]
+      },
+      {
+        "team_id": 473,
+        "kind": "winless",
+        "match_count": 4,
+        "matchday_start": 3,
+        "matchday_end": 6,
+        "match_ids": [
+          "269433",
+          "269439",
+          "269450",
+          "269467"
+        ]
+      },
+      {
+        "team_id": 515,
+        "kind": "winless",
+        "match_count": 3,
+        "matchday_start": 3,
+        "matchday_end": 5,
+        "match_ids": [
+          "269429",
+          "269441",
+          "269452"
+        ]
+      },
+      {
+        "team_id": 72,
+        "kind": "winless",
+        "match_count": 1,
+        "matchday_start": 4,
+        "matchday_end": 4,
+        "match_ids": [
+          "269438"
+        ]
+      },
+      {
+        "team_id": 81,
+        "kind": "winless",
+        "match_count": 3,
+        "matchday_start": 4,
+        "matchday_end": 6,
+        "match_ids": [
+          "269439",
+          "269449",
+          "269462"
+        ]
+      },
+      {
+        "team_id": 99,
+        "kind": "winless",
+        "match_count": 3,
+        "matchday_start": 4,
+        "matchday_end": 6,
+        "match_ids": [
+          "269442",
+          "269449",
+          "269459"
+        ]
+      },
+      {
+        "team_id": 145,
+        "kind": "winless",
+        "match_count": 1,
+        "matchday_start": 4,
+        "matchday_end": 4,
+        "match_ids": [
+          "269443"
+        ]
+      },
+      {
+        "team_id": 178,
+        "kind": "winless",
+        "match_count": 1,
+        "matchday_start": 4,
+        "matchday_end": 4,
+        "match_ids": [
+          "269445"
+        ]
+      },
+      {
+        "team_id": 84,
+        "kind": "winless",
+        "match_count": 2,
+        "matchday_start": 5,
+        "matchday_end": 6,
+        "match_ids": [
+          "269450",
+          "269466"
+        ]
+      },
+      {
+        "team_id": 149,
+        "kind": "winless",
+        "match_count": 2,
+        "matchday_start": 5,
+        "matchday_end": 6,
+        "match_ids": [
+          "269456",
+          "269461"
+        ]
+      },
+      {
+        "team_id": 72,
+        "kind": "winless",
+        "match_count": 1,
+        "matchday_start": 6,
+        "matchday_end": 6,
+        "match_ids": [
+          "269458"
+        ]
+      },
+      {
+        "team_id": 145,
+        "kind": "winless",
+        "match_count": 1,
+        "matchday_start": 6,
+        "matchday_end": 6,
+        "match_ids": [
+          "269464"
+        ]
+      },
+      {
+        "team_id": 58,
+        "kind": "winning",
+        "match_count": 2,
+        "matchday_start": 1,
+        "matchday_end": 2,
+        "match_ids": [
+          "269408",
+          "269421"
+        ]
+      },
+      {
+        "team_id": 62,
+        "kind": "winning",
+        "match_count": 1,
+        "matchday_start": 1,
+        "matchday_end": 1,
+        "match_ids": [
+          "269410"
+        ]
+      },
+      {
+        "team_id": 88,
+        "kind": "winning",
+        "match_count": 2,
+        "matchday_start": 1,
+        "matchday_end": 2,
+        "match_ids": [
+          "269415",
+          "269422"
+        ]
+      },
+      {
+        "team_id": 178,
+        "kind": "winning",
+        "match_count": 3,
+        "matchday_start": 1,
+        "matchday_end": 3,
+        "match_ids": [
+          "269417",
+          "269427",
+          "269435"
+        ]
+      },
+      {
+        "team_id": 359,
+        "kind": "winning",
+        "match_count": 1,
+        "matchday_start": 1,
+        "matchday_end": 1,
+        "match_ids": [
+          "269412"
+        ]
+      },
+      {
+        "team_id": 72,
+        "kind": "winning",
+        "match_count": 2,
+        "matchday_start": 2,
+        "matchday_end": 3,
+        "match_ids": [
+          "269425",
+          "269436"
+        ]
+      },
+      {
+        "team_id": 84,
+        "kind": "winning",
+        "match_count": 1,
+        "matchday_start": 2,
+        "matchday_end": 2,
+        "match_ids": [
+          "269424"
+        ]
+      },
+      {
+        "team_id": 145,
+        "kind": "winning",
+        "match_count": 2,
+        "matchday_start": 2,
+        "matchday_end": 3,
+        "match_ids": [
+          "269419",
+          "269434"
+        ]
+      },
+      {
+        "team_id": 473,
+        "kind": "winning",
+        "match_count": 1,
+        "matchday_start": 2,
+        "matchday_end": 2,
+        "match_ids": [
+          "269420"
+        ]
+      },
+      {
+        "team_id": 515,
+        "kind": "winning",
+        "match_count": 1,
+        "matchday_start": 2,
+        "matchday_end": 2,
+        "match_ids": [
+          "269426"
+        ]
+      },
+      {
+        "team_id": 48,
+        "kind": "winning",
+        "match_count": 2,
+        "matchday_start": 3,
+        "matchday_end": 4,
+        "match_ids": [
+          "269432",
+          "269442"
+        ]
+      },
+      {
+        "team_id": 76,
+        "kind": "winning",
+        "match_count": 4,
+        "matchday_start": 3,
+        "matchday_end": 6,
+        "match_ids": [
+          "269433",
+          "269447",
+          "269453",
+          "269462"
+        ]
+      },
+      {
+        "team_id": 81,
+        "kind": "winning",
+        "match_count": 1,
+        "matchday_start": 3,
+        "matchday_end": 3,
+        "match_ids": [
+          "269437"
+        ]
+      },
+      {
+        "team_id": 99,
+        "kind": "winning",
+        "match_count": 1,
+        "matchday_start": 3,
+        "matchday_end": 3,
+        "match_ids": [
+          "269429"
+        ]
+      },
+      {
+        "team_id": 104,
+        "kind": "winning",
+        "match_count": 1,
+        "matchday_start": 3,
+        "matchday_end": 3,
+        "match_ids": [
+          "269431"
+        ]
+      },
+      {
+        "team_id": 149,
+        "kind": "winning",
+        "match_count": 2,
+        "matchday_start": 3,
+        "matchday_end": 4,
+        "match_ids": [
+          "269430",
+          "269440"
+        ]
+      },
+      {
+        "team_id": 62,
+        "kind": "winning",
+        "match_count": 1,
+        "matchday_start": 4,
+        "matchday_end": 4,
+        "match_ids": [
+          "269444"
+        ]
+      },
+      {
+        "team_id": 84,
+        "kind": "winning",
+        "match_count": 1,
+        "matchday_start": 4,
+        "matchday_end": 4,
+        "match_ids": [
+          "269441"
+        ]
+      },
+      {
+        "team_id": 411,
+        "kind": "winning",
+        "match_count": 1,
+        "matchday_start": 4,
+        "matchday_end": 4,
+        "match_ids": [
+          "269446"
+        ]
+      },
+      {
+        "team_id": 95,
+        "kind": "winning",
+        "match_count": 2,
+        "matchday_start": 5,
+        "matchday_end": 6,
+        "match_ids": [
+          "269452",
+          "269467"
+        ]
+      },
+      {
+        "team_id": 104,
+        "kind": "winning",
+        "match_count": 1,
+        "matchday_start": 5,
+        "matchday_end": 5,
+        "match_ids": [
+          "269451"
+        ]
+      },
+      {
+        "team_id": 62,
+        "kind": "winning",
+        "match_count": 1,
+        "matchday_start": 6,
+        "matchday_end": 6,
+        "match_ids": [
+          "269464"
+        ]
+      },
+      {
+        "team_id": 359,
+        "kind": "winning",
+        "match_count": 1,
+        "matchday_start": 6,
+        "matchday_end": 6,
+        "match_ids": [
+          "269461"
+        ]
+      },
+      {
+        "team_id": 411,
+        "kind": "winning",
+        "match_count": 1,
+        "matchday_start": 6,
+        "matchday_end": 6,
+        "match_ids": [
+          "269466"
+        ]
+      },
+      {
+        "team_id": 515,
+        "kind": "winning",
+        "match_count": 1,
+        "matchday_start": 6,
+        "matchday_end": 6,
+        "match_ids": [
+          "269458"
+        ]
+      }
+    ]
+  },
+  "methodology": {
+    "played_match_policy": "only status=played contributes to totals",
+    "unplayed_match_policy": "excluded; not interpreted as 0-0 or draw",
+    "unknown_card_policy": "total is null if any played match lacks either team value",
+    "streak_order": "matchday, source_match_date, then numeric/source match_id",
+    "streak_gap_policy": "unplayed and incomplete rows are skipped and do not break a run; source equivalence with postponed matches is unverified",
+    "tie_policy": "retain every calculated tie; no source tie-break is inferred",
+    "penalties": "not derived or allocated to individual matches"
+  }
+}

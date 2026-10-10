@@ -8,7 +8,7 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
-from .acquisition import AcquisitionBundle, CLASSIFICATION_URL, EXTRACTOR_VERSION
+from .acquisition import AcquisitionBundle, EXTRACTOR_VERSION
 from .models import ClassificationRequest
 
 
@@ -55,12 +55,14 @@ def export_acquisition(
         "schema_version": 1,
         "capture_id": bundle.capture_id,
         "source": "BDFutbol",
-        "url": CLASSIFICATION_URL,
+        "url": bundle.competition.section_url("classification"),
         "final_url": bundle.access.get("final_url"),
         "page_title": bundle.page_title,
-        "competition": "Primera Federación",
-        "season": "2026-27",
-        "group": "II",
+        "competition": bundle.competition.competition,
+        "season": bundle.competition.season,
+        "group": bundle.competition.group_roman,
+        "group_number": bundle.competition.group_number,
+        "bdfutbol_code": bundle.competition.bdfutbol_code,
         "captured_at_utc": bundle.captured_at_utc,
         "extractor_version": EXTRACTOR_VERSION,
         "browser": browser,
