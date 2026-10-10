@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "source": "BDFutbol",
+  "capture_id": "20261010T182210.859321Z-28543363",
+  "captured_at_utc": "2026-10-10T18:22:10.859321+00:00",
+  "requested_url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html?tab=stats",
+  "final_url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html?tab=stats",
+  "http_status": 200,
+  "page_title": "Clasificación 1ª RFEF Grupo II 2026-27 | BDFutbol",
+  "source_html_sha256": "b66485e2e090b1308620b44cbc337ac994e87fcda23af4a15c838db5d3565a85",
+  "chart_data_provider_sha256": "cf8a542df6b01349da13b78496cd784fe455365ab375315de23745680ba14fd5",
+  "competition": "Primera Federación",
+  "season": "2026-27",
+  "group": "II",
+  "extractor_version": "0.1.0",
+  "browser": {
+    "backend": "seleniumbase-pure-cdp",
+    "browser_name": "Chromium",
+    "browser_version": "Chromium 152.0.7977.82 Arch Linux",
+    "browser_executable": "/usr/bin/chromium",
+    "automation_version": "4.55.2",
+    "display": ":0",
+    "uses_xvfb": true,
+    "xvfb_external": true
+  },
+  "match_dataset": {
+    "path": "data/exports/bdfutbol/group2_classification/derived-res01-20261010T102656Z/normalized/matches.json",
+    "sha256": "ac355bf8fff808cea9aa093ebfb274d9313f3137ae89b84132ca11a3e70c7a84",
+    "source_capture_id": "20261010T102656.252222Z-72f200ad",
+    "source_captured_at_utc": "2026-10-10T10:26:56.252397+00:00",
+    "counts": {
+      "teams": 20,
+      "matches": 380,
+      "played": 59,
+      "unplayed": 321,
+      "incomplete": 0,
+      "postponed_by_source_rule": 0,
+      "unplayed_states": {
+        "result_unavailable_at_capture": 1,
+        "scheduled": 320
+      }
+    },
+    "schema_version": 2
+  }
+}
