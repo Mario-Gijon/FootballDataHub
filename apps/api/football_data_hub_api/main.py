@@ -1,42 +1,48 @@
-"""FastAPI entry point for the prepared Group II datasets."""
+"""FastAPI entry point for prepared Group I and Group II datasets."""
 
 from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import AsyncIterator
 
 from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 
-from football_data_hub_api.config import ApiSettings
+from football_data_hub_api.config import (
+    ApiSettings,
+    DEFAULT_GROUP2_REFEREES_CAPTURE,
+    PROJECT_ROOT,
+)
 from football_data_hub_api.dataset import DatasetBundle, DatasetLoadError, load_dataset
-from football_data_hub_api.schemas import (
-    BootstrapResponse,
-    DatasetMetadata,
-    HealthResponse,
-    RefereeBootstrapResponse,
-    ReadinessResponse,
-    StatisticsBootstrapResponse,
-    TopBootstrapResponse,
-)
-from football_data_hub_api.top_dataset import (
-    TopDatasetBundle,
-    TopDatasetLoadError,
-    load_top_dataset,
-)
 from football_data_hub_api.referee_dataset import (
     RefereeDatasetBundle,
     RefereeDatasetLoadError,
     load_referee_dataset,
+)
+from football_data_hub_api.schemas import (
+    BootstrapResponse,
+    DatasetMetadata,
+    HealthResponse,
+    ReadinessResponse,
+    RefereeBootstrapResponse,
+    StatisticsBootstrapResponse,
+    TopBootstrapResponse,
 )
 from football_data_hub_api.statistics_dataset import (
     StatisticsDatasetBundle,
     StatisticsDatasetLoadError,
     load_statistics_dataset,
 )
+from football_data_hub_api.top_dataset import (
+    TopDatasetBundle,
+    TopDatasetLoadError,
+    load_top_dataset,
+)
 
 logger = logging.getLogger("football_data_hub_api")
+GROUP_CODES = {"1": "I", "2": "II"}
 
 
 def create_app(settings: ApiSettings | None = None) -> FastAPI:
@@ -44,50 +50,95 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        app.state.dataset = None
-        app.state.dataset_error = None
-        app.state.top_dataset = None
-        app.state.top_dataset_error = None
+        app.state.datasets = {}
+        app.state.dataset_errors = {}
+        app.state.top_datasets = {}
+        app.state.top_dataset_errors = {}
+        app.state.statistics_datasets = {}
+        app.state.statistics_dataset_errors = {}
         app.state.referee_dataset = None
         app.state.referee_dataset_error = None
-        app.state.statistics_dataset = None
-        app.state.statistics_dataset_error = None
+        app.state.referee_group_errors = {}
+
+        group_settings = {}
+        for group in ("1", "2"):
+            try:
+                group_settings[group] = configured.for_group(group)
+            except (ValueError, TypeError) as exc:
+                app.state.dataset_errors[group] = exc
+                app.state.top_dataset_errors[group] = exc
+                app.state.statistics_dataset_errors[group] = exc
+                app.state.referee_group_errors[GROUP_CODES[group]] = str(exc)
+                continue
+
+            try:
+                app.state.datasets[group] = load_dataset(group_settings[group])
+            except (DatasetLoadError, KeyError, TypeError, ValueError) as exc:
+                app.state.dataset_errors[group] = exc
+                logger.exception("Clasificación y Resultados de Grupo %s no disponibles", group)
+
+            active = app.state.datasets.get(group)
+            try:
+                app.state.top_datasets[group] = load_top_dataset(
+                    group_settings[group],
+                    active_teams=active.bootstrap.teams if active is not None else None,
+                    active_team_capture_id=(
+                        active.bootstrap.metadata.capture_id if active is not None else None
+                    ),
+                )
+            except (TopDatasetLoadError, KeyError, TypeError, ValueError) as exc:
+                app.state.top_dataset_errors[group] = exc
+                logger.exception("Destacados de Grupo %s no están disponibles", group)
+
+            try:
+                app.state.statistics_datasets[group] = load_statistics_dataset(
+                    group_settings[group], active
+                )
+            except (StatisticsDatasetLoadError, KeyError, TypeError, ValueError) as exc:
+                app.state.statistics_dataset_errors[group] = exc
+                logger.exception("Estadísticas de Grupo %s no están disponibles", group)
+
         try:
-            app.state.dataset = load_dataset(configured)
-        except (DatasetLoadError, KeyError, TypeError, ValueError) as exc:
-            app.state.dataset_error = exc
-            logger.exception("API arrancada sin dataset preparado")
-        try:
-            active = app.state.dataset
-            app.state.top_dataset = load_top_dataset(
-                configured,
-                active_teams=active.bootstrap.teams if active is not None else None,
-                active_team_capture_id=active.bootstrap.metadata.capture_id if active is not None else None,
+            referee_root = configured.referees_root or (
+                PROJECT_ROOT / DEFAULT_GROUP2_REFEREES_CAPTURE
+            ).resolve()
+            match_sources: dict[str, tuple[Path, Path]] = {}
+            if "1" in group_settings and "1" in app.state.datasets:
+                match_sources["I"] = (
+                    group_settings["1"].matches_path,
+                    group_settings["1"].referee_match_reference_path
+                    or group_settings["1"].capture_metadata_path.parent
+                    / "validation/referee_reference.json",
+                )
+            if "2" in group_settings and "2" in app.state.datasets:
+                match_sources["II"] = (
+                    group_settings["2"].matches_path,
+                    referee_root / "validation/match_reference.json",
+                )
+            app.state.referee_dataset = load_referee_dataset(
+                configured, group_match_sources=match_sources
             )
-        except (TopDatasetLoadError, KeyError, TypeError, ValueError) as exc:
-            app.state.top_dataset_error = exc
-            logger.exception("Destacados no está disponible; clasificación y resultados siguen aislados")
-        try:
-            app.state.referee_dataset = load_referee_dataset(configured)
+            app.state.referee_group_errors.update(
+                app.state.referee_dataset.group_reference_errors
+            )
+            for group in ("1", "2"):
+                code = GROUP_CODES[group]
+                if group in group_settings and group not in app.state.datasets:
+                    app.state.referee_group_errors.setdefault(
+                        code, "La captura de Resultados del grupo no está disponible"
+                    )
         except (RefereeDatasetLoadError, KeyError, TypeError, ValueError) as exc:
             app.state.referee_dataset_error = exc
             logger.exception("Árbitros no está disponible; el resto de secciones sigue aislado")
-        try:
-            app.state.statistics_dataset = load_statistics_dataset(
-                configured, app.state.dataset
-            )
-        except (StatisticsDatasetLoadError, KeyError, TypeError, ValueError) as exc:
-            app.state.statistics_dataset_error = exc
-            logger.exception("Estadísticas no está disponible; el resto de secciones sigue aislado")
         yield
 
     app = FastAPI(
-        title="FootballDataHub Group II API",
+        title="FootballDataHub API",
         description=(
-            "API de solo lectura para los datos preparados de Primera Federación "
-            "2026/27 Grupo II. Los filtros interactivos se calculan en el cliente."
+            "API de solo lectura para Primera Federación 2026/27, Grupos I y II. "
+            "Los filtros interactivos se calculan en el cliente."
         ),
-        version="1.0.0",
+        version="1.1.0",
         lifespan=lifespan,
     )
     app.add_middleware(
@@ -98,25 +149,15 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         allow_headers=["If-None-Match", "Content-Type"],
     )
 
-    @app.get(
-        "/health",
-        response_model=HealthResponse,
-        tags=["service"],
-        summary="Liveness del proceso",
-    )
+    @app.get("/health", response_model=HealthResponse, tags=["service"])
     def health(request: Request) -> HealthResponse:
         return HealthResponse(
-            status="ok", dataset_ready=request.app.state.dataset is not None
+            status="ok", dataset_ready=request.app.state.datasets.get("2") is not None
         )
 
-    @app.get(
-        "/ready",
-        response_model=ReadinessResponse,
-        tags=["service"],
-        summary="Preparación del dataset",
-    )
+    @app.get("/ready", response_model=ReadinessResponse, tags=["service"])
     def readiness(request: Request) -> ReadinessResponse:
-        bundle = _require_dataset(request)
+        bundle = _require_group_dataset(request, "2")
         return ReadinessResponse(
             status="ready",
             capture_id=bundle.bootstrap.metadata.capture_id,
@@ -124,23 +165,86 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         )
 
     @app.get(
-        "/api/v1/group2/metadata",
-        response_model=DatasetMetadata,
-        tags=["group2"],
-        summary="Metadatos y cobertura del dataset de Grupo II",
+        "/api/v1/groups/{group}/bootstrap",
+        response_model=BootstrapResponse,
+        tags=["groups"],
+        summary="Clasificación y resultados preparados para un grupo",
     )
-    def group2_metadata(request: Request) -> DatasetMetadata:
-        bundle = _require_dataset(request)
-        return bundle.bootstrap.metadata
+    def group_bootstrap(
+        group: str, request: Request, response: Response
+    ) -> BootstrapResponse | Response:
+        return _conditional_response(
+            request,
+            response,
+            _require_group_dataset(request, group),
+            group,
+            "classification",
+        )
 
     @app.get(
-        "/api/v1/group2/bootstrap",
-        response_model=BootstrapResponse,
-        tags=["group2"],
-        summary="Dataset completo para iniciar el dashboard",
+        "/api/v1/groups/{group}/top/bootstrap",
+        response_model=TopBootstrapResponse,
+        tags=["groups", "top"],
+        summary="Destacados preparados para un grupo",
     )
+    def group_top_bootstrap(
+        group: str, request: Request, response: Response
+    ) -> TopBootstrapResponse | Response:
+        return _conditional_response(
+            request,
+            response,
+            _require_section(request, "top_datasets", "top_dataset_errors", group, "Destacados"),
+            group,
+            "top",
+        )
+
+    @app.get(
+        "/api/v1/groups/{group}/referees/bootstrap",
+        response_model=RefereeBootstrapResponse,
+        tags=["groups", "referees"],
+        summary="Árbitros compartidos con ámbito filtrable por grupo",
+    )
+    def group_referees_bootstrap(
+        group: str, request: Request, response: Response
+    ) -> RefereeBootstrapResponse | Response:
+        _group_code(group)
+        bundle = request.app.state.referee_dataset
+        if bundle is None:
+            raise _section_unavailable("Árbitros", request.app.state.referee_dataset_error)
+        _require_referee_group(request, group)
+        return _conditional_response(request, response, bundle, group, "referees")
+
+    @app.get(
+        "/api/v1/groups/{group}/statistics/bootstrap",
+        response_model=StatisticsBootstrapResponse,
+        tags=["groups", "statistics"],
+        summary="Estadísticas preparadas para un grupo",
+    )
+    def group_statistics_bootstrap(
+        group: str, request: Request, response: Response
+    ) -> StatisticsBootstrapResponse | Response:
+        return _conditional_response(
+            request,
+            response,
+            _require_section(
+                request,
+                "statistics_datasets",
+                "statistics_dataset_errors",
+                group,
+                "Estadísticas",
+            ),
+            group,
+            "statistics",
+        )
+
+    # Compatibility aliases: legacy clients remain on the Group II dataset and ETags.
+    @app.get("/api/v1/group2/metadata", response_model=DatasetMetadata, tags=["group2"])
+    def group2_metadata(request: Request) -> DatasetMetadata:
+        return _require_group_dataset(request, "2").bootstrap.metadata
+
+    @app.get("/api/v1/group2/bootstrap", response_model=BootstrapResponse, tags=["group2"])
     def group2_bootstrap(request: Request, response: Response) -> BootstrapResponse | Response:
-        bundle = _require_dataset(request)
+        bundle = _require_group_dataset(request, "2")
         response.headers["ETag"] = bundle.etag
         if _etag_matches(request.headers.get("if-none-match"), bundle.etag):
             return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": bundle.etag})
@@ -150,10 +254,9 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         "/api/v1/group2/top/bootstrap",
         response_model=TopBootstrapResponse,
         tags=["group2", "top"],
-        summary="Datos preparados de rankings y jugadores destacados",
     )
     def group2_top_bootstrap(request: Request, response: Response) -> TopBootstrapResponse | Response:
-        bundle = _require_top_dataset(request)
+        bundle = _require_section(request, "top_datasets", "top_dataset_errors", "2", "Destacados")
         response.headers["ETag"] = bundle.etag
         if _etag_matches(request.headers.get("if-none-match"), bundle.etag):
             return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": bundle.etag})
@@ -163,12 +266,12 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         "/api/v1/group2/referees/bootstrap",
         response_model=RefereeBootstrapResponse,
         tags=["group2", "referees"],
-        summary="Datos preparados de árbitros de la temporada 2026/27",
     )
-    def group2_referees_bootstrap(
-        request: Request, response: Response
-    ) -> RefereeBootstrapResponse | Response:
-        bundle = _require_referee_dataset(request)
+    def group2_referees_bootstrap(request: Request, response: Response) -> RefereeBootstrapResponse | Response:
+        bundle = request.app.state.referee_dataset
+        if bundle is None:
+            raise _section_unavailable("Árbitros", request.app.state.referee_dataset_error)
+        _require_referee_group(request, "2")
         response.headers["ETag"] = bundle.etag
         if _etag_matches(request.headers.get("if-none-match"), bundle.etag):
             return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": bundle.etag})
@@ -178,12 +281,11 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         "/api/v1/group2/statistics/bootstrap",
         response_model=StatisticsBootstrapResponse,
         tags=["group2", "statistics"],
-        summary="Estadísticas, récords, rachas y series de la competición",
     )
-    def group2_statistics_bootstrap(
-        request: Request, response: Response
-    ) -> StatisticsBootstrapResponse | Response:
-        bundle = _require_statistics_dataset(request)
+    def group2_statistics_bootstrap(request: Request, response: Response) -> StatisticsBootstrapResponse | Response:
+        bundle = _require_section(
+            request, "statistics_datasets", "statistics_dataset_errors", "2", "Estadísticas"
+        )
         response.headers["ETag"] = bundle.etag
         if _etag_matches(request.headers.get("if-none-match"), bundle.etag):
             return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": bundle.etag})
@@ -192,47 +294,63 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
     return app
 
 
-def _require_dataset(request: Request) -> DatasetBundle:
-    bundle = request.app.state.dataset
-    if bundle is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="El dataset configurado no está disponible o no superó la validación.",
-        )
-    return bundle
+def _group_code(group: str) -> str:
+    code = GROUP_CODES.get(group)
+    if code is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Grupo desconocido")
+    return code
 
 
-def _require_top_dataset(request: Request) -> TopDatasetBundle:
-    bundle = request.app.state.top_dataset
+def _require_group_dataset(request: Request, group: str) -> DatasetBundle:
+    _group_code(group)
+    bundle = request.app.state.datasets.get(group)
     if bundle is None:
-        detail = "Destacados no está disponible: la captura independiente no superó la validación."
-        error = request.app.state.top_dataset_error
+        error = request.app.state.dataset_errors.get(group)
+        detail = "El dataset configurado de Clasificación y Resultados no superó la validación."
         if error:
             detail = f"{detail} Diagnóstico: {error}"
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=detail)
     return bundle
 
 
-def _require_referee_dataset(request: Request) -> RefereeDatasetBundle:
-    bundle = request.app.state.referee_dataset
+def _require_section(
+    request: Request, bundle_state: str, error_state: str, group: str, label: str
+) -> TopDatasetBundle | StatisticsDatasetBundle:
+    _group_code(group)
+    bundle = getattr(request.app.state, bundle_state).get(group)
     if bundle is None:
-        detail = "Árbitros no está disponible: su captura independiente no superó la validación."
-        error = request.app.state.referee_dataset_error
-        if error:
-            detail = f"{detail} Diagnóstico: {error}"
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=detail)
+        error = getattr(request.app.state, error_state).get(group)
+        raise _section_unavailable(f"{label} de Grupo {GROUP_CODES[group]}", error)
     return bundle
 
 
-def _require_statistics_dataset(request: Request) -> StatisticsDatasetBundle:
-    bundle = request.app.state.statistics_dataset
-    if bundle is None:
-        detail = "Estadísticas no está disponible: la captura independiente no coincide con Resultados o no superó la validación."
-        error = request.app.state.statistics_dataset_error
-        if error:
-            detail = f"{detail} Diagnóstico: {error}"
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=detail)
-    return bundle
+def _require_referee_group(request: Request, group: str) -> None:
+    code = _group_code(group)
+    error = request.app.state.referee_group_errors.get(code)
+    if error:
+        raise _section_unavailable(f"Árbitros de Grupo {code}", ValueError(error))
+
+
+def _section_unavailable(label: str, error: Exception | None) -> HTTPException:
+    detail = f"{label} no está disponible: la captura independiente no superó la validación."
+    if error:
+        detail = f"{detail} Diagnóstico: {error}"
+    return HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=detail)
+
+
+def _conditional_response(
+    request: Request,
+    response: Response,
+    bundle: DatasetBundle | TopDatasetBundle | RefereeDatasetBundle | StatisticsDatasetBundle,
+    group: str,
+    section: str,
+) -> object:
+    dataset_version = bundle.bootstrap.metadata.dataset_version
+    etag = f'"group-{group}-{section}-api1-{dataset_version}"'
+    response.headers["ETag"] = etag
+    if _etag_matches(request.headers.get("if-none-match"), etag):
+        return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": etag})
+    return bundle.bootstrap
 
 
 def _etag_matches(header: str | None, etag: str) -> bool:

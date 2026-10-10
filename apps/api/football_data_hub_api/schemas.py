@@ -264,6 +264,17 @@ class TopForeignersSummary(TopApiModel):
     country_options: list[TopCountryOption]
 
 
+class TopAffiliationSource(TopApiModel):
+    team_id: StrictInt = Field(gt=0)
+    team_name: str = Field(min_length=1)
+    source_records: list[str] = Field(min_length=1)
+
+
+class TopAffiliationConflict(TopApiModel):
+    player_id: StrictInt = Field(gt=0)
+    affiliations: list[TopAffiliationSource] = Field(min_length=2)
+
+
 class TopCategoryOption(TopApiModel):
     source_value: str
     category: TopCategory
@@ -293,6 +304,8 @@ class TopBootstrapResponse(TopApiModel):
     foreigners: list[TopForeignPlayerResponse]
     foreigners_summary: TopForeignersSummary
     coverage_note: str
+    warnings: list[str]
+    affiliation_conflicts: list[TopAffiliationConflict]
 
 
 RefereeScope = Literal["all", "group1", "group2"]
@@ -319,6 +332,14 @@ class RefereeMetadataResponse(RefereeApiModel):
     related_matches_capture_id: str
     related_matches_captured_at: datetime
     match_reference_status: Literal["consistent", "discrepancies"]
+    related_match_datasets: dict[str, "RefereeRelatedMatchDataset"]
+
+
+class RefereeRelatedMatchDataset(RefereeApiModel):
+    capture_id: str
+    captured_at: datetime
+    sha256: str
+    reference_status: Literal["consistent", "discrepancies"]
 
 
 class RefereeResponse(RefereeApiModel):

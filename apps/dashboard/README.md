@@ -1,6 +1,6 @@
-# Dashboard de clasificación del Grupo II
+# Dashboard de Primera Federación — Grupos I y II
 
-Aplicación independiente en React, TypeScript estricto, Vite y Recharts. No importa el scraper Python y no realiza solicitudes a BDFutbol. Carga una vez el endpoint `GET /api/v1/group2/bootstrap` y calcula las vistas de clasificación en cliente.
+Aplicación única en React, TypeScript estricto, Vite y Recharts. No importa el scraper Python y no realiza solicitudes a BDFutbol. El selector de la cabecera carga bootstraps desde `/api/v1/groups/1/...` o `/api/v1/groups/2/...`; Grupo II es la selección inicial. Las rutas antiguas de Grupo II siguen soportadas por FastAPI para clientes anteriores.
 
 ## Ejecutar en local
 
@@ -15,7 +15,7 @@ Abre `http://127.0.0.1:5173/`. Vite envía `/api/*` a `http://127.0.0.1:8000` de
 
 ## Datos y filtros
 
-El contrato de respuesta se valida en ejecución con Zod antes de usarlo. Una respuesta incompatible o un API no disponible lleva a una vista de error con reintento. Al cargar se crean índices por `team_id` y `match_id`; los resultados se conservan en memoria mientras el usuario cambia filtros, que no vuelven a consultar la API.
+Cada respuesta se valida en ejecución con Zod, incluido el grupo pedido, antes de usarla. Una respuesta incompatible o un API no disponible lleva a una vista de error con reintento. Los índices y caches se mantienen por grupo y sección; los filtros de interfaz no vuelven a consultar la API. La selección de pestaña se mantiene al cambiar de grupo y los filtros internos permanecen separados.
 
 El motor de `src/domain/classification/engine.ts` reproduce las reglas documentadas del motor BDFutbol: general/local/visitante, tope de jornada, inclusión de partidos aplazados según la regla de la fuente, rangos inclusivos por fechas de partido o jornadas y desempates. Ignora encuentros no disputados y no trata un marcador ausente como 0–0. Si faltan tarjetas en una igualdad, conserva el orden del catálogo y expone una advertencia en vez de inventar el criterio disciplinario.
 

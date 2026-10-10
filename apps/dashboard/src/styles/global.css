@@ -131,6 +131,28 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 }
 
 .topbar-divider { color: var(--text-subtle); }
+.group-picker select {
+  min-height: 30px;
+  padding: 0 26px 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--text);
+  background: var(--surface);
+  font: inherit;
+  cursor: pointer;
+}
+.group-picker select:focus-visible { outline: 2px solid var(--purple-light); outline-offset: 2px; }
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 .topbar-season { color: var(--text-subtle); font-size: 11px; }
 .topbar-season strong { margin-left: 5px; color: var(--text); font-family: var(--mono); font-size: 12px; font-weight: 500; }
 

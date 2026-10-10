@@ -182,19 +182,22 @@ def _validate_capture(
         or capture.get("source") != "BDFutbol"
         or capture.get("competition") != active.metadata.competition
         or capture.get("season") != active.metadata.season
-        or capture.get("group") != active.metadata.group
         or capture.get("season") != "2026-27"
-        or capture.get("group") != "II"
+        or capture.get("group") != active.metadata.group
         or not capture.get("capture_id")
     ):
-        raise StatisticsDatasetLoadError("La captura no corresponde a Primera Federación Grupo II")
+        raise StatisticsDatasetLoadError(
+            f"La captura no corresponde a Primera Federación Grupo {active.metadata.group}"
+        )
     if capture.get("final_url") != capture.get("requested_url"):
         raise StatisticsDatasetLoadError("La URL final de Estadísticas no coincide con la solicitada")
     if capture.get("source_html_sha256") != hashlib.sha256(files["source_html"]).hexdigest():
         raise StatisticsDatasetLoadError("El hash del HTML original de Estadísticas no coincide")
     if capture.get("chart_data_provider_sha256") != hashlib.sha256(files["chart_data"]).hexdigest():
         raise StatisticsDatasetLoadError("El hash del gráfico original no coincide")
-    access_data = access.get("access")
+    # MULTI-01 exports the original access report directly; earlier REF/STAT
+    # exports wrapped the report under "access". Validate both known layouts.
+    access_data = access.get("access", access)
     if (
         not isinstance(access_data, dict)
         or access_data.get("status") != "VALID"

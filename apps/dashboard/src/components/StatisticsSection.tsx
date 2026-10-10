@@ -17,6 +17,7 @@ interface StatisticsSectionProps {
   loadState: "idle" | "loading" | "error" | "ready";
   errorMessage: string;
   onRetry: () => void;
+  idSuffix?: string;
 }
 
 type RoundMetric = "goals" | "yellow_cards" | "red_cards";
@@ -48,17 +49,18 @@ export function StatisticsSection({
   loadState,
   errorMessage,
   onRetry,
+  idSuffix = "",
 }: StatisticsSectionProps) {
   if (loadState === "idle" || loadState === "loading") {
     return (
-      <section className="statistics-state" role="tabpanel" id="statistics-panel" aria-labelledby="statistics-tab" aria-busy="true">
+      <section className="statistics-state" role="tabpanel" id={`statistics-panel${idSuffix}`} aria-labelledby={`statistics-tab${idSuffix}`} aria-busy="true">
         <div className="state-card" role="status"><span className="loading-ball" /><h1>Cargando estadísticas…</h1></div>
       </section>
     );
   }
   if (loadState === "error" || !data) {
     return (
-      <section className="statistics-state" role="tabpanel" id="statistics-panel" aria-labelledby="statistics-tab">
+      <section className="statistics-state" role="tabpanel" id={`statistics-panel${idSuffix}`} aria-labelledby={`statistics-tab${idSuffix}`}>
         <div className="state-card error-card statistics-error" role="alert">
           <span className="state-icon error-icon">!</span>
           <div><span className="section-kicker">ESTADÍSTICAS NO DISPONIBLES</span><h1>No se pudieron cargar los datos</h1><p>{errorMessage}</p></div>
@@ -67,17 +69,19 @@ export function StatisticsSection({
       </section>
     );
   }
-  return <StatisticsDashboard data={data} teams={teams} matches={matches} />;
+  return <StatisticsDashboard data={data} teams={teams} matches={matches} idSuffix={idSuffix} />;
 }
 
 function StatisticsDashboard({
   data,
   teams,
   matches,
+  idSuffix,
 }: {
   data: StatisticsBootstrap;
   teams: Bootstrap["teams"];
   matches: Bootstrap["matches"];
+  idSuffix: string;
 }) {
   const [visibleMetrics, setVisibleMetrics] = useState<RoundMetric[]>(["goals", "yellow_cards", "red_cards"]);
   const teamsById = useMemo(() => new Map(teams.map((team) => [team.team_id, team])), [teams]);
@@ -91,9 +95,9 @@ function StatisticsDashboard({
   }
 
   return (
-    <section className="statistics-section" role="tabpanel" id="statistics-panel" aria-labelledby="statistics-tab">
+    <section className="statistics-section" role="tabpanel" id={`statistics-panel${idSuffix}`} aria-labelledby={`statistics-tab${idSuffix}`}>
       <header className="competition-hero statistics-hero">
-        <div><span className="section-kicker">PRIMERA FEDERACIÓN · GRUPO II</span><h1>Estadísticas</h1></div>
+        <div><span className="section-kicker">PRIMERA FEDERACIÓN · GRUPO {data.statistics.group}</span><h1>Estadísticas</h1></div>
         <div className="statistics-meta" aria-label="Procedencia de las capturas">
           <span title={`Captura de Resultados ${data.metadata.match_dataset_capture_id}`}>
             Resultados <time dateTime={data.metadata.match_dataset_captured_at}>{formatCaptureDate(data.metadata.match_dataset_captured_at)}</time>

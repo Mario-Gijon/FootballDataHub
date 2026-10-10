@@ -14,6 +14,7 @@ from pydantic import ValidationError
 
 from football_data_hub_api.config import ApiSettings, DEFAULT_TOP_CAPTURE, PROJECT_ROOT
 from football_data_hub_api.schemas import (
+    TopAffiliationConflict,
     TopAvailability,
     TopBootstrapResponse,
     TopCaptureMetadata,
@@ -69,7 +70,6 @@ _UNIT_BY_CATEGORY = {
 }
 _PROGRESS_CATEGORIES = {"goals", "minutes", "yellow_cards", "red_cards"}
 _EXPECTED_SEASON = "2026-27"
-_EXPECTED_GROUP = "II"
 
 
 class _SourceForeignPlayer(TopPlayerResponse):
@@ -98,7 +98,7 @@ def load_top_dataset(
             "teams",
         )
     }
-    _validate_capture_metadata(decoded)
+    _validate_capture_metadata(decoded, settings.group)
     _validate_source_snapshot(files["source_html"], decoded["capture"])
     team_catalog_digest = hashlib.sha256(files["teams"]).hexdigest()
     team_catalog = decoded["players"]["metadata"].get("related_team_catalog")
@@ -138,7 +138,19 @@ def load_top_dataset(
     except (KeyError, TypeError, ValidationError) as exc:
         raise TopDatasetLoadError("Los registros TOP no cumplen los esquemas públicos") from exc
 
-    _validate_records(decoded, players, rankings, progress, source_foreigners, foreigners, teams)
+    _validate_records(
+        decoded,
+        players,
+        rankings,
+        progress,
+        source_foreigners,
+        foreigners,
+        teams,
+        expected_group=settings.group,
+    )
+    affiliation_conflicts = _validate_source_exceptions(
+        decoded, players, rankings, progress, foreigners, settings.group
+    )
     _validate_active_team_compatibility(players, teams, active_teams)
     if (active_teams is None) != (active_team_capture_id is None):
         raise TopDatasetLoadError("Falta la identidad de captura del catálogo activo compatible")
@@ -218,6 +230,8 @@ def load_top_dataset(
             foreigners=foreigners,
             foreigners_summary=foreigners_summary,
             coverage_note=decoded["rankings"]["coverage_note"],
+            warnings=_public_source_warnings(decoded["validation"], settings.group),
+            affiliation_conflicts=affiliation_conflicts,
         )
     except (KeyError, TypeError, ValidationError) as exc:
         raise TopDatasetLoadError("Los metadatos de TOP no cumplen el contrato esperado") from exc
@@ -289,15 +303,19 @@ def _decode_json(payload: bytes, path: Path) -> dict[str, Any]:
     return value
 
 
-def _validate_capture_metadata(data: dict[str, dict[str, Any]]) -> None:
+def _validate_capture_metadata(
+    data: dict[str, dict[str, Any]], expected_group: str
+) -> None:
     capture = data["capture"]
     validation = data["validation"]
     if validation.get("valid") is not True or validation.get("issues") != []:
         raise TopDatasetLoadError("La captura TOP no superó su validación de origen")
     if capture.get("access", {}).get("status") != "VALID" or capture.get("access", {}).get("http_status") != 200:
         raise TopDatasetLoadError("La captura TOP no acredita acceso válido al contenido deportivo")
-    if capture.get("season") != _EXPECTED_SEASON or capture.get("group") != _EXPECTED_GROUP:
-        raise TopDatasetLoadError("La captura no corresponde a Primera Federación Grupo II 2026/27")
+    if capture.get("season") != _EXPECTED_SEASON or capture.get("group") != expected_group:
+        raise TopDatasetLoadError(
+            f"La captura no corresponde a Primera Federación Grupo {expected_group} 2026/27"
+        )
     capture_id = capture.get("capture_id")
     if not capture_id or capture.get("section") != "top":
         raise TopDatasetLoadError("La identidad de captura TOP no es válida")
@@ -344,6 +362,8 @@ def _validate_records(
     source_foreigners: list[_SourceForeignPlayer],
     foreigners: list[TopForeignPlayerResponse],
     teams: dict[int, dict[str, Any]],
+    *,
+    expected_group: str,
 ) -> None:
     player_ids = [player.player_id for player in players]
     player_set = set(player_ids)
@@ -456,8 +476,18 @@ def _validate_records(
     country_options = summary.get("country_options")
     source_percentage = summary.get("source_percentage")
     denominator_count = summary.get("denominator_count")
+    count_matches = summary.get("source_count") == len(foreigners)
+    documented_group1_gap = (
+        expected_group == "I"
+        and summary.get("source_count") == 60
+        and len(foreigners) == 59
+        and "#tab_estran expone 59 registros, pero el encabezado publica 60; no se ha completado la fila ausente."
+        in data["validation"].get("warnings", [])
+        and data["validation"].get("valid") is True
+        and data["validation"].get("issues") == []
+    )
     if (
-        summary.get("source_count") != len(foreigners)
+        not (count_matches or documented_group1_gap)
         or (source_percentage is not None and (not isinstance(source_percentage, (int, float)) or not 0 <= source_percentage <= 100))
         or (denominator_count is not None and (not isinstance(denominator_count, int) or denominator_count < len(foreigners)))
     ):
@@ -526,3 +556,79 @@ def _validate_active_team_compatibility(
             raise TopDatasetLoadError(
                 f"El team_id {team_id} tiene nombre o URL incompatibles entre TOP y la clasificación activa"
             )
+
+
+def _validate_source_exceptions(
+    data: dict[str, dict[str, Any]],
+    players: list[TopPlayerResponse],
+    rankings: list[TopRankingResponse],
+    progress: list[TopProgressSeries],
+    foreigners: list[TopForeignPlayerResponse],
+    expected_group: str,
+) -> list[TopAffiliationConflict]:
+    """Allow only the one explicitly evidenced foreign-count and affiliation anomaly."""
+
+    raw_conflicts = data["capture"].get("affiliation_conflicts", [])
+    null_team_player_ids = {player.player_id for player in players if player.team_id is None}
+    if expected_group != "I":
+        if raw_conflicts or null_team_player_ids:
+            raise TopDatasetLoadError(
+                "La captura de este grupo contiene afiliaciones sin resolver no documentadas"
+            )
+        return []
+
+    expected_sources = {
+        58: ("Pontevedra", "DESTACATS_JS.LG"),
+        104: ("Deportivo Fabril", "table#tab_estran"),
+    }
+    if not isinstance(raw_conflicts, list) or len(raw_conflicts) != 1:
+        raise TopDatasetLoadError("La captura de Grupo I no conserva el conflicto de afiliación documentado")
+    conflict = raw_conflicts[0]
+    if not isinstance(conflict, dict) or conflict.get("player_id") != 304291:
+        raise TopDatasetLoadError("La excepción de afiliación no corresponde al jugador verificado")
+    affiliations = conflict.get("affiliations")
+    if not isinstance(affiliations, list) or len(affiliations) != 2:
+        raise TopDatasetLoadError("La captura no documenta las dos fuentes de afiliación esperadas")
+    observed_sources: dict[int, tuple[str, tuple[str, ...]]] = {}
+    try:
+        for item in affiliations:
+            observed_sources[int(item["team_id"])] = (
+                str(item["team_name"]),
+                tuple(item["source_records"]),
+            )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise TopDatasetLoadError("Las fuentes de afiliación ambiguas están mal formadas") from exc
+    if observed_sources != {
+        team_id: (name, (source,)) for team_id, (name, source) in expected_sources.items()
+    }:
+        raise TopDatasetLoadError("Las afiliaciones de origen difieren del conflicto documentado")
+    if null_team_player_ids != {304291}:
+        raise TopDatasetLoadError("La captura contiene jugadores sin equipo adicionales o no conserva el conflicto")
+    player = next((item for item in players if item.player_id == 304291), None)
+    if player is None or any(
+        value is not None for value in (player.team_name, player.team_url, player.crest_url)
+    ):
+        raise TopDatasetLoadError("El equipo del jugador ambiguo debe permanecer nulo")
+    if (
+        not any(item.player_id == 304291 for item in rankings)
+        or not any(item.player_id == 304291 for item in progress)
+        or not any(item.player_id == 304291 for item in foreigners)
+    ):
+        raise TopDatasetLoadError("El jugador ambiguo debe conservar rankings, progreso y fila de extranjeros")
+    warning = (
+        "Afiliación de equipo ambigua para player_id=304291; se conserva como null en el catálogo y las fuentes/IDs están en affiliation_conflicts."
+    )
+    if warning not in data["validation"].get("warnings", []):
+        raise TopDatasetLoadError("La afiliación ambigua no está advertida por la validación de origen")
+    try:
+        return [TopAffiliationConflict.model_validate(conflict)]
+    except ValidationError as exc:
+        raise TopDatasetLoadError("El conflicto de afiliación no cumple el contrato") from exc
+
+
+def _public_source_warnings(validation: dict[str, Any], expected_group: str) -> list[str]:
+    warnings = validation.get("warnings", [])
+    if not isinstance(warnings, list) or any(not isinstance(item, str) for item in warnings):
+        raise TopDatasetLoadError("Las advertencias de origen de Destacados tienen formato inválido")
+    # The warnings are taken only from the selected group's validation file.
+    return list(warnings)

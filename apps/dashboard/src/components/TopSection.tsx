@@ -21,6 +21,7 @@ interface TopSectionProps {
   loadState: "idle" | "loading" | "error" | "ready";
   errorMessage: string;
   onRetry: () => void;
+  idSuffix?: string;
 }
 
 type ForeignSortField = "player" | "age" | "matches" | "minutes" | "goals" | "yellow" | "red" | "team";
@@ -46,10 +47,10 @@ export function buildTopProgressData(
   });
 }
 
-export function TopSection({ data, loadState, errorMessage, onRetry }: TopSectionProps) {
+export function TopSection({ data, loadState, errorMessage, onRetry, idSuffix = "" }: TopSectionProps) {
   if (loadState === "idle" || loadState === "loading") {
     return (
-      <section className="top-load-state" role="tabpanel" id="top-panel" aria-labelledby="top-tab" aria-busy="true">
+      <section className="top-load-state" role="tabpanel" id={`top-panel${idSuffix}`} aria-labelledby={`top-tab${idSuffix}`} aria-busy="true">
         <div className="state-card top-inline-state" role="status">
           <span className="loading-ball" />
           <div><span className="section-kicker">DESTACADOS</span><h1>Cargando rankings…</h1></div>
@@ -59,7 +60,7 @@ export function TopSection({ data, loadState, errorMessage, onRetry }: TopSectio
   }
   if (loadState === "error" || !data) {
     return (
-      <section className="top-load-state" role="tabpanel" id="top-panel" aria-labelledby="top-tab">
+      <section className="top-load-state" role="tabpanel" id={`top-panel${idSuffix}`} aria-labelledby={`top-tab${idSuffix}`}>
         <div className="state-card top-inline-state" role="alert">
           <span className="state-icon error-icon">!</span>
           <div><span className="section-kicker">DESTACADOS NO DISPONIBLE</span><h1>No se pudo cargar esta sección</h1><p>{errorMessage}</p></div>
@@ -68,10 +69,10 @@ export function TopSection({ data, loadState, errorMessage, onRetry }: TopSectio
       </section>
     );
   }
-  return <TopDashboard data={data} />;
+  return <TopDashboard data={data} idSuffix={idSuffix} />;
 }
 
-function TopDashboard({ data }: { data: TopBootstrap }) {
+function TopDashboard({ data, idSuffix }: { data: TopBootstrap; idSuffix: string }) {
   const [category, setCategory] = useState<TopCategory>("goals");
   const [showAllGoals, setShowAllGoals] = useState(false);
   const [selectedByCategory, setSelectedByCategory] = useState<Record<TopCategory, number[]>>(
@@ -113,7 +114,7 @@ function TopDashboard({ data }: { data: TopBootstrap }) {
   }
 
   return (
-    <section className="top-section" role="tabpanel" id="top-panel" aria-labelledby="top-tab">
+    <section className="top-section" role="tabpanel" id={`top-panel${idSuffix}`} aria-labelledby={`top-tab${idSuffix}`}>
       <div className="competition-hero top-hero">
         <h1>Destacados</h1>
         <div className="dataset-meta" aria-label="Actualización de Destacados">
@@ -272,7 +273,7 @@ function ForeignersTable({ data, percentageLabel }: { data: TopBootstrap; percen
   return (
     <section className="foreigners-card" aria-labelledby="foreigners-title">
       <div className="section-heading foreigners-heading">
-        <div><span className="section-kicker">PLANTILLA INTERNACIONAL</span><h2 id="foreigners-title">Extranjeros — {data.foreigners_summary.source_count} ({percentageLabel})</h2></div>
+        <div><span className="section-kicker">PLANTILLA INTERNACIONAL</span><h2 id="foreigners-title">Extranjeros — {data.availability.foreign_players}{data.foreigners_summary.source_count !== data.availability.foreign_players ? ` disponibles · ${data.foreigners_summary.source_count} publicados` : ""} ({percentageLabel})</h2></div>
         <label className="country-filter">País
           <select aria-label="Filtrar extranjeros por país" value={country} onChange={(event) => setCountry(event.target.value)}>
             {data.foreigners_summary.country_options.map((option) => <option key={option.code} value={option.code}>{option.label}</option>)}
@@ -321,7 +322,7 @@ function PlayerLink({ player }: { player: TopPlayer }) {
 }
 
 function TopTeamLink({ player }: { player: TopPlayer }) {
-  if (!player.team_name) return <span className="muted-dash">—</span>;
+  if (!player.team_name) return <span className="muted-dash" aria-label="Equipo no determinado">—</span>;
   const content = <>{player.crest_url ? <img className="top-team-crest" src={player.crest_url} alt="" loading="lazy" /> : <span className="top-team-crest-fallback" aria-hidden="true">{player.team_name.slice(0, 1)}</span>}<span>{player.team_name}</span></>;
   return player.team_url ? <a className="top-team-link" href={player.team_url} target="_blank" rel="noreferrer">{content}</a> : <span className="top-team-link">{content}</span>;
 }

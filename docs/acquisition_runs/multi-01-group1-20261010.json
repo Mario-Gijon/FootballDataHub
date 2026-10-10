@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "record_type": "sanitized_acquisition_run",
+  "run_id": "20261010T202500.201160Z-c7065ec5",
+  "source_manifest_sha256": "84bba8a6b2b7508aa6af13732631b9fb927e65013e33f2ec7f7b624224d61896",
+  "started_at_utc": "20261010T202500.201160Z",
+  "finished_at_utc": "2026-10-10T20:25:18.008197+00:00",
+  "season": "2026-27",
+  "requested_groups": [1],
+  "browser_backend": "seleniumbase-pure-cdp",
+  "xvfb_external": true,
+  "published_to_api": false,
+  "group": {
+    "number": 1,
+    "code": "1rf1",
+    "source_url": "https://www.bdfutbol.com/es/t/t2026-271rf1.html",
+    "status": "complete",
+    "sections": {
+      "classification": {
+        "capture_id": "20261010T202500.293648Z-b770724f",
+        "capture_path": "data/exports/bdfutbol/group1_classification/20261010T202500.293648Z-b770724f",
+        "teams": 20,
+        "progress_records": 120
+      },
+      "results": {
+        "source_capture_id": "20261010T202500.293648Z-b770724f",
+        "matches_path": "data/exports/bdfutbol/group1_classification/20261010T202500.293648Z-b770724f/normalized/matches.json",
+        "matches_sha256": "1f9fb43796001c87186d7a8c1f4270d924f32f4dbdba704f39428d6d8201fd0f",
+        "matches": 380,
+        "played": 60,
+        "unplayed": 320,
+        "incomplete": 0
+      },
+      "top": {
+        "capture_id": "20261010T202506.237287Z-c92b19fb",
+        "capture_path": "data/exports/bdfutbol/group1_top/20261010T202506.237287Z-c92b19fb",
+        "players": 180,
+        "rankings": 149,
+        "progress_series": 129,
+        "progress_points": 774,
+        "foreign_rows": 59,
+        "published_foreign_count": 60,
+        "affiliation_conflicts": 1
+      },
+      "statistics": {
+        "capture_id": "20261010T202515.613199Z-6c6e0fd9",
+        "capture_path": "data/exports/bdfutbol/group1_statistics/20261010T202515.613199Z-6c6e0fd9",
+        "matches": 380,
+        "played": 60,
+        "reconciliation_status": "identical"
+      },
+      "referees": {
+        "capture_id": "20261010T171227.617128Z-4cfe71bc",
+        "reference_path": "data/exports/bdfutbol/group1_classification/20261010T202500.293648Z-b770724f/validation/referee_reference.json",
+        "group_scope": "group1",
+        "referee_count": 43,
+        "matched_referee_ids": 43,
+        "identity_conflicts": 0,
+        "statistic_differences": 0
+      }
+    }
+  },
+  "privacy_note": "This portable record intentionally omits machine-local profile paths, absolute paths, commands, and captured console output. The original run manifest is excluded by the repository's /data/analysis ignore rule."
+}

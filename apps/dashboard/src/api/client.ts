@@ -1,23 +1,63 @@
-import { BootstrapSchema, RefereeBootstrapSchema, StatisticsBootstrapSchema, TopBootstrapSchema, type Bootstrap, type RefereeBootstrap, type StatisticsBootstrap, type TopBootstrap } from "./contracts";
+import {
+  BootstrapSchema,
+  RefereeBootstrapSchema,
+  StatisticsBootstrapSchema,
+  TopBootstrapSchema,
+  type Bootstrap,
+  type RefereeBootstrap,
+  type StatisticsBootstrap,
+  type TopBootstrap,
+} from "./contracts";
 
-const configuredBase = import.meta.env.VITE_API_BASE_URL?.trim() ?? "";
-const apiBase = configuredBase.replace(/\/$/, "");
+export type CompetitionGroup = "1" | "2";
 
-export async function loadGroup2Bootstrap(signal?: AbortSignal): Promise<Bootstrap> {
-  return loadEndpoint("/api/v1/group2/bootstrap", BootstrapSchema, signal, "No se pudo conectar con la API de FootballDataHub.", "La respuesta de la API no coincide con el contrato del dashboard.");
+const apiBase = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+
+export function loadGroupBootstrap(group: CompetitionGroup, signal?: AbortSignal): Promise<Bootstrap> {
+  const expectedLabel = group === "1" ? "I" : "II";
+  return loadEndpoint(
+    `/api/v1/groups/${group}/bootstrap`, BootstrapSchema, signal,
+    "No se pudo conectar con la API de FootballDataHub.",
+    "La respuesta de la API no coincide con el contrato del dashboard.",
+    (payload) => payload.metadata.group === expectedLabel,
+  );
 }
 
-export async function loadGroup2TopBootstrap(signal?: AbortSignal): Promise<TopBootstrap> {
-  return loadEndpoint("/api/v1/group2/top/bootstrap", TopBootstrapSchema, signal, "No se pudieron cargar los datos de Destacados.", "La respuesta de Destacados no coincide con el contrato del dashboard.");
+export function loadGroupTopBootstrap(group: CompetitionGroup, signal?: AbortSignal): Promise<TopBootstrap> {
+  const expectedLabel = group === "1" ? "I" : "II";
+  return loadEndpoint(
+    `/api/v1/groups/${group}/top/bootstrap`, TopBootstrapSchema, signal,
+    "No se pudieron cargar los datos de Destacados.",
+    "La respuesta de Destacados no coincide con el contrato del dashboard.",
+    (payload) => payload.metadata.group === expectedLabel,
+  );
 }
 
-export async function loadGroup2RefereesBootstrap(signal?: AbortSignal): Promise<RefereeBootstrap> {
-  return loadEndpoint("/api/v1/group2/referees/bootstrap", RefereeBootstrapSchema, signal, "No se pudieron cargar los datos de Árbitros.", "La respuesta de Árbitros no coincide con el contrato del dashboard.");
+export function loadGroupRefereesBootstrap(group: CompetitionGroup, signal?: AbortSignal): Promise<RefereeBootstrap> {
+  const scope = group === "1" ? "I" : "II";
+  return loadEndpoint(
+    `/api/v1/groups/${group}/referees/bootstrap`, RefereeBootstrapSchema, signal,
+    "No se pudieron cargar los datos de Árbitros.",
+    "La respuesta de Árbitros no coincide con el contrato del dashboard.",
+    (payload) => payload.metadata.group === "I/II" && scope in payload.metadata.related_match_datasets,
+  );
 }
 
-export async function loadGroup2StatisticsBootstrap(signal?: AbortSignal): Promise<StatisticsBootstrap> {
-  return loadEndpoint("/api/v1/group2/statistics/bootstrap", StatisticsBootstrapSchema, signal, "No se pudieron cargar las estadísticas.", "La respuesta de Estadísticas no coincide con el contrato del dashboard.");
+export function loadGroupStatisticsBootstrap(group: CompetitionGroup, signal?: AbortSignal): Promise<StatisticsBootstrap> {
+  const expectedLabel = group === "1" ? "I" : "II";
+  return loadEndpoint(
+    `/api/v1/groups/${group}/statistics/bootstrap`, StatisticsBootstrapSchema, signal,
+    "No se pudieron cargar las estadísticas.",
+    "La respuesta de Estadísticas no coincide con el contrato del dashboard.",
+    (payload) => payload.metadata.group === expectedLabel && payload.statistics.group === expectedLabel,
+  );
 }
+
+// Group II aliases remain available for consumers migrating from the original API.
+export const loadGroup2Bootstrap = (signal?: AbortSignal) => loadGroupBootstrap("2", signal);
+export const loadGroup2TopBootstrap = (signal?: AbortSignal) => loadGroupTopBootstrap("2", signal);
+export const loadGroup2RefereesBootstrap = (signal?: AbortSignal) => loadGroupRefereesBootstrap("2", signal);
+export const loadGroup2StatisticsBootstrap = (signal?: AbortSignal) => loadGroupStatisticsBootstrap("2", signal);
 
 async function loadEndpoint<T>(
   path: string,
@@ -25,6 +65,7 @@ async function loadEndpoint<T>(
   signal: AbortSignal | undefined,
   connectionError: string,
   contractError: string,
+  verifyGroup?: (payload: T) => boolean,
 ): Promise<T> {
   let response: Response;
   try {
@@ -41,7 +82,7 @@ async function loadEndpoint<T>(
       : response.status === 503 && path.includes("/referees/")
         ? "Árbitros no está disponible: su captura independiente no superó la validación."
         : response.status === 503
-          ? "La API todavía no tiene un dataset preparado."
+          ? "La API todavía no tiene un dataset preparado para este grupo."
           : `La API respondió con un error (${response.status}).`;
     throw new Error(detail);
   }
@@ -52,6 +93,6 @@ async function loadEndpoint<T>(
     throw new Error("La API devolvió una respuesta que no es JSON válido.");
   }
   const parsed = schema.safeParse(payload);
-  if (!parsed.success) throw new Error(contractError);
+  if (!parsed.success || (verifyGroup && !verifyGroup(parsed.data))) throw new Error(contractError);
   return parsed.data;
 }

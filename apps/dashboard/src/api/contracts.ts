@@ -249,6 +249,15 @@ export const TopBootstrapSchema = z.object({
     country_options: z.array(z.object({ code: z.string(), label: z.string() }).strict()),
   }).strict(),
   coverage_note: z.string(),
+  warnings: z.array(z.string()),
+  affiliation_conflicts: z.array(z.object({
+    player_id: positiveInteger,
+    affiliations: z.array(z.object({
+      team_id: positiveInteger,
+      team_name: z.string().min(1),
+      source_records: z.array(z.string().min(1)).min(1),
+    }).strict()).min(2),
+  }).strict()),
 }).strict().superRefine((top, context) => {
   const playerIds = new Set(top.players.map((player) => player.player_id));
   if (playerIds.size !== top.players.length) {
@@ -262,6 +271,33 @@ export const TopBootstrapSchema = z.object({
   }
   if (top.foreigners.some((player) => !playerIds.has(player.player_id))) {
     context.addIssue({ code: "custom", message: "La tabla de extranjeros referencia un jugador inexistente." });
+  }
+  if (top.availability.foreign_players !== top.foreigners.length) {
+    context.addIssue({ code: "custom", message: "El recuento disponible de extranjeros no coincide con las filas." });
+  }
+  const hasVerifiedGroupOneGap = top.metadata.group === "I"
+    && top.foreigners_summary.source_count === 60
+    && top.foreigners.length === 59
+    && top.warnings.some((warning) => warning.includes("#tab_estran expone 59 registros"));
+  if (top.foreigners_summary.source_count !== top.foreigners.length && !hasVerifiedGroupOneGap) {
+    context.addIssue({ code: "custom", message: "El recuento de la fuente no coincide con filas ni con la discrepancia documentada." });
+  }
+  const nullTeamIds = top.players.filter((player) => player.team_id === null).map((player) => player.player_id);
+  const conflictIds = top.affiliation_conflicts.map((conflict) => conflict.player_id);
+  if (top.metadata.group === "I") {
+    const conflict = top.affiliation_conflicts.find((item) => item.player_id === 304291);
+    const affiliations = new Map(conflict?.affiliations.map((item) => [item.team_id, item.team_name]));
+    if (nullTeamIds.length !== 1 || nullTeamIds[0] !== 304291
+      || conflictIds.length !== 1
+      || affiliations.get(58) !== "Pontevedra"
+      || affiliations.get(104) !== "Deportivo Fabril"
+      || !top.rankings.some((item) => item.player_id === 304291)
+      || !top.progress.some((item) => item.player_id === 304291)
+      || !top.foreigners.some((item) => item.player_id === 304291)) {
+      context.addIssue({ code: "custom", message: "La afiliación ambigua de Grupo I no conserva su evidencia o sus filas relacionadas." });
+    }
+  } else if (nullTeamIds.length > 0 || conflictIds.length > 0) {
+    context.addIssue({ code: "custom", message: "La captura contiene una afiliación ambigua no documentada para el grupo." });
   }
 });
 
@@ -320,6 +356,20 @@ export const RefereeBootstrapSchema = z.object({
     related_matches_capture_id: z.string().min(1),
     related_matches_captured_at: z.string().datetime({ offset: true }),
     match_reference_status: z.enum(["consistent", "discrepancies"]),
+    related_match_datasets: z.object({
+      I: z.object({
+        capture_id: z.string().min(1),
+        captured_at: z.string().datetime({ offset: true }),
+        sha256: z.string().regex(/^[a-f0-9]{64}$/),
+        reference_status: z.enum(["consistent", "discrepancies"]),
+      }).strict().optional(),
+      II: z.object({
+        capture_id: z.string().min(1),
+        captured_at: z.string().datetime({ offset: true }),
+        sha256: z.string().regex(/^[a-f0-9]{64}$/),
+        reference_status: z.enum(["consistent", "discrepancies"]),
+      }).strict().optional(),
+    }).strict(),
   }).strict(),
   availability: z.object({
     catalog_referee_count: z.number().int().nonnegative(),

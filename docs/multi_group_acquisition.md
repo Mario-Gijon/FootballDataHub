@@ -12,7 +12,7 @@ MULTI-01 generaliza la adquisición de las cinco secciones existentes para Prime
 | Estadísticas | URL, título, grupo y ruta predeterminada de resultados fijados al Grupo II. | El parser recibe contexto y las estadísticas se reconcilian solo con el dataset del mismo grupo. Se corrigió el formato de la envoltura del objeto AmCharts capturado. |
 | Árbitros | La captura ya contenía `all`, `group1` y `group2`, aunque el informe de cruce original priorizaba Grupo II. | Se reutiliza la captura REF-01 y el cruce se filtra por ámbito e ID exacto de árbitro. No se vuelven a adquirir árbitros. |
 | Navegador | Pure CDP, Chromium, perfil y Xvfb ya eran genéricos. | Se mantienen sin cambios arquitectónicos. El orquestador ejecuta cada navegación secuencialmente y usa un único perfil configurado. |
-| API y React | Endpoints, loaders y contratos siguen seleccionando Grupo II. | Fuera de este hito; MULTI-02 deberá separar los bootstraps por grupo y validar sus procedencias. |
+| API y React | Antes de MULTI-02, endpoints, loaders y contratos seleccionaban Grupo II. | MULTI-02 conecta ambas capturas a la misma API y al mismo dashboard con selección y caché por grupo. |
 
 Las cifras de Grupo II (59 resultados disputados en la captura anterior, 217 jugadores, 101 extranjeros, 822 puntos de progreso, 42 árbitros y diferencias particulares de estadísticas) no se usan como expectativas de Grupo I. Los 20 equipos, 38 jornadas y 10 fixtures por jornada se mantienen como estructura de esta competición y se validan con la captura real.
 
@@ -44,7 +44,7 @@ El manifiesto del primer run exploratorio, `20261010T200928.825731Z-2f51581e`, c
 
 La página del Grupo I publica `Extranjeros 60`, mientras `table#tab_estran` contiene 59 filas de datos. Se conservan 59 registros y el `source_count=60`; no se genera una fila para el faltante. La diferencia queda como advertencia, no como error semántico del parser.
 
-Además, el jugador BDFutbol `304291` aparece con equipo 58 (`Pontevedra`) en `DESTACATS_JS.LG` y equipo 104 (`Deportivo Fabril`) en `#tab_estran`. No se resuelve por nombre ni se elige uno: el catálogo normalizado deja los campos de equipo en `null` para ese jugador y `metadata/capture.json` preserva ambos IDs y sus fuentes en `affiliation_conflicts`. Los registros originales permanecen en el snapshot HTML.
+Además, el jugador BDFutbol `304291` aparece con equipo 58 (`Pontevedra`) en `DESTACATS_JS.LG` y equipo 104 (`Deportivo Fabril`) en `#tab_estran`. No se resuelve por nombre ni se elige uno: el catálogo normalizado deja los campos de equipo en `null` para ese jugador y `metadata/capture.json` preserva ambos IDs y sus fuentes en `affiliation_conflicts`. Los registros originales permanecen en el snapshot HTML. La API mantiene la advertencia, expone el conflicto validado y React presenta “Equipo no determinado” sin retirar al jugador de rankings, progreso ni extranjeros.
 
 Estas dos situaciones son propiedades observadas de esta captura del Grupo I, no reglas generales de la competición. MULTI-02 deberá decidir cómo presentar afiliaciones ambiguas y recuentos publicados diferentes de las filas visibles, sin ocultar las advertencias.
 
@@ -80,9 +80,44 @@ Solo se ha habilitado la temporada 2026/27. El Grupo I refleja la captura del 10
 
 ## MULTI-02
 
-FastAPI y React aún cargan contratos y bootstraps del Grupo II. MULTI-02 deberá:
+FastAPI y React consumen ambos grupos desde una configuración compartida. La API carga y valida cada sección durante el arranque, sin scraping, peticiones BDFutbol ni recálculo estadístico por solicitud. La configuración selecciona los cortes versionados de forma explícita y nunca busca automáticamente el directorio más reciente.
 
-1. Elegir un bootstrap/versionado de Grupo I o Grupo II y rechazar mezclas por `group`, temporada y hashes relacionados.
-2. Añadir carga de los datasets TOP y Estadísticas del Grupo I sin copiar los del Grupo II.
-3. Mantener Árbitros como catálogo común de temporada con estadísticas filtradas por `group_scope`.
-4. Exponer las advertencias de afiliación ambigua y de conteo de extranjeros sin inventar registros.
+### API y procedencia
+
+- Los endpoints genéricos son `/api/v1/groups/{1|2}/bootstrap`, `/top/bootstrap`, `/referees/bootstrap` y `/statistics/bootstrap`.
+- Se conservan `/api/v1/group2/metadata`, `/bootstrap`, `/top/bootstrap`, `/referees/bootstrap` y `/statistics/bootstrap` como alias de Grupo II.
+- ETags incluyen grupo, sección, versión del contrato y versión de dataset. Cada sección y grupo falla por separado. Árbitros comparte el catálogo REF-01, mientras que los cruces con partidos conservan el hash, fecha y `capture_id` propios de cada grupo.
+- Los defaults apuntan a las capturas aprobadas de 2026-10-10. Las variables `FDH_GROUP1_*`, las variables heredadas `FDH_GROUP2_*` y `FDH_REFEREES_ROOT` permiten mover los directorios sin editar código. `FDH_GROUP2_REFEREES_ROOT` sigue aceptándose como alias.
+- Las rutas absolutas antiguas de los exports no son necesarias para resolver equipos y relaciones en el servidor: la API usa los directorios configurados y compara hashes con sus informes. Los snapshots publicados no se reescriben.
+- La API de Árbitros prueba cada cruce con Resultados aisladamente. Si falla la captura o el informe de un grupo, su endpoint de Árbitros devuelve 503 y el otro grupo continúa disponible si su referencia fue validada.
+
+### Dashboard
+
+React tiene un selector compacto con Grupo II seleccionado inicialmente y mantiene las cinco pestañas existentes. La misma implementación reutiliza componentes para ambos grupos. Conserva datos y estado local por grupo; las respuestas tardías se guardan en la clave de grupo que las solicitó y no reemplazan la vista activa. Cambiar jornada, filtros, categoría, ámbito u ordenación no genera peticiones a la API. La captura de árbitros se comparte en origen, pero los bootstraps validados se almacenan por grupo en memoria para mantener aislados sus metadatos de relación.
+
+Grupo I presenta 20 equipos, 380 partidos, 60 disputados y 320 pendientes; su progreso de clasificación cubre seis jornadas. Destacados muestra 59 filas frente a 60 publicados y conserva el jugador `304291` sin equipo asignado. Estadísticas usa los valores de la captura real (60 partidos, 156 goles, 29 victorias locales, 16 visitantes y 15 empates) y no presenta la discrepancia de goles de J5 propia de Grupo II. Grupo II conserva su corte actual y la diferencia `published - calculated = -2` goles de J5.
+
+### Manifiesto portable de MULTI-01
+
+El manifiesto técnico completo se encuentra localmente en `data/analysis/bdfutbol/acquisition_runs/20261010T202500.201160Z-c7065ec5/manifest.json`. La regla `/data/analysis/` lo excluye de Git porque incluye rutas del ordenador, perfiles, comandos y salida de consola. Para conservar evidencia trazable sin esos datos se versionó [`docs/acquisition_runs/multi-01-group1-20261010.json`](acquisition_runs/multi-01-group1-20261010.json): incluye el ID de ejecución, el SHA-256 del manifiesto original, IDs de captura, estados, rutas relativas y recuentos; no contiene rutas privadas ni comandos. Para otros servidores, conserva el manifiesto completo fuera del repositorio con acceso restringido y genera el mismo formato portable reducido junto al registro del run.
+
+### Arranque local
+
+Desde la raíz del repositorio (las rutas de `.env.example` son relativas al proyecto):
+
+```bash
+.venv/bin/python -m pip install -e '.[api]'
+set -a
+source .env
+set +a
+PYTHONPATH=src:apps/api .venv/bin/uvicorn football_data_hub_api.main:app --host 127.0.0.1 --port 8000
+```
+
+En otra terminal:
+
+```bash
+cd apps/dashboard
+npm run dev -- --host 127.0.0.1 --port 5176
+```
+
+La interfaz está en `http://127.0.0.1:5176/`; el proxy local del dashboard envía `/api` a `127.0.0.1:8000`.

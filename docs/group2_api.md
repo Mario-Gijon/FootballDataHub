@@ -1,14 +1,14 @@
-# API REST — Primera Federación Grupo II
+# API REST — Primera Federación Grupos I y II
 
 ## Arquitectura
 
-La aplicación HTTP vive en `apps/api/football_data_hub_api/`. Carga el dataset principal durante el startup y conserva su `BootstrapResponse` en memoria. Destacados, Árbitros y Estadísticas se validan y cargan como capturas independientes: un fallo en cualquiera de ellas solo desactiva su endpoint. Sus módulos no importan el proveedor BDFutbol, Playwright ni el navegador. El extra opcional `api` permite instalar FastAPI sin instalar el extra de scraping.
+La aplicación HTTP vive en `apps/api/football_data_hub_api/`. Carga una vez por grupo Clasificación/Resultados, Destacados y Estadísticas durante el startup. Árbitros se lee desde una captura REF compartida y valida por separado las relaciones con Resultados de cada grupo. Una sección o cruce no disponible no apaga las otras rutas. Los loaders comparten modelos y no importan Playwright ni el navegador. El extra opcional `api` instala FastAPI sin instalar SeleniumBase.
 
-El API solo sirve datos preparados. No navega a BDFutbol, vuelve a leer los JSON por petición ni ejecuta el motor Python de clasificación. Los filtros interactivos y las tablas derivadas serán responsabilidad del frontend TypeScript. El motor Python de CLAS-01B continúa siendo una referencia para validación. `progress_context` identifica el contexto original de esas series y evita que el cliente las confunda con la tabla filtrada.
+La API solo sirve datos preparados. No navega a BDFutbol, vuelve a leer los JSON por petición ni ejecuta el motor Python de clasificación. Los filtros interactivos y las tablas derivadas son responsabilidad del frontend TypeScript. `CompetitionContext` de MULTI-01 es la identidad compartida de temporada y grupo que usan los loaders; `progress_context` conserva el contexto original de las series para que el cliente no las confunda con una tabla filtrada.
 
 ## Configuración de los datasets
 
-Copia `.env.example` a `.env`. `FDH_DATA_ROOT` puede ser una ruta relativa a la raíz del proyecto o una ruta absoluta. Las cuatro variables `FDH_GROUP2_*` admiten rutas relativas a ese directorio o rutas absolutas. El ejemplo selecciona de forma explícita el dataset `derived-clas01b-20261010T102656Z` y la captura `20261010T102656.252222Z-72f200ad`; la aplicación no escoge automáticamente el directorio más reciente.
+Copia `.env.example` a `.env`. Las variables `FDH_GROUP1_*` y `FDH_GROUP2_*` permiten rutas relativas a la raíz de los datasets configurados o rutas absolutas. Los defaults apuntan explícitamente a los cortes validados de Grupo I y II; la aplicación no escoge automáticamente el directorio más reciente. `FDH_REFEREES_ROOT` designa una sola captura compartida y admite el alias heredado `FDH_GROUP2_REFEREES_ROOT`.
 
 En el inicio se verifica que:
 
@@ -21,9 +21,9 @@ En el inicio se verifica que:
 
 Ante error de configuración, JSON inválido o datasets mezclados, FastAPI sigue respondiendo a `/health` como proceso vivo con `dataset_ready: false`; `/ready` y las rutas de datos contestan `503`. La causa detallada se registra en el log del proceso, pero las respuestas HTTP no revelan rutas locales.
 
-Árbitros usa `FDH_GROUP2_REFEREES_ROOT` para seleccionar una captura REF-01 versionada y opcionalmente `FDH_GROUP2_REFEREES_MATCHES` para sustituir la ruta de Resultados declarada por la captura. El valor por defecto apunta al corte validado `20261010T171227.617128Z-4cfe71bc`. En el arranque verifica los tres HTML originales por SHA-256, la identidad de captura de los JSON, los recuentos declarados en `metadata/capture.json` y `validation/results.json`, estadísticas únicas por ID/temporada/ámbito, los agregados publicados y las referencias por `referee_id` al dataset de Resultados. El ETag lleva versión de contrato. Las capturas de Árbitros y Resultados conservan sus propios `capture_id`; una fecha distinta se informa como procedencia y no mezcla filas ni fuerza igualdad estadística.
+Árbitros reutiliza la captura REF-01 `20261010T171227.617128Z-4cfe71bc` y opcionalmente `FDH_GROUP2_REFEREES_MATCHES` para sustituir la ruta portable de Resultados de Grupo II. En el arranque verifica los tres HTML originales por SHA-256, la identidad de captura de los JSON, los recuentos declarados en `metadata/capture.json` y `validation/results.json`, estadísticas únicas por ID/temporada/ámbito, los agregados publicados y las referencias por `referee_id` a Resultados de cada grupo. Un fallo del cruce de uno no apaga el otro. Los ETags llevan grupo y versión de contrato; las capturas de Árbitros y Resultados conservan sus propios `capture_id`.
 
-Estadísticas usa `FDH_GROUP2_STATISTICS_ROOT` para la captura versionada de STAT-01. Comprueba hashes del HTML y del proveedor numérico del gráfico, los reportes de acceso y validación, la referencia y el SHA-256 del `matches.json` activo, y vuelve a ejecutar una sola vez el motor puro de estadísticas durante el arranque. El resultado debe coincidir con los agregados, récords y rachas preparados en STAT-01. Si la captura de partidos activa cambió, o los artefactos no pertenecen a una misma captura, Estadísticas responde 503 sin desactivar las demás rutas. Sus dos `capture_id` y fechas se exponen por separado. Los penaltis son datos exclusivos de la página; no se asignan a encuentros o personas.
+Estadísticas usa `FDH_GROUP1_STATISTICS_ROOT` o `FDH_GROUP2_STATISTICS_ROOT` para su captura correspondiente. Comprueba hashes del HTML y del proveedor numérico del gráfico, los reportes de acceso y validación, la referencia y el SHA-256 del `matches.json` activo, y vuelve a ejecutar una sola vez el motor puro durante el arranque. El resultado debe coincidir con agregados, récords y rachas preparados para ese grupo. Si la captura activa cambió, o los artefactos no pertenecen a una misma captura, Estadísticas responde 503 sin desactivar las demás rutas. Sus dos `capture_id` y fechas se exponen por separado. Los penaltis son datos exclusivos de la página; no se asignan a encuentros o personas.
 
 ## Instalar y arrancar
 
@@ -48,6 +48,15 @@ Para desarrollo/test en un entorno que también vaya a ejecutar el scraper, inst
 ```
 
 ## Endpoints
+
+Los endpoints actuales son por grupo; `{group}` solo admite `1` y `2`:
+
+- `GET /api/v1/groups/{group}/bootstrap`
+- `GET /api/v1/groups/{group}/top/bootstrap`
+- `GET /api/v1/groups/{group}/referees/bootstrap`
+- `GET /api/v1/groups/{group}/statistics/bootstrap`
+
+Las rutas `/api/v1/group2/...` de la tabla siguiente permanecen como alias de compatibilidad y sirven exactamente los datos del Grupo II.
 
 | Ruta | Uso |
 |---|---|

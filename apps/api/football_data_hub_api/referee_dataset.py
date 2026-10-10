@@ -9,7 +9,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import urlsplit
 
 from pydantic import ValidationError
@@ -24,6 +24,7 @@ from football_data_hub_api.schemas import (
     RefereeBootstrapResponse,
     RefereeGroupOption,
     RefereeMetadataResponse,
+    RefereeRelatedMatchDataset,
     RefereeResponse,
     RefereeScope,
     RefereeScopeSummary,
@@ -45,9 +46,14 @@ class RefereeDatasetLoadError(ValueError):
 class RefereeDatasetBundle:
     bootstrap: RefereeBootstrapResponse
     etag: str
+    group_reference_errors: dict[str, str]
 
 
-def load_referee_dataset(settings: ApiSettings) -> RefereeDatasetBundle:
+def load_referee_dataset(
+    settings: ApiSettings,
+    *,
+    group_match_sources: dict[str, tuple[Path, Path]] | None = None,
+) -> RefereeDatasetBundle:
     """Read one REF-01 capture, verify provenance, then prepare the API contract."""
 
     root = settings.referees_root or (PROJECT_ROOT / DEFAULT_GROUP2_REFEREES_CAPTURE).resolve()
@@ -78,12 +84,15 @@ def load_referee_dataset(settings: ApiSettings) -> RefereeDatasetBundle:
     related_reference = capture.get("related_match_dataset")
     if not isinstance(related_reference, dict):
         raise RefereeDatasetLoadError("La captura no declara su dataset relacionado de Resultados")
-    related_matches_path = _related_matches_path(settings, related_reference)
-    related_matches_bytes = _read_bytes(related_matches_path)
-    related_matches = _decode_json(related_matches_bytes, related_matches_path)
-    related_matches_digest = hashlib.sha256(related_matches_bytes).hexdigest()
-    if related_matches_digest != related_reference.get("sha256"):
-        raise RefereeDatasetLoadError("El hash del dataset de Resultados relacionado no coincide")
+
+    match_sources = group_match_sources or {
+        "II": (
+            _related_matches_path(settings, related_reference),
+            root / "validation/match_reference.json",
+        )
+    }
+    if set(match_sources) - {"I", "II"} or not match_sources:
+        raise RefereeDatasetLoadError("Las referencias de Resultados deben identificar Grupo I o Grupo II")
 
     referee_payload = decoded["referees"]
     statistics_payload = decoded["statistics"]
@@ -93,13 +102,58 @@ def load_referee_dataset(settings: ApiSettings) -> RefereeDatasetBundle:
     referee_by_id = {item.referee_id: item for item in referees}
     _validate_statistics(statistics, referee_by_id, capture, decoded["validation"])
     group_options = _group_options(decoded["filter_options"], statistics)
-    compatibility_warnings = _validate_match_references(
-        related_matches,
-        referee_by_id,
-        statistics,
-        decoded["match_reference"],
-        related_reference,
-    )
+    compatibility_warnings: list[str] = []
+    related_match_metadata: dict[str, RefereeRelatedMatchDataset] = {}
+    related_payloads: dict[str, tuple[dict[str, Any], bytes]] = {}
+    group_reference_errors: dict[str, str] = {}
+    for group, (matches_path, report_path) in match_sources.items():
+        try:
+            related_matches_bytes = _read_bytes(matches_path)
+            related_matches = _decode_json(related_matches_bytes, matches_path)
+            report = (
+                decoded["match_reference"]
+                if report_path.resolve() == paths["match_reference"].resolve()
+                else _decode_json(_read_bytes(report_path), report_path)
+            )
+            related_matches_digest = hashlib.sha256(related_matches_bytes).hexdigest()
+            reference = report.get("reference_dataset")
+            if group == "II":
+                reference = related_reference
+                if report_path.resolve() != paths["match_reference"].resolve():
+                    raise RefereeDatasetLoadError(
+                        "La referencia de Grupo II debe pertenecer a la captura REF compartida"
+                    )
+            if not isinstance(reference, dict) or related_matches_digest != reference.get("sha256"):
+                raise RefereeDatasetLoadError(
+                    f"El hash de Resultados de Grupo {group} no coincide con su informe de referencia"
+                )
+            compatibility_warnings.extend(
+                _validate_match_references(
+                    related_matches,
+                    referee_by_id,
+                    statistics,
+                    report,
+                    reference,
+                    group_scope="group1" if group == "I" else "group2",
+                )
+            )
+            related_payloads[group] = (related_matches, related_matches_bytes)
+            related_match_metadata[group] = RefereeRelatedMatchDataset(
+                capture_id=str(reference["source_capture_id"]),
+                captured_at=_parse_datetime(reference["source_captured_at_utc"]),
+                sha256=related_matches_digest,
+                reference_status=report["status"],
+            )
+        except (RefereeDatasetLoadError, KeyError, TypeError, ValueError, ValidationError) as exc:
+            group_reference_errors[group] = str(exc)
+            compatibility_warnings.append(
+                f"No se pudo verificar la referencia de partidos del Grupo {group}: {exc}"
+            )
+
+    if not related_match_metadata:
+        raise RefereeDatasetLoadError(
+            "No se pudo verificar ninguna relación entre Árbitros y Resultados"
+        )
 
     scope_summaries = _scope_summaries(statistics, group_options)
     source_hashes = {
@@ -112,7 +166,7 @@ def load_referee_dataset(settings: ApiSettings) -> RefereeDatasetBundle:
             name.encode("utf-8") + b"\0" + raw_files[name]
             for name in sorted(raw_files)
         )
-        + related_matches_bytes
+        + b"".join(related_payloads[group][1] for group in sorted(related_payloads))
     ).hexdigest()[:16]
     match_reference = decoded["match_reference"]
     try:
@@ -121,7 +175,7 @@ def load_referee_dataset(settings: ApiSettings) -> RefereeDatasetBundle:
             url=capture["url"],
             competition=capture["competition"],
             season=capture["season"],
-            group=capture["group"],
+            group="I/II",
             section=capture["section"],
             capture_id=capture_id,
             captured_at=_parse_datetime(capture["captured_at_utc"]),
@@ -135,6 +189,7 @@ def load_referee_dataset(settings: ApiSettings) -> RefereeDatasetBundle:
                 related_reference["source_captured_at_utc"]
             ),
             match_reference_status=match_reference["status"],
+            related_match_datasets=related_match_metadata,
         )
         bootstrap = RefereeBootstrapResponse(
             metadata=metadata,
@@ -163,7 +218,11 @@ def load_referee_dataset(settings: ApiSettings) -> RefereeDatasetBundle:
         raise RefereeDatasetLoadError("Los datos de Árbitros no cumplen el contrato público") from exc
 
     etag = f'"referees-v{REFEREES_BOOTSTRAP_SCHEMA_VERSION}-{metadata.dataset_version}"'
-    return RefereeDatasetBundle(bootstrap=bootstrap, etag=etag)
+    return RefereeDatasetBundle(
+        bootstrap=bootstrap,
+        etag=etag,
+        group_reference_errors=group_reference_errors,
+    )
 
 
 def _read_bytes(path: Path) -> bytes:
@@ -434,6 +493,8 @@ def _validate_match_references(
     statistics: list[RefereeStatisticsResponse],
     report: dict[str, Any],
     related_reference: dict[str, Any],
+    *,
+    group_scope: Literal["group1", "group2"],
 ) -> list[str]:
     matches = matches_payload.get("matches")
     if not isinstance(matches, list):
@@ -453,9 +514,31 @@ def _validate_match_references(
     ):
         raise RefereeDatasetLoadError("El informe de relación no corresponde al dataset de Resultados")
 
-    group2_ids = {
-        item.referee_id for item in statistics if item.group_scope == "group2"
+    if report.get("group_scope") not in (None, group_scope):
+        raise RefereeDatasetLoadError("El informe de árbitros pertenece a otro grupo")
+    scope_ids = {
+        item.referee_id for item in statistics if item.group_scope == group_scope
     }
+    played_ids = {
+        str(match["referee_id"])
+        for match in matches
+        if match.get("status") == "played" and match.get("referee_id") is not None
+    }
+    matched_ids = played_ids & scope_ids
+    if set(report.get("matched_referee_ids", [])) != matched_ids:
+        raise RefereeDatasetLoadError(
+            f"Los IDs enlazados de Árbitros y Resultados no coinciden para {group_scope}"
+        )
+    counts = report.get("counts", {})
+    if (
+        counts.get("source_matches") != len(matches)
+        or counts.get("played_matches") != sum(match.get("status") == "played" for match in matches)
+        or counts.get("unique_match_referee_ids") != len(played_ids)
+        or counts.get("matched_referee_ids") != len(matched_ids)
+    ):
+        raise RefereeDatasetLoadError(
+            f"Los recuentos de enlace no coinciden para {group_scope}"
+        )
     warnings: list[str] = []
     for match in matches:
         referee_id = match.get("referee_id")
@@ -481,9 +564,9 @@ def _validate_match_references(
                     f"La ficha del partido y el catálogo discrepan para {referee_id}"
                 )
         if match.get("status") == "played":
-            if referee_id not in group2_ids:
+            if referee_id not in scope_ids:
                 warnings.append(
-                    f"El árbitro {referee_id} de Resultados no tiene fila de estadísticas de Grupo II en esta captura."
+                    f"El árbitro {referee_id} de Resultados no tiene fila de estadísticas de {group_scope} en esta captura."
                 )
 
     differences = report.get("statistic_differences", [])

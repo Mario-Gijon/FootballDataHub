@@ -65,8 +65,9 @@ def load_dataset(settings: ApiSettings) -> DatasetBundle:
     ]
 
     _check_schema_versions(matches_data, classification_data, progress_data)
+    expected_group = settings.group
     _check_capture_compatibility(
-        matches_data, classification_data, progress_data, capture_data
+        matches_data, classification_data, progress_data, capture_data, expected_group
     )
 
     try:
@@ -98,7 +99,7 @@ def load_dataset(settings: ApiSettings) -> DatasetBundle:
     except (KeyError, TypeError, ValidationError) as exc:
         raise DatasetLoadError("Los campos de los datasets no cumplen el contrato esperado") from exc
 
-    _validate_integrity(
+        _validate_integrity(
         matches_data,
         matches,
         teams,
@@ -218,6 +219,7 @@ def _check_capture_compatibility(
     classification: dict[str, Any],
     progress: dict[str, Any],
     capture: dict[str, Any],
+    expected_group: str,
 ) -> None:
     try:
         capture_id = capture["capture_id"]
@@ -234,6 +236,10 @@ def _check_capture_compatibility(
         raise DatasetLoadError("Faltan metadatos de procedencia necesarios") from exc
     if len(reference_ids) != 1 or not all(reference_ids):
         raise DatasetLoadError("Los JSON no pertenecen a la misma captura de origen")
+    if capture.get("group") != expected_group:
+        raise DatasetLoadError(
+            f"La captura configurada para Grupo {expected_group} contiene datos de otro grupo"
+        )
 
     for key in ("source", "url", "competition", "season", "group"):
         expected = capture.get(key)
@@ -260,7 +266,7 @@ def _validate_integrity(
     match_metadata: dict[str, Any],
 ) -> None:
     if len(teams) != EXPECTED_TEAM_COUNT:
-        raise DatasetLoadError("El catálogo del Grupo II debe contener 20 equipos")
+        raise DatasetLoadError("El catálogo del grupo activo debe contener 20 equipos")
     team_ids = [team.team_id for team in teams]
     team_id_set = set(team_ids)
     if len(team_id_set) != len(team_ids):

@@ -23,6 +23,8 @@ interface Props {
   loadState: LoadState;
   errorMessage: string;
   onRetry: () => void;
+  initialScope?: RefereeScope;
+  idSuffix?: string;
 }
 
 interface JoinedRow {
@@ -30,10 +32,15 @@ interface JoinedRow {
   statistics: RefereeStatistics;
 }
 
-const DEFAULT_SCOPE: RefereeScope = "group2";
-
-export function RefereesSection({ data, loadState, errorMessage, onRetry }: Props) {
-  const [scope, setScope] = useState<RefereeScope>(DEFAULT_SCOPE);
+export function RefereesSection({
+  data,
+  loadState,
+  errorMessage,
+  onRetry,
+  initialScope = "group2",
+  idSuffix = "",
+}: Props) {
+  const [scope, setScope] = useState<RefereeScope>(initialScope);
   const [sort, setSort] = useState<SortState>(null);
 
   const rows = useMemo<JoinedRow[]>(() => {
@@ -51,7 +58,7 @@ export function RefereesSection({ data, loadState, errorMessage, onRetry }: Prop
 
   if (loadState === "idle" || loadState === "loading") {
     return (
-      <section className="referees-section" role="tabpanel" id="referees-panel" aria-labelledby="referees-tab">
+      <section className="referees-section" role="tabpanel" id={`referees-panel${idSuffix}`} aria-labelledby={`referees-tab${idSuffix}`}>
         <section className="competition-hero referees-hero"><h1>Árbitros</h1></section>
         <div className="referees-state" role="status">{loadState === "loading" ? "Cargando árbitros…" : "Preparando datos de árbitros…"}</div>
       </section>
@@ -59,7 +66,7 @@ export function RefereesSection({ data, loadState, errorMessage, onRetry }: Prop
   }
   if (loadState === "error" || !data) {
     return (
-      <section className="referees-section" role="tabpanel" id="referees-panel" aria-labelledby="referees-tab">
+      <section className="referees-section" role="tabpanel" id={`referees-panel${idSuffix}`} aria-labelledby={`referees-tab${idSuffix}`}>
         <section className="competition-hero referees-hero"><h1>Árbitros</h1></section>
         <div className="state-card error-card referees-error" role="alert">
           <span className="section-kicker">DATOS NO DISPONIBLES</span>
@@ -74,7 +81,7 @@ export function RefereesSection({ data, loadState, errorMessage, onRetry }: Prop
   const season = data.seasons[0];
 
   return (
-    <section className="referees-section" role="tabpanel" id="referees-panel" aria-labelledby="referees-tab">
+    <section className="referees-section" role="tabpanel" id={`referees-panel${idSuffix}`} aria-labelledby={`referees-tab${idSuffix}`}>
       <section className="competition-hero referees-hero">
         <h1>Árbitros</h1>
         <div className="dataset-meta" aria-label="Actualización de los datos de árbitros">

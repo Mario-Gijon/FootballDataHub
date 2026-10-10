@@ -8,9 +8,10 @@ interface ResultsSectionProps {
   data: Bootstrap;
   matchday: ResultsMatchday;
   onMatchdayChange: (value: ResultsMatchday) => void;
+  idSuffix?: string;
 }
 
-export function ResultsSection({ data, matchday, onMatchdayChange }: ResultsSectionProps) {
+export function ResultsSection({ data, matchday, onMatchdayChange, idSuffix = "" }: ResultsSectionProps) {
   const entries = useMemo(
     () => listResults(data.teams, data.matches, matchday === "all" ? null : matchday),
     [data.matches, data.teams, matchday],
@@ -28,7 +29,7 @@ export function ResultsSection({ data, matchday, onMatchdayChange }: ResultsSect
   const playedCount = entries.filter(({ match }) => match.status === "played").length;
 
   return (
-    <section className="results-section" role="tabpanel" id="results-panel" aria-labelledby="results-tab">
+    <section className="results-section" role="tabpanel" id={`results-panel${idSuffix}`} aria-labelledby={`results-tab${idSuffix}`}>
       <div className="competition-hero results-hero">
         <h1>Resultados</h1>
         <div className="dataset-meta" aria-label="Cobertura de resultados">
@@ -38,7 +39,7 @@ export function ResultsSection({ data, matchday, onMatchdayChange }: ResultsSect
       </div>
 
       <section className="results-controls" aria-label="Filtro de jornada de resultados">
-        <label htmlFor="results-matchday">Jornada de resultados</label>
+        <label htmlFor={`results-matchday${idSuffix}`}>Jornada de resultados</label>
         <div className="results-round-picker">
           <button
             className="round-step-button"
@@ -50,7 +51,7 @@ export function ResultsSection({ data, matchday, onMatchdayChange }: ResultsSect
             ‹
           </button>
           <select
-            id="results-matchday"
+            id={`results-matchday${idSuffix}`}
             value={matchday}
             onChange={(event) => onMatchdayChange(event.target.value === "all" ? "all" : Number(event.target.value))}
           >
