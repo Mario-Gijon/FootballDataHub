@@ -4,11 +4,11 @@ Base mínima para usar Brave con su perfil persistente mediante Playwright/CDP y
 
 ## Preparar el entorno
 
-Se requiere Python 3.12 o posterior, Brave y `xvfb-run`/Xvfb. Instala el proyecto y las herramientas de desarrollo:
+Se requiere Python 3.12 o posterior, Brave y `xvfb-run`/Xvfb. Instala el proyecto, el extra de navegador y las herramientas de desarrollo:
 
 ```bash
 python -m venv .venv
-.venv/bin/python -m pip install -e '.[dev]'
+.venv/bin/python -m pip install -e '.[scraping,dev]'
 ```
 
 Playwright se conecta al navegador instalado por CDP; no descarga ni administra otro navegador.
@@ -34,6 +34,16 @@ El perfil persistente no se copia ni se limpia. Cierra cualquier Brave que lo es
 Ejecuta el smoke solo cuando el acceso normal esté disponible. Si aparece un desafío o una denegación, el programa lo informa y no intenta resolverlo. No automatices CAPTCHA, no eludas controles de acceso y respeta los términos y límites del sitio.
 
 Las páginas y sesiones se cierran automáticamente con sus gestores de contexto; también puede llamarse a `close()` explícitamente.
+
+## API REST de Grupo II
+
+La API se instala por separado y no carga Playwright ni el proveedor de scraping:
+
+```bash
+.venv/bin/python -m pip install -e '.[api]'
+```
+
+Configura los datasets con `.env.example` y sigue [`docs/group2_api.md`](docs/group2_api.md) para arrancar Uvicorn. Las herramientas de navegador están en el extra `scraping`, así que un servidor de API puede instalar únicamente `.[api]`.
 
 ## Clasificación del Grupo II
 
