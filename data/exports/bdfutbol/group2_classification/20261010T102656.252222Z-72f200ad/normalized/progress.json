@@ -1,0 +1,1119 @@
+{
+  "schema_version": 1,
+  "metadata": {
+    "source": "BDFutbol",
+    "url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html",
+    "competition": "Primera Federación",
+    "season": "2026-27",
+    "group": "II",
+    "capture_id": "20261010T102656.252222Z-72f200ad",
+    "captured_at_utc": "2026-10-10T10:26:56.252397+00:00",
+    "extractor_version": "0.1.0"
+  },
+  "series_context": {
+    "classification_type": "general",
+    "postponed_policy": "source_defined_unknown",
+    "range_type": "all",
+    "source_independent_of_standings_filters": true,
+    "available_through_matchday": 6
+  },
+  "table_context_at_capture": {
+    "classification_type": "general",
+    "matchday": 6,
+    "matchday_date": "2026-10-04",
+    "postponed_policy": "include",
+    "range_type": "all",
+    "range_start_date": null,
+    "range_end_date": null,
+    "range_start_round": null,
+    "range_end_round": null
+  },
+  "records": [
+    {
+      "team_id": 39,
+      "matchday": 1,
+      "matchday_date": "2026-08-30",
+      "position": 19,
+      "points": 0,
+      "goals_for": 0,
+      "goals_against": 2
+    },
+    {
+      "team_id": 94,
+      "matchday": 1,
+      "matchday_date": "2026-08-30",
+      "position": 6,
+      "points": 3,
+      "goals_for": 2,
+      "goals_against": 1
+    },
+    {
+      "team_id": 107,
+      "matchday": 1,
+      "matchday_date": "2026-08-30",
+      "position": 11,
+      "points": 1,
+      "goals_for": 2,
+      "goals_against": 2
+    },
+    {
+      "team_id": 40,
+      "matchday": 1,
+      "matchday_date": "2026-08-30",
+      "position": 5,
+      "points": 3,
+      "goals_for": 2,
+      "goals_against": 1
+    },
+    {
+      "team_id": 49,
+      "matchday": 1,
+      "matchday_date": "2026-08-30",
+      "position": 1,
+      "points": 3,
+      "goals_for": 3,
+      "goals_against": 0
+    },
+    {
+      "team_id": 18,
+      "matchday": 1,
+      "matchday_date": "2026-08-30",
+      "position": 16,
+      "points": 0,
+      "goals_for": 1,
+      "goals_against": 2
+    },
+    {
+      "team_id": 140,
+      "matchday": 1,
+      "matchday_date": "2026-08-30",
+      "position": 4,
+      "points": 3,
+      "goals_for": 3,
+      "goals_against": 2
+    },
+    {
+      "team_id": 414,
+      "matchday": 1,
+      "matchday_date": "2026-08-30",
+      "position": 14,
+      "points": 0,
+      "goals_for": 2,
+      "goals_against": 3
+    },
+    {
+      "team_id": 79,
+      "matchday": 1,
+      "matchday_date": "2026-08-30",
+      "position": 7,
+      "points": 3,
+      "goals_for": 1,
+      "goals_against": 0
+    },
+    {
+      "team_id": 176,
+      "matchday": 1,
+      "matchday_date": "2026-08-30",
+      "position": 2,
+      "points": 3,
+      "goals_for": 3,
+      "goals_against": 1
+    },
+    {
+      "team_id": 67,
+      "matchday": 1,
+      "matchday_date": "2026-08-30",
+      "position": 8,
+      "points": 1,
+      "goals_for": 2,
+      "goals_against": 2
+    },
+    {
+      "team_id": 61,
+      "matchday": 1,
+      "matchday_date": "2026-08-30",
+      "position": 12,
+      "points": 1,
+      "goals_for": 0,
+      "goals_against": 0
+    },
+    {
+      "team_id": 119,
+      "matchday": 1,
+      "matchday_date": "2026-08-30",
+      "position": 17,
+      "points": 0,
+      "goals_for": 0,
+      "goals_against": 1
+    },
+    {
+      "team_id": 17,
+      "matchday": 1,
+      "matchday_date": "2026-08-30",
+      "position": 3,
+      "points": 3,
+      "goals_for": 2,
+      "goals_against": 0
+    },
+    {
+      "team_id": 55,
+      "matchday": 1,
+      "matchday_date": "2026-08-30",
+      "position": 18,
+      "points": 0,
+      "goals_for": 1,
+      "goals_against": 3
+    },
+    {
+      "team_id": 482,
+      "matchday": 1,
+      "matchday_date": "2026-08-30",
+      "position": 10,
+      "points": 1,
+      "goals_for": 2,
+      "goals_against": 2
+    },
+    {
+      "team_id": 227,
+      "matchday": 1,
+      "matchday_date": "2026-08-30",
+      "position": 15,
+      "points": 0,
+      "goals_for": 1,
+      "goals_against": 2
+    },
+    {
+      "team_id": 89,
+      "matchday": 1,
+      "matchday_date": "2026-08-30",
+      "position": 20,
+      "points": 0,
+      "goals_for": 0,
+      "goals_against": 3
+    },
+    {
+      "team_id": 204,
+      "matchday": 1,
+      "matchday_date": "2026-08-30",
+      "position": 13,
+      "points": 1,
+      "goals_for": 0,
+      "goals_against": 0
+    },
+    {
+      "team_id": 488,
+      "matchday": 1,
+      "matchday_date": "2026-08-30",
+      "position": 9,
+      "points": 1,
+      "goals_for": 2,
+      "goals_against": 2
+    },
+    {
+      "team_id": 39,
+      "matchday": 2,
+      "matchday_date": "2026-09-05",
+      "position": 12,
+      "points": 3,
+      "goals_for": 1,
+      "goals_against": 2
+    },
+    {
+      "team_id": 94,
+      "matchday": 2,
+      "matchday_date": "2026-09-05",
+      "position": 2,
+      "points": 6,
+      "goals_for": 4,
+      "goals_against": 2
+    },
+    {
+      "team_id": 107,
+      "matchday": 2,
+      "matchday_date": "2026-09-05",
+      "position": 13,
+      "points": 2,
+      "goals_for": 2,
+      "goals_against": 2
+    },
+    {
+      "team_id": 40,
+      "matchday": 2,
+      "matchday_date": "2026-09-05",
+      "position": 1,
+      "points": 6,
+      "goals_for": 6,
+      "goals_against": 1
+    },
+    {
+      "team_id": 49,
+      "matchday": 2,
+      "matchday_date": "2026-09-05",
+      "position": 3,
+      "points": 4,
+      "goals_for": 5,
+      "goals_against": 2
+    },
+    {
+      "team_id": 18,
+      "matchday": 2,
+      "matchday_date": "2026-09-05",
+      "position": 20,
+      "points": 0,
+      "goals_for": 1,
+      "goals_against": 4
+    },
+    {
+      "team_id": 140,
+      "matchday": 2,
+      "matchday_date": "2026-09-05",
+      "position": 11,
+      "points": 3,
+      "goals_for": 3,
+      "goals_against": 3
+    },
+    {
+      "team_id": 414,
+      "matchday": 2,
+      "matchday_date": "2026-09-05",
+      "position": 10,
+      "points": 3,
+      "goals_for": 4,
+      "goals_against": 4
+    },
+    {
+      "team_id": 79,
+      "matchday": 2,
+      "matchday_date": "2026-09-05",
+      "position": 8,
+      "points": 4,
+      "goals_for": 3,
+      "goals_against": 2
+    },
+    {
+      "team_id": 176,
+      "matchday": 2,
+      "matchday_date": "2026-09-05",
+      "position": 5,
+      "points": 4,
+      "goals_for": 3,
+      "goals_against": 1
+    },
+    {
+      "team_id": 67,
+      "matchday": 2,
+      "matchday_date": "2026-09-05",
+      "position": 4,
+      "points": 4,
+      "goals_for": 4,
+      "goals_against": 2
+    },
+    {
+      "team_id": 61,
+      "matchday": 2,
+      "matchday_date": "2026-09-05",
+      "position": 6,
+      "points": 4,
+      "goals_for": 2,
+      "goals_against": 0
+    },
+    {
+      "team_id": 119,
+      "matchday": 2,
+      "matchday_date": "2026-09-05",
+      "position": 9,
+      "points": 3,
+      "goals_for": 2,
+      "goals_against": 1
+    },
+    {
+      "team_id": 17,
+      "matchday": 2,
+      "matchday_date": "2026-09-05",
+      "position": 7,
+      "points": 4,
+      "goals_for": 2,
+      "goals_against": 0
+    },
+    {
+      "team_id": 55,
+      "matchday": 2,
+      "matchday_date": "2026-09-05",
+      "position": 19,
+      "points": 0,
+      "goals_for": 2,
+      "goals_against": 5
+    },
+    {
+      "team_id": 482,
+      "matchday": 2,
+      "matchday_date": "2026-09-05",
+      "position": 15,
+      "points": 1,
+      "goals_for": 2,
+      "goals_against": 4
+    },
+    {
+      "team_id": 227,
+      "matchday": 2,
+      "matchday_date": "2026-09-05",
+      "position": 18,
+      "points": 0,
+      "goals_for": 2,
+      "goals_against": 4
+    },
+    {
+      "team_id": 89,
+      "matchday": 2,
+      "matchday_date": "2026-09-05",
+      "position": 16,
+      "points": 1,
+      "goals_for": 0,
+      "goals_against": 3
+    },
+    {
+      "team_id": 204,
+      "matchday": 2,
+      "matchday_date": "2026-09-05",
+      "position": 17,
+      "points": 1,
+      "goals_for": 0,
+      "goals_against": 4
+    },
+    {
+      "team_id": 488,
+      "matchday": 2,
+      "matchday_date": "2026-09-05",
+      "position": 14,
+      "points": 1,
+      "goals_for": 2,
+      "goals_against": 4
+    },
+    {
+      "team_id": 39,
+      "matchday": 3,
+      "matchday_date": "2026-09-12",
+      "position": 7,
+      "points": 6,
+      "goals_for": 5,
+      "goals_against": 5
+    },
+    {
+      "team_id": 94,
+      "matchday": 3,
+      "matchday_date": "2026-09-12",
+      "position": 1,
+      "points": 9,
+      "goals_for": 7,
+      "goals_against": 2
+    },
+    {
+      "team_id": 107,
+      "matchday": 3,
+      "matchday_date": "2026-09-12",
+      "position": 13,
+      "points": 3,
+      "goals_for": 3,
+      "goals_against": 3
+    },
+    {
+      "team_id": 40,
+      "matchday": 3,
+      "matchday_date": "2026-09-12",
+      "position": 6,
+      "points": 6,
+      "goals_for": 6,
+      "goals_against": 5
+    },
+    {
+      "team_id": 49,
+      "matchday": 3,
+      "matchday_date": "2026-09-12",
+      "position": 4,
+      "points": 7,
+      "goals_for": 6,
+      "goals_against": 2
+    },
+    {
+      "team_id": 18,
+      "matchday": 3,
+      "matchday_date": "2026-09-12",
+      "position": 15,
+      "points": 3,
+      "goals_for": 3,
+      "goals_against": 5
+    },
+    {
+      "team_id": 140,
+      "matchday": 3,
+      "matchday_date": "2026-09-12",
+      "position": 10,
+      "points": 4,
+      "goals_for": 4,
+      "goals_against": 4
+    },
+    {
+      "team_id": 414,
+      "matchday": 3,
+      "matchday_date": "2026-09-12",
+      "position": 5,
+      "points": 6,
+      "goals_for": 6,
+      "goals_against": 4
+    },
+    {
+      "team_id": 79,
+      "matchday": 3,
+      "matchday_date": "2026-09-12",
+      "position": 12,
+      "points": 4,
+      "goals_for": 3,
+      "goals_against": 5
+    },
+    {
+      "team_id": 176,
+      "matchday": 3,
+      "matchday_date": "2026-09-12",
+      "position": 8,
+      "points": 5,
+      "goals_for": 4,
+      "goals_against": 2
+    },
+    {
+      "team_id": 67,
+      "matchday": 3,
+      "matchday_date": "2026-09-12",
+      "position": 2,
+      "points": 7,
+      "goals_for": 8,
+      "goals_against": 2
+    },
+    {
+      "team_id": 61,
+      "matchday": 3,
+      "matchday_date": "2026-09-12",
+      "position": 9,
+      "points": 4,
+      "goals_for": 2,
+      "goals_against": 1
+    },
+    {
+      "team_id": 119,
+      "matchday": 3,
+      "matchday_date": "2026-09-12",
+      "position": 14,
+      "points": 3,
+      "goals_for": 2,
+      "goals_against": 3
+    },
+    {
+      "team_id": 17,
+      "matchday": 3,
+      "matchday_date": "2026-09-12",
+      "position": 3,
+      "points": 7,
+      "goals_for": 6,
+      "goals_against": 2
+    },
+    {
+      "team_id": 55,
+      "matchday": 3,
+      "matchday_date": "2026-09-12",
+      "position": 20,
+      "points": 0,
+      "goals_for": 4,
+      "goals_against": 9
+    },
+    {
+      "team_id": 482,
+      "matchday": 3,
+      "matchday_date": "2026-09-12",
+      "position": 11,
+      "points": 4,
+      "goals_for": 3,
+      "goals_against": 4
+    },
+    {
+      "team_id": 227,
+      "matchday": 3,
+      "matchday_date": "2026-09-12",
+      "position": 16,
+      "points": 1,
+      "goals_for": 3,
+      "goals_against": 5
+    },
+    {
+      "team_id": 89,
+      "matchday": 3,
+      "matchday_date": "2026-09-12",
+      "position": 18,
+      "points": 1,
+      "goals_for": 1,
+      "goals_against": 5
+    },
+    {
+      "team_id": 204,
+      "matchday": 3,
+      "matchday_date": "2026-09-12",
+      "position": 19,
+      "points": 1,
+      "goals_for": 0,
+      "goals_against": 5
+    },
+    {
+      "team_id": 488,
+      "matchday": 3,
+      "matchday_date": "2026-09-12",
+      "position": 17,
+      "points": 1,
+      "goals_for": 5,
+      "goals_against": 8
+    },
+    {
+      "team_id": 39,
+      "matchday": 4,
+      "matchday_date": "2026-09-20",
+      "position": 4,
+      "points": 9,
+      "goals_for": 6,
+      "goals_against": 5
+    },
+    {
+      "team_id": 94,
+      "matchday": 4,
+      "matchday_date": "2026-09-20",
+      "position": 1,
+      "points": 10,
+      "goals_for": 9,
+      "goals_against": 4
+    },
+    {
+      "team_id": 107,
+      "matchday": 4,
+      "matchday_date": "2026-09-20",
+      "position": 7,
+      "points": 6,
+      "goals_for": 6,
+      "goals_against": 3
+    },
+    {
+      "team_id": 40,
+      "matchday": 4,
+      "matchday_date": "2026-09-20",
+      "position": 3,
+      "points": 9,
+      "goals_for": 8,
+      "goals_against": 6
+    },
+    {
+      "team_id": 49,
+      "matchday": 4,
+      "matchday_date": "2026-09-20",
+      "position": 2,
+      "points": 10,
+      "goals_for": 8,
+      "goals_against": 3
+    },
+    {
+      "team_id": 18,
+      "matchday": 4,
+      "matchday_date": "2026-09-20",
+      "position": 9,
+      "points": 6,
+      "goals_for": 4,
+      "goals_against": 5
+    },
+    {
+      "team_id": 140,
+      "matchday": 4,
+      "matchday_date": "2026-09-20",
+      "position": 12,
+      "points": 5,
+      "goals_for": 6,
+      "goals_against": 6
+    },
+    {
+      "team_id": 414,
+      "matchday": 4,
+      "matchday_date": "2026-09-20",
+      "position": 8,
+      "points": 6,
+      "goals_for": 7,
+      "goals_against": 6
+    },
+    {
+      "team_id": 79,
+      "matchday": 4,
+      "matchday_date": "2026-09-20",
+      "position": 14,
+      "points": 5,
+      "goals_for": 3,
+      "goals_against": 5
+    },
+    {
+      "team_id": 176,
+      "matchday": 4,
+      "matchday_date": "2026-09-20",
+      "position": 10,
+      "points": 5,
+      "goals_for": 4,
+      "goals_against": 3
+    },
+    {
+      "team_id": 67,
+      "matchday": 4,
+      "matchday_date": "2026-09-20",
+      "position": 5,
+      "points": 8,
+      "goals_for": 8,
+      "goals_against": 2
+    },
+    {
+      "team_id": 61,
+      "matchday": 4,
+      "matchday_date": "2026-09-20",
+      "position": 11,
+      "points": 5,
+      "goals_for": 3,
+      "goals_against": 2
+    },
+    {
+      "team_id": 119,
+      "matchday": 4,
+      "matchday_date": "2026-09-20",
+      "position": 16,
+      "points": 4,
+      "goals_for": 3,
+      "goals_against": 4
+    },
+    {
+      "team_id": 17,
+      "matchday": 4,
+      "matchday_date": "2026-09-20",
+      "position": 6,
+      "points": 7,
+      "goals_for": 6,
+      "goals_against": 5
+    },
+    {
+      "team_id": 55,
+      "matchday": 4,
+      "matchday_date": "2026-09-20",
+      "position": 18,
+      "points": 1,
+      "goals_for": 5,
+      "goals_against": 10
+    },
+    {
+      "team_id": 482,
+      "matchday": 4,
+      "matchday_date": "2026-09-20",
+      "position": 13,
+      "points": 5,
+      "goals_for": 4,
+      "goals_against": 5
+    },
+    {
+      "team_id": 227,
+      "matchday": 4,
+      "matchday_date": "2026-09-20",
+      "position": 15,
+      "points": 4,
+      "goals_for": 5,
+      "goals_against": 5
+    },
+    {
+      "team_id": 89,
+      "matchday": 4,
+      "matchday_date": "2026-09-20",
+      "position": 19,
+      "points": 1,
+      "goals_for": 2,
+      "goals_against": 7
+    },
+    {
+      "team_id": 204,
+      "matchday": 4,
+      "matchday_date": "2026-09-20",
+      "position": 20,
+      "points": 1,
+      "goals_for": 0,
+      "goals_against": 7
+    },
+    {
+      "team_id": 488,
+      "matchday": 4,
+      "matchday_date": "2026-09-20",
+      "position": 17,
+      "points": 1,
+      "goals_for": 5,
+      "goals_against": 9
+    },
+    {
+      "team_id": 39,
+      "matchday": 5,
+      "matchday_date": "2026-09-27",
+      "position": 2,
+      "points": 12,
+      "goals_for": 8,
+      "goals_against": 5
+    },
+    {
+      "team_id": 94,
+      "matchday": 5,
+      "matchday_date": "2026-09-27",
+      "position": 1,
+      "points": 13,
+      "goals_for": 12,
+      "goals_against": 5
+    },
+    {
+      "team_id": 107,
+      "matchday": 5,
+      "matchday_date": "2026-09-27",
+      "position": 4,
+      "points": 9,
+      "goals_for": 8,
+      "goals_against": 4
+    },
+    {
+      "team_id": 40,
+      "matchday": 5,
+      "matchday_date": "2026-09-27",
+      "position": 5,
+      "points": 9,
+      "goals_for": 10,
+      "goals_against": 6
+    },
+    {
+      "team_id": 49,
+      "matchday": 5,
+      "matchday_date": "2026-09-27",
+      "position": 3,
+      "points": 10,
+      "goals_for": 8,
+      "goals_against": 5
+    },
+    {
+      "team_id": 18,
+      "matchday": 5,
+      "matchday_date": "2026-09-27",
+      "position": 6,
+      "points": 9,
+      "goals_for": 5,
+      "goals_against": 5
+    },
+    {
+      "team_id": 140,
+      "matchday": 5,
+      "matchday_date": "2026-09-27",
+      "position": 8,
+      "points": 8,
+      "goals_for": 8,
+      "goals_against": 6
+    },
+    {
+      "team_id": 414,
+      "matchday": 5,
+      "matchday_date": "2026-09-27",
+      "position": 11,
+      "points": 6,
+      "goals_for": 7,
+      "goals_against": 8
+    },
+    {
+      "team_id": 79,
+      "matchday": 5,
+      "matchday_date": "2026-09-27",
+      "position": 12,
+      "points": 6,
+      "goals_for": 4,
+      "goals_against": 6
+    },
+    {
+      "team_id": 176,
+      "matchday": 5,
+      "matchday_date": "2026-09-27",
+      "position": 13,
+      "points": 5,
+      "goals_for": 8,
+      "goals_against": 4
+    },
+    {
+      "team_id": 67,
+      "matchday": 5,
+      "matchday_date": "2026-09-27",
+      "position": 7,
+      "points": 8,
+      "goals_for": 9,
+      "goals_against": 5
+    },
+    {
+      "team_id": 61,
+      "matchday": 5,
+      "matchday_date": "2026-09-27",
+      "position": 14,
+      "points": 5,
+      "goals_for": 4,
+      "goals_against": 4
+    },
+    {
+      "team_id": 119,
+      "matchday": 5,
+      "matchday_date": "2026-09-27",
+      "position": 10,
+      "points": 7,
+      "goals_for": 5,
+      "goals_against": 5
+    },
+    {
+      "team_id": 17,
+      "matchday": 5,
+      "matchday_date": "2026-09-27",
+      "position": 9,
+      "points": 7,
+      "goals_for": 7,
+      "goals_against": 7
+    },
+    {
+      "team_id": 55,
+      "matchday": 5,
+      "matchday_date": "2026-09-27",
+      "position": 17,
+      "points": 4,
+      "goals_for": 7,
+      "goals_against": 11
+    },
+    {
+      "team_id": 482,
+      "matchday": 5,
+      "matchday_date": "2026-09-27",
+      "position": 15,
+      "points": 5,
+      "goals_for": 4,
+      "goals_against": 6
+    },
+    {
+      "team_id": 227,
+      "matchday": 5,
+      "matchday_date": "2026-09-27",
+      "position": 16,
+      "points": 4,
+      "goals_for": 5,
+      "goals_against": 6
+    },
+    {
+      "team_id": 89,
+      "matchday": 5,
+      "matchday_date": "2026-09-27",
+      "position": 18,
+      "points": 4,
+      "goals_for": 3,
+      "goals_against": 7
+    },
+    {
+      "team_id": 204,
+      "matchday": 5,
+      "matchday_date": "2026-09-27",
+      "position": 19,
+      "points": 2,
+      "goals_for": 1,
+      "goals_against": 8
+    },
+    {
+      "team_id": 488,
+      "matchday": 5,
+      "matchday_date": "2026-09-27",
+      "position": 20,
+      "points": 1,
+      "goals_for": 6,
+      "goals_against": 11
+    },
+    {
+      "team_id": 39,
+      "matchday": 6,
+      "matchday_date": "2026-10-04",
+      "position": 1,
+      "points": 15,
+      "goals_for": 12,
+      "goals_against": 6
+    },
+    {
+      "team_id": 94,
+      "matchday": 6,
+      "matchday_date": "2026-10-04",
+      "position": 2,
+      "points": 13,
+      "goals_for": 12,
+      "goals_against": 6
+    },
+    {
+      "team_id": 107,
+      "matchday": 6,
+      "matchday_date": "2026-10-04",
+      "position": 3,
+      "points": 12,
+      "goals_for": 13,
+      "goals_against": 4
+    },
+    {
+      "team_id": 40,
+      "matchday": 6,
+      "matchday_date": "2026-10-04",
+      "position": 4,
+      "points": 12,
+      "goals_for": null,
+      "goals_against": null
+    },
+    {
+      "team_id": 49,
+      "matchday": 6,
+      "matchday_date": "2026-10-04",
+      "position": 5,
+      "points": 11,
+      "goals_for": 8,
+      "goals_against": 5
+    },
+    {
+      "team_id": 18,
+      "matchday": 6,
+      "matchday_date": "2026-10-04",
+      "position": 6,
+      "points": 10,
+      "goals_for": 5,
+      "goals_against": 5
+    },
+    {
+      "team_id": 140,
+      "matchday": 6,
+      "matchday_date": "2026-10-04",
+      "position": 7,
+      "points": 9,
+      "goals_for": 10,
+      "goals_against": 8
+    },
+    {
+      "team_id": 414,
+      "matchday": 6,
+      "matchday_date": "2026-10-04",
+      "position": 8,
+      "points": 9,
+      "goals_for": 8,
+      "goals_against": 8
+    },
+    {
+      "team_id": 79,
+      "matchday": 6,
+      "matchday_date": "2026-10-04",
+      "position": 9,
+      "points": 9,
+      "goals_for": 7,
+      "goals_against": 7
+    },
+    {
+      "team_id": 176,
+      "matchday": 6,
+      "matchday_date": "2026-10-04",
+      "position": 10,
+      "points": 8,
+      "goals_for": null,
+      "goals_against": null
+    },
+    {
+      "team_id": 67,
+      "matchday": 6,
+      "matchday_date": "2026-10-04",
+      "position": 11,
+      "points": 8,
+      "goals_for": 11,
+      "goals_against": 8
+    },
+    {
+      "team_id": 61,
+      "matchday": 6,
+      "matchday_date": "2026-10-04",
+      "position": 12,
+      "points": 8,
+      "goals_for": 7,
+      "goals_against": 6
+    },
+    {
+      "team_id": 119,
+      "matchday": 6,
+      "matchday_date": "2026-10-04",
+      "position": 13,
+      "points": 8,
+      "goals_for": 7,
+      "goals_against": 7
+    },
+    {
+      "team_id": 17,
+      "matchday": 6,
+      "matchday_date": "2026-10-04",
+      "position": 14,
+      "points": 7,
+      "goals_for": 7,
+      "goals_against": 9
+    },
+    {
+      "team_id": 55,
+      "matchday": 6,
+      "matchday_date": "2026-10-04",
+      "position": 15,
+      "points": 7,
+      "goals_for": 8,
+      "goals_against": 11
+    },
+    {
+      "team_id": 482,
+      "matchday": 6,
+      "matchday_date": "2026-10-04",
+      "position": 16,
+      "points": 5,
+      "goals_for": 5,
+      "goals_against": 10
+    },
+    {
+      "team_id": 227,
+      "matchday": 6,
+      "matchday_date": "2026-10-04",
+      "position": 17,
+      "points": 4,
+      "goals_for": 5,
+      "goals_against": 7
+    },
+    {
+      "team_id": 89,
+      "matchday": 6,
+      "matchday_date": "2026-10-04",
+      "position": 18,
+      "points": 4,
+      "goals_for": 4,
+      "goals_against": 10
+    },
+    {
+      "team_id": 204,
+      "matchday": 6,
+      "matchday_date": "2026-10-04",
+      "position": 19,
+      "points": 2,
+      "goals_for": 2,
+      "goals_against": 12
+    },
+    {
+      "team_id": 488,
+      "matchday": 6,
+      "matchday_date": "2026-10-04",
+      "position": 20,
+      "points": 1,
+      "goals_for": 6,
+      "goals_against": 16
+    }
+  ],
+  "warnings": [
+    "PRGGF[40] no contiene Jornada 6",
+    "PRGGC[40] no contiene Jornada 6",
+    "PRGGF[176] no contiene Jornada 6",
+    "PRGGC[176] no contiene Jornada 6"
+  ]
+}

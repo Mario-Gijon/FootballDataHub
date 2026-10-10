@@ -16,6 +16,8 @@ from pathlib import Path
 from football_data_hub.core.browser_runtime import BrowserRuntimeConfig
 from football_data_hub.core.browser_session import BrowserSessionManager
 from football_data_hub.providers.bdfutbol.access import BDFutbolAccess, AccessStatus
+from football_data_hub.providers.bdfutbol.classification.acquisition import CLASSIFICATION_URL
+from football_data_hub.providers.bdfutbol.classification.parser import validate_page_structure
 
 
 PROFILE_URL = "https://www.bdfutbol.com/es/j/j209629.html"
@@ -28,6 +30,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--browser", choices=("brave", "chrome", "chromium", "auto"), default="brave")
     parser.add_argument("--output-root", type=Path, default=Path("data/analysis/bdfutbol/session_smoke"))
     parser.add_argument("--no-stats", action="store_true", help="Solo comprobar la ficha principal")
+    parser.add_argument(
+        "--group2-classification",
+        action="store_true",
+        help="Comprobar la clasificación Grupo II (marcador de temporada 2026-27)",
+    )
     return parser.parse_args()
 
 
@@ -43,29 +50,57 @@ def main() -> int:
     )
     results: list[dict] = []
     failure: str | None = None
-    resources = [
-        ("player_profile", PROFILE_URL, ("Nombre completo", "Fecha de nacimiento", "Demarcación")),
-    ]
-    if not args.no_stats:
-        resources.append(("player_stats", STATS_URL, ("Partidos Jugados",)))
+    if args.group2_classification:
+        resources = [
+            (
+                "group2_classification",
+                CLASSIFICATION_URL,
+                ("Clasificación", "Grupo II"),
+            ),
+        ]
+    else:
+        resources = [
+            ("player_profile", PROFILE_URL, ("Nombre completo", "Fecha de nacimiento", "Demarcación")),
+        ]
+        if not args.no_stats:
+            resources.append(("player_stats", STATS_URL, ("Partidos Jugados",)))
 
     try:
         with BrowserSessionManager(config) as session:
             print("Navegador invisible conectado por CDP.")
             access = BDFutbolAccess(session)
             for name, url, markers in resources:
-                with access.open(url, required_markers=markers) as result:
+                access_options = {}
+                if name == "group2_classification":
+                    access_options = {
+                        "required_title_markers": ("Grupo II", "2026-27"),
+                        "required_selectors": ("table#classific",),
+                        "document_validator": validate_page_structure,
+                        "max_wait_seconds": 0,
+                    }
+                with access.open(url, required_markers=markers, **access_options) as result:
                     report = asdict(result.assessment)
                     report["resource"] = name
                     if result.visit is not None:
                         page = result.visit.page
                         report["table_count_diagnostic"] = page.locator("table").count()
+                        if name == "group2_classification":
+                            ids = page.locator("#classific tr[data-ideq]").evaluate_all(
+                                "rows => rows.map(row => row.getAttribute('data-ideq'))"
+                            )
+                            report["classification_team_count"] = len(ids)
+                            report["unique_team_ids"] = len(set(ids))
                     results.append(report)
                     print(
                         f"{name}: {result.assessment.status} "
                         f"| HTTP={result.assessment.http_status} "
                         f"| tablas={report.get('table_count_diagnostic', 0)}"
                     )
+                    if name == "group2_classification":
+                        print(
+                            f"equipos={report.get('classification_team_count', 0)} "
+                            f"| IDs únicos={report.get('unique_team_ids', 0)}"
+                        )
                     if result.assessment.status is not AccessStatus.VALID:
                         print("Se detiene la prueba: el acceso no está validado.")
                         break

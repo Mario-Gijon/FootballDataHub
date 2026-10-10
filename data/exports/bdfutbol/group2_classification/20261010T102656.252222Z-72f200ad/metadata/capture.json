@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "capture_id": "20261010T102656.252222Z-72f200ad",
+  "source": "BDFutbol",
+  "url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html",
+  "final_url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html",
+  "page_title": "Clasificación 1ª RFEF Grupo II 2026-27 | BDFutbol",
+  "competition": "Primera Federación",
+  "season": "2026-27",
+  "group": "II",
+  "captured_at_utc": "2026-10-10T10:26:56.252397+00:00",
+  "extractor_version": "0.1.0",
+  "browser": "brave",
+  "browser_executable": "/usr/bin/brave",
+  "profile_dir": "/home/mario/.football-data-hub-v2-probe",
+  "virtual_display": true,
+  "access": {
+    "status": "VALID",
+    "requested_url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html",
+    "final_url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html",
+    "http_status": 200,
+    "page_title": "Clasificación 1ª RFEF Grupo II 2026-27 | BDFutbol",
+    "missing_markers": [],
+    "reason": null,
+    "missing_title_markers": [],
+    "missing_selectors": [],
+    "missing_dom_markers": [],
+    "missing_dom_evidence": []
+  },
+  "requested_filters": {
+    "classification_type": "general",
+    "matchday": null,
+    "include_postponed": true,
+    "range_type": "all",
+    "date_start": null,
+    "date_end": null,
+    "round_start": null,
+    "round_end": null
+  },
+  "applied_filters": {
+    "classification_type": "general",
+    "matchday": 6,
+    "matchday_date": "2026-10-04",
+    "postponed_policy": "include",
+    "range_type": "all",
+    "range_start_date": null,
+    "range_end_date": null,
+    "range_start_round": null,
+    "range_end_round": null
+  },
+  "played_matchdays_in_source": 6
+}
