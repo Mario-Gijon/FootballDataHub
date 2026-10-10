@@ -137,7 +137,9 @@ export default function App() {
             </span>
           </div>
           {publishedIsReference ? (
-            <span className="source-match-badge"><span>✓</span> Coincide con la tabla publicada · General J6</span>
+            <span className="source-match-badge">
+              <span>✓</span> Coincide con la tabla publicada · {classificationLabel(data.published_standings!.context.classification_type)} J{data.published_standings!.context.matchday}
+            </span>
           ) : (
             <span className="calculation-badge">Orden deportivo calculado</span>
           )}
@@ -145,7 +147,6 @@ export default function App() {
 
         <StandingsTable
           filters={filters}
-          progress={data.progress}
           published={data.published_standings}
           table={table}
         />
@@ -178,12 +179,11 @@ export default function App() {
 
 function initialFilters(data: Bootstrap): StandingsFilters {
   const last = data.metadata.last_matchday_with_results ?? 1;
-  const playedDates = data.matches
-    .filter((match) => match.status === "played" && match.source_match_date !== null)
-    .map((match) => match.source_match_date as string)
-    .sort();
-  const firstDate = playedDates[0] ?? null;
-  const lastDate = playedDates.at(-1) ?? firstDate;
+  const playedDates = sortedMatchDates(data.matches.filter((match) => match.status === "played"));
+  const scheduledDates = sortedMatchDates(data.matches);
+  const availableDates = playedDates.length > 0 ? playedDates : scheduledDates;
+  const firstDate = availableDates[0] ?? null;
+  const lastDate = availableDates.at(-1) ?? firstDate;
   return {
     classificationType: "general",
     matchdayCap: last,
@@ -194,6 +194,13 @@ function initialFilters(data: Bootstrap): StandingsFilters {
     roundStart: 1,
     roundEnd: last,
   };
+}
+
+function sortedMatchDates(matches: Bootstrap["matches"]): string[] {
+  return matches
+    .map((match) => match.source_match_date)
+    .filter((date): date is string => date !== null)
+    .sort();
 }
 
 function buildMatchdayOptions(data: Bootstrap) {
@@ -217,8 +224,9 @@ function isPublishedContext(
   table: ReturnType<typeof calculateStandings>,
 ): boolean {
   const source = data.published_standings;
-  if (!source || filters.classificationType !== "general" || filters.rangeType !== "all") return false;
+  if (!source || filters.rangeType !== source.context.range_type || filters.rangeType !== "all") return false;
   if (
+    filters.classificationType !== source.context.classification_type ||
     filters.matchdayCap !== source.context.matchday ||
     filters.includePostponed !== (source.context.postponed_policy === "include")
   ) return false;
@@ -246,6 +254,10 @@ function formatCaptureDate(value: string): string {
     year: "numeric",
     timeZone: "Europe/Madrid",
   }).format(new Date(value));
+}
+
+function classificationLabel(type: StandingsFilters["classificationType"]): string {
+  return type === "general" ? "General" : type === "local" ? "Local" : "Visitante";
 }
 
 function formatLongDate(isoDate: string): string {

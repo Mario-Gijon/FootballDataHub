@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { ProgressRecord, PublishedStanding, Team } from "../api/contracts";
+import type { PublishedStanding, Team } from "../api/contracts";
 import type { CalculatedTable, StandingRow, StandingsFilters } from "../domain/classification/engine";
 
 type SortKey =
@@ -18,8 +18,15 @@ type SortKey =
 interface Props {
   table: CalculatedTable;
   filters: StandingsFilters;
-  progress: ProgressRecord[];
-  published: { context: { classification_type: string; matchday: number; postponed_policy: string; range_type: string }; rows: PublishedStanding[] } | null;
+  published: {
+    context: {
+      classification_type: StandingsFilters["classificationType"];
+      matchday: number;
+      postponed_policy: "include" | "exclude";
+      range_type: StandingsFilters["rangeType"];
+    };
+    rows: PublishedStanding[];
+  } | null;
 }
 
 const columns: { key: SortKey; label: string; className?: string }[] = [
@@ -36,19 +43,19 @@ const columns: { key: SortKey; label: string; className?: string }[] = [
   { key: "redCards", label: "TR", className: "discipline-column" },
 ];
 
-export function StandingsTable({ table, filters, progress, published }: Props) {
+export function StandingsTable({ table, filters, published }: Props) {
   const [sort, setSort] = useState<{ key: SortKey; direction: "asc" | "desc" } | null>(null);
   const publishedById = useMemo(
     () => new Map(published?.rows.map((row) => [row.team_id, row]) ?? []),
     [published],
   );
-  const progressByRound = useMemo(() => {
-    const index = new Map<string, ProgressRecord>();
-    for (const record of progress) index.set(`${record.team_id}:${record.matchday}`, record);
-    return index;
-  }, [progress]);
+  const sourceContextLabel = published
+    ? `${classificationName(published.context.classification_type)} J${published.context.matchday}`
+    : null;
   const publishedContextMatches =
-    filters.classificationType === "general" &&
+    published !== null &&
+    filters.classificationType === published.context.classification_type &&
+    filters.rangeType === published.context.range_type &&
     filters.rangeType === "all" &&
     filters.matchdayCap === published?.context.matchday &&
     filters.includePostponed === (published?.context.postponed_policy === "include");
@@ -106,7 +113,7 @@ export function StandingsTable({ table, filters, progress, published }: Props) {
           <thead>
             <tr>
               <th className="movement-column" scope="col" aria-label="Cambio de posición">
-                <span title={movementDescription(filters, publishedContextMatches)}>Δ</span>
+                <span title={movementDescription(publishedContextMatches, sourceContextLabel)}>Δ</span>
               </th>
               {columns.map((column) => {
                 const selected = sort?.key === column.key;
@@ -133,11 +140,9 @@ export function StandingsTable({ table, filters, progress, published }: Props) {
               const sourceRow = publishedById.get(row.team.team_id);
               const zone = publishedContextMatches ? sourceRow?.sports_zone ?? null : null;
               const movement = resolveMovement(
-                row.team.team_id,
-                filters,
                 publishedContextMatches,
                 sourceRow,
-                progressByRound,
+                sourceContextLabel,
               );
               const isJaen = row.team.team_id === 49;
               return (
@@ -183,7 +188,7 @@ export function StandingsTable({ table, filters, progress, published }: Props) {
 
       <div className="table-footer">
         <span>{sort ? `Orden visual: ${columnLabel(sort.key)} ${sort.direction === "asc" ? "↑" : "↓"}` : "Orden deportivo · posición calculada"}</span>
-        {zonesAvailable && <ZoneLegend />}
+        {zonesAvailable && <ZoneLegend contextLabel={sourceContextLabel} />}
       </div>
     </section>
   );
@@ -205,33 +210,19 @@ function TeamCrest({ team }: { team: Team }) {
 }
 
 function resolveMovement(
-  teamId: number,
-  filters: StandingsFilters,
   publishedContextMatches: boolean,
   published: PublishedStanding | undefined,
-  progressByRound: Map<string, ProgressRecord>,
+  sourceContextLabel: string | null,
 ): { direction: "up" | "down" | "same"; label: string; title: string } | null {
   if (publishedContextMatches && published?.position_change) {
     const direction = published.position_change;
     return {
       direction,
       label: direction === "same" ? "Sin cambio" : direction === "up" ? "Sube posiciones" : "Baja posiciones",
-      title: "Indicador de movimiento publicado por BDFutbol para General J6",
+      title: `Indicador de movimiento publicado por BDFutbol para ${sourceContextLabel ?? "esta clasificación"}.`,
     };
   }
-  if (filters.classificationType !== "general" || filters.rangeType !== "all" || filters.matchdayCap <= 1) {
-    return null;
-  }
-  const current = progressByRound.get(`${teamId}:${filters.matchdayCap}`)?.position;
-  const previous = progressByRound.get(`${teamId}:${filters.matchdayCap - 1}`)?.position;
-  if (current === null || current === undefined || previous === null || previous === undefined) return null;
-  const delta = previous - current;
-  const direction = delta > 0 ? "up" : delta < 0 ? "down" : "same";
-  return {
-    direction,
-    label: delta === 0 ? "Sin cambio" : `${delta > 0 ? "Sube" : "Baja"} ${Math.abs(delta)} ${Math.abs(delta) === 1 ? "puesto" : "puestos"}`,
-    title: "Cambio calculado a partir de las series generales de progreso entre jornadas.",
-  };
+  return null;
 }
 
 function sortValue(row: StandingRow, key: SortKey): number | string | null {
@@ -263,17 +254,16 @@ function columnLabel(key: SortKey): string {
   return columns.find((column) => column.key === key)?.label ?? key;
 }
 
-function movementDescription(filters: StandingsFilters, sourceContextMatches: boolean): string {
-  if (sourceContextMatches) return "Cambio de posición publicado por BDFutbol para General J6.";
-  if (filters.classificationType === "general" && filters.rangeType === "all") {
-    return "Cambio calculado desde las series generales de progreso.";
+function movementDescription(sourceContextMatches: boolean, sourceContextLabel: string | null): string {
+  if (sourceContextMatches) {
+    return `Cambio de posición publicado por BDFutbol para ${sourceContextLabel ?? "esta clasificación"}.`;
   }
-  return "Sin indicador de cambio para este filtro.";
+  return "Sin movimiento: la serie original no confirma este contexto de filtros.";
 }
 
-function ZoneLegend() {
+function ZoneLegend({ contextLabel }: { contextLabel: string | null }) {
   return (
-    <div className="zone-legend" aria-label="Zonas deportivas publicadas para General J6">
+    <div className="zone-legend" aria-label={`Zonas deportivas publicadas para ${contextLabel ?? "la clasificación"}`}>
       <span><i className="legend-direct" />Ascenso directo</span>
       <span><i className="legend-promotion" />Promoción</span>
       <span><i className="legend-stay" />Permanencia</span>

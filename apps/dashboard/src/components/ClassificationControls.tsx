@@ -26,6 +26,9 @@ const rangeOptions: { value: RangeType; label: string }[] = [
 
 export function ClassificationControls({ filters, onChange, matchdays }: Props) {
   const maxRound = filters.matchdayCap;
+  const hasValidDateRange = Boolean(
+    filters.dateStart && filters.dateEnd && filters.dateStart <= filters.dateEnd,
+  );
 
   function changeRoundRange(start: number, end: number) {
     const boundedStart = Math.min(start, maxRound);
@@ -110,18 +113,31 @@ export function ClassificationControls({ filters, onChange, matchdays }: Props) 
             value={filters.rangeType}
             onChange={(event) => {
               const rangeType = event.target.value as RangeType;
+              if (rangeType === "dates" && !hasValidDateRange) return;
+              const roundStart = Math.max(1, Math.min(filters.roundStart ?? 1, maxRound));
+              const roundEnd = Math.max(
+                roundStart,
+                Math.min(filters.roundEnd ?? maxRound, maxRound),
+              );
               onChange({
                 ...filters,
                 rangeType,
-                dateStart: rangeType === "dates" ? filters.dateStart : null,
-                dateEnd: rangeType === "dates" ? filters.dateEnd : null,
-                roundStart: rangeType === "rounds" ? Math.min(filters.roundStart ?? 1, maxRound) : null,
-                roundEnd: rangeType === "rounds" ? Math.min(filters.roundEnd ?? maxRound, maxRound) : null,
+                // Keep inactive range values so switching back restores the user's choices.
+                dateStart: filters.dateStart,
+                dateEnd: filters.dateEnd,
+                roundStart,
+                roundEnd,
               });
             }}
           >
             {rangeOptions.map((option) => (
-              <option value={option.value} key={option.value}>{option.label}</option>
+              <option
+                disabled={option.value === "dates" && !hasValidDateRange && filters.rangeType !== "dates"}
+                value={option.value}
+                key={option.value}
+              >
+                {option.label}
+              </option>
             ))}
           </select>
         </label>

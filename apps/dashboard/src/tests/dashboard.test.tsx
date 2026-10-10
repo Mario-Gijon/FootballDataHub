@@ -4,6 +4,7 @@ import captureSource from "../../../../data/exports/bdfutbol/group2_classificati
 import classificationSource from "../../../../data/exports/bdfutbol/group2_classification/20261010T102656.252222Z-72f200ad/normalized/classification.json";
 import matchesSource from "../../../../data/exports/bdfutbol/group2_classification/derived-clas01b-20261010T102656Z/normalized/matches.json";
 import progressSource from "../../../../data/exports/bdfutbol/group2_classification/20261010T102656.252222Z-72f200ad/normalized/progress.json";
+import referenceSource from "../../../../data/exports/bdfutbol/group2_classification/derived-clas01b-20261010T102656Z/validation/bdfutbol_js_reference.json";
 import App from "../App";
 
 const publicMatches = matchesSource.matches.map((match) => ({
@@ -100,6 +101,48 @@ function response(status: number, body: unknown) {
 
 const fetchMock = vi.fn();
 
+function bootstrapForGeneralJ5() {
+  const scenario = referenceSource.scenarios.find((item) => item.name === "general_r5");
+  if (!scenario) throw new Error("Falta la referencia real General J5.");
+  const expectedById = new Map(scenario.rows.map((row) => [row.team_id, row]));
+  const published = apiBootstrap.published_standings;
+
+  return {
+    ...apiBootstrap,
+    metadata: {
+      ...apiBootstrap.metadata,
+      last_matchday_with_results: 5,
+      availability: {
+        ...apiBootstrap.metadata.availability,
+        last_matchday_with_results: 5,
+      },
+    },
+    published_standings: {
+      ...published,
+      context: { ...published.context, matchday: 5, matchday_date: "2026-09-27" },
+      rows: published.rows.map((row) => {
+        const expected = expectedById.get(row.team_id);
+        if (!expected) throw new Error(`Falta el equipo ${row.team_id} en General J5.`);
+        return {
+          ...row,
+          position: expected.position,
+          points: expected.points,
+          matches_played: expected.matches_played,
+          wins: expected.wins,
+          draws: expected.draws,
+          losses: expected.losses,
+          goals_for: expected.goals_for,
+          goals_against: expected.goals_against,
+          yellow_cards: expected.yellow_cards,
+          red_cards: expected.red_cards,
+          position_change: null,
+          sports_zone: null,
+        };
+      }),
+    },
+  };
+}
+
 beforeEach(() => {
   fetchMock.mockReset();
   fetchMock.mockResolvedValue(response(200, apiBootstrap));
@@ -124,6 +167,15 @@ describe("dashboard de clasificación", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it("usa la jornada y el tipo publicados por el bootstrap en los indicadores", async () => {
+    fetchMock.mockResolvedValueOnce(response(200, bootstrapForGeneralJ5()));
+    render(<App />);
+
+    expect(await screen.findByText("Coincide con la tabla publicada · General J5")).toBeInTheDocument();
+    expect(screen.getByText("Datos al cierre de la Jornada 5")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("recalcula filtros localmente y limita el rango de jornadas al tope", async () => {
     render(<App />);
     await screen.findByText("Coincide con la tabla publicada · General J6");
@@ -143,6 +195,52 @@ describe("dashboard de clasificación", () => {
     fireEvent.change(screen.getByLabelText("Jornada inicial"), { target: { value: "2" } });
     fireEvent.change(screen.getByLabelText("Jornada final"), { target: { value: "4" } });
     await waitFor(() => expect(screen.getByText("30 partidos contabilizados")).toBeInTheDocument());
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("conserva rangos válidos al recorrer todas las transiciones de modo", async () => {
+    render(<App />);
+    await screen.findByText("Coincide con la tabla publicada · General J6");
+    const rangeType = screen.getByLabelText("Tipo de rango");
+
+    fireEvent.change(rangeType, { target: { value: "dates" } });
+    fireEvent.change(screen.getByLabelText("Fecha inicial"), { target: { value: "2026-09-05" } });
+    fireEvent.change(screen.getByLabelText("Fecha final"), { target: { value: "2026-09-27" } });
+    fireEvent.change(rangeType, { target: { value: "rounds" } });
+    fireEvent.change(screen.getByLabelText("Jornada inicial"), { target: { value: "2" } });
+    fireEvent.change(screen.getByLabelText("Jornada final"), { target: { value: "4" } });
+
+    fireEvent.change(rangeType, { target: { value: "all" } });
+    fireEvent.change(rangeType, { target: { value: "dates" } });
+    expect(screen.getByLabelText("Fecha inicial")).toHaveValue("2026-09-05");
+    expect(screen.getByLabelText("Fecha final")).toHaveValue("2026-09-27");
+
+    fireEvent.change(rangeType, { target: { value: "all" } });
+    fireEvent.change(rangeType, { target: { value: "rounds" } });
+    expect(screen.getByLabelText("Jornada inicial")).toHaveValue("2");
+    expect(screen.getByLabelText("Jornada final")).toHaveValue("4");
+    fireEvent.change(rangeType, { target: { value: "dates" } });
+    expect(screen.getByLabelText("Fecha inicial")).toHaveValue("2026-09-05");
+
+    fireEvent.change(rangeType, { target: { value: "all" } });
+    fireEvent.change(screen.getByLabelText("Jornada límite"), { target: { value: "3" } });
+    fireEvent.change(rangeType, { target: { value: "rounds" } });
+    expect(screen.getByLabelText("Jornada inicial")).toHaveValue("2");
+    expect(screen.getByLabelText("Jornada final")).toHaveValue("3");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("oculta movimientos cuando el filtro de aplazados difiere del contexto publicado", async () => {
+    const { container } = render(<App />);
+    await screen.findByText("Coincide con la tabla publicada · General J6");
+    expect(container.querySelectorAll(".movement-cell [title]").length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "Excluir" }));
+    expect(container.querySelectorAll(".movement-cell [title]")).toHaveLength(0);
+    expect(container.querySelector(".movement-column span")).toHaveAttribute(
+      "title",
+      "Sin movimiento: la serie original no confirma este contexto de filtros.",
+    );
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
