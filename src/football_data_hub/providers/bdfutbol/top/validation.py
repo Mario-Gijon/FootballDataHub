@@ -1,0 +1,94 @@
+"""Validaciones de consistencia semántica de una captura de Destacados."""
+
+from __future__ import annotations
+
+from collections import Counter
+from dataclasses import asdict
+from typing import Any
+
+from .models import ParsedTop
+
+
+def validate_top_data(parsed: ParsedTop) -> dict[str, Any]:
+    issues: list[dict[str, str]] = []
+    warnings = list(parsed.warnings)
+    expected_categories = {
+        "goals", "minutes", "yellow_cards", "red_cards", "youngest", "oldest"
+    }
+    category_counts = Counter(record.category for record in parsed.rankings)
+    if set(category_counts) != expected_categories:
+        issues.append({"code": "ranking_categories", "message": "Faltan categorías o hay categorías inesperadas."})
+    for category in expected_categories:
+        records = sorted(
+            (record for record in parsed.rankings if record.category == category),
+            key=lambda record: record.rank,
+        )
+        ranks = [record.rank for record in records]
+        if ranks != list(range(1, len(records) + 1)):
+            issues.append({"code": "rank_sequence", "message": f"{category}: posiciones no consecutivas."})
+        if len({record.player_id for record in records}) != len(records):
+            issues.append({"code": "ranking_duplicate", "message": f"{category}: jugador duplicado."})
+        if any(record.metric_value < 0 for record in records):
+            issues.append({"code": "negative_metric", "message": f"{category}: métrica negativa."})
+    player_ids = {player.player_id for player in parsed.players}
+    if len(player_ids) != len(parsed.players):
+        issues.append({"code": "player_catalog_duplicate", "message": "El catálogo de jugadores contiene IDs duplicados."})
+    referenced_ids = {record.player_id for record in parsed.rankings}
+    referenced_ids.update(record.player_id for record in parsed.foreigners)
+    if referenced_ids.difference(player_ids):
+        issues.append({"code": "orphan_player", "message": "Hay registros sin jugador normalizado."})
+    if any(player.team_id is None for player in parsed.players):
+        issues.append({"code": "unresolved_team", "message": "Hay jugadores sin ID de equipo verificado."})
+    if len(parsed.foreigners) != parsed.foreigners_summary.source_count:
+        issues.append({"code": "foreign_count", "message": "El número de extranjeros no coincide con el encabezado fuente."})
+    if len({record.player_id for record in parsed.foreigners}) != len(parsed.foreigners):
+        issues.append({"code": "foreign_duplicate", "message": "La tabla de extranjeros contiene IDs duplicados."})
+    if len(parsed.foreigners_summary.country_options) != 44:
+        warnings.append(
+            "El número de opciones de nacionalidad difiere de las 44 observadas en la captura de referencia."
+        )
+    progress_by_category = Counter(series.category for series in parsed.progress)
+    expected_progress = {
+        "goals": category_counts.get("goals", 0),
+        "minutes": category_counts.get("minutes", 0),
+        "yellow_cards": category_counts.get("yellow_cards", 0),
+        "red_cards": category_counts.get("red_cards", 0),
+    }
+    if dict(progress_by_category) != expected_progress:
+        issues.append({"code": "progress_coverage", "message": "Las series no cubren todas las filas con gráfico."})
+    for series in parsed.progress:
+        if tuple(point.matchday for point in series.points) != parsed.chart_matchdays:
+            issues.append({"code": "progress_matchdays", "message": f"Jornadas incoherentes para player_id={series.player_id}."})
+        values = [point.value for point in series.points]
+        if any(value is not None and value < 0 for value in values):
+            issues.append({"code": "negative_progress", "message": f"Valor negativo en player_id={series.player_id}."})
+        observed = [value for value in values if value is not None]
+        if any(current < previous for previous, current in zip(observed, observed[1:])):
+            issues.append({"code": "progress_not_cumulative", "message": f"Serie no acumulativa para player_id={series.player_id}."})
+        ranking = next(
+            (record for record in parsed.rankings if record.category == series.category and record.player_id == series.player_id),
+            None,
+        )
+        if ranking is None or series.points[-1].value != ranking.metric_value:
+            issues.append({"code": "progress_total_mismatch", "message": f"La serie no termina en el valor del ranking para player_id={series.player_id}."})
+    for foreign in parsed.foreigners:
+        for field_name, value in asdict(foreign).items():
+            if field_name != "player_id" and value is not None and value < 0:
+                issues.append({"code": "negative_foreign_stat", "message": f"{field_name} negativo en player_id={foreign.player_id}."})
+                break
+    return {
+        "valid": not issues,
+        "summary": {
+            "categories": len(category_counts),
+            "ranking_records": len(parsed.rankings),
+            "players": len(parsed.players),
+            "progress_series": len(parsed.progress),
+            "progress_points": sum(len(series.points) for series in parsed.progress),
+            "foreign_players": len(parsed.foreigners),
+            "foreign_country_options": len(parsed.foreigners_summary.country_options),
+            "chart_matchdays": list(parsed.chart_matchdays),
+        },
+        "category_counts": dict(category_counts),
+        "issues": issues,
+        "warnings": list(dict.fromkeys(warnings)),
+    }

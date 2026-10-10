@@ -1,0 +1,34 @@
+{
+  "valid": true,
+  "summary": {
+    "categories": 6,
+    "ranking_records": 157,
+    "players": 217,
+    "progress_series": 137,
+    "progress_points": 822,
+    "foreign_players": 101,
+    "foreign_country_options": 44,
+    "chart_matchdays": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  "category_counts": {
+    "goals": 107,
+    "minutes": 10,
+    "yellow_cards": 10,
+    "red_cards": 10,
+    "youngest": 10,
+    "oldest": 10
+  },
+  "issues": [],
+  "warnings": [
+    "Las categorías distintas de Goles solo exponen las diez filas publicadas en sus tablas.",
+    "La edad se conserva como edad mostrada al capturar; BDFutbol no publica aquí su fecha de referencia.",
+    "El denominador del porcentaje de extranjeros no está publicado; el valor implícito es solo una inferencia."
+  ]
+}

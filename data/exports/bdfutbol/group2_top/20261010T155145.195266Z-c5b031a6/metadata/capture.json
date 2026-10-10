@@ -1,0 +1,274 @@
+{
+  "schema_version": 1,
+  "capture_id": "20261010T155145.195266Z-c5b031a6",
+  "source": "BDFutbol",
+  "url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html?tab=top",
+  "final_url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html?tab=top",
+  "page_title": "Clasificación 1ª RFEF Grupo II 2026-27 | BDFutbol",
+  "competition": "Primera Federación",
+  "season": "2026-27",
+  "group": "II",
+  "section": "top",
+  "captured_at_utc": "2026-10-10T15:51:49.776520+00:00",
+  "capture_timestamp_basis": "browser acquisition time",
+  "extractor_version": "0.1.0",
+  "browser": {
+    "backend": "seleniumbase-pure-cdp",
+    "browser_name": "Chromium",
+    "browser_executable": "/usr/bin/chromium",
+    "browser_version": "Chromium 152.0.7977.82 Arch Linux",
+    "automation_version": "4.55.2",
+    "display": ":99",
+    "uses_xvfb": true,
+    "xvfb_external": true
+  },
+  "profile_dir": "/home/mario/.football-data-hub-chromium-pure-cdp",
+  "access": {
+    "status": "VALID",
+    "requested_url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html?tab=top",
+    "final_url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html?tab=top",
+    "http_status": 200,
+    "page_title": "Clasificación 1ª RFEF Grupo II 2026-27 | BDFutbol",
+    "missing_markers": [],
+    "reason": null,
+    "missing_title_markers": [],
+    "missing_selectors": [],
+    "missing_dom_markers": [],
+    "missing_dom_evidence": []
+  },
+  "source_snapshot_sha256": "32e361ba199889ae0a9fea27cf17c0d28a8f90752ec9cba1d0f06d3c5541c3b3",
+  "related_team_catalog": {
+    "path": "data/exports/bdfutbol/group2_classification/derived-res01-20261010T102656Z/normalized/matches.json",
+    "source_capture_id": "20261010T102656.252222Z-72f200ad",
+    "source_captured_at_utc": "2026-10-10T10:26:56.252397+00:00",
+    "sha256": "ac355bf8fff808cea9aa093ebfb274d9313f3137ae89b84132ca11a3e70c7a84"
+  },
+  "category_options": [
+    {
+      "value": "1",
+      "label": "Goles"
+    },
+    {
+      "value": "2",
+      "label": "Minutos"
+    },
+    {
+      "value": "3",
+      "label": "Tarjetas amarillas"
+    },
+    {
+      "value": "4",
+      "label": "Tarjetas rojas"
+    },
+    {
+      "value": "8",
+      "label": "Más joven"
+    },
+    {
+      "value": "9",
+      "label": "Más veterano"
+    }
+  ],
+  "category_source_counts": {
+    "goals": 107,
+    "minutes": 10,
+    "yellow_cards": 10,
+    "red_cards": 10,
+    "youngest": 10,
+    "oldest": 10
+  },
+  "chart_matchdays": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "see_all_available_for_goals": true,
+  "foreigners_summary": {
+    "source_count": 101,
+    "source_percentage": 19.65,
+    "denominator_count": null,
+    "implied_denominator_count": 514,
+    "country_options": [
+      [
+        "",
+        "Todos"
+      ],
+      [
+        "antigua",
+        "Antigua y Barbuda"
+      ],
+      [
+        "argelia",
+        "Argelia"
+      ],
+      [
+        "argentina",
+        "Argentina"
+      ],
+      [
+        "brasil",
+        "Brasil"
+      ],
+      [
+        "bulgaria",
+        "Bulgaria"
+      ],
+      [
+        "camerun",
+        "Camerún"
+      ],
+      [
+        "colombia",
+        "Colombia"
+      ],
+      [
+        "costademarfil",
+        "Costa de Marfil"
+      ],
+      [
+        "costarica",
+        "Costa Rica"
+      ],
+      [
+        "croacia",
+        "Croacia"
+      ],
+      [
+        "dinamarca",
+        "Dinamarca"
+      ],
+      [
+        "ecuador",
+        "Ecuador"
+      ],
+      [
+        "eslovenia",
+        "Eslovenia"
+      ],
+      [
+        "francia",
+        "Francia"
+      ],
+      [
+        "gabon",
+        "Gabón"
+      ],
+      [
+        "gales",
+        "Gales"
+      ],
+      [
+        "ghana",
+        "Ghana"
+      ],
+      [
+        "grecia",
+        "Grecia"
+      ],
+      [
+        "guineabissau",
+        "Guinea-Bisáu"
+      ],
+      [
+        "guineaecuatorial",
+        "Guinea Ecuatorial"
+      ],
+      [
+        "holanda",
+        "Países Bajos"
+      ],
+      [
+        "hungria",
+        "Hungría"
+      ],
+      [
+        "japon",
+        "Japón"
+      ],
+      [
+        "kenia",
+        "Kenia"
+      ],
+      [
+        "kosovo",
+        "Kosovo"
+      ],
+      [
+        "lareunion",
+        "Reunión"
+      ],
+      [
+        "mali",
+        "Mali"
+      ],
+      [
+        "malta",
+        "Malta"
+      ],
+      [
+        "marruecos",
+        "Marruecos"
+      ],
+      [
+        "mauritania",
+        "Mauritania"
+      ],
+      [
+        "nigeria",
+        "Nigeria"
+      ],
+      [
+        "panama",
+        "Panamá"
+      ],
+      [
+        "polonia",
+        "Polonia"
+      ],
+      [
+        "portugal",
+        "Portugal"
+      ],
+      [
+        "puertorico",
+        "Puerto Rico"
+      ],
+      [
+        "rumania",
+        "Rumanía"
+      ],
+      [
+        "senegal",
+        "Senegal"
+      ],
+      [
+        "serbia",
+        "Serbia"
+      ],
+      [
+        "suecia",
+        "Suecia"
+      ],
+      [
+        "turquia",
+        "Turquía"
+      ],
+      [
+        "ucrania",
+        "Ucrania"
+      ],
+      [
+        "uruguay",
+        "Uruguay"
+      ],
+      [
+        "venezuela",
+        "Venezuela"
+      ]
+    ]
+  },
+  "created_at_utc": "2026-10-10T15:51:49.822260+00:00"
+}

@@ -1,0 +1,4557 @@
+{
+  "schema_version": 1,
+  "metadata": {
+    "source": "BDFutbol",
+    "url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html?tab=top",
+    "competition": "Primera Federación",
+    "season": "2026-27",
+    "group": "II",
+    "section": "top",
+    "capture_id": "20261010T155145.195266Z-c5b031a6",
+    "captured_at_utc": "2026-10-10T15:51:49.776520+00:00",
+    "extractor_version": "0.1.0",
+    "source_snapshot_sha256": "32e361ba199889ae0a9fea27cf17c0d28a8f90752ec9cba1d0f06d3c5541c3b3",
+    "related_team_catalog": {
+      "path": "data/exports/bdfutbol/group2_classification/derived-res01-20261010T102656Z/normalized/matches.json",
+      "source_capture_id": "20261010T102656.252222Z-72f200ad",
+      "source_captured_at_utc": "2026-10-10T10:26:56.252397+00:00",
+      "sha256": "ac355bf8fff808cea9aa093ebfb274d9313f3137ae89b84132ca11a3e70c7a84"
+    }
+  },
+  "matchdays": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "records": [
+    {
+      "category": "goals",
+      "player_id": 209974,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 2
+        },
+        {
+          "matchday": 2,
+          "value": 3
+        },
+        {
+          "matchday": 3,
+          "value": 4
+        },
+        {
+          "matchday": 4,
+          "value": 4
+        },
+        {
+          "matchday": 5,
+          "value": 5
+        },
+        {
+          "matchday": 6,
+          "value": 5
+        }
+      ],
+      "graph_selected_by_default": true
+    },
+    {
+      "category": "goals",
+      "player_id": 208672,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 1
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 2
+        },
+        {
+          "matchday": 4,
+          "value": 3
+        },
+        {
+          "matchday": 5,
+          "value": 4
+        },
+        {
+          "matchday": 6,
+          "value": 4
+        }
+      ],
+      "graph_selected_by_default": true
+    },
+    {
+      "category": "goals",
+      "player_id": 209777,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 2
+        },
+        {
+          "matchday": 2,
+          "value": 3
+        },
+        {
+          "matchday": 3,
+          "value": 4
+        },
+        {
+          "matchday": 4,
+          "value": 4
+        },
+        {
+          "matchday": 5,
+          "value": 4
+        },
+        {
+          "matchday": 6,
+          "value": 4
+        }
+      ],
+      "graph_selected_by_default": true
+    },
+    {
+      "category": "goals",
+      "player_id": 102225,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 1
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 2
+        },
+        {
+          "matchday": 4,
+          "value": 3
+        },
+        {
+          "matchday": 5,
+          "value": 3
+        },
+        {
+          "matchday": 6,
+          "value": 3
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 43119,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 2
+        },
+        {
+          "matchday": 6,
+          "value": 3
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 300022,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 1
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 3
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 108229,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 2
+        },
+        {
+          "matchday": 5,
+          "value": 2
+        },
+        {
+          "matchday": 6,
+          "value": 3
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 12962,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 2
+        },
+        {
+          "matchday": 6,
+          "value": 3
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 13672,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 2
+        },
+        {
+          "matchday": 2,
+          "value": 2
+        },
+        {
+          "matchday": 3,
+          "value": 2
+        },
+        {
+          "matchday": 4,
+          "value": 2
+        },
+        {
+          "matchday": 5,
+          "value": 2
+        },
+        {
+          "matchday": 6,
+          "value": 2
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 210396,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 2
+        },
+        {
+          "matchday": 4,
+          "value": 2
+        },
+        {
+          "matchday": 5,
+          "value": 2
+        },
+        {
+          "matchday": 6,
+          "value": 2
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 23496,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 1
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 2
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 22175,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 2
+        },
+        {
+          "matchday": 5,
+          "value": 2
+        },
+        {
+          "matchday": 6,
+          "value": 2
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 20825,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 1
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 2
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 304545,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 2
+        },
+        {
+          "matchday": 6,
+          "value": 2
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 210575,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 1
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 2
+        },
+        {
+          "matchday": 6,
+          "value": 2
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 24832,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 2
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 208808,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 2
+        },
+        {
+          "matchday": 5,
+          "value": 2
+        },
+        {
+          "matchday": 6,
+          "value": 2
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 209910,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 2
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 29536,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 1
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 2
+        },
+        {
+          "matchday": 4,
+          "value": 2
+        },
+        {
+          "matchday": 5,
+          "value": 2
+        },
+        {
+          "matchday": 6,
+          "value": 2
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 19088,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 0
+        },
+        {
+          "matchday": 6,
+          "value": 2
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 13601,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 2
+        },
+        {
+          "matchday": 4,
+          "value": 2
+        },
+        {
+          "matchday": 5,
+          "value": 2
+        },
+        {
+          "matchday": 6,
+          "value": 2
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 43137,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 2
+        },
+        {
+          "matchday": 3,
+          "value": 2
+        },
+        {
+          "matchday": 4,
+          "value": 2
+        },
+        {
+          "matchday": 5,
+          "value": 2
+        },
+        {
+          "matchday": 6,
+          "value": 2
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 24209,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 1
+        },
+        {
+          "matchday": 2,
+          "value": 2
+        },
+        {
+          "matchday": 3,
+          "value": 2
+        },
+        {
+          "matchday": 4,
+          "value": 2
+        },
+        {
+          "matchday": 5,
+          "value": 2
+        },
+        {
+          "matchday": 6,
+          "value": 2
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 15262,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 2
+        },
+        {
+          "matchday": 6,
+          "value": 2
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 29902,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 2
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 21033,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 0
+        },
+        {
+          "matchday": 6,
+          "value": 2
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 21495,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 0
+        },
+        {
+          "matchday": 6,
+          "value": 2
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 102226,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 1
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 2
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 210367,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 2
+        },
+        {
+          "matchday": 5,
+          "value": 2
+        },
+        {
+          "matchday": 6,
+          "value": 2
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 303893,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 2
+        },
+        {
+          "matchday": 6,
+          "value": 2
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 28782,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 1
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 2
+        },
+        {
+          "matchday": 5,
+          "value": 2
+        },
+        {
+          "matchday": 6,
+          "value": 2
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 42321,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 1
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 2
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 23412,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 2
+        },
+        {
+          "matchday": 6,
+          "value": 2
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 26898,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 1
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 20859,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 42564,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 20456,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 25426,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 22732,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 0
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 21669,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 404916,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 209195,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 1
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 402528,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 211179,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 111346,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 1
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 306200,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 0
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 101481,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 0
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 208392,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 1
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 400342,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 26984,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 13989,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 0
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 300666,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 209941,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 59615,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 20686,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 0
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 201265,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 404871,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 0
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 209181,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 26473,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 210694,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 28865,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 21589,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 210600,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 20231,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 20951,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 1
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 28577,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 1069255,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 43115,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 0
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 110298,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 209138,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 0
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 27517,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 1
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 14629,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 208803,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 1069273,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 23808,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 8489,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 1
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 108864,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 704600,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 302204,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 0
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 203167,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 1
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 400592,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 21003,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 1
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 20967,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 26819,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 0
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 23358,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 13583,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 43125,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 0
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 43241,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 0
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 100397,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 1
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 300968,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 21633,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 16839,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 41175,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 24816,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 0
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 208668,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 1
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 28864,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 25647,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 23408,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 208816,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 202400,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 0
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 101816,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 209266,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 13308,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 21666,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 209892,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 20911,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "goals",
+      "player_id": 210750,
+      "metric": "goals",
+      "unit": "goals",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "minutes",
+      "player_id": 24812,
+      "metric": "minutes_played",
+      "unit": "minutes",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 90
+        },
+        {
+          "matchday": 2,
+          "value": 180
+        },
+        {
+          "matchday": 3,
+          "value": 270
+        },
+        {
+          "matchday": 4,
+          "value": 360
+        },
+        {
+          "matchday": 5,
+          "value": 450
+        },
+        {
+          "matchday": 6,
+          "value": 540
+        }
+      ],
+      "graph_selected_by_default": true
+    },
+    {
+      "category": "minutes",
+      "player_id": 401472,
+      "metric": "minutes_played",
+      "unit": "minutes",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 90
+        },
+        {
+          "matchday": 2,
+          "value": 180
+        },
+        {
+          "matchday": 3,
+          "value": 270
+        },
+        {
+          "matchday": 4,
+          "value": 360
+        },
+        {
+          "matchday": 5,
+          "value": 450
+        },
+        {
+          "matchday": 6,
+          "value": 540
+        }
+      ],
+      "graph_selected_by_default": true
+    },
+    {
+      "category": "minutes",
+      "player_id": 20817,
+      "metric": "minutes_played",
+      "unit": "minutes",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 90
+        },
+        {
+          "matchday": 2,
+          "value": 180
+        },
+        {
+          "matchday": 3,
+          "value": 270
+        },
+        {
+          "matchday": 4,
+          "value": 360
+        },
+        {
+          "matchday": 5,
+          "value": 450
+        },
+        {
+          "matchday": 6,
+          "value": 540
+        }
+      ],
+      "graph_selected_by_default": true
+    },
+    {
+      "category": "minutes",
+      "player_id": 301283,
+      "metric": "minutes_played",
+      "unit": "minutes",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 90
+        },
+        {
+          "matchday": 2,
+          "value": 180
+        },
+        {
+          "matchday": 3,
+          "value": 270
+        },
+        {
+          "matchday": 4,
+          "value": 360
+        },
+        {
+          "matchday": 5,
+          "value": 450
+        },
+        {
+          "matchday": 6,
+          "value": 540
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "minutes",
+      "player_id": 209719,
+      "metric": "minutes_played",
+      "unit": "minutes",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 90
+        },
+        {
+          "matchday": 2,
+          "value": 180
+        },
+        {
+          "matchday": 3,
+          "value": 270
+        },
+        {
+          "matchday": 4,
+          "value": 360
+        },
+        {
+          "matchday": 5,
+          "value": 450
+        },
+        {
+          "matchday": 6,
+          "value": 540
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "minutes",
+      "player_id": 49319,
+      "metric": "minutes_played",
+      "unit": "minutes",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 90
+        },
+        {
+          "matchday": 2,
+          "value": 180
+        },
+        {
+          "matchday": 3,
+          "value": 270
+        },
+        {
+          "matchday": 4,
+          "value": 360
+        },
+        {
+          "matchday": 5,
+          "value": 450
+        },
+        {
+          "matchday": 6,
+          "value": 540
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "minutes",
+      "player_id": 12821,
+      "metric": "minutes_played",
+      "unit": "minutes",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 90
+        },
+        {
+          "matchday": 2,
+          "value": 180
+        },
+        {
+          "matchday": 3,
+          "value": 270
+        },
+        {
+          "matchday": 4,
+          "value": 360
+        },
+        {
+          "matchday": 5,
+          "value": 450
+        },
+        {
+          "matchday": 6,
+          "value": 540
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "minutes",
+      "player_id": 210938,
+      "metric": "minutes_played",
+      "unit": "minutes",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 90
+        },
+        {
+          "matchday": 2,
+          "value": 180
+        },
+        {
+          "matchday": 3,
+          "value": 270
+        },
+        {
+          "matchday": 4,
+          "value": 360
+        },
+        {
+          "matchday": 5,
+          "value": 450
+        },
+        {
+          "matchday": 6,
+          "value": 540
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "minutes",
+      "player_id": 20121,
+      "metric": "minutes_played",
+      "unit": "minutes",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 90
+        },
+        {
+          "matchday": 2,
+          "value": 180
+        },
+        {
+          "matchday": 3,
+          "value": 270
+        },
+        {
+          "matchday": 4,
+          "value": 360
+        },
+        {
+          "matchday": 5,
+          "value": 450
+        },
+        {
+          "matchday": 6,
+          "value": 540
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "minutes",
+      "player_id": 102830,
+      "metric": "minutes_played",
+      "unit": "minutes",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 90
+        },
+        {
+          "matchday": 2,
+          "value": 180
+        },
+        {
+          "matchday": 3,
+          "value": 270
+        },
+        {
+          "matchday": 4,
+          "value": 360
+        },
+        {
+          "matchday": 5,
+          "value": 450
+        },
+        {
+          "matchday": 6,
+          "value": 540
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "yellow_cards",
+      "player_id": 402080,
+      "metric": "yellow_cards",
+      "unit": "cards",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 2
+        },
+        {
+          "matchday": 5,
+          "value": 3
+        },
+        {
+          "matchday": 6,
+          "value": 4
+        }
+      ],
+      "graph_selected_by_default": true
+    },
+    {
+      "category": "yellow_cards",
+      "player_id": 712746,
+      "metric": "yellow_cards",
+      "unit": "cards",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 2
+        },
+        {
+          "matchday": 5,
+          "value": 3
+        },
+        {
+          "matchday": 6,
+          "value": 4
+        }
+      ],
+      "graph_selected_by_default": true
+    },
+    {
+      "category": "yellow_cards",
+      "player_id": 300965,
+      "metric": "yellow_cards",
+      "unit": "cards",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 1
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 2
+        },
+        {
+          "matchday": 4,
+          "value": 3
+        },
+        {
+          "matchday": 5,
+          "value": 4
+        },
+        {
+          "matchday": 6,
+          "value": 4
+        }
+      ],
+      "graph_selected_by_default": true
+    },
+    {
+      "category": "yellow_cards",
+      "player_id": 23597,
+      "metric": "yellow_cards",
+      "unit": "cards",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 1
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 2
+        },
+        {
+          "matchday": 4,
+          "value": 3
+        },
+        {
+          "matchday": 5,
+          "value": 3
+        },
+        {
+          "matchday": 6,
+          "value": 3
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "yellow_cards",
+      "player_id": 21003,
+      "metric": "yellow_cards",
+      "unit": "cards",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 2
+        },
+        {
+          "matchday": 4,
+          "value": 2
+        },
+        {
+          "matchday": 5,
+          "value": 3
+        },
+        {
+          "matchday": 6,
+          "value": 3
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "yellow_cards",
+      "player_id": 8489,
+      "metric": "yellow_cards",
+      "unit": "cards",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 1
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 2
+        },
+        {
+          "matchday": 5,
+          "value": 2
+        },
+        {
+          "matchday": 6,
+          "value": 3
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "yellow_cards",
+      "player_id": 210371,
+      "metric": "yellow_cards",
+      "unit": "cards",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 1
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 2
+        },
+        {
+          "matchday": 5,
+          "value": 2
+        },
+        {
+          "matchday": 6,
+          "value": 3
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "yellow_cards",
+      "player_id": 43158,
+      "metric": "yellow_cards",
+      "unit": "cards",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 1
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 2
+        },
+        {
+          "matchday": 4,
+          "value": 2
+        },
+        {
+          "matchday": 5,
+          "value": 3
+        },
+        {
+          "matchday": 6,
+          "value": 3
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "yellow_cards",
+      "player_id": 20911,
+      "metric": "yellow_cards",
+      "unit": "cards",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 2
+        },
+        {
+          "matchday": 4,
+          "value": 2
+        },
+        {
+          "matchday": 5,
+          "value": 2
+        },
+        {
+          "matchday": 6,
+          "value": 3
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "yellow_cards",
+      "player_id": 24585,
+      "metric": "yellow_cards",
+      "unit": "cards",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 2
+        },
+        {
+          "matchday": 5,
+          "value": 3
+        },
+        {
+          "matchday": 6,
+          "value": 3
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "red_cards",
+      "player_id": 26819,
+      "metric": "red_cards",
+      "unit": "cards",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": true
+    },
+    {
+      "category": "red_cards",
+      "player_id": 20678,
+      "metric": "red_cards",
+      "unit": "cards",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": true
+    },
+    {
+      "category": "red_cards",
+      "player_id": 301283,
+      "metric": "red_cards",
+      "unit": "cards",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 0
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": true
+    },
+    {
+      "category": "red_cards",
+      "player_id": 111234,
+      "metric": "red_cards",
+      "unit": "cards",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "red_cards",
+      "player_id": 13308,
+      "metric": "red_cards",
+      "unit": "cards",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "red_cards",
+      "player_id": 1076109,
+      "metric": "red_cards",
+      "unit": "cards",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 0
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "red_cards",
+      "player_id": 12392,
+      "metric": "red_cards",
+      "unit": "cards",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "red_cards",
+      "player_id": 208808,
+      "metric": "red_cards",
+      "unit": "cards",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 1
+        },
+        {
+          "matchday": 2,
+          "value": 1
+        },
+        {
+          "matchday": 3,
+          "value": 1
+        },
+        {
+          "matchday": 4,
+          "value": 1
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "red_cards",
+      "player_id": 13672,
+      "metric": "red_cards",
+      "unit": "cards",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    },
+    {
+      "category": "red_cards",
+      "player_id": 13789,
+      "metric": "red_cards",
+      "unit": "cards",
+      "points": [
+        {
+          "matchday": 1,
+          "value": 0
+        },
+        {
+          "matchday": 2,
+          "value": 0
+        },
+        {
+          "matchday": 3,
+          "value": 0
+        },
+        {
+          "matchday": 4,
+          "value": 0
+        },
+        {
+          "matchday": 5,
+          "value": 1
+        },
+        {
+          "matchday": 6,
+          "value": 1
+        }
+      ],
+      "graph_selected_by_default": false
+    }
+  ],
+  "warnings": [
+    "Las categorías distintas de Goles solo exponen las diez filas publicadas en sus tablas.",
+    "La edad se conserva como edad mostrada al capturar; BDFutbol no publica aquí su fecha de referencia.",
+    "El denominador del porcentaje de extranjeros no está publicado; el valor implícito es solo una inferencia."
+  ]
+}

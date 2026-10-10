@@ -1,0 +1,31 @@
+{
+  "capture_id": "20261010T155145.195266Z-c5b031a6",
+  "captured_at_utc": "2026-10-10T15:51:49.776520+00:00",
+  "capture_timestamp_basis": "browser acquisition time",
+  "requested_url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html?tab=top",
+  "final_url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html?tab=top",
+  "title": "Clasificación 1ª RFEF Grupo II 2026-27 | BDFutbol",
+  "access": {
+    "status": "VALID",
+    "requested_url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html?tab=top",
+    "final_url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html?tab=top",
+    "http_status": 200,
+    "page_title": "Clasificación 1ª RFEF Grupo II 2026-27 | BDFutbol",
+    "missing_markers": [],
+    "reason": null,
+    "missing_title_markers": [],
+    "missing_selectors": [],
+    "missing_dom_markers": [],
+    "missing_dom_evidence": []
+  },
+  "browser": {
+    "backend": "seleniumbase-pure-cdp",
+    "browser_name": "Chromium",
+    "browser_executable": "/usr/bin/chromium",
+    "browser_version": "Chromium 152.0.7977.82 Arch Linux",
+    "automation_version": "4.55.2",
+    "display": ":99",
+    "uses_xvfb": true,
+    "xvfb_external": true
+  }
+}
