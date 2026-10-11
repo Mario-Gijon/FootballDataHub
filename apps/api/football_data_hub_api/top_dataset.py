@@ -45,6 +45,12 @@ class TopDatasetBundle:
     bootstrap: TopBootstrapResponse
     etag: str
 
+    @property
+    def api_etag(self) -> str:
+        """The TOP schema version is already part of the bundle ETag."""
+
+        return self.etag
+
 
 @dataclass(frozen=True, slots=True)
 class _ForeignersCoverage:

@@ -26,6 +26,7 @@ from football_data_hub_api.schemas import (
     TeamResponse,
 )
 
+CLASSIFICATION_BOOTSTRAP_SCHEMA_VERSION = 1
 EXPECTED_TEAM_COUNT = 20
 EXPECTED_MATCHDAY_COUNT = 38
 EXPECTED_MATCHES_PER_MATCHDAY = 10
@@ -39,6 +40,15 @@ class DatasetLoadError(ValueError):
 class DatasetBundle:
     bootstrap: BootstrapResponse
     etag: str
+
+    @property
+    def api_etag(self) -> str:
+        """Versioned validator for the public multigroup bootstrap contract."""
+
+        return (
+            f'"classification-v{CLASSIFICATION_BOOTSTRAP_SCHEMA_VERSION}-'
+            f'{self.bootstrap.metadata.dataset_version}"'
+        )
 
 
 def load_dataset(settings: ApiSettings) -> DatasetBundle:

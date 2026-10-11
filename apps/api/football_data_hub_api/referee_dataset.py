@@ -48,6 +48,12 @@ class RefereeDatasetBundle:
     etag: str
     group_reference_errors: dict[str, str]
 
+    @property
+    def api_etag(self) -> str:
+        """The referees schema version is already part of the bundle ETag."""
+
+        return self.etag
+
 
 def load_referee_dataset(
     settings: ApiSettings,

@@ -8,6 +8,7 @@ import {
   type StatisticsBootstrap,
   type TopBootstrap,
 } from "./contracts";
+import type { ZodType } from "zod";
 
 export type CompetitionGroup = "1" | "2";
 
@@ -61,7 +62,7 @@ export const loadGroup2StatisticsBootstrap = (signal?: AbortSignal) => loadGroup
 
 async function loadEndpoint<T>(
   path: string,
-  schema: { safeParse: (value: unknown) => { success: true; data: T } | { success: false } },
+  schema: ZodType<T>,
   signal: AbortSignal | undefined,
   connectionError: string,
   contractError: string,
@@ -93,6 +94,34 @@ async function loadEndpoint<T>(
     throw new Error("La API devolvió una respuesta que no es JSON válido.");
   }
   const parsed = schema.safeParse(payload);
-  if (!parsed.success || (verifyGroup && !verifyGroup(parsed.data))) throw new Error(contractError);
+  if (!parsed.success) {
+    if (import.meta.env.DEV) {
+      const requested = path.match(/^\/api\/v1\/groups\/([^/]+)\/([^/]+)/);
+      console.error("FootballDataHub: respuesta incompatible con el contrato", {
+        path,
+        group: requested?.[1] ?? "legacy",
+        section: requested?.[2] ?? "unknown",
+        issues: parsed.error.issues.map((issue) => ({
+          path: issue.path.length ? issue.path.join(".") : "(root)",
+          code: issue.code,
+          message: issue.message,
+          expected: "expected" in issue ? issue.expected : undefined,
+          received: "received" in issue ? issue.received : undefined,
+        })),
+      });
+    }
+    throw new Error(contractError);
+  }
+  if (verifyGroup && !verifyGroup(parsed.data)) {
+    if (import.meta.env.DEV) {
+      const requested = path.match(/^\/api\/v1\/groups\/([^/]+)\/([^/]+)/);
+      console.error("FootballDataHub: el grupo de la respuesta no coincide", {
+        path,
+        group: requested?.[1] ?? "legacy",
+        section: requested?.[2] ?? "unknown",
+      });
+    }
+    throw new Error(contractError);
+  }
   return parsed.data;
 }

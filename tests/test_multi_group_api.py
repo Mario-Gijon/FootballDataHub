@@ -28,6 +28,8 @@ def test_group_bootstraps_are_separate_and_use_real_captures() -> None:
             {team["team_id"] for team in group2["teams"]}
         )
         assert one.headers["etag"] != two.headers["etag"]
+        assert one.headers["etag"].startswith('"group-1-classification-v1-')
+        assert two.headers["etag"].startswith('"group-2-classification-v1-')
         assert client.get(
             "/api/v1/groups/1/bootstrap", headers={"If-None-Match": one.headers["etag"]}
         ).status_code == 304
@@ -61,6 +63,36 @@ def test_group_top_bootstraps_preserve_documented_group_one_exceptions() -> None
         assert two["availability"]["foreign_players"] == 101
         assert two["affiliation_conflicts"] == []
         assert one_response.headers["etag"] != two_response.headers["etag"]
+        assert one_response.headers["etag"].startswith('"group-1-top-v3-')
+        assert two_response.headers["etag"].startswith('"group-2-top-v3-')
+
+        # The previous generic api1 validator could incorrectly return a 304
+        # after TOP's public contract changed while source files stayed fixed.
+        stale_top_etags = (
+            f'"group-2-top-api1-{two["metadata"]["dataset_version"]}"',
+            f'"group-2-top-v2-{two["metadata"]["dataset_version"]}"',
+        )
+        for stale_etag in stale_top_etags:
+            refreshed = client.get(
+                "/api/v1/groups/2/top/bootstrap",
+                headers={"If-None-Match": stale_etag},
+            )
+            assert refreshed.status_code == 200
+            assert refreshed.headers["etag"] == two_response.headers["etag"]
+            assert refreshed.json()["foreigners_summary"] == two["foreigners_summary"]
+        assert client.get(
+            "/api/v1/groups/2/top/bootstrap",
+            headers={"If-None-Match": two_response.headers["etag"]},
+        ).status_code == 304
+
+        # The legacy alias retains its independent TOP v3 validator behavior.
+        legacy = client.get("/api/v1/group2/top/bootstrap")
+        assert legacy.status_code == 200
+        assert legacy.headers["etag"].startswith('"top-v3-')
+        assert client.get(
+            "/api/v1/group2/top/bootstrap",
+            headers={"If-None-Match": legacy.headers["etag"]},
+        ).status_code == 304
 
 
 def test_shared_referees_keep_group_specific_counts_and_exact_match_provenance() -> None:
@@ -74,6 +106,8 @@ def test_shared_referees_keep_group_specific_counts_and_exact_match_provenance()
         assert counts["group1"]["referee_count"] == 43
         assert counts["group2"]["referee_count"] == 42
         assert counts["all"]["referee_count"] == 60
+        assert one.headers["etag"].startswith('"group-1-referees-v1-')
+        assert two.headers["etag"].startswith('"group-2-referees-v1-')
         assert payload["metadata"]["related_match_datasets"]["I"]["capture_id"] == (
             "20261010T202500.293648Z-b770724f"
         )
@@ -90,6 +124,7 @@ def test_statistics_are_bound_to_the_matching_group_and_legacy_aliases_stay_live
         legacy = client.get("/api/v1/group2/bootstrap")
         assert one.status_code == two.status_code == legacy.status_code == 200
         assert one.json()["statistics"]["group"] == "I"
+        assert one.headers["etag"].startswith('"group-1-statistics-v1-')
         assert one.json()["statistics"]["played_matches"] == 60
         assert one.json()["statistics"]["goals"] == 156
         assert one.json()["statistics"]["home_wins"] == 29
@@ -98,6 +133,7 @@ def test_statistics_are_bound_to_the_matching_group_and_legacy_aliases_stay_live
         assert one.json()["statistics"]["yellow_cards"] == 273
         assert one.json()["statistics"]["red_cards"] == 20
         assert two.json()["statistics"]["group"] == "II"
+        assert two.headers["etag"].startswith('"group-2-statistics-v1-')
         assert any(
             item["matchday"] == 5 and item["difference_published_minus_calculated"] == -2
             for item in two.json()["reconciliation"]["round_series"]

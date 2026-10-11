@@ -44,6 +44,12 @@ class StatisticsDatasetBundle:
     bootstrap: StatisticsBootstrapResponse
     etag: str
 
+    @property
+    def api_etag(self) -> str:
+        """The statistics schema version is already part of the bundle ETag."""
+
+        return self.etag
+
 
 def load_statistics_dataset(
     settings: ApiSettings, active_dataset: DatasetBundle | None

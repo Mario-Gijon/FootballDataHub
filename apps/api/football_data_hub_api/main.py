@@ -178,7 +178,6 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
             response,
             _require_group_dataset(request, group),
             group,
-            "classification",
         )
 
     @app.get(
@@ -195,7 +194,6 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
             response,
             _require_section(request, "top_datasets", "top_dataset_errors", group, "Destacados"),
             group,
-            "top",
         )
 
     @app.get(
@@ -212,7 +210,7 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         if bundle is None:
             raise _section_unavailable("Árbitros", request.app.state.referee_dataset_error)
         _require_referee_group(request, group)
-        return _conditional_response(request, response, bundle, group, "referees")
+        return _conditional_response(request, response, bundle, group)
 
     @app.get(
         "/api/v1/groups/{group}/statistics/bootstrap",
@@ -234,7 +232,6 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
                 "Estadísticas",
             ),
             group,
-            "statistics",
         )
 
     # Compatibility aliases: legacy clients remain on the Group II dataset and ETags.
@@ -343,10 +340,9 @@ def _conditional_response(
     response: Response,
     bundle: DatasetBundle | TopDatasetBundle | RefereeDatasetBundle | StatisticsDatasetBundle,
     group: str,
-    section: str,
 ) -> object:
-    dataset_version = bundle.bootstrap.metadata.dataset_version
-    etag = f'"group-{group}-{section}-api1-{dataset_version}"'
+    versioned_bundle_etag = bundle.api_etag.strip('"')
+    etag = f'"group-{group}-{versioned_bundle_etag}"'
     response.headers["ETag"] = etag
     if _etag_matches(request.headers.get("if-none-match"), etag):
         return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": etag})
