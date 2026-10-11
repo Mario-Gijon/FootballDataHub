@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   loadGroupBootstrap,
   loadGroupRefereesBootstrap,
@@ -12,6 +12,9 @@ import type {
   StatisticsBootstrap,
   TopBootstrap,
 } from "./api/contracts";
+import { MainNavigation } from "./components/MainNavigation";
+import { TeamsDirectory } from "./components/TeamsDirectory";
+import { TeamOverview } from "./components/TeamOverview";
 import { ClassificationControls } from "./components/ClassificationControls";
 const ProgressChart = lazy(() => import("./components/ProgressChart").then((module) => ({ default: module.ProgressChart })));
 import { StandingsTable } from "./components/StandingsTable";
@@ -24,9 +27,10 @@ import {
   createClassificationIndexes,
   type StandingsFilters,
 } from "./domain/classification/engine";
+import { buildTeamCatalog, findTeamGroup, type CatalogTeam } from "./domain/teams";
+import type { LoadState } from "./domain/teams-ui";
 
 type Section = "standings" | "results" | "top" | "referees" | "statistics";
-type LoadState = "idle" | "loading" | "error" | "ready";
 type GroupValues<T> = Record<CompetitionGroup, T>;
 
 const groups: CompetitionGroup[] = ["1", "2"];
@@ -39,11 +43,14 @@ const sectionTabs: { id: Section; label: string }[] = [
 ];
 
 export default function App() {
+  const [pathname, setPathname] = useState(() => window.location.pathname);
+  const route = parseRoute(pathname);
   const [activeGroup, setActiveGroup] = useState<CompetitionGroup>("2");
   const [activeSection, setActiveSection] = useState<Section>("standings");
   const [baseData, setBaseData] = useState<GroupValues<Bootstrap | null>>({ "1": null, "2": null });
   const [baseState, setBaseState] = useState<GroupValues<LoadState>>({ "1": "idle", "2": "idle" });
   const [baseErrors, setBaseErrors] = useState<GroupValues<string>>({ "1": "", "2": "" });
+  const [visitedCompetitionGroups, setVisitedCompetitionGroups] = useState(() => new Set<CompetitionGroup>());
   const [topData, setTopData] = useState<GroupValues<TopBootstrap | null>>({ "1": null, "2": null });
   const [topState, setTopState] = useState<GroupValues<LoadState>>({ "1": "idle", "2": "idle" });
   const [topErrors, setTopErrors] = useState<GroupValues<string>>({ "1": "", "2": "" });
@@ -54,28 +61,83 @@ export default function App() {
   const [refereesState, setRefereesState] = useState<GroupValues<LoadState>>({ "1": "idle", "2": "idle" });
   const [refereesErrors, setRefereesErrors] = useState<GroupValues<string>>({ "1": "", "2": "" });
   const pending = useRef(new Set<string>());
+  const navigate = useCallback((path: string) => {
+    if (window.location.pathname !== path) window.history.pushState({}, "", path);
+    setPathname(path);
+    if (window.scrollY > 0) window.scrollTo(0, 0);
+  }, []);
 
   useEffect(() => {
-    const group = activeGroup;
-    if (baseData[group] || baseState[group] !== "idle") return;
-    const key = `${group}:classification`;
-    if (pending.current.has(key)) return;
-    pending.current.add(key);
-    setBaseState((current) => ({ ...current, [group]: "loading" }));
-    setBaseErrors((current) => ({ ...current, [group]: "" }));
-    void loadGroupBootstrap(group)
-      .then((payload) => {
-        // Responses are cached under the request's group. A late result cannot
-        // change which group's data is rendered in the active view.
-        setBaseData((current) => ({ ...current, [group]: payload }));
-        setBaseState((current) => ({ ...current, [group]: "ready" }));
-      })
-      .catch((error: unknown) => {
-        setBaseErrors((current) => ({ ...current, [group]: messageOf(error, "No se pudieron cargar los datos del grupo.") }));
-        setBaseState((current) => ({ ...current, [group]: "error" }));
-      })
-      .finally(() => pending.current.delete(key));
-  }, [activeGroup, baseData, baseState]);
+    const onPopState = () => setPathname(window.location.pathname);
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  useEffect(() => {
+    if (route.kind !== "competitions") return;
+    setVisitedCompetitionGroups((current) => {
+      if (current.has(activeGroup)) return current;
+      return new Set(current).add(activeGroup);
+    });
+  }, [activeGroup, route.kind]);
+
+  useEffect(() => {
+    const groupsToLoad = route.kind === "competitions"
+      ? [activeGroup]
+      : route.kind === "teams" || route.kind === "team"
+        ? groups
+        : [];
+    for (const group of groupsToLoad) {
+      if (baseData[group] || baseState[group] !== "idle") continue;
+      const key = `${group}:classification`;
+      if (pending.current.has(key)) continue;
+      pending.current.add(key);
+      setBaseState((current) => ({ ...current, [group]: "loading" }));
+      setBaseErrors((current) => ({ ...current, [group]: "" }));
+      void loadGroupBootstrap(group)
+        .then((payload) => {
+          // Each response is cached under the requested group, so late results
+          // never replace the currently visible competition context.
+          setBaseData((current) => ({ ...current, [group]: payload }));
+          setBaseState((current) => ({ ...current, [group]: "ready" }));
+        })
+        .catch((error: unknown) => {
+          setBaseErrors((current) => ({ ...current, [group]: messageOf(error, "No se pudieron cargar los datos del grupo.") }));
+          setBaseState((current) => ({ ...current, [group]: "error" }));
+        })
+        .finally(() => pending.current.delete(key));
+    }
+  }, [activeGroup, baseData, baseState, route.kind]);
+
+  const directory = useMemo(() => {
+    try {
+      return { teams: buildTeamCatalog(baseData), error: "" };
+    } catch (error) {
+      return { teams: [] as CatalogTeam[], error: messageOf(error, "No se pudo validar el catálogo de equipos.") };
+    }
+  }, [baseData]);
+  const selectedTeam = route.kind === "team"
+    ? directory.teams.find((team) => team.team_id === route.teamId)
+    : undefined;
+  let teamGroup: CompetitionGroup | null = null;
+  if (route.kind === "team") {
+    try {
+      teamGroup = findTeamGroup(baseData, route.teamId);
+    } catch {
+      // A duplicate ID is reported by the catalog validator below; don't crash
+      // the route while the user can still navigate back or retry.
+    }
+  }
+  const teamName = selectedTeam?.name;
+  const pageTitle = route.kind === "teams"
+    ? "Equipos · FootballDataHub"
+    : route.kind === "team"
+      ? `${teamName ?? "Equipo"} · FootballDataHub`
+      : route.kind === "not-found"
+        ? "Página no encontrada · FootballDataHub"
+        : "Clasificación · FootballDataHub";
+
+  useEffect(() => { document.title = pageTitle; }, [pageTitle]);
 
   useEffect(() => {
     const group = activeGroup;
@@ -141,27 +203,44 @@ export default function App() {
     <div className="app-shell" id="top">
       <header className="topbar">
         <div className="topbar-inner">
-          <Brand />
-          <div className="topbar-competition">
+          <Brand onNavigate={navigate} />
+          <MainNavigation activePage={route.kind === "competitions" ? "competitions" : "teams"} onNavigate={navigate} />
+          {route.kind === "competitions" && <div className="topbar-competition">
             <span>Primera Federación</span>
             <span className="topbar-divider" aria-hidden="true">/</span>
             <label className="group-picker">
-                <span className="visually-hidden">Grupo de competición</span>
+              <span className="visually-hidden">Grupo de competición</span>
               <select aria-label="Seleccionar grupo" value={activeGroup} onChange={(event) => setActiveGroup(event.currentTarget.value as CompetitionGroup)}>
                 <option value="1">Grupo I</option>
                 <option value="2">Grupo II</option>
               </select>
             </label>
-          </div>
+          </div>}
           <div className="topbar-season">Temporada <strong>2026/27</strong></div>
         </div>
       </header>
 
-      {groups.map((group) => {
+      <div
+        className={route.kind === "competitions" ? undefined : "competition-view-suspended"}
+        aria-hidden={route.kind !== "competitions"}
+        inert={route.kind !== "competitions"}
+      >
+        {groups.map((group) => {
         const data = baseData[group];
+        const dashboardHasBeenVisited = visitedCompetitionGroups.has(group);
+        const shouldRenderDashboard = Boolean(data) && (
+          dashboardHasBeenVisited || (route.kind === "competitions" && group === activeGroup)
+        );
+        if (route.kind !== "competitions" && !shouldRenderDashboard) return null;
+        if (route.kind === "competitions" && group !== activeGroup && !dashboardHasBeenVisited) return null;
         if (group !== activeGroup && !data) return null;
         return (
-          <div key={group} hidden={group !== activeGroup}>
+          <div
+            key={group}
+            className={group === activeGroup ? undefined : "competition-group-suspended"}
+            aria-hidden={group !== activeGroup}
+            inert={group !== activeGroup}
+          >
             {data ? (
               <GroupDashboard
                 group={group}
@@ -195,12 +274,94 @@ export default function App() {
             )}
           </div>
         );
-      })}
+        })}
+      </div>
+
+      {route.kind === "teams" && (
+        <TeamsDirectory
+          teams={directory.teams}
+          loadState={baseState}
+          errors={baseErrors}
+          catalogError={directory.error}
+          onRetry={(group) => setBaseState((current) => ({ ...current, [group]: "idle" }))}
+          onNavigate={navigate}
+        />
+      )}
+      {route.kind === "team" && teamGroup && baseData[teamGroup] && (
+        <TeamOverview
+          team={selectedTeam!}
+          data={baseData[teamGroup]!}
+          onNavigate={navigate}
+        />
+      )}
+      {route.kind === "team" && !teamGroup && (
+        <TeamRouteState
+          routeTeamId={route.teamId}
+          catalogError={directory.error}
+          loadState={baseState}
+          errors={baseErrors}
+          onRetry={(group) => setBaseState((current) => ({ ...current, [group]: "idle" }))}
+          onNavigate={navigate}
+        />
+      )}
+      {route.kind === "not-found" && (
+        <main className="dashboard-main team-route-state">
+          <section className="state-card"><span className="section-kicker">PÁGINA NO DISPONIBLE</span><h1>No encontramos esta página</h1><a href="/" onClick={(event) => { event.preventDefault(); navigate("/"); }}>Volver a Competiciones</a></section>
+        </main>
+      )}
 
       <footer className="page-footer">
         <span>Fuente <a href="https://www.bdfutbol.com/" target="_blank" rel="noreferrer">BDFutbol</a></span>
       </footer>
     </div>
+  );
+}
+
+type AppRoute = { kind: "competitions" } | { kind: "teams" } | { kind: "team"; teamId: number } | { kind: "not-found" };
+
+function parseRoute(pathname: string): AppRoute {
+  if (pathname === "/" || pathname === "") return { kind: "competitions" };
+  if (/^\/teams\/?$/.test(pathname)) return { kind: "teams" };
+  const match = pathname.match(/^\/teams\/(\d+)\/?$/);
+  if (match) {
+    const teamId = Number(match[1]);
+    if (Number.isSafeInteger(teamId) && teamId > 0) return { kind: "team", teamId };
+  }
+  return { kind: "not-found" };
+}
+
+function TeamRouteState({
+  routeTeamId,
+  catalogError,
+  loadState,
+  errors,
+  onRetry,
+  onNavigate,
+}: {
+  routeTeamId: number;
+  catalogError: string;
+  loadState: GroupValues<LoadState>;
+  errors: GroupValues<string>;
+  onRetry: (group: CompetitionGroup) => void;
+  onNavigate: (path: string) => void;
+}) {
+  const failed = groups.filter((group) => loadState[group] === "error");
+  const loading = groups.some((group) => loadState[group] === "loading" || loadState[group] === "idle");
+  const title = catalogError
+    ? "No se pudo validar el catálogo"
+    : failed.length && !loading
+      ? "No se pudo verificar el equipo"
+      : "Equipo no encontrado";
+  return (
+    <main className="dashboard-main team-route-state">
+      <section className="state-card" role={catalogError || failed.length ? "alert" : "status"}>
+        <span className="section-kicker">FICHA DE EQUIPO</span>
+        <h1>{loading ? "Cargando equipo…" : title}</h1>
+        <p>{catalogError ? catalogError : loading ? `Consultando los catálogos para el identificador ${routeTeamId}.` : failed.length ? failed.map((group) => `Grupo ${group === "1" ? "I" : "II"}: ${errors[group]}`).join(" ") : `No hay un equipo con el identificador ${routeTeamId} en los catálogos disponibles.`}</p>
+        {failed.map((group) => <button className="primary-button" key={group} onClick={() => onRetry(group)} type="button">Reintentar Grupo {group === "1" ? "I" : "II"}</button>)}
+        <a href="/teams" onClick={(event) => { event.preventDefault(); onNavigate("/teams"); }}>Ir al directorio</a>
+      </section>
+    </main>
   );
 }
 
@@ -415,9 +576,13 @@ function LoadingPage() {
   );
 }
 
-function Brand() {
+function Brand({ onNavigate }: { onNavigate: (path: string) => void }) {
   return (
-    <a className="brand-lockup" href="#top" aria-label="FootballDataHub inicio">
+    <a className="brand-lockup" href="/" aria-label="FootballDataHub inicio" onClick={(event) => {
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      onNavigate("/");
+    }}>
       <span className="brand-mark"><i /><i /><i /><i /></span>
       <span>FOOTBALL<span className="brand-light">DATAHUB</span></span>
     </a>

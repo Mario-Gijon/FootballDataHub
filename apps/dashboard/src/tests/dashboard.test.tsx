@@ -501,6 +501,7 @@ function bootstrapForGeneralJ5() {
 }
 
 beforeEach(() => {
+  window.history.replaceState({}, "", "/");
   fetchMock.mockReset();
   fetchMock.mockImplementation((input: RequestInfo | URL) => Promise.resolve(response(200, payloadFor(input))));
   vi.stubGlobal("fetch", fetchMock);
@@ -512,6 +513,119 @@ afterEach(() => {
 });
 
 describe("dashboard de clasificación", () => {
+  it("construye el directorio con ambos bootstraps y filtra sin nuevas solicitudes", async () => {
+    render(<App />);
+    await screen.findByRole("heading", { name: "Clasificación" });
+    fireEvent.click(screen.getByRole("link", { name: "Equipos" }));
+
+    expect(await screen.findByText(/40 equipos disponibles/)).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: /Abrir ficha de/ })).toHaveLength(40);
+    expect(screen.getByRole("button", { name: /Todos/ })).toHaveTextContent("40");
+    expect(screen.getByRole("button", { name: /^Grupo I 20$/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Grupo II 20$/ })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole("searchbox", { name: "Buscar equipo" }), { target: { value: "jaen" } });
+    expect(screen.getAllByRole("link", { name: /Abrir ficha de/ })).toHaveLength(1);
+    expect(screen.getByRole("link", { name: "Abrir ficha de Jaén, Grupo II" })).toHaveAttribute("href", "/teams/49");
+    fireEvent.click(screen.getByRole("button", { name: /^Grupo I 20$/ }));
+    expect(screen.getByText("No hay equipos que coincidan con la búsqueda.")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("abre fichas por team_id y muestra solo sus datos deportivos del grupo correspondiente", async () => {
+    render(<App />);
+    await screen.findByRole("heading", { name: "Clasificación" });
+    fireEvent.click(screen.getByRole("link", { name: "Equipos" }));
+    await screen.findByText(/40 equipos disponibles/);
+    fireEvent.click(screen.getByRole("link", { name: "Abrir ficha de Racing de Ferrol, Grupo I" }));
+
+    expect(await screen.findByRole("heading", { name: "Racing de Ferrol" })).toBeInTheDocument();
+    expect(screen.getByText("GRUPO I · TEMPORADA 2026/27")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Resumen deportivo" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Últimos partidos" })).toBeInTheDocument();
+    expect(document.querySelectorAll(".team-recent-list li")).toHaveLength(5);
+    expect(screen.getByRole("link", { name: "BDFutbol ↗" })).toHaveAttribute("target", "_blank");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("abre directamente la ficha del Real Jaén y maneja IDs que no existen", async () => {
+    window.history.replaceState({}, "", "/teams/49");
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "Jaén" })).toBeInTheDocument();
+    expect(screen.getByText("GRUPO II · TEMPORADA 2026/27")).toBeInTheDocument();
+    expect(document.querySelectorAll(".team-recent-list li")).toHaveLength(5);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    cleanup();
+    window.history.replaceState({}, "", "/teams/99999");
+    render(<App />);
+    expect(await screen.findByText(/No hay un equipo con el identificador 99999/)).toBeInTheDocument();
+  });
+
+  it("muestra catálogo parcial y permite reintentar solo el grupo que falló", async () => {
+    let group1Failed = false;
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/groups/1/bootstrap") && !group1Failed) {
+        group1Failed = true;
+        return Promise.resolve(response(503, { detail: "unavailable" }));
+      }
+      return Promise.resolve(response(200, payloadFor(input)));
+    });
+    render(<App />);
+    await screen.findByRole("heading", { name: "Clasificación" });
+    fireEvent.click(screen.getByRole("link", { name: "Equipos" }));
+
+    expect(await screen.findByText(/20 equipos disponibles/)).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: /Abrir ficha de/ })).toHaveLength(20);
+    expect(screen.getByText(/Grupo I: La API todavía no tiene/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Reintentar" }));
+
+    expect(await screen.findByText(/40 equipos disponibles/)).toBeInTheDocument();
+    expect(fetchMock.mock.calls.filter(([path]) => String(path).endsWith("/groups/1/bootstrap"))).toHaveLength(2);
+    expect(fetchMock.mock.calls.filter(([path]) => String(path).endsWith("/groups/2/bootstrap"))).toHaveLength(1);
+  });
+
+  it("muestra rutas inexistentes sin solicitar bootstraps deportivos", async () => {
+    window.history.replaceState({}, "", "/players");
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "No encontramos esta página" })).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("mantiene filtros deportivos y grupo activo al alternar Competiciones y Equipos", async () => {
+    render(<App />);
+    await screen.findByRole("heading", { name: "General" });
+    fireEvent.change(screen.getByLabelText("Seleccionar grupo"), { target: { value: "1" } });
+    await screen.findByRole("row", { name: /Pontevedra/ });
+    const group1View = document.querySelector<HTMLElement>("#group-dashboard-1")!;
+    fireEvent.change(group1View.querySelector('select[aria-label="Tipo de rango"]')!, { target: { value: "dates" } });
+    fireEvent.change(group1View.querySelector('input[aria-label="Fecha inicial"]')!, { target: { value: "2026-09-05" } });
+    fireEvent.click(screen.getByRole("link", { name: "Equipos" }));
+    expect(await screen.findByText(/40 equipos disponibles/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("link", { name: "Competiciones" }));
+
+    const persistedGroup1View = document.querySelector<HTMLElement>("#group-dashboard-1");
+    expect(persistedGroup1View).not.toBeNull();
+    expect(persistedGroup1View?.querySelector<HTMLSelectElement>('select[aria-label="Tipo de rango"]')).toHaveValue("dates");
+    expect(persistedGroup1View?.querySelector<HTMLInputElement>('input[aria-label="Fecha inicial"]')).toHaveValue("2026-09-05");
+    expect(screen.getByRole("combobox", { name: "Seleccionar grupo" })).toHaveValue("1");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("atiende la navegación Atrás/Adelante del navegador mediante popstate", async () => {
+    render(<App />);
+    await screen.findByRole("heading", { name: "Clasificación" });
+    fireEvent.click(screen.getByRole("link", { name: "Equipos" }));
+    expect(await screen.findByRole("heading", { name: "Equipos" })).toBeInTheDocument();
+    window.history.replaceState({}, "", "/");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    expect(await screen.findByRole("heading", { name: "Clasificación" })).toBeInTheDocument();
+    window.history.replaceState({}, "", "/teams");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    expect(await screen.findByRole("heading", { name: "Equipos" })).toBeInTheDocument();
+  });
+
   it("valida cobertura y afiliaciones de Destacados por sus datos, sin IDs fijos", () => {
     expect(TopBootstrapSchema.safeParse(group1TopBootstrap).success).toBe(true);
 
