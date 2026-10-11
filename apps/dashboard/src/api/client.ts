@@ -2,10 +2,12 @@ import {
   BootstrapSchema,
   RefereeBootstrapSchema,
   StatisticsBootstrapSchema,
+  TeamRosterSchema,
   TopBootstrapSchema,
   type Bootstrap,
   type RefereeBootstrap,
   type StatisticsBootstrap,
+  type TeamRoster,
   type TopBootstrap,
 } from "./contracts";
 import type { ZodType } from "zod";
@@ -13,6 +15,74 @@ import type { ZodType } from "zod";
 export type CompetitionGroup = "1" | "2";
 
 const apiBase = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+
+export type TeamRosterLoadResult =
+  | { status: "available"; roster: TeamRoster }
+  | { status: "not_captured" };
+
+export class TeamRosterApiError extends Error {
+  constructor(message: string, readonly code: string, readonly statusCode: number) {
+    super(message);
+    this.name = "TeamRosterApiError";
+  }
+}
+
+const teamProfileCache = new Map<string, Promise<TeamRosterLoadResult>>();
+
+export function loadTeamRoster(teamId: number, season: string): Promise<TeamRosterLoadResult> {
+  const key = `${teamId}:${season}:roster`;
+  const cached = teamProfileCache.get(key);
+  if (cached) return cached;
+  const pending = requestTeamRoster(teamId, season).catch((error: unknown) => {
+    teamProfileCache.delete(key);
+    throw error;
+  });
+  teamProfileCache.set(key, pending);
+  return pending;
+}
+
+export function clearTeamProfileCache(): void {
+  teamProfileCache.clear();
+}
+
+async function requestTeamRoster(teamId: number, season: string): Promise<TeamRosterLoadResult> {
+  let response: Response;
+  try {
+    response = await fetch(`${apiBase}/api/v1/teams/${teamId}/seasons/${season}/roster`, {
+      headers: { Accept: "application/json" },
+    });
+  } catch {
+    throw new TeamRosterApiError("No se pudo conectar con la API de FootballDataHub.", "connection_error", 0);
+  }
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    throw new TeamRosterApiError("La API devolvió una respuesta que no es JSON válido.", "invalid_json", response.status);
+  }
+  if (!response.ok) {
+    const detail = typeof body === "object" && body !== null && "detail" in body
+      ? (body as { detail?: unknown }).detail
+      : undefined;
+    const errorBody = typeof detail === "object" && detail !== null ? detail as { code?: unknown; message?: unknown } : {};
+    if (response.status === 404 && errorBody.code === "profile_not_captured") {
+      return { status: "not_captured" };
+    }
+    throw new TeamRosterApiError(
+      typeof errorBody.message === "string" ? errorBody.message : `La API respondió con un error (${response.status}).`,
+      typeof errorBody.code === "string" ? errorBody.code : "request_failed",
+      response.status,
+    );
+  }
+  const parsed = TeamRosterSchema.safeParse(body);
+  if (!parsed.success) {
+    throw new TeamRosterApiError("La respuesta de Plantilla no coincide con su contrato.", "contract_error", response.status);
+  }
+  if (parsed.data.team.team_id !== teamId || parsed.data.metadata.season !== season) {
+    throw new TeamRosterApiError("La Plantilla devuelta no coincide con el equipo o temporada solicitados.", "scope_mismatch", response.status);
+  }
+  return { status: "available", roster: parsed.data };
+}
 
 export function loadGroupBootstrap(group: CompetitionGroup, signal?: AbortSignal): Promise<Bootstrap> {
   const expectedLabel = group === "1" ? "I" : "II";

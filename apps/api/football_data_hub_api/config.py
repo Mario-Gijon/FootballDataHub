@@ -33,6 +33,7 @@ DEFAULT_GROUP1_TOP_CAPTURE = Path(
 DEFAULT_GROUP1_STATISTICS_CAPTURE = Path(
     "data/exports/bdfutbol/group1_statistics/20261010T202515.613199Z-6c6e0fd9"
 )
+DEFAULT_TEAM_PROFILES_INDEX = Path("config/team_profiles_2026-27.json")
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,6 +84,7 @@ class ApiSettings:
     statistics_root: Path | None = None
     group: str = "II"
     group1_settings: GroupDatasetSettings | None = None
+    team_profiles_index_path: Path | None = None
 
     def for_group(self, group: str | int) -> GroupDatasetSettings:
         """Return a group-specific view without mutating or copying any dataset."""
@@ -274,6 +276,10 @@ class ApiSettings:
             statistics_root=group2_statistics_root,
             group="II",
             group1_settings=group1,
+            team_profiles_index_path=_resolve_path(
+                Path(os.getenv("FDH_TEAM_PROFILES_INDEX", str(DEFAULT_TEAM_PROFILES_INDEX))),
+                PROJECT_ROOT,
+            ),
             cors_origins=tuple(
                 origin.strip()
                 for origin in os.getenv("FDH_CORS_ORIGINS", "").split(",")

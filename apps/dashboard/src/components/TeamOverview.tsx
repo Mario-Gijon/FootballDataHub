@@ -1,16 +1,23 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState, type MouseEvent } from "react";
+import { loadTeamRoster, type TeamRosterLoadResult } from "../api/client";
 import type { Bootstrap } from "../api/contracts";
 import { calculateStandings, createClassificationIndexes, type StandingsFilters } from "../domain/classification/engine";
 import { TeamCrest } from "./TeamCard";
-import type { CatalogTeam } from "../domain/teams";
+import { teamPath, teamRosterPath, type CatalogTeam } from "../domain/teams";
+import { TeamRosterSection } from "./TeamRoster";
 
 interface Props {
   team: CatalogTeam;
   data: Bootstrap;
+  activeSection: "summary" | "roster";
   onNavigate: (path: string) => void;
 }
 
-export function TeamOverview({ team, data, onNavigate }: Props) {
+export function TeamOverview({ team, data, activeSection, onNavigate }: Props) {
+  const [rosterResult, setRosterResult] = useState<TeamRosterLoadResult | null>(null);
+  const [rosterError, setRosterError] = useState("");
+  const [rosterLoading, setRosterLoading] = useState(false);
+  const [retryVersion, setRetryVersion] = useState(0);
   const matchday = data.metadata.last_matchday_with_results ?? 1;
   const sourceContext = data.published_standings?.context;
   const sourceMatchesCalculation = Boolean(
@@ -51,6 +58,24 @@ export function TeamOverview({ team, data, onNavigate }: Props) {
     .sort((left, right) => (right.source_match_date ?? "").localeCompare(left.source_match_date ?? "") || right.matchday - left.matchday)
     .slice(0, 5), [data.matches, team.team_id]);
 
+  useEffect(() => {
+    if (activeSection !== "roster") return;
+    let current = true;
+    setRosterLoading(true);
+    setRosterError("");
+    void loadTeamRoster(team.team_id, team.season)
+      .then((result) => { if (current) setRosterResult(result); })
+      .catch((error: unknown) => {
+        if (current) setRosterError(error instanceof Error ? error.message : "No se pudo cargar la Plantilla.");
+      })
+      .finally(() => { if (current) setRosterLoading(false); });
+    return () => { current = false; };
+  }, [activeSection, retryVersion, team.season, team.team_id]);
+
+  function navigateSection(section: "summary" | "roster") {
+    onNavigate(section === "summary" ? teamPath(team.team_id) : teamRosterPath(team.team_id));
+  }
+
   return (
     <main className="dashboard-main team-profile-page">
       <div className="team-profile-actions">
@@ -68,6 +93,22 @@ export function TeamOverview({ team, data, onNavigate }: Props) {
         {team.team_url && <a className="source-team-link" href={team.team_url} target="_blank" rel="noreferrer">BDFutbol ↗</a>}
       </header>
 
+      <nav className="team-section-tabs" aria-label={`Secciones de ${team.name}`}>
+        <a
+          aria-current={activeSection === "summary" ? "page" : undefined}
+          className={activeSection === "summary" ? "team-section-tab is-active" : "team-section-tab"}
+          href={teamPath(team.team_id)}
+          onClick={(event) => { if (isPlainNavigation(event)) { event.preventDefault(); navigateSection("summary"); } }}
+        >Resumen</a>
+        <a
+          aria-current={activeSection === "roster" ? "page" : undefined}
+          className={activeSection === "roster" ? "team-section-tab is-active" : "team-section-tab"}
+          href={teamRosterPath(team.team_id)}
+          onClick={(event) => { if (isPlainNavigation(event)) { event.preventDefault(); navigateSection("roster"); } }}
+        >Plantilla</a>
+      </nav>
+
+      {activeSection === "summary" && <>
       <section className="team-profile-panel" aria-labelledby="team-summary-title">
         <div className="section-heading team-profile-panel-heading">
           <div><span className="section-kicker">JORNADA {matchday}</span><h2 id="team-summary-title">Resumen deportivo</h2></div>
@@ -110,8 +151,38 @@ export function TeamOverview({ team, data, onNavigate }: Props) {
           </ol>
         ) : <p className="team-state">Todavía no hay partidos disputados disponibles para este equipo.</p>}
       </section>
+      </>}
+
+      {activeSection === "roster" && rosterLoading && (
+        <section className="team-profile-panel roster-state" role="status">
+          <span className="section-kicker">PLANTILLA 2026/27</span>
+          <h2>Cargando Plantilla…</h2>
+        </section>
+      )}
+      {activeSection === "roster" && !rosterLoading && rosterError && (
+        <section className="team-profile-panel roster-state" role="alert">
+          <span className="section-kicker">PLANTILLA 2026/27</span>
+          <h2>No se pudo cargar la Plantilla</h2>
+          <p>{rosterError}</p>
+          <button className="primary-button" onClick={() => { setRosterResult(null); setRetryVersion((value) => value + 1); }} type="button">Reintentar</button>
+        </section>
+      )}
+      {activeSection === "roster" && !rosterLoading && !rosterError && rosterResult?.status === "not_captured" && (
+        <section className="team-profile-panel roster-state" role="status">
+          <span className="section-kicker">PLANTILLA 2026/27</span>
+          <h2>Plantilla aún no adquirida</h2>
+          <p>La ficha deportiva del equipo está disponible, pero todavía no hay una captura validada de su Plantilla.</p>
+        </section>
+      )}
+      {activeSection === "roster" && !rosterLoading && !rosterError && rosterResult?.status === "available" && (
+        <TeamRosterSection key={`${team.team_id}:${rosterResult.roster.metadata.capture_id}`} roster={rosterResult.roster} />
+      )}
     </main>
   );
+}
+
+function isPlainNavigation(event: MouseEvent<HTMLAnchorElement>): boolean {
+  return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
 }
 
 function formatDate(value: string): string {

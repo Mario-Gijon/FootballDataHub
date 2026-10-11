@@ -289,8 +289,10 @@ export default function App() {
       )}
       {route.kind === "team" && teamGroup && baseData[teamGroup] && (
         <TeamOverview
+          key={route.teamId}
           team={selectedTeam!}
           data={baseData[teamGroup]!}
+          activeSection={route.section}
           onNavigate={navigate}
         />
       )}
@@ -317,15 +319,21 @@ export default function App() {
   );
 }
 
-type AppRoute = { kind: "competitions" } | { kind: "teams" } | { kind: "team"; teamId: number } | { kind: "not-found" };
+type AppRoute =
+  | { kind: "competitions" }
+  | { kind: "teams" }
+  | { kind: "team"; teamId: number; section: "summary" | "roster" }
+  | { kind: "not-found" };
 
 function parseRoute(pathname: string): AppRoute {
   if (pathname === "/" || pathname === "") return { kind: "competitions" };
   if (/^\/teams\/?$/.test(pathname)) return { kind: "teams" };
-  const match = pathname.match(/^\/teams\/(\d+)\/?$/);
+  const match = pathname.match(/^\/teams\/(\d+)(?:\/(roster))?\/?$/);
   if (match) {
     const teamId = Number(match[1]);
-    if (Number.isSafeInteger(teamId) && teamId > 0) return { kind: "team", teamId };
+    if (Number.isSafeInteger(teamId) && teamId > 0) {
+      return { kind: "team", teamId, section: match[2] === "roster" ? "roster" : "summary" };
+    }
   }
   return { kind: "not-found" };
 }

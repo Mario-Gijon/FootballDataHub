@@ -16,6 +16,10 @@ export function teamPath(teamId: number): string {
   return `/teams/${teamId}`;
 }
 
+export function teamRosterPath(teamId: number): string {
+  return `${teamPath(teamId)}/roster`;
+}
+
 export function normalizeTeamSearch(value: string): string {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es-ES").trim();
 }

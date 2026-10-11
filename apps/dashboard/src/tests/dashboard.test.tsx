@@ -33,9 +33,23 @@ import group1StatisticsCapture from "../../../../data/exports/bdfutbol/group1_st
 import group1StatisticsDerived from "../../../../data/exports/bdfutbol/group1_statistics/20261010T202515.613199Z-6c6e0fd9/normalized/derived_statistics.json";
 import group1StatisticsExclusive from "../../../../data/exports/bdfutbol/group1_statistics/20261010T202515.613199Z-6c6e0fd9/normalized/exclusive_statistics.json";
 import group1StatisticsReconciliation from "../../../../data/exports/bdfutbol/group1_statistics/20261010T202515.613199Z-6c6e0fd9/validation/reconciliation.json";
+import jaenTeamCapture from "../../../../data/exports/bdfutbol/teams/2026-27/49/team01a-group2-49-source-evidence/metadata/capture.json";
+import jaenTeamIdentity from "../../../../data/exports/bdfutbol/teams/2026-27/49/team01a-group2-49-source-evidence/normalized/team_identity.json";
+import jaenTeamSeason from "../../../../data/exports/bdfutbol/teams/2026-27/49/team01a-group2-49-source-evidence/normalized/team_season.json";
+import jaenPlayers from "../../../../data/exports/bdfutbol/teams/2026-27/49/team01a-group2-49-source-evidence/normalized/players.json";
+import jaenMemberships from "../../../../data/exports/bdfutbol/teams/2026-27/49/team01a-group2-49-source-evidence/normalized/memberships.json";
+import jaenPlayerStatistics from "../../../../data/exports/bdfutbol/teams/2026-27/49/team01a-group2-49-source-evidence/normalized/player_statistics.json";
+import racingTeamCapture from "../../../../data/exports/bdfutbol/teams/2026-27/48/20261011T123240.190812Z-8f307d1c/metadata/capture.json";
+import racingTeamIdentity from "../../../../data/exports/bdfutbol/teams/2026-27/48/20261011T123240.190812Z-8f307d1c/normalized/team_identity.json";
+import racingTeamSeason from "../../../../data/exports/bdfutbol/teams/2026-27/48/20261011T123240.190812Z-8f307d1c/normalized/team_season.json";
+import racingPlayers from "../../../../data/exports/bdfutbol/teams/2026-27/48/20261011T123240.190812Z-8f307d1c/normalized/players.json";
+import racingMemberships from "../../../../data/exports/bdfutbol/teams/2026-27/48/20261011T123240.190812Z-8f307d1c/normalized/memberships.json";
+import racingPlayerStatistics from "../../../../data/exports/bdfutbol/teams/2026-27/48/20261011T123240.190812Z-8f307d1c/normalized/player_statistics.json";
 import { buildTopProgressData, TopSection } from "../components/TopSection";
-import type { RefereeBootstrap, StatisticsBootstrap, TopBootstrap } from "../api/contracts";
-import { RefereeBootstrapSchema, StatisticsBootstrapSchema, TopBootstrapSchema } from "../api/contracts";
+import { TeamRosterSection } from "../components/TeamRoster";
+import { clearTeamProfileCache } from "../api/client";
+import type { RefereeBootstrap, StatisticsBootstrap, TeamRoster, TopBootstrap } from "../api/contracts";
+import { RefereeBootstrapSchema, StatisticsBootstrapSchema, TeamRosterSchema, TopBootstrapSchema } from "../api/contracts";
 import App from "../App";
 
 function toPublicMatches(source: typeof matchesSource) {
@@ -452,10 +466,81 @@ const fetchMock = vi.fn();
 function payloadFor(input: RequestInfo | URL): unknown {
   const url = String(input);
   const group = url.includes("/groups/1/") ? "1" : "2";
+  const rosterPath = url.match(/\/api\/v1\/teams\/(\d+)\/seasons\/2026-27\/roster$/);
+  if (rosterPath) return teamRosterPayload(Number(rosterPath[1]));
   if (url.includes("/referees/bootstrap")) return refereeBootstrap;
   if (url.includes("/top/bootstrap")) return group === "1" ? group1TopBootstrap : topBootstrap;
   if (url.includes("/statistics/bootstrap")) return group === "1" ? group1StatisticsBootstrap : statisticsBootstrap;
   return group === "1" ? group1Bootstrap : apiBootstrap;
+}
+
+type JsonObject = Record<string, unknown>;
+
+function asJsonObject(value: unknown): JsonObject {
+  return value as JsonObject;
+}
+
+function teamRosterPayload(teamId: number): TeamRoster {
+  const source = teamId === 49
+    ? { capture: jaenTeamCapture, identity: jaenTeamIdentity, season: jaenTeamSeason, players: jaenPlayers, memberships: jaenMemberships, statistics: jaenPlayerStatistics }
+    : teamId === 48
+      ? { capture: racingTeamCapture, identity: racingTeamIdentity, season: racingTeamSeason, players: racingPlayers, memberships: racingMemberships, statistics: racingPlayerStatistics }
+      : null;
+  if (!source) throw new Error(`No hay una captura de Plantilla de prueba para ${teamId}.`);
+  const capture = asJsonObject(source.capture);
+  const identity = asJsonObject(asJsonObject(source.identity).record);
+  const season = asJsonObject(asJsonObject(source.season).record);
+  const players = asJsonObject(source.players).records as JsonObject[];
+  const memberships = asJsonObject(source.memberships).records as JsonObject[];
+  const statistics = asJsonObject(source.statistics).records as JsonObject[];
+  const snapshots = asJsonObject(capture.source_snapshots);
+  const views = (["alignment", "squad", "statistics"] as const).map((view) => {
+    const evidence = asJsonObject(snapshots[view]);
+    return {
+      view,
+      url: evidence.url,
+      title: evidence.title,
+      status: "VALID",
+      http_status: evidence.http_status,
+      sha256: evidence.sha256,
+      captured_at: evidence.captured_at_utc,
+    };
+  });
+  const groupMemberships = new Map<string, number[]>();
+  for (const membership of memberships) {
+    const label = membership.squad_group_label;
+    if (typeof label !== "string") continue;
+    const playerIds = groupMemberships.get(label) ?? [];
+    playerIds.push(membership.player_id as number);
+    groupMemberships.set(label, playerIds);
+  }
+  return TeamRosterSchema.parse({
+    status: "available",
+    metadata: {
+      contract_version: 1,
+      validation_status: "valid",
+      source: "BDFutbol",
+      url: identity.team_url,
+      competition: "Primera Federación",
+      season: "2026-27",
+      group: capture.group,
+      team_id: teamId,
+      capture_id: capture.capture_id,
+      captured_at: capture.captured_at_utc,
+      extractor_version: capture.extractor_version,
+      content_sha256: "a".repeat(64),
+    },
+    team: identity,
+    coaches: season.coaches,
+    players,
+    memberships,
+    statistics,
+    squad_groups: [...groupMemberships].map(([label, player_ids]) => ({ label, player_ids })),
+    source_views: views,
+    warnings: teamId === 49
+      ? ["La captura no contiene estados enriquecidos de Seguimiento; no son necesarios para Plantilla."]
+      : [],
+  });
 }
 
 function bootstrapForGeneralJ5() {
@@ -502,6 +587,7 @@ function bootstrapForGeneralJ5() {
 
 beforeEach(() => {
   window.history.replaceState({}, "", "/");
+  clearTeamProfileCache();
   fetchMock.mockReset();
   fetchMock.mockImplementation((input: RequestInfo | URL) => Promise.resolve(response(200, payloadFor(input))));
   vi.stubGlobal("fetch", fetchMock);
@@ -1314,5 +1400,94 @@ describe("dashboard de clasificación", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Estadísticas" }));
     expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/groups/2/statistics/bootstrap"))).toHaveLength(2);
     expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/groups/2/bootstrap"))).toHaveLength(1);
+  });
+
+  it("abre Plantilla directa de Jaén, enlaza las tres vistas por player_id y reutiliza la caché", async () => {
+    window.history.replaceState({}, "", "/teams/49/roster");
+    render(<App />);
+
+    expect(await screen.findByRole("heading", { name: "Jaén" })).toBeInTheDocument();
+    expect(await screen.findByText("Entrenadores publicados")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Alineación" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("La captura no contiene estados enriquecidos de Seguimiento; no son necesarios para Plantilla.")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Plantilla" }));
+    expect(await screen.findByRole("heading", { name: "Jugadores" })).toBeInTheDocument();
+    const roster = teamRosterPayload(49);
+    const firstPlayer = roster.players[0]!;
+    const table = screen.getByRole("table");
+    const search = screen.getByRole("textbox", { name: "Buscar jugador" });
+    fireEvent.change(search, { target: { value: firstPlayer.display_name.slice(0, 3) } });
+    expect(within(table).getAllByRole("row")).toHaveLength(2);
+    expect(within(table).getByRole("row", { name: new RegExp(firstPlayer.display_name) })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Estadísticas" }));
+    expect(await screen.findByRole("heading", { name: "Estadísticas de temporada" })).toBeInTheDocument();
+    const firstStats = roster.statistics.find((stats) => stats.player_id === firstPlayer.player_id);
+    expect(firstStats).toBeDefined();
+    const statsRow = within(screen.getByRole("table")).getByRole("row", { name: new RegExp(firstPlayer.display_name) });
+    expect(statsRow.children[1]).toHaveTextContent(String(firstStats?.matches_played));
+
+    fireEvent.click(screen.getByRole("link", { name: "Resumen" }));
+    expect(await screen.findByRole("heading", { name: "Resumen deportivo" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("link", { name: "Plantilla" }));
+    expect(await screen.findByText("Entrenadores publicados")).toBeInTheDocument();
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/teams/49/seasons/2026-27/roster"))).toHaveLength(1);
+    expect(window.location.pathname).toBe("/teams/49/roster");
+  });
+
+  it("abre directamente Plantilla de Racing de Ferrol, Grupo I", async () => {
+    window.history.replaceState({}, "", "/teams/48/roster");
+    render(<App />);
+
+    expect(await screen.findByRole("heading", { name: "Racing de Ferrol" })).toBeInTheDocument();
+    expect(screen.getByText("GRUPO I · TEMPORADA 2026/27")).toBeInTheDocument();
+    expect(await screen.findByText("Entrenadores publicados")).toBeInTheDocument();
+    expect(teamRosterPayload(48).players).toHaveLength(25);
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/teams/48/seasons/2026-27/roster"))).toHaveLength(1);
+  });
+
+  it("mantiene el resumen disponible si un equipo conocido aún no tiene Plantilla adquirida", async () => {
+    const uncapturedTeam = apiBootstrap.teams.find((team) => team.team_id !== 49 && team.team_id !== 48);
+    expect(uncapturedTeam).toBeDefined();
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      if (String(input).includes("/roster")) {
+        return Promise.resolve(response(404, { detail: { code: "profile_not_captured", message: "not captured" } }));
+      }
+      return Promise.resolve(response(200, payloadFor(input)));
+    });
+    window.history.replaceState({}, "", `/teams/${uncapturedTeam?.team_id}/roster`);
+    render(<App />);
+
+    expect(await screen.findByRole("heading", { name: "Plantilla aún no adquirida" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Resumen" })).toHaveAttribute("href", `/teams/${uncapturedTeam?.team_id}`);
+    fireEvent.click(screen.getByRole("link", { name: "Resumen" }));
+    expect(await screen.findByRole("heading", { name: "Resumen deportivo" })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("conserva ceros y muestra null como guion, dejando nulos al final en ambos sentidos", () => {
+    const captured = teamRosterPayload(49);
+    const zeroStat = captured.statistics.find((item) => item.goals === 0);
+    const zeroPlayer = captured.players.find((player) => player.player_id === zeroStat?.player_id);
+    expect(zeroPlayer).toBeDefined();
+    const nullPlayer = captured.players.find((player) => player.player_id !== zeroPlayer?.player_id)!;
+    const syntheticRoster = TeamRosterSchema.parse({
+      ...captured,
+      statistics: captured.statistics.map((item) => item.player_id === nullPlayer.player_id ? { ...item, goals: null } : item),
+    });
+    render(<TeamRosterSection roster={syntheticRoster} />);
+    fireEvent.click(screen.getByRole("button", { name: "Estadísticas" }));
+    const goalsButton = screen.getByRole("button", { name: /^G$/ });
+    fireEvent.click(goalsButton);
+
+    const tableRows = () => within(screen.getByRole("table")).getAllByRole("row").slice(1);
+    expect(tableRows().at(-1)).toHaveTextContent(nullPlayer.display_name);
+    expect(tableRows().at(-1)?.children[6]).toHaveTextContent("—");
+    const zeroRow = tableRows().find((row) => row.textContent?.includes(zeroPlayer!.display_name));
+    expect(zeroRow?.children[6]).toHaveTextContent("0");
+
+    fireEvent.click(goalsButton);
+    expect(tableRows().at(-1)).toHaveTextContent(nullPlayer.display_name);
   });
 });

@@ -966,3 +966,112 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
   html, body { min-width: 0; }
   .section-tabs button { padding-right: 2px; padding-left: 2px; font-size: 8px; }
 }
+
+.team-section-tabs, .team-roster-tabs {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 12px;
+  padding: 4px;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: rgb(24 27 31 / 76%);
+}
+.team-section-tab, .team-roster-tab {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 13px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text-muted);
+  background: transparent;
+  cursor: pointer;
+  font-size: 11px;
+  text-decoration: none;
+  transition: color .15s ease, border-color .15s ease, background .15s ease;
+}
+.team-section-tab:hover, .team-roster-tab:hover { color: var(--text); background: var(--surface-hover); }
+.team-section-tab.is-active, .team-roster-tab.is-active {
+  border-color: rgb(134 82 183 / 43%);
+  color: var(--text);
+  background: rgb(134 82 183 / 17%);
+}
+.team-roster { min-width: 0; }
+.team-roster-tabs { margin: 0 0 11px; }
+.team-roster-content { display: grid; gap: 11px; }
+.team-roster-content .team-profile-panel { margin: 0; }
+.roster-coaches, .roster-alignment-group, .roster-table-panel { min-width: 0; padding: 14px; border: 1px solid var(--glass-border); border-radius: 10px; background: var(--surface); backdrop-filter: blur(10px); }
+.coach-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.coach-card { min-width: 0; display: flex; align-items: center; gap: 11px; padding: 10px; border: 1px solid var(--line-soft); border-radius: 8px; background: rgb(17 19 22 / 40%); }
+.coach-photo, .coach-photo.profile-image-fallback { width: 50px; height: 58px; flex: 0 0 50px; border: 1px solid var(--line-soft); border-radius: 7px; object-fit: cover; background: var(--surface-raised); }
+.profile-image-fallback { display: grid; place-items: center; color: var(--text-muted); font-family: var(--mono); font-size: 11px; }
+.coach-details { min-width: 0; display: grid; gap: 4px; }
+.coach-details > a { color: var(--text); font-size: 12px; font-weight: 650; text-decoration: none; }
+.coach-details > a:hover, .roster-player-name > a:hover { color: var(--purple-light); }
+.coach-details > span { overflow: hidden; color: var(--text-subtle); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.coach-metrics { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--text-subtle); font-size: 9px; }
+.coach-metrics strong { margin-left: 3px; color: var(--text-muted); font-family: var(--mono); font-weight: 500; }
+.roster-player-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; margin: 0; padding: 0; list-style: none; }
+.roster-player-card { min-width: 0; display: grid; grid-template-columns: 37px minmax(0, 1fr) auto; align-items: center; gap: 5px 8px; padding: 8px; border: 1px solid var(--line-soft); border-radius: 7px; background: rgb(17 19 22 / 40%); }
+.roster-player-identity { min-width: 0; display: inline-flex; align-items: center; gap: 8px; }
+.alignment-player-photo, .alignment-player-photo.profile-image-fallback { width: 37px; height: 43px; flex: 0 0 37px; border: 1px solid var(--line-soft); border-radius: 5px; object-fit: cover; background: var(--surface-raised); }
+.roster-player-name { min-width: 0; display: grid; gap: 2px; }
+.roster-player-name > a, .roster-player-name > strong { overflow: hidden; color: var(--text); font-size: 10px; font-weight: 600; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
+.roster-player-name > small { overflow: hidden; color: var(--text-subtle); font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.roster-player-card > .roster-player-identity { grid-column: 1 / 3; }
+.alignment-player-number { color: var(--text); font-family: var(--mono); font-size: 11px; text-align: right; }
+.alignment-player-age { grid-column: 1 / 2; color: var(--text-subtle); font-size: 8px; }
+.alignment-player-summary { grid-column: 2 / -1; overflow: hidden; color: var(--text-muted); font-family: var(--mono); font-size: 8px; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
+.roster-search { width: min(360px, 100%); display: grid; gap: 5px; margin: 0 0 11px; color: var(--text-subtle); font-family: var(--mono); font-size: 9px; letter-spacing: .04em; text-transform: uppercase; }
+.roster-search input { width: 100%; min-height: 36px; padding: 0 10px; border: 1px solid var(--line); border-radius: 6px; outline: none; color: var(--text); background: var(--surface-deep); font-family: "DM Sans", sans-serif; font-size: 11px; letter-spacing: normal; text-transform: none; }
+.roster-search input:focus { border-color: var(--purple); box-shadow: 0 0 0 2px rgb(134 82 183 / 17%); }
+.roster-extra-toggle { min-height: 31px; margin: 0 0 9px; padding: 0 10px; border: 1px solid var(--line); border-radius: 6px; color: var(--purple-light); background: var(--surface-deep); cursor: pointer; font-size: 9px; }
+.roster-extra-toggle:hover { border-color: var(--purple); background: var(--purple-wash); }
+.roster-table-scroll { width: 100%; max-width: 100%; overflow: auto; border: 1px solid var(--line-soft); border-radius: 7px; scrollbar-color: var(--border-strong) var(--surface-deep); scrollbar-width: thin; }
+.roster-table { width: 100%; min-width: 860px; border-collapse: separate; border-spacing: 0; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.roster-statistics-table { min-width: 1030px; }
+.roster-table thead th { position: sticky; z-index: 1; top: 0; height: 37px; padding: 0 8px; border-bottom: 1px solid var(--line); color: var(--text-subtle); background: var(--surface-raised); font-family: var(--mono); font-size: 9px; font-weight: 500; text-align: left; white-space: nowrap; }
+.roster-table thead th:not(:first-child) { text-align: center; }
+.roster-table tbody tr { height: 46px; }
+.roster-table tbody tr:nth-child(even) { background: rgb(255 255 255 / 1.5%); }
+.roster-table tbody tr:hover { background: var(--surface-hover); }
+.roster-table tbody td { padding: 5px 8px; border-bottom: 1px solid var(--line-soft); font-size: 10px; white-space: nowrap; }
+.roster-table tbody tr:last-child td { border-bottom: 0; }
+.roster-table tbody td:not(:first-child) { text-align: center; }
+.roster-table .roster-player-identity { min-width: 155px; }
+.roster-photo, .roster-photo.profile-image-fallback { width: 29px; height: 33px; flex: 0 0 29px; border: 1px solid var(--line-soft); border-radius: 4px; object-fit: cover; background: var(--surface-raised); }
+.roster-table .roster-player-name > a, .roster-table .roster-player-name > strong { font-size: 10px; }
+.roster-table .roster-player-name > small { max-width: 220px; font-size: 8px; }
+.roster-sort-button { padding: 0; border: 0; color: inherit; background: transparent; cursor: pointer; font: inherit; white-space: nowrap; }
+.roster-sort-button:hover { color: var(--text); }
+.roster-number { width: 22px; margin-right: 4px; color: var(--text-subtle); font-family: var(--mono); }
+.roster-no-results { height: 62px; color: var(--text-subtle); text-align: center !important; }
+.roster-warning { margin: 0; padding: 8px 10px; border-left: 2px solid var(--purple); color: var(--text-subtle); background: rgb(134 82 183 / 7%); font-size: 9px; line-height: 1.45; }
+.roster-state { min-height: 135px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 6px; }
+.roster-state h2 { margin: 0; color: var(--text); font-family: "Manrope", sans-serif; font-size: 17px; }
+.roster-state p { max-width: 620px; margin: 0; color: var(--text-muted); font-size: 11px; line-height: 1.5; }
+.roster-state .primary-button { margin-top: 4px; }
+.roster-empty-group { padding: 10px 2px; }
+
+@media (max-width: 1000px) {
+  .roster-player-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+  .team-section-tabs, .team-roster-tabs { width: 100%; }
+  .team-section-tab, .team-roster-tab { min-width: 0; flex: 1 1 0; padding: 0 7px; font-size: 10px; }
+  .roster-coaches, .roster-alignment-group, .roster-table-panel { padding: 10px; }
+  .coach-list { grid-template-columns: 1fr; }
+  .roster-player-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+  .roster-player-card { grid-template-columns: 33px minmax(0, 1fr) auto; gap: 4px 6px; padding: 7px 6px; }
+  .alignment-player-photo, .alignment-player-photo.profile-image-fallback { width: 33px; height: 39px; flex-basis: 33px; }
+  .roster-player-name > a, .roster-player-name > strong { font-size: 9px; }
+  .alignment-player-summary { font-size: 7px; }
+  .roster-search { width: 100%; }
+  .roster-table { min-width: 810px; }
+  .roster-statistics-table { min-width: 1030px; }
+  .roster-table tbody tr { height: 43px; }
+}

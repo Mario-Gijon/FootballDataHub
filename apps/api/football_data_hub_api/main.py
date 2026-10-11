@@ -28,6 +28,7 @@ from football_data_hub_api.schemas import (
     ReadinessResponse,
     RefereeBootstrapResponse,
     StatisticsBootstrapResponse,
+    TeamRosterResponse,
     TopBootstrapResponse,
 )
 from football_data_hub_api.statistics_dataset import (
@@ -39,6 +40,10 @@ from football_data_hub_api.top_dataset import (
     TopDatasetBundle,
     TopDatasetLoadError,
     load_top_dataset,
+)
+from football_data_hub_api.team_roster_dataset import (
+    TeamRosterRegistry,
+    load_team_roster_registry,
 )
 
 logger = logging.getLogger("football_data_hub_api")
@@ -59,6 +64,7 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         app.state.referee_dataset = None
         app.state.referee_dataset_error = None
         app.state.referee_group_errors = {}
+        app.state.team_roster_registry = TeamRosterRegistry({}, {}, {}, None, {})
 
         group_settings = {}
         for group in ("1", "2"):
@@ -130,6 +136,20 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         except (RefereeDatasetLoadError, KeyError, TypeError, ValueError) as exc:
             app.state.referee_dataset_error = exc
             logger.exception("Árbitros no está disponible; el resto de secciones sigue aislado")
+
+        matches_paths = {
+            group: settings.matches_path for group, settings in group_settings.items()
+        }
+        unavailable_groups = {
+            "I" if group == "1" else "II": str(error)
+            for group, error in app.state.dataset_errors.items()
+        }
+        app.state.team_roster_registry = load_team_roster_registry(
+            configured.team_profiles_index_path,
+            datasets=app.state.datasets,
+            matches_paths=matches_paths,
+            unavailable_group_errors=unavailable_groups,
+        )
         yield
 
     app = FastAPI(
@@ -233,6 +253,56 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
             ),
             group,
         )
+
+    @app.get(
+        "/api/v1/teams/{team_id}/seasons/{season}/roster",
+        response_model=TeamRosterResponse,
+        tags=["teams", "roster"],
+        summary="Plantilla normalizada y validada de un equipo",
+    )
+    def team_roster(
+        team_id: int, season: str, request: Request, response: Response
+    ) -> TeamRosterResponse | Response:
+        if season != "2026-27":
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"code": "season_not_available", "message": "Solo está disponible 2026/27."},
+            )
+        registry: TeamRosterRegistry = request.app.state.team_roster_registry
+        if team_id not in registry.known_teams:
+            if registry.unavailable_group_errors:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail={"code": "team_catalog_unavailable", "message": "No se pudieron validar todos los catálogos de equipos."},
+                )
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"code": "team_unknown", "message": "No existe un equipo con ese identificador."},
+            )
+        profile = registry.profiles.get(team_id)
+        if profile is None:
+            if team_id in registry.profile_errors:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail={"code": "profile_invalid", "message": "La captura seleccionada no superó las validaciones de Plantilla."},
+                )
+            if registry.index_error:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail={"code": "profile_index_unavailable", "message": "El índice de capturas de equipos no está disponible."},
+                )
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"code": "profile_not_captured", "message": "La Plantilla de este equipo aún no tiene una captura publicada."},
+            )
+        etag = (
+            f'"team-roster-v{profile.metadata.contract_version}-'
+            f'{team_id}-{season}-{profile.metadata.content_sha256[:24]}"'
+        )
+        response.headers["ETag"] = etag
+        if _etag_matches(request.headers.get("if-none-match"), etag):
+            return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": etag})
+        return profile
 
     # Compatibility aliases: legacy clients remain on the Group II dataset and ETags.
     @app.get("/api/v1/group2/metadata", response_model=DatasetMetadata, tags=["group2"])

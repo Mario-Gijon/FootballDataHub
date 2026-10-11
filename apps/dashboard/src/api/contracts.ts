@@ -148,6 +148,126 @@ export const BootstrapSchema = z.object({
   }
 });
 
+const sourceViewsSchema = z.array(z.string());
+const teamRosterCoachSchema = z.object({
+  coach_id: positiveInteger,
+  display_name: z.string().min(1),
+  full_name: z.string().nullable(),
+  profile_url: z.string().url().nullable(),
+  photo_url: z.string().url().nullable(),
+  age_years: nullableInteger,
+  birth_date: dateOnly,
+  birthplace: z.string().nullable(),
+  birthplace_province: z.string().nullable(),
+  coached_matchdays_source: z.string().nullable(),
+  matches_managed: nullableInteger,
+  yellow_cards: nullableInteger,
+  red_cards: nullableInteger,
+  source_views: sourceViewsSchema,
+}).strict();
+
+const teamRosterPlayerSchema = z.object({
+  player_id: positiveInteger,
+  display_name: z.string().min(1),
+  full_name: z.string().nullable(),
+  profile_url: z.string().url().nullable(),
+  photo_url: z.string().url().nullable(),
+  age_years: nullableInteger,
+  birth_date: dateOnly,
+  birthplace: z.string().nullable(),
+  birthplace_province: z.string().nullable(),
+  nationality_flag_url: z.string().url().nullable(),
+  source_position_code: z.string().nullable(),
+  verified_indicators: z.array(z.string()),
+  source_views: sourceViewsSchema,
+}).strict();
+
+const teamRosterMembershipSchema = z.object({
+  player_id: positiveInteger,
+  team_id: positiveInteger,
+  season: z.string(),
+  competition: z.string(),
+  group: z.string(),
+  jersey_number: nullableInteger,
+  squad_group_label: z.string().nullable(),
+  source_views: sourceViewsSchema,
+}).strict();
+
+const teamRosterStatisticsSchema = z.object({
+  player_id: positiveInteger,
+  team_id: positiveInteger,
+  season: z.string(),
+  competition: z.string(),
+  group: z.string(),
+  matches_played: nullableInteger,
+  starts: nullableInteger,
+  full_matches: nullableInteger,
+  substitute_appearances: nullableInteger,
+  matches_substituted: nullableInteger,
+  unused_substitute_calls: nullableInteger,
+  minutes_played: nullableInteger,
+  yellow_cards: nullableInteger,
+  red_cards: nullableInteger,
+  goals: nullableInteger,
+  minutes_per_goal: nullableInteger,
+  penalty_goals: nullableInteger,
+  own_goals: nullableInteger,
+  goals_conceded: nullableInteger,
+  team_wins: nullableInteger,
+  team_draws: nullableInteger,
+  team_losses: nullableInteger,
+  source_view: z.string(),
+}).strict();
+
+export const TeamRosterSchema = z.object({
+  status: z.literal("available"),
+  metadata: z.object({
+    contract_version: z.number().int(),
+    validation_status: z.literal("valid"),
+    source: z.literal("BDFutbol"),
+    url: z.string().url(),
+    competition: z.literal("Primera Federación"),
+    season: z.literal("2026-27"),
+    group: z.enum(["I", "II"]),
+    team_id: positiveInteger,
+    capture_id: z.string().min(1),
+    captured_at: z.string().datetime({ offset: true }),
+    extractor_version: z.string(),
+    content_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  }).strict(),
+  team: TeamSchema,
+  coaches: z.array(teamRosterCoachSchema),
+  players: z.array(teamRosterPlayerSchema),
+  memberships: z.array(teamRosterMembershipSchema),
+  statistics: z.array(teamRosterStatisticsSchema),
+  squad_groups: z.array(z.object({ label: z.string().min(1), player_ids: z.array(positiveInteger) }).strict()),
+  source_views: z.array(z.object({
+    view: z.string(),
+    url: z.string().url(),
+    title: z.string(),
+    status: z.literal("VALID"),
+    http_status: z.number().int(),
+    sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    captured_at: z.string().datetime({ offset: true }).nullable(),
+  }).strict()),
+  warnings: z.array(z.string()),
+}).strict().superRefine((roster, context) => {
+  if (roster.metadata.team_id !== roster.team.team_id) {
+    context.addIssue({ code: "custom", message: "La Plantilla pertenece a otro equipo." });
+  }
+  const playerIds = new Set(roster.players.map((player) => player.player_id));
+  if (playerIds.size !== roster.players.length) {
+    context.addIssue({ code: "custom", message: "La Plantilla repite player_id." });
+  }
+  for (const entry of [...roster.memberships, ...roster.statistics]) {
+    if (!playerIds.has(entry.player_id) || entry.team_id !== roster.team.team_id) {
+      context.addIssue({ code: "custom", message: "La pertenencia o estadística no coincide por player_id." });
+    }
+  }
+});
+
+export type TeamRoster = z.infer<typeof TeamRosterSchema>;
+
 export const TopCategorySchema = z.enum([
   "goals", "minutes", "yellow_cards", "red_cards", "youngest", "oldest",
 ]);

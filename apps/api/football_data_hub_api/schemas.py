@@ -14,6 +14,134 @@ class ApiModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class TeamRosterCoachResponse(ApiModel):
+    coach_id: StrictInt = Field(gt=0)
+    display_name: str = Field(min_length=1)
+    full_name: str | None
+    profile_url: str | None
+    photo_url: str | None
+    age_years: OptionalInt
+    birth_date: date | None
+    birthplace: str | None
+    birthplace_province: str | None
+    coached_matchdays_source: str | None
+    matches_managed: OptionalInt
+    yellow_cards: OptionalInt
+    red_cards: OptionalInt
+    source_views: list[str]
+
+
+class TeamRosterPlayerResponse(ApiModel):
+    player_id: StrictInt = Field(gt=0)
+    display_name: str = Field(min_length=1)
+    full_name: str | None
+    profile_url: str | None
+    photo_url: str | None
+    age_years: OptionalInt
+    birth_date: date | None
+    birthplace: str | None
+    birthplace_province: str | None
+    nationality_flag_url: str | None
+    source_position_code: str | None
+    verified_indicators: list[str]
+    source_views: list[str]
+
+
+class TeamRosterMembershipResponse(ApiModel):
+    player_id: StrictInt = Field(gt=0)
+    team_id: StrictInt = Field(gt=0)
+    season: str
+    competition: str
+    group: str
+    jersey_number: OptionalInt
+    squad_group_label: str | None
+    source_views: list[str]
+
+
+class TeamRosterPlayerStatisticsResponse(ApiModel):
+    player_id: StrictInt = Field(gt=0)
+    team_id: StrictInt = Field(gt=0)
+    season: str
+    competition: str
+    group: str
+    matches_played: OptionalInt
+    starts: OptionalInt
+    full_matches: OptionalInt
+    substitute_appearances: OptionalInt
+    matches_substituted: OptionalInt
+    unused_substitute_calls: OptionalInt
+    minutes_played: OptionalInt
+    yellow_cards: OptionalInt
+    red_cards: OptionalInt
+    goals: OptionalInt
+    minutes_per_goal: OptionalInt
+    penalty_goals: OptionalInt
+    own_goals: OptionalInt
+    goals_conceded: OptionalInt
+    team_wins: OptionalInt
+    team_draws: OptionalInt
+    team_losses: OptionalInt
+    source_view: str
+
+
+class TeamRosterSourceViewResponse(ApiModel):
+    view: str
+    url: str
+    title: str
+    status: Literal["VALID"]
+    http_status: StrictInt
+    sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    captured_at: datetime | None
+
+
+class TeamRosterMetadataResponse(ApiModel):
+    contract_version: StrictInt
+    validation_status: Literal["valid"]
+    source: Literal["BDFutbol"]
+    url: str
+    competition: Literal["Primera Federación"]
+    season: Literal["2026-27"]
+    group: Literal["I", "II"]
+    team_id: StrictInt = Field(gt=0)
+    capture_id: str = Field(min_length=1)
+    captured_at: datetime
+    extractor_version: str
+    content_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+
+
+class TeamRosterGroupResponse(ApiModel):
+    label: str = Field(min_length=1)
+    player_ids: list[StrictInt]
+
+
+class TeamRosterResponse(ApiModel):
+    status: Literal["available"]
+    metadata: TeamRosterMetadataResponse
+    team: TeamResponse
+    coaches: list[TeamRosterCoachResponse]
+    players: list[TeamRosterPlayerResponse]
+    memberships: list[TeamRosterMembershipResponse]
+    statistics: list[TeamRosterPlayerStatisticsResponse]
+    squad_groups: list[TeamRosterGroupResponse]
+    source_views: list[TeamRosterSourceViewResponse]
+    warnings: list[str]
+
+    @model_validator(mode="after")
+    def validate_player_links(self) -> TeamRosterResponse:
+        player_ids = {player.player_id for player in self.players}
+        if len(player_ids) != len(self.players):
+            raise ValueError("El catálogo de Plantilla repite player_id.")
+        if any(item.player_id not in player_ids for item in self.memberships):
+            raise ValueError("Una pertenencia no tiene identidad de jugador.")
+        if any(item.player_id not in player_ids for item in self.statistics):
+            raise ValueError("Una estadística no tiene identidad de jugador.")
+        if any(item.team_id != self.team.team_id for item in self.memberships):
+            raise ValueError("Una pertenencia corresponde a otro equipo.")
+        if any(item.team_id != self.team.team_id for item in self.statistics):
+            raise ValueError("Una estadística corresponde a otro equipo.")
+        return self
+
+
 class TeamResponse(ApiModel):
     team_id: StrictInt = Field(gt=0)
     name: str = Field(min_length=1)
