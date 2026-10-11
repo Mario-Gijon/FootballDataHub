@@ -259,6 +259,9 @@ class TopForeignPlayerResponse(TopApiModel):
 
 class TopForeignersSummary(TopApiModel):
     source_count: StrictInt = Field(ge=0)
+    available_count: StrictInt = Field(ge=0)
+    missing_count: StrictInt = Field(ge=0)
+    coverage_status: Literal["complete", "documented_discrepancy"]
     source_percentage: float | None
     denominator_count: StrictInt | None
     country_options: list[TopCountryOption]
@@ -273,6 +276,12 @@ class TopAffiliationSource(TopApiModel):
 class TopAffiliationConflict(TopApiModel):
     player_id: StrictInt = Field(gt=0)
     affiliations: list[TopAffiliationSource] = Field(min_length=2)
+
+
+class TopAffiliationAbsence(TopApiModel):
+    player_id: StrictInt = Field(gt=0)
+    source_records: list[str] = Field(min_length=1)
+    reason: Literal["not_published"]
 
 
 class TopCategoryOption(TopApiModel):
@@ -306,6 +315,7 @@ class TopBootstrapResponse(TopApiModel):
     coverage_note: str
     warnings: list[str]
     affiliation_conflicts: list[TopAffiliationConflict]
+    affiliation_absences: list[TopAffiliationAbsence]
 
 
 RefereeScope = Literal["all", "group1", "group2"]
@@ -327,12 +337,24 @@ class RefereeMetadataResponse(RefereeApiModel):
     extractor_version: str
     dataset_version: str
     source_snapshot_sha256: dict[RefereeScope, str]
-    related_matches_path: str
-    related_matches_sha256: str
-    related_matches_capture_id: str
-    related_matches_captured_at: datetime
-    match_reference_status: Literal["consistent", "discrepancies"]
-    related_match_datasets: dict[str, "RefereeRelatedMatchDataset"]
+    related_matches_path: str = Field(
+        description="Ruta declarada por REF-01 para su referencia histórica de Grupo II."
+    )
+    related_matches_sha256: str = Field(
+        description="Hash declarado por REF-01 para la misma referencia histórica de Grupo II."
+    )
+    related_matches_capture_id: str = Field(
+        description="ID de la referencia histórica de Grupo II declarada por REF-01."
+    )
+    related_matches_captured_at: datetime = Field(
+        description="Fecha de captura de la referencia histórica de Grupo II declarada por REF-01."
+    )
+    match_reference_status: Literal["consistent", "discrepancies"] = Field(
+        description="Estado del informe histórico REF-01 de Grupo II."
+    )
+    related_match_datasets: dict[str, "RefereeRelatedMatchDataset"] = Field(
+        description="Referencias de partidos por grupo que pasaron la verificación activa de procedencia."
+    )
 
 
 class RefereeRelatedMatchDataset(RefereeApiModel):

@@ -84,6 +84,14 @@ def load_referee_dataset(
     related_reference = capture.get("related_match_dataset")
     if not isinstance(related_reference, dict):
         raise RefereeDatasetLoadError("La captura no declara su dataset relacionado de Resultados")
+    legacy_report = decoded["match_reference"]
+    if legacy_report.get("reference_dataset") != related_reference:
+        raise RefereeDatasetLoadError(
+            "La referencia histórica de Grupo II no coincide entre metadatos e informe REF-01"
+        )
+    legacy_reference_status = legacy_report.get("status")
+    if legacy_reference_status not in ("consistent", "discrepancies"):
+        raise RefereeDatasetLoadError("El estado de la referencia histórica de Grupo II no es válido")
 
     match_sources = group_match_sources or {
         "II": (
@@ -102,7 +110,7 @@ def load_referee_dataset(
     referee_by_id = {item.referee_id: item for item in referees}
     _validate_statistics(statistics, referee_by_id, capture, decoded["validation"])
     group_options = _group_options(decoded["filter_options"], statistics)
-    compatibility_warnings: list[str] = []
+    warnings_by_group: dict[str, list[str]] = {}
     related_match_metadata: dict[str, RefereeRelatedMatchDataset] = {}
     related_payloads: dict[str, tuple[dict[str, Any], bytes]] = {}
     group_reference_errors: dict[str, str] = {}
@@ -127,15 +135,13 @@ def load_referee_dataset(
                 raise RefereeDatasetLoadError(
                     f"El hash de Resultados de Grupo {group} no coincide con su informe de referencia"
                 )
-            compatibility_warnings.extend(
-                _validate_match_references(
-                    related_matches,
-                    referee_by_id,
-                    statistics,
-                    report,
-                    reference,
-                    group_scope="group1" if group == "I" else "group2",
-                )
+            warnings_by_group[group] = _validate_match_references(
+                related_matches,
+                referee_by_id,
+                statistics,
+                report,
+                reference,
+                group_scope="group1" if group == "I" else "group2",
             )
             related_payloads[group] = (related_matches, related_matches_bytes)
             related_match_metadata[group] = RefereeRelatedMatchDataset(
@@ -146,14 +152,20 @@ def load_referee_dataset(
             )
         except (RefereeDatasetLoadError, KeyError, TypeError, ValueError, ValidationError) as exc:
             group_reference_errors[group] = str(exc)
-            compatibility_warnings.append(
-                f"No se pudo verificar la referencia de partidos del Grupo {group}: {exc}"
-            )
 
     if not related_match_metadata:
         raise RefereeDatasetLoadError(
             "No se pudo verificar ninguna relación entre Árbitros y Resultados"
         )
+    compatibility_warnings = [
+        warning
+        for group in sorted(match_sources)
+        for warning in warnings_by_group.get(group, [])
+    ]
+    compatibility_warnings.extend(
+        f"No se pudo verificar la referencia de partidos del Grupo {group}: {group_reference_errors[group]}"
+        for group in sorted(group_reference_errors)
+    )
 
     scope_summaries = _scope_summaries(statistics, group_options)
     source_hashes = {
@@ -168,7 +180,6 @@ def load_referee_dataset(
         )
         + b"".join(related_payloads[group][1] for group in sorted(related_payloads))
     ).hexdigest()[:16]
-    match_reference = decoded["match_reference"]
     try:
         metadata = RefereeMetadataResponse(
             source=capture["source"],
@@ -183,13 +194,16 @@ def load_referee_dataset(
             dataset_version=f"{capture_id}-{content_hash}",
             source_snapshot_sha256=source_hashes,
             related_matches_path=str(related_reference["path"]),
-            related_matches_sha256=related_matches_digest,
+            # Legacy fields describe the original, declared REF-01 → Grupo II
+            # reference. `related_match_datasets` below contains only active
+            # references that passed the current byte-hash and identity checks.
+            related_matches_sha256=str(related_reference["sha256"]),
             related_matches_capture_id=str(related_reference["source_capture_id"]),
             related_matches_captured_at=_parse_datetime(
                 related_reference["source_captured_at_utc"]
             ),
-            match_reference_status=match_reference["status"],
-            related_match_datasets=related_match_metadata,
+            match_reference_status=legacy_reference_status,
+            related_match_datasets=dict(sorted(related_match_metadata.items())),
         )
         bootstrap = RefereeBootstrapResponse(
             metadata=metadata,

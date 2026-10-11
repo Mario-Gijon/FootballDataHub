@@ -20,6 +20,7 @@ from football_data_hub_api.referee_dataset import (
 
 REFEREES_ROOT = PROJECT_ROOT / "data/exports/bdfutbol/group2_referees/20261010T171227.617128Z-4cfe71bc"
 CLASSIFICATION_ROOT = PROJECT_ROOT / "data/exports/bdfutbol/group2_classification"
+GROUP1_CAPTURE_ROOT = PROJECT_ROOT / "data/exports/bdfutbol/group1_classification/20261010T202500.293648Z-b770724f"
 
 
 def settings() -> ApiSettings:
@@ -46,6 +47,19 @@ def write_json(root: Path, relative: str, value: dict[str, Any]) -> None:
     (root / relative).write_text(
         json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
+
+
+def current_group_match_sources() -> dict[str, tuple[Path, Path]]:
+    return {
+        "I": (
+            GROUP1_CAPTURE_ROOT / "normalized/matches.json",
+            GROUP1_CAPTURE_ROOT / "validation/referee_reference.json",
+        ),
+        "II": (
+            CLASSIFICATION_ROOT / "derived-res01-20261010T102656Z/normalized/matches.json",
+            REFEREES_ROOT / "validation/match_reference.json",
+        ),
+    }
 
 
 def future_capture_with_fewer_rows(root: Path) -> None:
@@ -210,3 +224,55 @@ def test_referee_failure_is_isolated_from_other_api_sections(tmp_path: Path) -> 
         response = isolated_client.get("/api/v1/group2/referees/bootstrap")
         assert response.status_code == 503
         assert "Árbitros" in response.json()["detail"]
+
+
+def test_related_match_metadata_is_stable_when_group_sources_are_reordered() -> None:
+    sources = current_group_match_sources()
+    regular = load_referee_dataset(settings(), group_match_sources=sources)
+    reversed_order = load_referee_dataset(
+        settings(), group_match_sources=dict(reversed(list(sources.items())))
+    )
+    expected_group2 = read_json(REFEREES_ROOT, "metadata/capture.json")["related_match_dataset"]
+
+    for bundle in (regular, reversed_order):
+        metadata = bundle.bootstrap.metadata
+        assert metadata.related_matches_path == expected_group2["path"]
+        assert metadata.related_matches_sha256 == expected_group2["sha256"]
+        assert metadata.related_matches_capture_id == expected_group2["source_capture_id"]
+        assert metadata.related_matches_captured_at.isoformat() == expected_group2[
+            "source_captured_at_utc"
+        ]
+        assert set(metadata.related_match_datasets) == {"I", "II"}
+    assert regular.bootstrap.metadata == reversed_order.bootstrap.metadata
+    assert regular.etag == reversed_order.etag
+    assert regular.bootstrap.compatibility_warnings == reversed_order.bootstrap.compatibility_warnings
+
+
+@pytest.mark.parametrize("invalid_group", ["I", "II"])
+def test_one_invalid_group_reference_does_not_contaminate_the_other(
+    tmp_path: Path, invalid_group: str
+) -> None:
+    sources = current_group_match_sources()
+    _, report_path = sources[invalid_group]
+    sources[invalid_group] = (tmp_path / f"missing-{invalid_group}-matches.json", report_path)
+
+    bundle = load_referee_dataset(settings(), group_match_sources=sources)
+    expected = "II" if invalid_group == "I" else "I"
+    assert set(bundle.bootstrap.metadata.related_match_datasets) == {expected}
+    assert set(bundle.group_reference_errors) == {invalid_group}
+
+    # The legacy fields describe the declared historical Group II reference;
+    # only the per-group map makes a current verified claim.
+    reference = read_json(REFEREES_ROOT, "metadata/capture.json")["related_match_dataset"]
+    assert bundle.bootstrap.metadata.related_matches_path == reference["path"]
+    assert bundle.bootstrap.metadata.related_matches_sha256 == reference["sha256"]
+    assert bundle.bootstrap.metadata.related_matches_capture_id == reference["source_capture_id"]
+
+
+def test_referee_loader_fails_when_both_group_references_fail(tmp_path: Path) -> None:
+    sources = {
+        group: (tmp_path / f"missing-{group}.json", report)
+        for group, (_, report) in current_group_match_sources().items()
+    }
+    with pytest.raises(RefereeDatasetLoadError, match="ninguna relación"):
+        load_referee_dataset(settings(), group_match_sources=sources)

@@ -244,6 +244,9 @@ export const TopBootstrapSchema = z.object({
   foreigners: z.array(TopForeignPlayerSchema),
   foreigners_summary: z.object({
     source_count: z.number().int().nonnegative(),
+    available_count: z.number().int().nonnegative(),
+    missing_count: z.number().int().nonnegative(),
+    coverage_status: z.enum(["complete", "documented_discrepancy"]),
     source_percentage: z.number().nullable(),
     denominator_count: nullableInteger,
     country_options: z.array(z.object({ code: z.string(), label: z.string() }).strict()),
@@ -257,6 +260,11 @@ export const TopBootstrapSchema = z.object({
       team_name: z.string().min(1),
       source_records: z.array(z.string().min(1)).min(1),
     }).strict()).min(2),
+  }).strict()),
+  affiliation_absences: z.array(z.object({
+    player_id: positiveInteger,
+    source_records: z.array(z.string().min(1)).min(1),
+    reason: z.literal("not_published"),
   }).strict()),
 }).strict().superRefine((top, context) => {
   const playerIds = new Set(top.players.map((player) => player.player_id));
@@ -275,29 +283,54 @@ export const TopBootstrapSchema = z.object({
   if (top.availability.foreign_players !== top.foreigners.length) {
     context.addIssue({ code: "custom", message: "El recuento disponible de extranjeros no coincide con las filas." });
   }
-  const hasVerifiedGroupOneGap = top.metadata.group === "I"
-    && top.foreigners_summary.source_count === 60
-    && top.foreigners.length === 59
-    && top.warnings.some((warning) => warning.includes("#tab_estran expone 59 registros"));
-  if (top.foreigners_summary.source_count !== top.foreigners.length && !hasVerifiedGroupOneGap) {
-    context.addIssue({ code: "custom", message: "El recuento de la fuente no coincide con filas ni con la discrepancia documentada." });
+  const coverage = top.foreigners_summary;
+  if (coverage.available_count !== top.foreigners.length
+    || coverage.available_count !== top.availability.foreign_players
+    || coverage.source_count - coverage.available_count !== coverage.missing_count
+    || coverage.missing_count < 0
+    || (coverage.missing_count === 0 && coverage.coverage_status !== "complete")
+    || (coverage.missing_count > 0 && coverage.coverage_status !== "documented_discrepancy")) {
+    context.addIssue({ code: "custom", message: "La cobertura de extranjeros no coincide con los registros disponibles." });
   }
   const nullTeamIds = top.players.filter((player) => player.team_id === null).map((player) => player.player_id);
   const conflictIds = top.affiliation_conflicts.map((conflict) => conflict.player_id);
-  if (top.metadata.group === "I") {
-    const conflict = top.affiliation_conflicts.find((item) => item.player_id === 304291);
-    const affiliations = new Map(conflict?.affiliations.map((item) => [item.team_id, item.team_name]));
-    if (nullTeamIds.length !== 1 || nullTeamIds[0] !== 304291
-      || conflictIds.length !== 1
-      || affiliations.get(58) !== "Pontevedra"
-      || affiliations.get(104) !== "Deportivo Fabril"
-      || !top.rankings.some((item) => item.player_id === 304291)
-      || !top.progress.some((item) => item.player_id === 304291)
-      || !top.foreigners.some((item) => item.player_id === 304291)) {
-      context.addIssue({ code: "custom", message: "La afiliación ambigua de Grupo I no conserva su evidencia o sus filas relacionadas." });
+  const absenceIds = top.affiliation_absences.map((absence) => absence.player_id);
+  const documentedNullIds = [...conflictIds, ...absenceIds];
+  if (new Set(conflictIds).size !== conflictIds.length
+    || new Set(absenceIds).size !== absenceIds.length
+    || absenceIds.some((playerId) => conflictIds.includes(playerId))
+    || new Set(nullTeamIds).size !== nullTeamIds.length
+    || nullTeamIds.length !== documentedNullIds.length
+    || nullTeamIds.some((playerId) => !documentedNullIds.includes(playerId))) {
+    context.addIssue({ code: "custom", message: "Los jugadores sin equipo no coinciden con las afiliaciones documentadas." });
+  }
+  const expectedAffiliationWarnings = new Set<string>();
+  for (const conflict of top.affiliation_conflicts) {
+    const player = top.players.find((item) => item.player_id === conflict.player_id);
+    const teamIds = conflict.affiliations.map((item) => item.team_id);
+    const warning = `Afiliación de equipo ambigua para player_id=${conflict.player_id}; se conserva como null en el catálogo y las fuentes/IDs están en affiliation_conflicts.`;
+    expectedAffiliationWarnings.add(warning);
+    if (!player || player.team_id !== null || player.team_name !== null || player.team_url !== null || player.crest_url !== null
+      || new Set(teamIds).size !== teamIds.length
+      || new Set(teamIds).size < 2) {
+      context.addIssue({ code: "custom", message: "Un conflicto de afiliación no coincide con el jugador o sus equipos." });
     }
-  } else if (nullTeamIds.length > 0 || conflictIds.length > 0) {
-    context.addIssue({ code: "custom", message: "La captura contiene una afiliación ambigua no documentada para el grupo." });
+  }
+  for (const absence of top.affiliation_absences) {
+    const player = top.players.find((item) => item.player_id === absence.player_id);
+    expectedAffiliationWarnings.add(
+      `Afiliación de equipo no publicada para player_id=${absence.player_id}; se conserva como null en el catálogo y la ausencia está respaldada por las fuentes indicadas en affiliation_absences.`,
+    );
+    if (!player || player.team_id !== null || player.team_name !== null || player.team_url !== null || player.crest_url !== null) {
+      context.addIssue({ code: "custom", message: "Una ausencia de afiliación no coincide con un jugador sin equipo." });
+    }
+  }
+  const affiliationWarnings = top.warnings.filter((warning) => warning.startsWith("Afiliación de equipo ambigua para player_id="));
+  const absenceWarnings = top.warnings.filter((warning) => warning.startsWith("Afiliación de equipo no publicada para player_id="));
+  const allAffiliationWarnings = [...affiliationWarnings, ...absenceWarnings];
+  if (allAffiliationWarnings.length !== expectedAffiliationWarnings.size
+    || allAffiliationWarnings.some((warning) => !expectedAffiliationWarnings.has(warning))) {
+    context.addIssue({ code: "custom", message: "Las advertencias de afiliación no coinciden con los conflictos declarados." });
   }
 });
 

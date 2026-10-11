@@ -35,7 +35,7 @@ import group1StatisticsExclusive from "../../../../data/exports/bdfutbol/group1_
 import group1StatisticsReconciliation from "../../../../data/exports/bdfutbol/group1_statistics/20261010T202515.613199Z-6c6e0fd9/validation/reconciliation.json";
 import { buildTopProgressData, TopSection } from "../components/TopSection";
 import type { RefereeBootstrap, StatisticsBootstrap, TopBootstrap } from "../api/contracts";
-import { RefereeBootstrapSchema, StatisticsBootstrapSchema } from "../api/contracts";
+import { RefereeBootstrapSchema, StatisticsBootstrapSchema, TopBootstrapSchema } from "../api/contracts";
 import App from "../App";
 
 function toPublicMatches(source: typeof matchesSource) {
@@ -240,6 +240,9 @@ const topBootstrap = {
   })),
   foreigners_summary: {
     source_count: topForeigners.summary.source_count,
+    available_count: topForeigners.records.length,
+    missing_count: topForeigners.summary.source_count - topForeigners.records.length,
+    coverage_status: topForeigners.summary.source_count === topForeigners.records.length ? "complete" : "documented_discrepancy",
     source_percentage: topForeigners.summary.source_percentage,
     denominator_count: topForeigners.summary.denominator_count,
     country_options: topForeigners.summary.country_options.map(([code, label]) => ({ code, label })),
@@ -247,6 +250,7 @@ const topBootstrap = {
   coverage_note: topRankings.coverage_note,
   warnings: [],
   affiliation_conflicts: [],
+  affiliation_absences: [],
 };
 
 const group1TopBootstrap = {
@@ -289,12 +293,16 @@ const group1TopBootstrap = {
   })),
   foreigners_summary: {
     source_count: group1TopForeigners.summary.source_count,
+    available_count: group1TopForeigners.records.length,
+    missing_count: group1TopForeigners.summary.source_count - group1TopForeigners.records.length,
+    coverage_status: group1TopForeigners.summary.source_count === group1TopForeigners.records.length ? "complete" : "documented_discrepancy",
     source_percentage: group1TopForeigners.summary.source_percentage,
     denominator_count: group1TopForeigners.summary.denominator_count,
     country_options: group1TopForeigners.summary.country_options.map(([code, label]) => ({ code, label })),
   },
   warnings: group1TopValidation.warnings,
   affiliation_conflicts: group1TopCapture.affiliation_conflicts,
+  affiliation_absences: [],
 };
 
 const refereeScopeLabels = { all: "Todos", group1: "Grupo I", group2: "Grupo II" } as const;
@@ -504,6 +512,60 @@ afterEach(() => {
 });
 
 describe("dashboard de clasificación", () => {
+  it("valida cobertura y afiliaciones de Destacados por sus datos, sin IDs fijos", () => {
+    expect(TopBootstrapSchema.safeParse(group1TopBootstrap).success).toBe(true);
+
+    const resolved = structuredClone(group1TopBootstrap);
+    const resolvedPlayer = resolved.players.find((player) => player.player_id === 304291)!;
+    const resolvedTeam = group1Bootstrap.teams.find((team) => team.team_id === 58)!;
+    Object.assign(resolvedPlayer, {
+      team_id: resolvedTeam.team_id,
+      team_name: resolvedTeam.name,
+      team_url: resolvedTeam.team_url,
+      crest_url: resolvedTeam.crest_url,
+    });
+    resolved.affiliation_conflicts = [];
+    resolved.affiliation_absences = [];
+    resolved.warnings = resolved.warnings.filter((warning) => !warning.startsWith("Afiliación de equipo ambigua para player_id="));
+    expect(TopBootstrapSchema.safeParse(resolved).success).toBe(true);
+
+    const absent = structuredClone(group1TopBootstrap);
+    absent.affiliation_conflicts = [];
+    absent.affiliation_absences = [{
+      player_id: 304291,
+      source_records: ["DESTACATS_JS.LG", "table#tab_estran"],
+      reason: "not_published",
+    }];
+    absent.warnings = absent.warnings.filter((warning) => !warning.startsWith("Afiliación de equipo ambigua para player_id="));
+    absent.warnings.push(
+      "Afiliación de equipo no publicada para player_id=304291; se conserva como null en el catálogo y la ausencia está respaldada por las fuentes indicadas en affiliation_absences.",
+    );
+    expect(TopBootstrapSchema.safeParse(absent).success).toBe(true);
+
+    const multiple = structuredClone(group1TopBootstrap);
+    const extraPlayer = {
+      ...multiple.players.find((player) => player.player_id === 304291)!,
+      player_id: 999991,
+      display_name: "Jugador sintético",
+      full_name: "Jugador sintético de prueba",
+      profile_url: "https://www.bdfutbol.com/es/j/j999991.html",
+      photo_url: "https://www.bdfutbol.com/i/m/999991.png",
+    };
+    multiple.players.push(extraPlayer);
+    multiple.affiliation_conflicts.push({
+      player_id: extraPlayer.player_id,
+      affiliations: multiple.affiliation_conflicts[0]!.affiliations,
+    });
+    multiple.warnings.push(
+      "Afiliación de equipo ambigua para player_id=999991; se conserva como null en el catálogo y las fuentes/IDs están en affiliation_conflicts.",
+    );
+    expect(TopBootstrapSchema.safeParse(multiple).success).toBe(true);
+
+    const unexplained = structuredClone(multiple);
+    unexplained.affiliation_conflicts = unexplained.affiliation_conflicts.slice(1);
+    expect(TopBootstrapSchema.safeParse(unexplained).success).toBe(false);
+  });
+
   it("carga el bootstrap, muestra la competición y destaca discretamente al Real Jaén", async () => {
     render(<App />);
 

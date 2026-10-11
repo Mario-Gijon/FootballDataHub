@@ -4,17 +4,20 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime
+from html.parser import HTMLParser
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import ValidationError
 
 from football_data_hub_api.config import ApiSettings, DEFAULT_TOP_CAPTURE, PROJECT_ROOT
 from football_data_hub_api.schemas import (
     TopAffiliationConflict,
+    TopAffiliationAbsence,
     TopAvailability,
     TopBootstrapResponse,
     TopCaptureMetadata,
@@ -34,13 +37,27 @@ class TopDatasetLoadError(ValueError):
     """Raised when TOP files cannot form a verified independent capture."""
 
 
-TOP_BOOTSTRAP_SCHEMA_VERSION = 2
+TOP_BOOTSTRAP_SCHEMA_VERSION = 3
 
 
 @dataclass(frozen=True, slots=True)
 class TopDatasetBundle:
     bootstrap: TopBootstrapResponse
     etag: str
+
+
+@dataclass(frozen=True, slots=True)
+class _ForeignersCoverage:
+    source_count: int
+    available_count: int
+    missing_count: int
+    status: Literal["complete", "documented_discrepancy"]
+
+
+@dataclass(frozen=True, slots=True)
+class _TopAffiliationValidation:
+    conflicts: list[TopAffiliationConflict]
+    absences: list[TopAffiliationAbsence]
 
 
 _CATEGORY_BY_SOURCE_VALUE = {
@@ -138,7 +155,7 @@ def load_top_dataset(
     except (KeyError, TypeError, ValidationError) as exc:
         raise TopDatasetLoadError("Los registros TOP no cumplen los esquemas públicos") from exc
 
-    _validate_records(
+    foreigners_coverage = _validate_records(
         decoded,
         players,
         rankings,
@@ -146,10 +163,10 @@ def load_top_dataset(
         source_foreigners,
         foreigners,
         teams,
-        expected_group=settings.group,
+        source_html=files["source_html"],
     )
-    affiliation_conflicts = _validate_source_exceptions(
-        decoded, players, rankings, progress, foreigners, settings.group
+    affiliation_validation = _validate_affiliations(
+        decoded, players, teams, files["source_html"]
     )
     _validate_active_team_compatibility(players, teams, active_teams)
     if (active_teams is None) != (active_team_capture_id is None):
@@ -191,6 +208,9 @@ def load_top_dataset(
         ]
         foreigners_summary = TopForeignersSummary(
             source_count=foreign_summary_raw["source_count"],
+            available_count=foreigners_coverage.available_count,
+            missing_count=foreigners_coverage.missing_count,
+            coverage_status=foreigners_coverage.status,
             source_percentage=foreign_summary_raw.get("source_percentage"),
             denominator_count=foreign_summary_raw.get("denominator_count"),
             country_options=countries,
@@ -231,7 +251,8 @@ def load_top_dataset(
             foreigners_summary=foreigners_summary,
             coverage_note=decoded["rankings"]["coverage_note"],
             warnings=_public_source_warnings(decoded["validation"], settings.group),
-            affiliation_conflicts=affiliation_conflicts,
+            affiliation_conflicts=affiliation_validation.conflicts,
+            affiliation_absences=affiliation_validation.absences,
         )
     except (KeyError, TypeError, ValidationError) as exc:
         raise TopDatasetLoadError("Los metadatos de TOP no cumplen el contrato esperado") from exc
@@ -363,8 +384,8 @@ def _validate_records(
     foreigners: list[TopForeignPlayerResponse],
     teams: dict[int, dict[str, Any]],
     *,
-    expected_group: str,
-) -> None:
+    source_html: bytes,
+) -> _ForeignersCoverage:
     player_ids = [player.player_id for player in players]
     player_set = set(player_ids)
     if len(player_set) != len(players):
@@ -476,19 +497,14 @@ def _validate_records(
     country_options = summary.get("country_options")
     source_percentage = summary.get("source_percentage")
     denominator_count = summary.get("denominator_count")
-    count_matches = summary.get("source_count") == len(foreigners)
-    documented_group1_gap = (
-        expected_group == "I"
-        and summary.get("source_count") == 60
-        and len(foreigners) == 59
-        and "#tab_estran expone 59 registros, pero el encabezado publica 60; no se ha completado la fila ausente."
-        in data["validation"].get("warnings", [])
-        and data["validation"].get("valid") is True
-        and data["validation"].get("issues") == []
+    foreigners_coverage = _validate_foreigners_coverage(
+        data,
+        summary,
+        source_html,
+        {player.player_id for player in foreigners},
     )
     if (
-        not (count_matches or documented_group1_gap)
-        or (source_percentage is not None and (not isinstance(source_percentage, (int, float)) or not 0 <= source_percentage <= 100))
+        (source_percentage is not None and (not isinstance(source_percentage, (int, float)) or not 0 <= source_percentage <= 100))
         or (denominator_count is not None and (not isinstance(denominator_count, int) or denominator_count < len(foreigners)))
     ):
         raise TopDatasetLoadError("El resumen de extranjeros contiene recuentos incompatibles")
@@ -531,6 +547,7 @@ def _validate_records(
         raise TopDatasetLoadError("Las jornadas de progreso difieren entre metadatos y progress.json")
     if data["capture"].get("foreigners_summary") != summary:
         raise TopDatasetLoadError("El resumen de extranjeros difiere entre metadatos y foreigners.json")
+    return foreigners_coverage
 
 
 def _validate_active_team_compatibility(
@@ -558,72 +575,295 @@ def _validate_active_team_compatibility(
             )
 
 
-def _validate_source_exceptions(
+def _validate_affiliations(
     data: dict[str, dict[str, Any]],
     players: list[TopPlayerResponse],
-    rankings: list[TopRankingResponse],
-    progress: list[TopProgressSeries],
-    foreigners: list[TopForeignPlayerResponse],
-    expected_group: str,
-) -> list[TopAffiliationConflict]:
-    """Allow only the one explicitly evidenced foreign-count and affiliation anomaly."""
+    teams: dict[int, dict[str, Any]],
+    source_html: bytes,
+) -> _TopAffiliationValidation:
+    """Validate conflicts and documented no-team rows against source structures."""
 
     raw_conflicts = data["capture"].get("affiliation_conflicts", [])
+    raw_absences = data["capture"].get("affiliation_absences", [])
+    if not isinstance(raw_conflicts, list) or not isinstance(raw_absences, list):
+        raise TopDatasetLoadError("La captura no contiene listas válidas de afiliaciones documentadas")
+    parser = _TopSourceEvidenceParser(source_html)
+    player_by_id = {player.player_id: player for player in players}
     null_team_player_ids = {player.player_id for player in players if player.team_id is None}
-    if expected_group != "I":
-        if raw_conflicts or null_team_player_ids:
-            raise TopDatasetLoadError(
-                "La captura de este grupo contiene afiliaciones sin resolver no documentadas"
-            )
-        return []
+    conflicts: list[TopAffiliationConflict] = []
+    conflict_player_ids: set[int] = set()
+    absences: list[TopAffiliationAbsence] = []
+    absence_player_ids: set[int] = set()
+    expected_warnings: set[str] = set()
 
-    expected_sources = {
-        58: ("Pontevedra", "DESTACATS_JS.LG"),
-        104: ("Deportivo Fabril", "table#tab_estran"),
-    }
-    if not isinstance(raw_conflicts, list) or len(raw_conflicts) != 1:
-        raise TopDatasetLoadError("La captura de Grupo I no conserva el conflicto de afiliación documentado")
-    conflict = raw_conflicts[0]
-    if not isinstance(conflict, dict) or conflict.get("player_id") != 304291:
-        raise TopDatasetLoadError("La excepción de afiliación no corresponde al jugador verificado")
-    affiliations = conflict.get("affiliations")
-    if not isinstance(affiliations, list) or len(affiliations) != 2:
-        raise TopDatasetLoadError("La captura no documenta las dos fuentes de afiliación esperadas")
-    observed_sources: dict[int, tuple[str, tuple[str, ...]]] = {}
-    try:
-        for item in affiliations:
-            observed_sources[int(item["team_id"])] = (
-                str(item["team_name"]),
-                tuple(item["source_records"]),
-            )
-    except (KeyError, TypeError, ValueError) as exc:
-        raise TopDatasetLoadError("Las fuentes de afiliación ambiguas están mal formadas") from exc
-    if observed_sources != {
-        team_id: (name, (source,)) for team_id, (name, source) in expected_sources.items()
-    }:
-        raise TopDatasetLoadError("Las afiliaciones de origen difieren del conflicto documentado")
-    if null_team_player_ids != {304291}:
-        raise TopDatasetLoadError("La captura contiene jugadores sin equipo adicionales o no conserva el conflicto")
-    player = next((item for item in players if item.player_id == 304291), None)
-    if player is None or any(
-        value is not None for value in (player.team_name, player.team_url, player.crest_url)
-    ):
-        raise TopDatasetLoadError("El equipo del jugador ambiguo debe permanecer nulo")
+    for raw_conflict in raw_conflicts:
+        try:
+            conflict = TopAffiliationConflict.model_validate(raw_conflict)
+        except ValidationError as exc:
+            raise TopDatasetLoadError("El conflicto de afiliación no cumple el contrato") from exc
+        if conflict.player_id in conflict_player_ids:
+            raise TopDatasetLoadError("La captura repite un conflicto de afiliación para el mismo jugador")
+        conflict_player_ids.add(conflict.player_id)
+        player = player_by_id.get(conflict.player_id)
+        if player is None:
+            raise TopDatasetLoadError("Un conflicto de afiliación referencia un jugador inexistente")
+        if player.team_id is not None or any(
+            value is not None for value in (player.team_name, player.team_url, player.crest_url)
+        ):
+            raise TopDatasetLoadError("Un jugador con afiliaciones contradictorias debe conservar team_id=null")
+
+        affiliation_ids: set[int] = set()
+        for affiliation in conflict.affiliations:
+            if affiliation.team_id in affiliation_ids:
+                raise TopDatasetLoadError("El conflicto duplica un mismo ID de equipo")
+            affiliation_ids.add(affiliation.team_id)
+            team = teams.get(affiliation.team_id)
+            if team is None or team.get("name") != affiliation.team_name:
+                raise TopDatasetLoadError("Un conflicto referencia un equipo que no coincide con el catálogo por ID")
+            if len(affiliation.source_records) != len(set(affiliation.source_records)):
+                raise TopDatasetLoadError("El conflicto repite una procedencia de afiliación")
+            for source_record in affiliation.source_records:
+                source_present, source_crest = parser.source_affiliation(source_record, conflict.player_id)
+                expected_crest = _crest_filename(team.get("crest_url"))
+                if not source_present or source_crest is None or source_crest != expected_crest:
+                    raise TopDatasetLoadError(
+                        "La procedencia de una afiliación no respalda el jugador y equipo declarados"
+                    )
+        if len(affiliation_ids) < 2:
+            raise TopDatasetLoadError("Un conflicto debe documentar al menos dos equipos distintos")
+
+        expected_warnings.add(_affiliation_warning(conflict.player_id))
+        conflicts.append(conflict)
+
+    for raw_absence in raw_absences:
+        try:
+            absence = TopAffiliationAbsence.model_validate(raw_absence)
+        except ValidationError as exc:
+            raise TopDatasetLoadError("La ausencia de afiliación no cumple el contrato") from exc
+        if absence.player_id in absence_player_ids or absence.player_id in conflict_player_ids:
+            raise TopDatasetLoadError("La captura repite o solapa una afiliación documentada")
+        absence_player_ids.add(absence.player_id)
+        player = player_by_id.get(absence.player_id)
+        if player is None or player.team_id is not None or any(
+            value is not None for value in (player.team_name, player.team_url, player.crest_url)
+        ):
+            raise TopDatasetLoadError("Una ausencia documentada no coincide con un jugador sin team_id")
+        if len(absence.source_records) != len(set(absence.source_records)):
+            raise TopDatasetLoadError("La ausencia repite una procedencia de afiliación")
+        for source_record in absence.source_records:
+            source_present, source_crest = parser.source_affiliation(source_record, absence.player_id)
+            if not source_present or source_crest is not None:
+                raise TopDatasetLoadError("La fuente citada sí publica equipo o no contiene al jugador")
+        if any(crest is not None for _, crest in parser.all_affiliations(absence.player_id)):
+            raise TopDatasetLoadError("Otra estructura de origen sí publica una afiliación para el jugador")
+        expected_warnings.add(_affiliation_absence_warning(absence.player_id))
+        absences.append(absence)
+
+    if null_team_player_ids != conflict_player_ids | absence_player_ids:
+        raise TopDatasetLoadError("Hay jugadores sin afiliación verificable que no están justificados por evidencia")
+    validation = data["validation"]
+    summary = validation.get("summary", {})
+    declared_conflict_count = summary.get("affiliation_conflicts", 0)
+    declared_absence_count = summary.get("affiliation_absences", 0)
     if (
-        not any(item.player_id == 304291 for item in rankings)
-        or not any(item.player_id == 304291 for item in progress)
-        or not any(item.player_id == 304291 for item in foreigners)
+        not isinstance(declared_conflict_count, int)
+        or isinstance(declared_conflict_count, bool)
+        or declared_conflict_count != len(raw_conflicts)
+        or not isinstance(declared_absence_count, int)
+        or isinstance(declared_absence_count, bool)
+        or declared_absence_count != len(raw_absences)
     ):
-        raise TopDatasetLoadError("El jugador ambiguo debe conservar rankings, progreso y fila de extranjeros")
-    warning = (
-        "Afiliación de equipo ambigua para player_id=304291; se conserva como null en el catálogo y las fuentes/IDs están en affiliation_conflicts."
+        raise TopDatasetLoadError("El recuento de conflictos no coincide con la validación de origen")
+    warnings = validation.get("warnings", [])
+    if not isinstance(warnings, list) or any(not isinstance(item, str) for item in warnings):
+        raise TopDatasetLoadError("Las advertencias de afiliación tienen formato inválido")
+    observed_warnings = {
+        warning
+        for warning in warnings
+        if warning.startswith((
+            "Afiliación de equipo ambigua para player_id=",
+            "Afiliación de equipo no publicada para player_id=",
+        ))
+    }
+    if observed_warnings != expected_warnings:
+        raise TopDatasetLoadError("Las advertencias de afiliación no corresponden a la evidencia verificada")
+    return _TopAffiliationValidation(conflicts, absences)
+
+
+class _TopSourceEvidenceParser(HTMLParser):
+    """Extract only the foreign-player count, rows, and affiliation evidence."""
+
+    _PLAYER_LINK = re.compile(r"(?:^|/)j(\d+)\.html(?:$|[?#])")
+
+    def __init__(self, source_html: bytes) -> None:
+        super().__init__(convert_charrefs=True)
+        try:
+            text = source_html.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise TopDatasetLoadError("El HTML de origen TOP no es UTF-8 válido") from exc
+        self.last_heading = ""
+        self.foreign_heading = ""
+        self.current_heading: list[str] | None = None
+        self.in_foreign_table = False
+        self.current_row_player: int | None = None
+        self.current_row_crests: set[str] = set()
+        self.current_row_has_data = False
+        self.foreign_row_count = 0
+        self.foreign_rows: dict[int, list[set[str]]] = {}
+        self._source_crests: dict[str, dict[int, str | None]] = {"table#tab_estran": {}, "DESTACATS_JS.LG": {}}
+        self.feed(text)
+        heading_match = re.search(r"\b(\d+)\s*\(\s*[\d,.]+\s*%\s*\)", self.foreign_heading)
+        self.published_count = int(heading_match.group(1)) if heading_match else None
+        try:
+            self._load_goals_source(text)
+        except (json.JSONDecodeError, TypeError, ValueError) as exc:
+            raise TopDatasetLoadError("No se pudo interpretar DESTACATS_JS.LG para validar afiliaciones") from exc
+
+    def _load_goals_source(self, text: str) -> None:
+        match = re.search(r"const\s+DESTACATS_JS\s*=\s*(\{.*?\})\s*;", text, re.DOTALL)
+        if not match:
+            return
+        source = json.loads(match.group(1))
+        records = source.get("LG", [])
+        if not isinstance(records, list):
+            return
+        for row in records:
+            if (
+                isinstance(row, list)
+                and len(row) > 5
+                and isinstance(row[1], int)
+            ):
+                self._source_crests["DESTACATS_JS.LG"][row[1]] = _crest_filename(row[5])
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attributes = dict(attrs)
+        if tag == "h2":
+            self.current_heading = []
+        if tag == "table" and attributes.get("id") == "tab_estran":
+            self.in_foreign_table = True
+            self.foreign_heading = self.last_heading
+        if not self.in_foreign_table:
+            return
+        if tag == "tr":
+            self.current_row_player = None
+            self.current_row_crests = set()
+            self.current_row_has_data = False
+        elif tag == "td":
+            self.current_row_has_data = True
+        elif tag == "a":
+            href = attributes.get("href") or ""
+            player_match = self._PLAYER_LINK.search(href)
+            if player_match:
+                self.current_row_player = int(player_match.group(1))
+        elif tag == "img":
+            src = attributes.get("src") or ""
+            if "/eg/" in src:
+                crest = _crest_filename(src)
+                if crest:
+                    self.current_row_crests.add(crest)
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "h2" and self.current_heading is not None:
+            self.last_heading = "".join(self.current_heading)
+            self.current_heading = None
+        if self.in_foreign_table and tag == "tr":
+            if self.current_row_has_data:
+                self.foreign_row_count += 1
+                if self.current_row_player is not None:
+                    self.foreign_rows.setdefault(self.current_row_player, []).append(
+                        set(self.current_row_crests)
+                    )
+                    crests = sorted(self.current_row_crests)
+                    self._source_crests["table#tab_estran"][self.current_row_player] = (
+                        crests[-1] if crests else None
+                    )
+            self.current_row_player = None
+        elif self.in_foreign_table and tag == "table":
+            self.in_foreign_table = False
+
+    def handle_data(self, data: str) -> None:
+        if self.current_heading is not None:
+            self.current_heading.append(data)
+
+    def source_affiliation(self, source_record: str, player_id: int) -> tuple[bool, str | None]:
+        source = self._source_crests.get(source_record, {})
+        return player_id in source, source.get(player_id)
+
+    def all_affiliations(self, player_id: int) -> list[tuple[str, str | None]]:
+        return [
+            (source_record, records[player_id])
+            for source_record, records in self._source_crests.items()
+            if player_id in records
+        ]
+
+
+def _crest_filename(value: Any) -> str | None:
+    if not isinstance(value, str) or not value:
+        return None
+    match = re.search(r"(?:^|/)([^/]+\.(?:png|jpe?g|webp))(?:$|[?#])", value, re.IGNORECASE)
+    return match.group(1).lower() if match else None
+
+
+def _affiliation_warning(player_id: int) -> str:
+    return (
+        f"Afiliación de equipo ambigua para player_id={player_id}; se conserva como null en el catálogo "
+        "y las fuentes/IDs están en affiliation_conflicts."
     )
-    if warning not in data["validation"].get("warnings", []):
-        raise TopDatasetLoadError("La afiliación ambigua no está advertida por la validación de origen")
-    try:
-        return [TopAffiliationConflict.model_validate(conflict)]
-    except ValidationError as exc:
-        raise TopDatasetLoadError("El conflicto de afiliación no cumple el contrato") from exc
+
+
+def _affiliation_absence_warning(player_id: int) -> str:
+    return (
+        f"Afiliación de equipo no publicada para player_id={player_id}; se conserva como null en el catálogo "
+        "y la ausencia está respaldada por las fuentes indicadas en affiliation_absences."
+    )
+
+
+def _validate_foreigners_coverage(
+    data: dict[str, dict[str, Any]],
+    summary: dict[str, Any],
+    source_html: bytes,
+    normalized_player_ids: set[int],
+) -> _ForeignersCoverage:
+    """Reconcile published count, actual source table, normalized rows and validation."""
+
+    source_count = summary.get("source_count")
+    if not isinstance(source_count, int) or isinstance(source_count, bool) or source_count < 0:
+        raise TopDatasetLoadError("El recuento publicado de extranjeros no es válido")
+    evidence = _TopSourceEvidenceParser(source_html)
+    if evidence.published_count != source_count:
+        raise TopDatasetLoadError("El recuento de extranjeros no coincide con el encabezado HTML original")
+    if evidence.foreign_row_count != len(normalized_player_ids):
+        raise TopDatasetLoadError("La tabla HTML de extranjeros y los registros normalizados no tienen el mismo tamaño")
+    if set(evidence.foreign_rows) != normalized_player_ids:
+        raise TopDatasetLoadError("Los IDs de extranjeros normalizados no coinciden con las filas HTML originales")
+
+    difference = source_count - len(normalized_player_ids)
+    warnings = data["validation"].get("warnings", [])
+    if not isinstance(warnings, list) or any(not isinstance(item, str) for item in warnings):
+        raise TopDatasetLoadError("Las advertencias de cobertura de extranjeros tienen formato inválido")
+    count_warnings = [item for item in warnings if item.startswith("#tab_estran expone ")]
+    if difference == 0:
+        if count_warnings:
+            raise TopDatasetLoadError("La validación advierte una diferencia de extranjeros que ya no existe")
+        return _ForeignersCoverage(source_count, len(normalized_player_ids), 0, "complete")
+    expected_warning = (
+        f"#tab_estran expone {len(normalized_player_ids)} registros, pero el encabezado publica {source_count}; "
+        "no se ha completado la fila ausente."
+    )
+    if (
+        difference < 0
+        or count_warnings != [expected_warning]
+        or data["validation"].get("valid") is not True
+        or data["validation"].get("issues") != []
+        or data["validation"].get("summary", {}).get("foreign_players") != len(normalized_player_ids)
+    ):
+        raise TopDatasetLoadError("La diferencia de extranjeros no está justificada por evidencia y validación coherentes")
+    return _ForeignersCoverage(
+        source_count,
+        len(normalized_player_ids),
+        difference,
+        "documented_discrepancy",
+    )
 
 
 def _public_source_warnings(validation: dict[str, Any], expected_group: str) -> list[str]:
