@@ -95,7 +95,7 @@ class TeamRosterSourceViewResponse(ApiModel):
 
 
 class TeamRosterMetadataResponse(ApiModel):
-    contract_version: StrictInt
+    contract_version: Literal[2]
     validation_status: Literal["valid"]
     source: Literal["BDFutbol"]
     url: str
@@ -114,6 +114,33 @@ class TeamRosterGroupResponse(ApiModel):
     player_ids: list[StrictInt]
 
 
+class TeamRosterTacticalPositionResponse(ApiModel):
+    player_id: StrictInt = Field(gt=0)
+    horizontal: StrictFloat = Field(ge=0, le=1)
+    vertical: StrictFloat = Field(ge=0, le=1)
+    line: Literal["goalkeeper", "defense", "midfield", "attack"]
+    slot: StrictInt = Field(ge=1)
+    line_size: StrictInt = Field(ge=1)
+    source_dom_id: str = Field(pattern=r"^d_(por|def\d+\d+|mig\d+\d+|dav\d+\d+)$")
+
+    @model_validator(mode="after")
+    def validate_slot(self) -> TeamRosterTacticalPositionResponse:
+        if self.slot > self.line_size:
+            raise ValueError("La posición táctica supera el número de huecos de su línea.")
+        return self
+
+
+class TeamRosterTacticalResponse(ApiModel):
+    source: Literal["BDFutbol"]
+    source_view: Literal["alignment"]
+    source_url: str
+    source_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    coordinate_method: Literal["source_line_and_slot_normalized"]
+    layout_convention: Literal["goalkeeper_to_attack_left_to_right"]
+    approximate: Literal[True]
+    positions: list[TeamRosterTacticalPositionResponse] = Field(min_length=1)
+
+
 class TeamRosterResponse(ApiModel):
     status: Literal["available"]
     metadata: TeamRosterMetadataResponse
@@ -123,6 +150,7 @@ class TeamRosterResponse(ApiModel):
     memberships: list[TeamRosterMembershipResponse]
     statistics: list[TeamRosterPlayerStatisticsResponse]
     squad_groups: list[TeamRosterGroupResponse]
+    tactical_visualization: TeamRosterTacticalResponse | None = None
     source_views: list[TeamRosterSourceViewResponse]
     warnings: list[str]
 
@@ -139,6 +167,32 @@ class TeamRosterResponse(ApiModel):
             raise ValueError("Una pertenencia corresponde a otro equipo.")
         if any(item.team_id != self.team.team_id for item in self.statistics):
             raise ValueError("Una estadística corresponde a otro equipo.")
+        grouped_player_ids = [player_id for group in self.squad_groups for player_id in group.player_ids]
+        if any(player_id not in player_ids for player_id in grouped_player_ids):
+            raise ValueError("Una agrupación de Plantilla referencia un jugador ausente.")
+        if len(grouped_player_ids) != len(set(grouped_player_ids)):
+            raise ValueError("Un jugador aparece repetido en las agrupaciones de Plantilla.")
+        if self.tactical_visualization is not None:
+            tactic_player_ids = [item.player_id for item in self.tactical_visualization.positions]
+            if len(tactic_player_ids) != len(set(tactic_player_ids)):
+                raise ValueError("La táctica repite player_id.")
+            if not set(tactic_player_ids).issubset(player_ids):
+                raise ValueError("La táctica referencia un jugador ausente del catálogo.")
+            starter_ids = {
+                player_id
+                for group in self.squad_groups
+                if group.label.casefold() == "titulares"
+                for player_id in group.player_ids
+            }
+            if not set(tactic_player_ids).issubset(starter_ids):
+                raise ValueError("La táctica incluye jugadores fuera de la agrupación Titulares.")
+            alignment = next((view for view in self.source_views if view.view == "alignment"), None)
+            if (
+                alignment is None
+                or self.tactical_visualization.source_url != alignment.url
+                or self.tactical_visualization.source_sha256 != alignment.sha256
+            ):
+                raise ValueError("La procedencia de la táctica no coincide con Alineación.")
         return self
 
 

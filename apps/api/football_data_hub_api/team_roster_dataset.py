@@ -24,10 +24,15 @@ from football_data_hub_api.schemas import (
     TeamRosterPlayerStatisticsResponse,
     TeamRosterResponse,
     TeamRosterSourceViewResponse,
+    TeamRosterTacticalResponse,
+)
+from football_data_hub.providers.bdfutbol.teams.tactics import (
+    TacticalLayoutError,
+    extract_tactical_positions,
 )
 
 logger = logging.getLogger("football_data_hub_api.team_roster")
-ROSTER_CONTRACT_VERSION = 1
+ROSTER_CONTRACT_VERSION = 2
 ROSTER_SEASON = "2026-27"
 ROSTER_REQUIRED_VIEWS = ("alignment", "squad", "statistics")
 ROSTER_REQUIRED_FILES = (
@@ -224,6 +229,7 @@ def _load_selected_profile(
 
     source_snapshots = capture_metadata.get("source_snapshots") or {}
     source_views: list[TeamRosterSourceViewResponse] = []
+    verified_source_html: dict[str, str] = {}
     for view in ROSTER_REQUIRED_VIEWS:
         evidence = source_snapshots.get(view)
         access = access_by_view.get(view)
@@ -261,6 +267,7 @@ def _load_selected_profile(
             "sha256": source_sha256,
             "captured_at": captured_at_value,
         }))
+        verified_source_html[view] = html.decode("utf-8", errors="replace")
 
     normalized: dict[str, dict[str, Any]] = {}
     for name in ("team_identity", "team_season", "players", "memberships", "player_statistics"):
@@ -326,8 +333,64 @@ def _load_selected_profile(
         if membership.squad_group_label:
             grouped_ids.setdefault(membership.squad_group_label, []).append(membership.player_id)
     squad_groups = [TeamRosterGroupResponse(label=label, player_ids=ids) for label, ids in grouped_ids.items()]
+    warnings = list(dict.fromkeys(str(item) for item in stored_validation.get("warnings", [])))
+    if not (capture_metadata.get("follow_states") or {}):
+        warnings.append("La captura no contiene estados enriquecidos de Seguimiento; no son necesarios para Plantilla.")
+
+    alignment_view = next((view for view in source_views if view.view == "alignment"), None)
+    tactical_visualization: TeamRosterTacticalResponse | None = None
+    try:
+        starter_ids = {
+            player_id
+            for group in squad_groups
+            if group.label.casefold() == "titulares"
+            for player_id in group.player_ids
+        }
+        positions = extract_tactical_positions(
+            verified_source_html["alignment"],
+            roster_player_ids=set(player_ids),
+            starter_player_ids=starter_ids,
+        )
+        if alignment_view is None:
+            raise TacticalLayoutError("La captura no incluye procedencia validada de Alineación.")
+        tactical_visualization = TeamRosterTacticalResponse.model_validate({
+            "source": "BDFutbol",
+            "source_view": "alignment",
+            "source_url": alignment_view.url,
+            "source_sha256": alignment_view.sha256,
+            "coordinate_method": "source_line_and_slot_normalized",
+            "layout_convention": "goalkeeper_to_attack_left_to_right",
+            "approximate": True,
+            "positions": [
+                {
+                    "player_id": position.player_id,
+                    "horizontal": position.horizontal,
+                    "vertical": position.vertical,
+                    "line": position.line,
+                    "slot": position.slot,
+                    "line_size": position.line_size,
+                    "source_dom_id": position.source_dom_id,
+                }
+                for position in positions
+            ],
+        })
+    except (KeyError, TacticalLayoutError, ValidationError) as exc:
+        logger.warning("No se publicará una táctica incompleta para team_id=%s: %s", team_id, exc)
+        warnings.append("La captura no contiene una visualización táctica enlazada de forma fiable a Titulares.")
+
     file_content_hash = hashlib.sha256(
-        json.dumps(expected_hashes, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        json.dumps(
+            {
+                "files": expected_hashes,
+                "tactical_visualization": (
+                    tactical_visualization.model_dump(mode="json")
+                    if tactical_visualization is not None
+                    else None
+                ),
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
     ).hexdigest()
     metadata = TeamRosterMetadataResponse.model_validate({
         "contract_version": ROSTER_CONTRACT_VERSION,
@@ -343,10 +406,6 @@ def _load_selected_profile(
         "extractor_version": capture_metadata.get("extractor_version", "unknown"),
         "content_sha256": file_content_hash,
     })
-    warnings = list(dict.fromkeys(str(item) for item in stored_validation.get("warnings", [])))
-    if not (capture_metadata.get("follow_states") or {}):
-        warnings.append("La captura no contiene estados enriquecidos de Seguimiento; no son necesarios para Plantilla.")
-
     try:
         return TeamRosterResponse.model_validate({
             "status": "available",
@@ -357,6 +416,7 @@ def _load_selected_profile(
             "memberships": memberships,
             "statistics": statistics,
             "squad_groups": squad_groups,
+            "tactical_visualization": tactical_visualization,
             "source_views": source_views,
             "warnings": warnings,
         })

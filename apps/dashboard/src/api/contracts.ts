@@ -219,10 +219,35 @@ const teamRosterStatisticsSchema = z.object({
   source_view: z.string(),
 }).strict();
 
+const teamRosterTacticalPositionSchema = z.object({
+  player_id: positiveInteger,
+  horizontal: z.number().finite().min(0).max(1),
+  vertical: z.number().finite().min(0).max(1),
+  line: z.enum(["goalkeeper", "defense", "midfield", "attack"]),
+  slot: positiveInteger,
+  line_size: positiveInteger,
+  source_dom_id: z.string().regex(/^d_(por|def\d+\d+|mig\d+\d+|dav\d+\d+)$/),
+}).strict().superRefine((position, context) => {
+  if (position.slot > position.line_size) {
+    context.addIssue({ code: "custom", message: "La posición supera el tamaño de su línea." });
+  }
+});
+
+const teamRosterTacticalSchema = z.object({
+  source: z.literal("BDFutbol"),
+  source_view: z.literal("alignment"),
+  source_url: z.string().url(),
+  source_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  coordinate_method: z.literal("source_line_and_slot_normalized"),
+  layout_convention: z.literal("goalkeeper_to_attack_left_to_right"),
+  approximate: z.literal(true),
+  positions: z.array(teamRosterTacticalPositionSchema).min(1),
+}).strict();
+
 export const TeamRosterSchema = z.object({
   status: z.literal("available"),
   metadata: z.object({
-    contract_version: z.number().int(),
+    contract_version: z.literal(2),
     validation_status: z.literal("valid"),
     source: z.literal("BDFutbol"),
     url: z.string().url(),
@@ -241,6 +266,7 @@ export const TeamRosterSchema = z.object({
   memberships: z.array(teamRosterMembershipSchema),
   statistics: z.array(teamRosterStatisticsSchema),
   squad_groups: z.array(z.object({ label: z.string().min(1), player_ids: z.array(positiveInteger) }).strict()),
+  tactical_visualization: teamRosterTacticalSchema.nullable(),
   source_views: z.array(z.object({
     view: z.string(),
     url: z.string().url(),
@@ -262,6 +288,27 @@ export const TeamRosterSchema = z.object({
   for (const entry of [...roster.memberships, ...roster.statistics]) {
     if (!playerIds.has(entry.player_id) || entry.team_id !== roster.team.team_id) {
       context.addIssue({ code: "custom", message: "La pertenencia o estadística no coincide por player_id." });
+    }
+  }
+  const groupedIds = roster.squad_groups.flatMap((group) => group.player_ids);
+  if (groupedIds.some((id) => !playerIds.has(id)) || new Set(groupedIds).size !== groupedIds.length) {
+    context.addIssue({ code: "custom", message: "Las agrupaciones contienen jugadores ausentes o duplicados." });
+  }
+  if (roster.tactical_visualization) {
+    const positions = roster.tactical_visualization.positions;
+    const tacticIds = positions.map((position) => position.player_id);
+    if (new Set(tacticIds).size !== tacticIds.length) {
+      context.addIssue({ code: "custom", message: "La táctica repite player_id." });
+    }
+    const starterIds = new Set(roster.squad_groups
+      .filter((group) => group.label.toLocaleLowerCase("es-ES") === "titulares")
+      .flatMap((group) => group.player_ids));
+    if (tacticIds.some((id) => !playerIds.has(id) || !starterIds.has(id))) {
+      context.addIssue({ code: "custom", message: "La táctica contiene jugadores ausentes o no titulares." });
+    }
+    const alignment = roster.source_views.find((view) => view.view === "alignment");
+    if (!alignment || alignment.url !== roster.tactical_visualization.source_url || alignment.sha256 !== roster.tactical_visualization.source_sha256) {
+      context.addIssue({ code: "custom", message: "La procedencia táctica no coincide con Alineación." });
     }
   }
 });

@@ -118,6 +118,21 @@ def test_jaen_and_racing_rosters_are_loaded_from_the_published_captures(
         assert {item.player_id for item in roster.statistics} == players
         assert all(item.team_id == team_id for item in roster.memberships)
         assert all(item.team_id == team_id for item in roster.statistics)
+        tactic = roster.tactical_visualization
+        assert tactic is not None
+        assert tactic.approximate is True
+        assert tactic.source_view == "alignment"
+        assert tactic.source_sha256 == next(view.sha256 for view in roster.source_views if view.view == "alignment")
+        assert len(tactic.positions) == 11
+        starter_ids = {
+            player_id
+            for group_item in roster.squad_groups
+            if group_item.label == "Titulares"
+            for player_id in group_item.player_ids
+        }
+        assert {item.player_id for item in tactic.positions} == starter_ids
+        assert all(item.player_id in players for item in tactic.positions)
+        assert all(0 <= item.horizontal <= 1 and 0 <= item.vertical <= 1 for item in tactic.positions)
 
     assert any("Seguimiento" in warning for warning in registry.profiles[49].warnings)
 
@@ -131,14 +146,15 @@ def test_roster_route_distinguishes_available_uncaptured_unknown_and_etag(
     assert jaen.metadata.team_id == 49
     assert len(jaen.players) == 25
     etag = response.headers["etag"]
-    assert etag.startswith('"team-roster-v1-49-2026-27-')
+    assert jaen.metadata.contract_version == 2
+    assert etag.startswith('"team-roster-v2-49-2026-27-')
 
     cached, _ = invoke_roster_endpoint(registry, 49, if_none_match=etag)
     assert isinstance(cached, Response)
     assert cached.status_code == 304
     # A validator from an older public contract must not receive a 304.
     _, stale_response = invoke_roster_endpoint(
-        registry, 49, if_none_match='"team-roster-v0-49-2026-27-old"'
+        registry, 49, if_none_match='"team-roster-v1-49-2026-27-old"'
     )
     assert stale_response.status_code == 200
 
