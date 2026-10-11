@@ -21,6 +21,7 @@ from .acquisition import (
     acquire_team_profile,
     create_team_capture_id,
 )
+from .capture_store import inspect_team_capture
 from .catalog import load_team_catalog, write_team_inventory
 from .export import export_team_capture
 from .parser import parse_team_profile_pages, resolve_team_view_urls
@@ -98,41 +99,25 @@ def _reuse_capture_seed(
     *,
     team_catalog_record: dict[str, Any],
     competition,
+    team_catalog_reference: dict[str, Any],
+    group_team_catalog: list[dict[str, Any]],
+    known_matches: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    capture_dir = capture_dir.expanduser()
-    metadata = json.loads((capture_dir / "metadata" / "capture.json").read_text(encoding="utf-8"))
-    if int(metadata.get("team_id", -1)) != int(team_catalog_record["team_id"]):
-        raise ValueError("La captura reutilizada pertenece a otro team_id")
-    if metadata.get("season") != competition.season or metadata.get("group") != competition.group_roman:
-        raise ValueError("La captura reutilizada pertenece a otra temporada o grupo")
-    raw_views: dict[str, str] = {}
-    access_by_view: dict[str, dict[str, Any]] = {}
-    page_titles: dict[str, str] = {}
-    view_urls: dict[str, str] = {}
-    for view, evidence in metadata.get("source_snapshots", {}).items():
-        report = metadata.get("access_by_view", {}).get(view, {})
-        if evidence.get("access_status") != "VALID" or evidence.get("http_status") != 200:
-            raise ValueError(f"Snapshot reutilizado {view} no tiene acceso válido documentado")
-        raw_views[view] = _read_capture_view(capture_dir, metadata, view).decode("utf-8")
-        access_by_view[view] = report
-        page_titles[view] = str(evidence.get("title") or report.get("page_title") or "")
-        view_urls[view] = str(evidence.get("url") or metadata.get("view_urls", {}).get(view) or "")
-    if "alignment" not in raw_views:
-        raise ValueError("La captura reutilizada no contiene Alineación")
-    if view_urls.get("alignment") != team_catalog_record["team_url"]:
-        raise ValueError("La URL base reutilizada no coincide con el catálogo de equipo")
-    resolved_urls = resolve_team_view_urls(raw_views["alignment"], str(team_catalog_record["team_url"]))
-    for view, source_url in view_urls.items():
-        if view in resolved_urls and source_url != resolved_urls[view]:
-            raise ValueError(f"La URL reutilizada de {view} no coincide con el enlace publicado en Alineación")
-    return {
-        "capture_id": metadata["capture_id"],
-        "raw_views": raw_views,
-        "access_by_view": access_by_view,
-        "page_titles": page_titles,
-        "view_urls": view_urls,
-        "browser": metadata.get("browser", {}),
-    }
+    inspection = inspect_team_capture(
+        capture_dir,
+        team_catalog_record=team_catalog_record,
+        competition=competition,
+        team_catalog_reference=team_catalog_reference,
+        group_team_catalog=group_team_catalog,
+        known_matches=known_matches,
+        include_seed_payloads=True,
+    )
+    if not inspection.reusable_as_seed or inspection.seed is None:
+        raise ValueError(
+            f"La captura no es reutilizable como semilla ({inspection.classification}): "
+            f"{'; '.join(inspection.reasons)}"
+        )
+    return inspection.seed
 
 
 def _offline_bundle(
@@ -314,11 +299,16 @@ def main(argv: Sequence[str] | None = None) -> int:
                 args.reuse_capture,
                 team_catalog_record=team_catalog_record,
                 competition=competition,
+                team_catalog_reference=team_catalog_reference,
+                group_team_catalog=group_teams,
+                known_matches=matches,
             ) if args.reuse_capture else None
             views_to_acquire = tuple(
                 view for view in requested_views
                 if seed is None or view not in seed["raw_views"]
             )
+            if seed is None and "alignment" not in views_to_acquire:
+                views_to_acquire = ("alignment", *views_to_acquire)
             bundle = acquire_team_profile(
                 team_catalog_record=team_catalog_record,
                 team_catalog_reference=team_catalog_reference,
@@ -338,8 +328,16 @@ def main(argv: Sequence[str] | None = None) -> int:
                 seed_page_titles=(seed or {}).get("page_titles"),
                 seed_browser=(seed or {}).get("browser"),
                 seed_capture_id=(seed or {}).get("capture_id"),
+                seed_follow_state_html=(seed or {}).get("follow_state_html"),
+                seed_follow_state_diagnostics=(seed or {}).get("follow_state_diagnostics"),
+                seed_capture_ids=(seed or {}).get("seed_capture_ids", ()),
+                require_follow_states=("follow" in requested_views),
             )
-            timestamp_basis = "browser navigation capture time"
+            timestamp_basis = (
+                "browser navigation capture time; reused views retain per-view source timestamps"
+                if bundle.acquired_views
+                else "offline re-normalization; inherited source timestamps retained"
+            )
             profile_dir = args.profile
         paths = export_team_capture(
             args.output_root,

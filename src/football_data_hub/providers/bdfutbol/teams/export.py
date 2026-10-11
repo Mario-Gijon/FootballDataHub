@@ -13,6 +13,32 @@ from pathlib import Path
 from typing import Any
 
 from .acquisition import EXTRACTOR_VERSION, TeamAcquisitionBundle
+from .models import TeamProfileData
+
+CAPTURE_POLICY_ID = "team-profile-six-views-follow-states-v1"
+CAPTURE_POLICY_VERSION = 1
+
+
+def normalized_payloads(parsed: TeamProfileData) -> dict[str, dict[str, Any]]:
+    """Return the normalized JSON bodies from the typed, validated model."""
+    return {
+        "team_identity": {"record": asdict(parsed.identity)},
+        "team_season": {"record": asdict(parsed.season)},
+        "players": {"records": [asdict(item) for item in parsed.players]},
+        "memberships": {"records": [asdict(item) for item in parsed.memberships]},
+        "player_statistics": {"records": [asdict(item) for item in parsed.player_statistics]},
+        "player_match_minutes": {"records": [asdict(item) for item in parsed.player_match_minutes]},
+        "player_match_metrics": {
+            "records": [asdict(item) for item in parsed.player_match_metrics],
+            "captured_states": list(parsed.follow_states_captured),
+        },
+        "transfers": {"records": [asdict(item) for item in parsed.transfers]},
+        "profile_references": {
+            "team_ids_from_profile": list(parsed.group_team_ids_from_profile),
+            "match_ids_from_profile": list(parsed.team_match_ids_from_profile),
+            "note": "References only. Reuse the corresponding group catalog for full records.",
+        },
+    }
 
 
 def _write_json(path: Path, value: Any) -> None:
@@ -28,7 +54,7 @@ def _dataset_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
         for key in (
             "source", "season", "competition", "group", "team_id",
             "capture_id", "captured_at_utc", "started_at_utc", "extractor_version",
-            "related_team_catalog", "source_snapshots",
+            "semantic_validation_version", "capture_policy", "related_team_catalog", "source_snapshots",
             "follow_states", "acquired_views", "reused_views", "reused_source_capture_ids",
         )
     }
@@ -92,6 +118,13 @@ def export_team_capture(
             "started_at_utc": bundle.started_at_utc,
             "capture_timestamp_basis": capture_timestamp_basis,
             "extractor_version": EXTRACTOR_VERSION,
+            "semantic_validation_version": bundle.validation.get("semantic_version"),
+            "capture_policy": {
+                "id": CAPTURE_POLICY_ID,
+                "version": CAPTURE_POLICY_VERSION,
+                "required_views": ["alignment", "squad", "statistics", "follow", "transfers", "matches"],
+                "required_follow_states": ["p", "t", "go", "tot"],
+            },
             "browser": bundle.browser,
             "profile_dir": str(profile_dir.expanduser()) if profile_dir is not None else None,
             "access_by_view": bundle.access_by_view,
@@ -126,12 +159,19 @@ def export_team_capture(
             with source_path.open("xb") as target:
                 target.write(compressed_bytes)
             follow_state_metadata[state] = {
+                **{
+                    key: value
+                    for key, value in bundle.follow_state_diagnostics.get(state, {}).items()
+                    if key not in {"path", "compression", "sha256", "stored_bytes", "bytes_utf8"}
+                },
+                "status": "VALID",
+                "selected_value": state,
+                "source_capture_id": bundle.follow_state_diagnostics.get(state, {}).get("source_capture_id") or bundle.capture_id,
+                "sha256": hashlib.sha256(html_bytes).hexdigest(),
                 "path": relative.as_posix(),
                 "compression": "gzip",
-                "sha256": hashlib.sha256(html_bytes).hexdigest(),
                 "bytes_utf8": len(html_bytes),
                 "stored_bytes": len(compressed_bytes),
-                **bundle.follow_state_diagnostics.get(state, {}),
             }
         metadata["follow_states"] = follow_state_metadata
         if follow_state_metadata:
@@ -147,26 +187,7 @@ def export_team_capture(
             access_path.unlink()
             _write_json(access_path, access_payload)
 
-        identity = asdict(bundle.parsed.identity)
-        season = asdict(bundle.parsed.season)
-        payloads: dict[str, Any] = {
-            "team_identity": {"record": identity},
-            "team_season": {"record": season},
-            "players": {"records": [asdict(item) for item in bundle.parsed.players]},
-            "memberships": {"records": [asdict(item) for item in bundle.parsed.memberships]},
-            "player_statistics": {"records": [asdict(item) for item in bundle.parsed.player_statistics]},
-            "player_match_minutes": {"records": [asdict(item) for item in bundle.parsed.player_match_minutes]},
-            "player_match_metrics": {
-                "records": [asdict(item) for item in bundle.parsed.player_match_metrics],
-                "captured_states": list(bundle.parsed.follow_states_captured),
-            },
-            "transfers": {"records": [asdict(item) for item in bundle.parsed.transfers]},
-            "profile_references": {
-                "team_ids_from_profile": list(bundle.parsed.group_team_ids_from_profile),
-                "match_ids_from_profile": list(bundle.parsed.team_match_ids_from_profile),
-                "note": "References only. Reuse the corresponding group catalog for full records.",
-            },
-        }
+        payloads = normalized_payloads(bundle.parsed)
         output_paths: dict[str, Path] = {
             "raw_access": run_dir / "raw" / "access.json",
             "metadata": run_dir / "metadata" / "capture.json",
@@ -179,6 +200,16 @@ def export_team_capture(
                 **payload,
             })
             output_paths[dataset] = run_dir / path.relative_to(staging_dir)
+        metadata["normalized_snapshots"] = {
+            path.name: {
+                "path": path.relative_to(staging_dir).as_posix(),
+                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            }
+            for path in sorted((staging_dir / "normalized").glob("*.json"))
+        }
+        metadata_path = staging_dir / "metadata" / "capture.json"
+        metadata_path.unlink()
+        _write_json(metadata_path, metadata)
         validation_path = staging_dir / "validation" / "results.json"
         _write_json(validation_path, bundle.validation)
         output_paths["validation"] = run_dir / validation_path.relative_to(staging_dir)

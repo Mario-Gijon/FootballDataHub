@@ -9,7 +9,6 @@ from football_data_hub.providers.bdfutbol.teams.batch import (
     BatchAccessDenied,
     BatchStop,
     BatchTeamOutcome,
-    find_valid_capture,
     run_team_batch,
     write_batch_manifest,
 )
@@ -51,7 +50,11 @@ def test_batch_denial_stops_future_navigation_and_leaves_pending_teams():
         calls.append(team_id)
         if team_id == 2:
             raise BatchAccessDenied("HTTP 403; CHALLENGE_REQUIRED")
-        return BatchTeamOutcome(f"capture-{team_id}", views)
+        return BatchTeamOutcome(
+            f"capture-{team_id}",
+            views,
+            follow_states=("p", "t", "go", "tot") if "follow" in views else (),
+        )
 
     manifest = run_team_batch(
         teams_by_group={1: [_team(1), _team(2), _team(3), _team(4)]},
@@ -99,30 +102,35 @@ def test_batch_manifest_is_versioned_create_only(tmp_path: Path):
         write_batch_manifest(tmp_path, manifest)
 
 
-def test_complete_capture_resume_checks_full_view_set_hashes(tmp_path: Path):
-    run = tmp_path / "2026-27" / "48" / "capture-1"
-    (run / "metadata").mkdir(parents=True)
-    (run / "validation").mkdir()
-    (run / "raw").mkdir()
-    raw = b"<html>valid source</html>"
-    (run / "raw" / "alignment.html").write_bytes(raw)
-    metadata = {
-        "capture_id": "capture-1",
-        "team_id": 48,
-        "created_at_utc": "2026-10-11T10:00:00+00:00",
-        "requested_views": ["alignment"],
-        "source_snapshots": {
-            "alignment": {
-                "path": "raw/alignment.html",
-                "sha256": __import__("hashlib").sha256(raw).hexdigest(),
-                "http_status": 200,
-                "access_status": "VALID",
-            }
-        },
-    }
-    (run / "metadata" / "capture.json").write_text(json.dumps(metadata))
-    (run / "validation" / "results.json").write_text(json.dumps({"valid": True}))
-    assert find_valid_capture(tmp_path, season="2026-27", team_id=48, required_views=("alignment",))[0] == "capture-1"
-    assert find_valid_capture(tmp_path, season="2026-27", team_id=48, required_views=("alignment", "statistics")) is None
-    (run / "raw" / "alignment.html").write_bytes(b"changed")
-    assert find_valid_capture(tmp_path, season="2026-27", team_id=48, required_views=("alignment",)) is None
+def test_follow_capture_is_not_complete_without_all_four_states():
+    manifest = run_team_batch(
+        teams_by_group={1: [_team(1)]},
+        groups=(1,),
+        requested_views=("alignment", "follow"),
+        find_complete_capture=lambda *_args: None,
+        find_partial_capture=lambda *_args: None,
+        process_team=lambda _group, _team, views: BatchTeamOutcome(
+            "capture-partial", views, follow_states=("p", "t", "go")
+        ),
+    )
+    assert manifest["teams"][0]["status"] == "incomplete"
+    assert manifest["teams"][0]["failure_class"] == "capture_validation"
+
+
+def test_batch_pause_is_between_team_runs(monkeypatch):
+    import football_data_hub.providers.bdfutbol.teams.batch as batch
+
+    pauses: list[float] = []
+    clock = iter((10.0, 20.0, 30.0))
+    monkeypatch.setattr(batch.time, "monotonic", lambda: next(clock))
+    monkeypatch.setattr(batch.time, "sleep", pauses.append)
+    run_team_batch(
+        teams_by_group={1: [_team(1), _team(2), _team(3)]},
+        groups=(1,),
+        requested_views=("alignment",),
+        find_complete_capture=lambda *_args: None,
+        find_partial_capture=lambda *_args: None,
+        process_team=lambda _group, _team, views: BatchTeamOutcome("ok", views),
+        pause_seconds=2.5,
+    )
+    assert pauses == [2.5, 2.5]

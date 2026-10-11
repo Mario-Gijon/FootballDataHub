@@ -1,36 +1,47 @@
-"""Sequential, resumable command for future one-team-at-a-time acquisitions."""
+"""Controlled, offline-plannable and resumable one-team-at-a-time acquisition."""
 
 from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 from pathlib import Path
-from typing import Sequence
+from typing import Any, Sequence
 
 from football_data_hub.core.browser_runtime import BrowserRuntimeError
 from football_data_hub.core.browser_session import BrowserSessionError
-from football_data_hub.providers.bdfutbol.context import SUPPORTED_SEASON, get_competition_context
 from football_data_hub.providers.bdfutbol.access import AccessStatus
+from football_data_hub.providers.bdfutbol.context import SUPPORTED_SEASON, get_competition_context
 
-from .acquisition import DEFAULT_VIEWS, TeamAcquisitionStopped, acquire_team_profile
+from .acquisition import DEFAULT_VIEWS, FOLLOW_STATES, TeamAcquisitionStopped, acquire_team_profile
 from .batch import (
     BatchAccessDenied,
     BatchStop,
     BatchTeamOutcome,
-    find_valid_capture,
+    inspect_team_captures,
     run_team_batch,
     write_batch_manifest,
 )
+from .capture_store import CaptureInspection
 from .catalog import load_team_catalog
+from .export import CAPTURE_POLICY_ID, export_team_capture
 from .cli import _DEFAULT_MATCH_CATALOGS, _reuse_capture_seed
-from .export import export_team_capture
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--season", choices=(SUPPORTED_SEASON,), default=SUPPORTED_SEASON)
     parser.add_argument("--groups", choices=("I", "II", "both"), default="both")
+    parser.add_argument("--team-id", type=int, action="append", dest="team_ids")
+    parser.add_argument("--limit", type=int, help="Limita el número de equipos seleccionados para un piloto.")
+    parser.add_argument(
+        "--pause-seconds",
+        type=float,
+        default=2.0,
+        help="Pausa entre páginas y equipos adquiridos; use 0 solo para pruebas controladas.",
+    )
+    parser.add_argument("--dry-run", action="store_true", help="Inspecciona el inventario y muestra el plan sin abrir navegador.")
     parser.add_argument("--view", action="append", choices=tuple(DEFAULT_VIEWS))
     parser.add_argument("--group1-catalog", type=Path)
     parser.add_argument("--group2-catalog", type=Path)
@@ -56,105 +67,263 @@ def _catalog_path(args: argparse.Namespace, group: int) -> Path:
     return Path(env).expanduser() if env else _DEFAULT_MATCH_CATALOGS[group]
 
 
-def _latest_seed_dir(
+def _assessment_key(assessment: CaptureInspection | None) -> tuple[Any, ...]:
+    if assessment is None:
+        return (False, 0, 0, 0, "")
+    created = str(
+        assessment.metadata.get("created_at_utc")
+        or assessment.metadata.get("captured_at_utc")
+        or assessment.capture_id
+    )
+    return (*assessment.coverage_score, created, assessment.capture_id)
+
+
+def _inspect_best(
     output_root: Path,
-    season: str,
-    team_id: int,
     *,
-    team_catalog_record: dict,
-    competition,
-) -> Path | None:
-    team_root = output_root.expanduser() / season / str(team_id)
-    if not team_root.is_dir():
-        return None
-    candidates = []
-    for path in team_root.iterdir():
-        metadata_path = path / "metadata" / "capture.json"
-        if not path.is_dir() or not metadata_path.is_file():
-            continue
-        try:
-            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-            if any(item.get("access_status") == "VALID" for item in metadata.get("source_snapshots", {}).values()):
-                candidates.append((str(metadata.get("created_at_utc") or metadata.get("capture_id")), path))
-        except (OSError, ValueError, json.JSONDecodeError):
-            continue
-    for _, candidate in sorted(candidates, reverse=True):
-        try:
-            _reuse_capture_seed(
-                candidate,
-                team_catalog_record=team_catalog_record,
-                competition=competition,
+    season: str,
+    group: int,
+    record: dict[str, Any],
+    context,
+    reference: dict[str, Any],
+    teams: list[dict[str, Any]],
+    matches: list[dict[str, Any]],
+    required_views: tuple[str, ...],
+) -> CaptureInspection | None:
+    candidates = inspect_team_captures(
+        output_root,
+        season=season,
+        team_catalog_record=record,
+        competition=context,
+        team_catalog_reference=reference,
+        group_team_catalog=teams,
+        known_matches=matches,
+        required_views=required_views,
+    )
+    usable = [candidate for candidate in candidates if candidate.reusable_as_seed]
+    return max(usable, key=_assessment_key) if usable else None
+
+
+def _team_plan(
+    *,
+    record: dict[str, Any],
+    group: int,
+    views: tuple[str, ...],
+    assessment: CaptureInspection | None,
+    catalog_reference: dict[str, Any],
+) -> dict[str, Any]:
+    valid_views = set(assessment.valid_views if assessment else ())
+    valid_states = set(assessment.valid_follow_states if assessment else ())
+    missing_views = [view for view in views if view not in valid_views]
+    if assessment is None and "alignment" not in missing_views:
+        missing_views.insert(0, "alignment")
+    required_states = FOLLOW_STATES if "follow" in views else ()
+    missing_states = [state for state in required_states if state not in valid_states]
+    visit_views = list(missing_views)
+    if missing_states and "follow" not in visit_views:
+        visit_views.append("follow")
+    already_complete = bool(assessment and assessment.complete_for_current_policy)
+    if already_complete:
+        visit_views = []
+        missing_states = []
+        missing_views = []
+    return {
+        "group": "I" if group == 1 else "II",
+        "team_id": int(record["team_id"]),
+        "team_name": str(record.get("name") or record.get("team_name") or ""),
+        "action": "skip_complete" if already_complete else "acquire_or_rebuild",
+        "capture": assessment.manifest_summary() if assessment else None,
+        "requested_views": list(views),
+        "missing_views": missing_views,
+        "missing_follow_states": missing_states,
+        "planned_page_visits": visit_views,
+        "follow_state_transitions": len(missing_states),
+        "planned_navigation_count": len(visit_views),
+        "catalog_reference": catalog_reference,
+    }
+
+
+def select_team_records(
+    team_records_by_group: dict[int, list[dict[str, Any]]],
+    *,
+    groups: tuple[int, ...],
+    team_ids: list[int] | None = None,
+    limit: int | None = None,
+) -> dict[int, list[dict[str, Any]]]:
+    """Validate requested IDs against the selected catalogs and apply a global limit."""
+    if limit is not None and limit < 1:
+        raise ValueError("--limit debe ser mayor que cero")
+    selected = {group: list(team_records_by_group.get(group, ())) for group in groups}
+    if team_ids:
+        if len(team_ids) != len(set(team_ids)):
+            raise ValueError("--team-id no puede repetirse")
+        available_ids = {
+            int(record["team_id"])
+            for records in selected.values()
+            for record in records
+        }
+        invalid_ids = sorted(set(team_ids) - available_ids)
+        if invalid_ids:
+            raise ValueError(
+                f"IDs no pertenecen a los grupos seleccionados y sus catálogos: {invalid_ids}"
             )
-            return candidate
-        except (OSError, ValueError, KeyError, json.JSONDecodeError):
-            continue
-    return None
+        selected_ids = set(team_ids)
+        selected = {
+            group: [record for record in records if int(record["team_id"]) in selected_ids]
+            for group, records in selected.items()
+        }
+    if limit is not None:
+        remaining = limit
+        limited: dict[int, list[dict[str, Any]]] = {}
+        for group, records in selected.items():
+            limited[group] = records[:remaining]
+            remaining -= len(limited[group])
+        selected = limited
+    return selected
+
+
+def covers_full_catalog_scope(
+    selected_by_group: dict[int, list[dict[str, Any]]],
+    catalog_by_group: dict[int, list[dict[str, Any]]],
+    *,
+    groups: tuple[int, ...],
+) -> bool:
+    selected = {
+        (group, int(record["team_id"]))
+        for group in groups
+        for record in selected_by_group.get(group, [])
+    }
+    catalog = {
+        (group, int(record["team_id"]))
+        for group in groups
+        for record in catalog_by_group.get(group, [])
+    }
+    return bool(catalog) and selected == catalog
+
+
+def is_complete_batch(
+    *,
+    full_catalog_scope: bool,
+    groups: tuple[int, ...],
+    entries: list[dict[str, Any]],
+) -> bool:
+    return bool(
+        full_catalog_scope
+        and set(groups) == {1, 2}
+        and entries
+        and all(entry.get("status") == "complete" for entry in entries)
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
+    if not math.isfinite(args.pause_seconds) or args.pause_seconds < 0:
+        raise ValueError("--pause-seconds debe ser un número finito no negativo")
+
     groups = (1, 2) if args.groups == "both" else ((1,) if args.groups == "I" else (2,))
     selected_views = tuple(dict.fromkeys(args.view)) if args.view else DEFAULT_VIEWS
     output_root = args.output_root.expanduser()
-    team_records = {}
-    matches_by_group = {}
-    references = {}
+    team_records: dict[int, list[dict[str, Any]]] = {}
+    matches_by_group: dict[int, list[dict[str, Any]]] = {}
+    references: dict[int, dict[str, Any]] = {}
+    contexts = {}
     for group in groups:
-        context = get_competition_context(args.season, group)
+        contexts[group] = get_competition_context(args.season, group)
         team_records[group], matches_by_group[group], references[group] = load_team_catalog(
-            _catalog_path(args, group), competition=context
+            _catalog_path(args, group), competition=contexts[group]
         )
+    catalog_teams_by_group = {group: list(records) for group, records in team_records.items()}
 
-    def complete(group: int, team_id: int, views: tuple[str, ...]) -> str | None:
-        found = find_valid_capture(output_root, season=args.season, team_id=team_id, required_views=views)
-        return found[0] if found else None
+    team_records = select_team_records(
+        team_records,
+        groups=groups,
+        team_ids=args.team_ids,
+        limit=args.limit,
+    )
 
-    def partial(group: int, team_id: int) -> str | None:
-        record = next(team for team in team_records[group] if int(team["team_id"]) == team_id)
-        context = get_competition_context(args.season, group)
-        seed_dir = _latest_seed_dir(
-            output_root,
-            args.season,
-            team_id,
-            team_catalog_record=record,
-            competition=context,
+    inspections: dict[tuple[int, int], CaptureInspection | None] = {}
+    plans: list[dict[str, Any]] = []
+    for group in groups:
+        for record in team_records[group]:
+            inspection = _inspect_best(
+                output_root,
+                season=args.season,
+                group=group,
+                record=record,
+                context=contexts[group],
+                reference=references[group],
+                teams=catalog_teams_by_group[group],
+                matches=matches_by_group[group],
+                required_views=selected_views,
+            )
+            inspections[(group, int(record["team_id"]))] = inspection
+            plans.append(_team_plan(
+                record=record,
+                group=group,
+                views=selected_views,
+                assessment=inspection,
+                catalog_reference=references[group],
+            ))
+
+    if args.dry_run:
+        full_catalog_scope = covers_full_catalog_scope(
+            team_records,
+            catalog_teams_by_group,
+            groups=groups,
         )
-        if seed_dir is None:
-            return None
-        try:
-            metadata = json.loads((seed_dir / "metadata" / "capture.json").read_text(encoding="utf-8"))
-            context = get_competition_context(args.season, group)
-            record = next(team for team in team_records[group] if int(team["team_id"]) == team_id)
-            _reuse_capture_seed(seed_dir, team_catalog_record=record, competition=context)
-            return str(metadata.get("capture_id"))
-        except (OSError, ValueError, KeyError, json.JSONDecodeError):
-            return None
+        print(json.dumps({
+            "mode": "dry_run",
+            "season": args.season,
+            "groups": ["I" if group == 1 else "II" for group in groups],
+            "requested_views": list(selected_views),
+            "required_follow_states": list(FOLLOW_STATES) if "follow" in selected_views else [],
+            "pause_seconds": args.pause_seconds,
+            "browser_started": False,
+            "teams_selected": len(plans),
+            "catalog_team_count": sum(len(catalog_teams_by_group[group]) for group in groups),
+            "full_catalog_scope": full_catalog_scope,
+            "planned_navigation_count": sum(item["planned_navigation_count"] for item in plans),
+            "teams": plans,
+        }, ensure_ascii=False, indent=2))
+        return 0
 
-    def process(group: int, record: dict, views: tuple[str, ...]) -> BatchTeamOutcome:
-        context = get_competition_context(args.season, group)
-        seed_dir = _latest_seed_dir(
-            output_root,
-            args.season,
-            int(record["team_id"]),
-            team_catalog_record=record,
-            competition=context,
+    def complete(group: int, team_id: int, _views: tuple[str, ...]) -> CaptureInspection | None:
+        item = inspections.get((group, team_id))
+        return item if item and item.complete_for_current_policy else None
+
+    def partial(group: int, team_id: int) -> CaptureInspection | None:
+        item = inspections.get((group, team_id))
+        return item if item and item.reusable_as_seed else None
+
+    def process(group: int, record: dict[str, Any], views: tuple[str, ...]) -> BatchTeamOutcome:
+        context = contexts[group]
+        team_id = int(record["team_id"])
+        inspection = inspections.get((group, team_id))
+        seed = None
+        if inspection and inspection.reusable_as_seed:
+            seed = _reuse_capture_seed(
+                inspection.path,
+                team_catalog_record=record,
+                competition=context,
+                team_catalog_reference=references[group],
+                group_team_catalog=catalog_teams_by_group[group],
+                known_matches=matches_by_group[group],
+            )
+        acquired_views_needed = tuple(
+            view for view in views if seed is None or view not in seed["raw_views"]
         )
-        seed = _reuse_capture_seed(
-            seed_dir,
-            team_catalog_record=record,
-            competition=context,
-        ) if seed_dir else None
-        requested = tuple(dict.fromkeys(views if seed and "alignment" in seed["raw_views"] else ("alignment", *views)))
-        to_acquire = tuple(view for view in requested if seed is None or view not in seed["raw_views"])
+        if seed is None and "alignment" not in acquired_views_needed:
+            acquired_views_needed = ("alignment", *acquired_views_needed)
+
         try:
             bundle = acquire_team_profile(
                 team_catalog_record=record,
                 team_catalog_reference=references[group],
-                group_team_catalog=team_records[group],
+                group_team_catalog=catalog_teams_by_group[group],
                 known_matches=matches_by_group[group],
                 competition=context,
                 profile_dir=args.profile,
-                requested_views=to_acquire,
+                requested_views=acquired_views_needed,
                 browser="chromium",
                 browser_executable_path=args.browser_executable,
                 startup_timeout_seconds=args.startup_timeout_seconds,
@@ -166,6 +335,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                 seed_page_titles=(seed or {}).get("page_titles"),
                 seed_browser=(seed or {}).get("browser"),
                 seed_capture_id=(seed or {}).get("capture_id"),
+                seed_follow_state_html=(seed or {}).get("follow_state_html"),
+                seed_follow_state_diagnostics=(seed or {}).get("follow_state_diagnostics"),
+                seed_capture_ids=(seed or {}).get("seed_capture_ids", ()),
+                require_follow_states=("follow" in views),
+                navigation_pause_seconds=args.pause_seconds,
             )
         except TeamAcquisitionStopped as exc:
             if exc.assessment.status is AccessStatus.CHALLENGE_REQUIRED:
@@ -178,33 +352,93 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise
         except (BrowserRuntimeError, BrowserSessionError) as exc:
             raise BatchStop(f"{type(exc).__name__}: {exc}", kind="browser_environment_error") from exc
+
         try:
             paths = export_team_capture(
                 output_root,
                 bundle,
                 profile_dir=args.profile,
-                capture_timestamp_basis="browser navigation capture time; reused views retain per-view source timestamps",
+                capture_timestamp_basis=(
+                    "per-view browser navigation time; inherited views and Follow states retain their source provenance"
+                    if bundle.acquired_views
+                    else "offline re-normalization; inherited source timestamps retained"
+                ),
             )
         except OSError as exc:
             raise BatchStop(f"{type(exc).__name__}: {exc}", kind="storage_error") from exc
+
+        metadata = json.loads(paths["metadata"].read_text(encoding="utf-8"))
+        acquired_states = tuple(
+            state
+            for state, diagnostic in bundle.follow_state_diagnostics.items()
+            if not diagnostic.get("reused")
+        )
+        reused_states = tuple(
+            state
+            for state, diagnostic in bundle.follow_state_diagnostics.items()
+            if diagnostic.get("reused")
+        )
         return BatchTeamOutcome(
             capture_id=bundle.capture_id,
             views=bundle.requested_views,
             valid=bool(bundle.validation.get("valid")) and paths["run_directory"].is_dir(),
+            acquired_views=bundle.acquired_views,
+            reused_views=tuple(view for view in bundle.requested_views if view not in bundle.acquired_views),
+            follow_states=bundle.parsed.follow_states_captured,
+            acquired_follow_states=acquired_states,
+            reused_follow_states=reused_states,
+            catalog_reference=references[group],
+            captured_at_utc=bundle.captured_at_utc,
+            acquisition_timestamps={
+                "views": {
+                    view: item.get("captured_at_utc")
+                    for view, item in metadata.get("source_snapshots", {}).items()
+                },
+                "follow_states": {
+                    state: item.get("captured_at_utc")
+                    for state, item in metadata.get("follow_states", {}).items()
+                },
+            },
         )
 
     manifest = run_team_batch(
-        teams_by_group={group: team_records[group] for group in groups},
+        teams_by_group=team_records,
         groups=groups,
         requested_views=selected_views,
         find_complete_capture=complete,
         find_partial_capture=partial,
         process_team=process,
+        catalog_references_by_group=references,
+        pause_seconds=args.pause_seconds,
     )
     manifest["season"] = args.season
     manifest["source"] = "BDFutbol"
+    full_catalog_scope = covers_full_catalog_scope(
+        team_records,
+        catalog_teams_by_group,
+        groups=groups,
+    )
+    manifest["batch_scope"] = {
+        "groups": ["I" if group == 1 else "II" for group in groups],
+        "selected_team_count": len(manifest["teams"]),
+        "catalog_team_count": sum(len(catalog_teams_by_group[group]) for group in groups),
+        "full_catalog_scope": full_catalog_scope,
+    }
+    manifest["batch_complete"] = is_complete_batch(
+        full_catalog_scope=full_catalog_scope and not manifest["stop_reason"],
+        groups=groups,
+        entries=manifest["teams"],
+    )
+    manifest["capture_policy"] = {
+        "id": CAPTURE_POLICY_ID,
+        "required_follow_states": list(FOLLOW_STATES) if "follow" in selected_views else [],
+    }
     manifest_path = write_batch_manifest(output_root / args.season, manifest)
-    print(json.dumps({"manifest": str(manifest_path), "summary": manifest["summary"], "stopped_on_access_denial": manifest["stopped_on_access_denial"]}, ensure_ascii=False, indent=2))
+    print(json.dumps({
+        "manifest": str(manifest_path),
+        "summary": manifest["summary"],
+        "stopped_on_access_denial": manifest["stopped_on_access_denial"],
+    }, ensure_ascii=False, indent=2))
     return 0
 
 

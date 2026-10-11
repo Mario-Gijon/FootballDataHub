@@ -8,6 +8,8 @@ from typing import Any
 
 from .models import TeamProfileData
 
+SEMANTIC_VALIDATION_VERSION = 1
+
 
 def validate_team_catalogs(
     catalogs: dict[int, tuple[list[dict[str, Any]], dict[str, Any]]],
@@ -171,6 +173,7 @@ def validate_team_profile(
         )
     return {
         "valid": not issues,
+        "semantic_version": SEMANTIC_VALIDATION_VERSION,
         "summary": {
             "team_id": team_id,
             "players": len(data.players),

@@ -480,6 +480,11 @@ def test_incremental_acquisition_reuses_validated_alignment_and_statistics(racin
         ROOT / "data/exports/bdfutbol/teams/2026-27/48/team01a-group1-48-source-evidence",
         team_catalog_record=record,
         competition=context,
+        team_catalog_reference=load_team_catalog(
+            GROUP_CATALOGS[1], competition=context
+        )[2],
+        group_team_catalog=payload["teams"],
+        known_matches=payload["matches"],
     )
     assert set(seed["raw_views"]) == {"alignment", "statistics"}
     seed_urls = resolve_team_view_urls(seed["raw_views"]["alignment"], record["team_url"])
@@ -512,6 +517,69 @@ def test_incremental_acquisition_reuses_validated_alignment_and_statistics(racin
     assert result.acquired_views == ("squad", "matches")
     assert result.seed_capture_ids == ("team01a-group1-48-source-evidence",)
     assert set(result.raw_views) == {"alignment", "squad", "statistics", "matches"}
+
+
+def test_refreshing_a_view_preserves_follow_metrics_and_provenance(racing, monkeypatch, tmp_path):
+    context, payload, record, run, capture, views, _, _ = racing
+    teams, known_matches, reference = load_team_catalog(
+        GROUP_CATALOGS[1], competition=context
+    )
+    seed = team_acquisition_cli._reuse_capture_seed(
+        run,
+        team_catalog_record=record,
+        competition=context,
+        team_catalog_reference=reference,
+        group_team_catalog=teams,
+        known_matches=known_matches,
+    )
+    assert set(seed["follow_state_html"]) == {"p", "t", "go", "tot"}
+    follow_metrics_before = _read_json(run / "normalized/player_match_metrics.json")
+    source_state_metadata = capture["follow_states"]
+    urls = resolve_team_view_urls(views["alignment"], record["team_url"])
+    fake_session = _FakeSession({urls["matches"]: (views["matches"], 200)})
+    monkeypatch.setattr(
+        team_acquisition,
+        "BrowserSessionManager",
+        lambda *_args, **_kwargs: _FakeSessionManager(fake_session),
+    )
+
+    bundle = team_acquisition.acquire_team_profile(
+        team_catalog_record=record,
+        team_catalog_reference=reference,
+        group_team_catalog=teams,
+        known_matches=known_matches,
+        competition=context,
+        profile_dir=tmp_path / "profile",
+        requested_views=("matches",),
+        seed_raw_views=seed["raw_views"],
+        seed_access_by_view=seed["access_by_view"],
+        seed_view_urls=seed["view_urls"],
+        seed_page_titles=seed["page_titles"],
+        seed_browser=seed["browser"],
+        seed_capture_id=seed["capture_id"],
+        seed_follow_state_html=seed["follow_state_html"],
+        seed_follow_state_diagnostics=seed["follow_state_diagnostics"],
+        seed_capture_ids=seed["seed_capture_ids"],
+        require_follow_states=True,
+    )
+
+    assert fake_session.opened_urls == [urls["matches"]]
+    paths = export_team_capture(
+        tmp_path / "exports",
+        bundle,
+        profile_dir=tmp_path / "profile",
+        capture_timestamp_basis="simulated view refresh; reused follow states retain source timestamps",
+    )
+    exported_metrics = _read_json(paths["player_match_metrics"])
+    exported_metadata = _read_json(paths["metadata"])
+    assert exported_metrics["records"] == follow_metrics_before["records"]
+    assert exported_metrics["captured_states"] == follow_metrics_before["captured_states"]
+    assert len(exported_metrics["records"]) == len(follow_metrics_before["records"])
+    for state, previous in source_state_metadata.items():
+        current = exported_metadata["follow_states"][state]
+        assert current["source_capture_id"] == previous.get("source_capture_id", capture["capture_id"])
+        assert current["sha256"] == previous["sha256"]
+    assert capture["capture_id"] in exported_metadata["reused_source_capture_ids"]
 
 
 def test_acquisition_stops_on_challenge_without_retry(jaen, monkeypatch, tmp_path):
