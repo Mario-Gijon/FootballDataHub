@@ -1,0 +1,194 @@
+{
+  "schema_version": 1,
+  "capture_id": "team01a-group2-49-source-evidence",
+  "source": "BDFutbol",
+  "section": "team_profile",
+  "season": "2026-27",
+  "competition": "Primera Federación",
+  "competition_scope": "Liga",
+  "group": "II",
+  "group_number": 2,
+  "team_id": 49,
+  "team_name": "Jaén",
+  "team_url": "https://www.bdfutbol.com/es/t/t2026-2749.html",
+  "requested_views": [
+    "alignment",
+    "squad",
+    "statistics",
+    "follow",
+    "transfers",
+    "matches"
+  ],
+  "view_urls": {
+    "alignment": "https://www.bdfutbol.com/es/t/t2026-2749.html",
+    "squad": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=plantilla",
+    "statistics": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=lista",
+    "follow": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=seg",
+    "transfers": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=altas",
+    "matches": "https://www.bdfutbol.com/es/t/t2026-2749.html?tab=partits"
+  },
+  "captured_at_utc": "2026-10-11T11:39:13.407429+00:00",
+  "capture_timestamp_basis": "per-view access diagnostic timestamp or local snapshot mtime; see raw/access.json",
+  "extractor_version": "0.1.0",
+  "browser": {
+    "backend": "seleniumbase-pure-cdp",
+    "browser_name": "Chromium",
+    "browser_executable": "/usr/bin/chromium",
+    "browser_version": "Chromium 152.0.7977.82 Arch Linux",
+    "automation_version": "4.55.2",
+    "display": ":99",
+    "uses_xvfb": true,
+    "xvfb_external": true
+  },
+  "profile_dir": null,
+  "access_by_view": {
+    "alignment": {
+      "status": "VALID",
+      "requested_url": "https://www.bdfutbol.com/es/t/t2026-2749.html",
+      "final_url": "https://www.bdfutbol.com/es/t/t2026-2749.html",
+      "http_status": 200,
+      "page_title": "Plantilla del Jaén 2026-27 1ª RFEF | BDFutbol",
+      "reason": null,
+      "captured_at_utc": "2026-10-11T11:39:13.407429+00:00",
+      "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded",
+      "source_snapshot_sha256": "6a8b76da71eed468f6ed93c4bc66a47be297532421a1efa4f11979f1049dbcd9"
+    },
+    "squad": {
+      "status": "VALID",
+      "requested_url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=plantilla",
+      "final_url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=plantilla",
+      "http_status": 200,
+      "page_title": "Plantilla del Jaén 2026-27 1ª RFEF | BDFutbol",
+      "reason": null,
+      "captured_at_utc": "2026-10-11T11:40:25.322668+00:00",
+      "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded",
+      "source_snapshot_sha256": "188911ccf2f8690463b6e8662d88676a0171d154f2260b8de30393f53039aacf"
+    },
+    "statistics": {
+      "status": "VALID",
+      "requested_url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=lista",
+      "final_url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=lista",
+      "http_status": 200,
+      "page_title": "Plantilla del Jaén 2026-27 1ª RFEF | BDFutbol",
+      "reason": null,
+      "captured_at_utc": "2026-10-11T11:40:27.704382+00:00",
+      "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded",
+      "source_snapshot_sha256": "1d664c8cc22e5e8a85705a91b29ddd151caf1f8b3b9fd84444804f7e15085ac3"
+    },
+    "follow": {
+      "status": "VALID",
+      "requested_url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=seg",
+      "final_url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=seg",
+      "http_status": 200,
+      "page_title": "Plantilla del Jaén 2026-27 1ª RFEF | BDFutbol",
+      "reason": null,
+      "captured_at_utc": "2026-10-11T11:40:29.956883+00:00",
+      "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded",
+      "source_snapshot_sha256": "58de1ddc33da93ac868d378e9ac7de55350df8f6c06ef96e77435026ad33ba05"
+    },
+    "transfers": {
+      "status": "VALID",
+      "requested_url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=altas",
+      "final_url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=altas",
+      "http_status": 200,
+      "page_title": "Plantilla del Jaén 2026-27 1ª RFEF | BDFutbol",
+      "reason": null,
+      "captured_at_utc": "2026-10-11T11:40:32.178078+00:00",
+      "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded",
+      "source_snapshot_sha256": "279774e069f3c0666f9c6dd3162f9faca6c44912b6cbbeb61e9f81b8a14303fe"
+    },
+    "matches": {
+      "status": "VALID",
+      "requested_url": "https://www.bdfutbol.com/es/t/t2026-2749.html?tab=partits",
+      "final_url": "https://www.bdfutbol.com/es/t/t2026-2749.html?tab=partits",
+      "http_status": 200,
+      "page_title": "Plantilla del Jaén 2026-27 1ª RFEF | BDFutbol",
+      "reason": null,
+      "captured_at_utc": "2026-10-11T11:40:34.526424+00:00",
+      "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded",
+      "source_snapshot_sha256": "d11a7866fb1b813eff94433c4cd1b7350e0335644aca33b1e1d473ac2696aa1b"
+    }
+  },
+  "source_snapshots": {
+    "alignment": {
+      "path": "raw/alignment.html",
+      "url": "https://www.bdfutbol.com/es/t/t2026-2749.html",
+      "title": "Plantilla del Jaén 2026-27 1ª RFEF | BDFutbol",
+      "http_status": 200,
+      "sha256": "6a8b76da71eed468f6ed93c4bc66a47be297532421a1efa4f11979f1049dbcd9",
+      "bytes_utf8": 1543233,
+      "access_status": "VALID",
+      "captured_at_utc": "2026-10-11T11:39:13.407429+00:00",
+      "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded"
+    },
+    "squad": {
+      "path": "raw/squad.html",
+      "url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=plantilla",
+      "title": "Plantilla del Jaén 2026-27 1ª RFEF | BDFutbol",
+      "http_status": 200,
+      "sha256": "188911ccf2f8690463b6e8662d88676a0171d154f2260b8de30393f53039aacf",
+      "bytes_utf8": 1627015,
+      "access_status": "VALID",
+      "captured_at_utc": "2026-10-11T11:40:25.322668+00:00",
+      "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded"
+    },
+    "statistics": {
+      "path": "raw/statistics.html",
+      "url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=lista",
+      "title": "Plantilla del Jaén 2026-27 1ª RFEF | BDFutbol",
+      "http_status": 200,
+      "sha256": "1d664c8cc22e5e8a85705a91b29ddd151caf1f8b3b9fd84444804f7e15085ac3",
+      "bytes_utf8": 1779016,
+      "access_status": "VALID",
+      "captured_at_utc": "2026-10-11T11:40:27.704382+00:00",
+      "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded"
+    },
+    "follow": {
+      "path": "raw/follow.html",
+      "url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=seg",
+      "title": "Plantilla del Jaén 2026-27 1ª RFEF | BDFutbol",
+      "http_status": 200,
+      "sha256": "58de1ddc33da93ac868d378e9ac7de55350df8f6c06ef96e77435026ad33ba05",
+      "bytes_utf8": 1754359,
+      "access_status": "VALID",
+      "captured_at_utc": "2026-10-11T11:40:29.956883+00:00",
+      "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded"
+    },
+    "transfers": {
+      "path": "raw/transfers.html",
+      "url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=altas",
+      "title": "Plantilla del Jaén 2026-27 1ª RFEF | BDFutbol",
+      "http_status": 200,
+      "sha256": "279774e069f3c0666f9c6dd3162f9faca6c44912b6cbbeb61e9f81b8a14303fe",
+      "bytes_utf8": 1749347,
+      "access_status": "VALID",
+      "captured_at_utc": "2026-10-11T11:40:32.178078+00:00",
+      "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded"
+    },
+    "matches": {
+      "path": "raw/matches.html",
+      "url": "https://www.bdfutbol.com/es/t/t2026-2749.html?tab=partits",
+      "title": "Plantilla del Jaén 2026-27 1ª RFEF | BDFutbol",
+      "http_status": 200,
+      "sha256": "d11a7866fb1b813eff94433c4cd1b7350e0335644aca33b1e1d473ac2696aa1b",
+      "bytes_utf8": 1765194,
+      "access_status": "VALID",
+      "captured_at_utc": "2026-10-11T11:40:34.526424+00:00",
+      "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded"
+    }
+  },
+  "related_team_catalog": {
+    "path": "data/exports/bdfutbol/group2_classification/derived-res01-20261010T102656Z/normalized/matches.json",
+    "group": "II",
+    "season": "2026-27",
+    "source_capture_id": "20261010T102656.252222Z-72f200ad",
+    "source_captured_at_utc": "2026-10-10T10:26:56.252397+00:00",
+    "sha256": "ac355bf8fff808cea9aa093ebfb274d9313f3137ae89b84132ca11a3e70c7a84"
+  },
+  "created_at_utc": "2026-10-11T11:58:34.605440+00:00",
+  "data_scope_notes": [
+    "The team profile supplements the group match/standings datasets.",
+    "Team-match references are IDs only; fixture and score records are not duplicated.",
+    "Images are represented by source URLs and were not downloaded."
+  ]
+}

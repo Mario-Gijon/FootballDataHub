@@ -1,0 +1,43 @@
+{
+  "capture_id": "team01a-group1-48-source-evidence",
+  "captured_at_utc": "2026-10-11T11:39:17.727409+00:00",
+  "capture_timestamp_basis": "per-view access diagnostic timestamp or local snapshot mtime; see raw/access.json",
+  "requested_views": [
+    "alignment",
+    "statistics"
+  ],
+  "views": {
+    "alignment": {
+      "status": "VALID",
+      "requested_url": "https://www.bdfutbol.com/es/t/t2026-2748.html",
+      "final_url": "https://www.bdfutbol.com/es/t/t2026-2748.html",
+      "http_status": 200,
+      "page_title": "Plantilla del Racing de Ferrol 2026-27 1ª RFEF | BDFutbol",
+      "reason": null,
+      "captured_at_utc": "2026-10-11T11:39:17.727409+00:00",
+      "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded",
+      "source_snapshot_sha256": "d3cfc966c4956e6293b527993e501023f479be74a967860a249778e0ed18203b"
+    },
+    "statistics": {
+      "status": "VALID",
+      "requested_url": "https://www.bdfutbol.com/es/t/t2026-2748.html?t=lista",
+      "final_url": "https://www.bdfutbol.com/es/t/t2026-2748.html?t=lista",
+      "http_status": 200,
+      "page_title": "Plantilla del Racing de Ferrol 2026-27 1ª RFEF | BDFutbol",
+      "reason": null,
+      "captured_at_utc": "2026-10-11T11:44:35.524710+00:00",
+      "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded",
+      "source_snapshot_sha256": "ef429b554279efbbb75556714f01c030e90d0a20b3c40e5c67bd8cf50ff5a991"
+    }
+  },
+  "browser": {
+    "backend": "seleniumbase-pure-cdp",
+    "browser_name": "Chromium",
+    "browser_executable": "/usr/bin/chromium",
+    "browser_version": "Chromium 152.0.7977.82 Arch Linux",
+    "automation_version": "4.55.2",
+    "display": ":99",
+    "uses_xvfb": true,
+    "xvfb_external": true
+  }
+}

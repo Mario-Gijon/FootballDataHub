@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "metadata": {
+    "source": "BDFutbol",
+    "season": "2026-27",
+    "competition": "Primera Federación",
+    "group": "I",
+    "team_id": 48,
+    "capture_id": "team01a-group1-48-source-evidence",
+    "captured_at_utc": "2026-10-11T11:39:17.727409+00:00",
+    "extractor_version": "0.1.0",
+    "related_team_catalog": {
+      "path": "data/exports/bdfutbol/group1_classification/20261010T202500.293648Z-b770724f/normalized/matches.json",
+      "group": "I",
+      "season": "2026-27",
+      "source_capture_id": "20261010T202500.293648Z-b770724f",
+      "source_captured_at_utc": "2026-10-10T20:25:00.293798+00:00",
+      "sha256": "1f9fb43796001c87186d7a8c1f4270d924f32f4dbdba704f39428d6d8201fd0f"
+    },
+    "source_snapshots": {
+      "alignment": {
+        "path": "raw/alignment.html",
+        "url": "https://www.bdfutbol.com/es/t/t2026-2748.html",
+        "title": "Plantilla del Racing de Ferrol 2026-27 1ª RFEF | BDFutbol",
+        "http_status": 200,
+        "sha256": "d3cfc966c4956e6293b527993e501023f479be74a967860a249778e0ed18203b",
+        "bytes_utf8": 1545993,
+        "access_status": "VALID",
+        "captured_at_utc": "2026-10-11T11:39:17.727409+00:00",
+        "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded"
+      },
+      "statistics": {
+        "path": "raw/statistics.html",
+        "url": "https://www.bdfutbol.com/es/t/t2026-2748.html?t=lista",
+        "title": "Plantilla del Racing de Ferrol 2026-27 1ª RFEF | BDFutbol",
+        "http_status": 200,
+        "sha256": "ef429b554279efbbb75556714f01c030e90d0a20b3c40e5c67bd8cf50ff5a991",
+        "bytes_utf8": 1662477,
+        "access_status": "VALID",
+        "captured_at_utc": "2026-10-11T11:44:35.524710+00:00",
+        "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded"
+      }
+    }
+  },
+  "record": {
+    "team_id": 48,
+    "season": "2026-27",
+    "competition": "Primera Federación",
+    "group": "I",
+    "competition_scope": "Liga",
+    "coaches": [
+      {
+        "coach_id": 400293,
+        "display_name": "Vázquez",
+        "full_name": "Javier Vázquez Contreras",
+        "profile_url": "https://www.bdfutbol.com/es/l/l400293.html",
+        "photo_url": "https://www.bdfutbol.com/i/lm/400293.png",
+        "age_years": 40,
+        "birth_date": null,
+        "birthplace": null,
+        "birthplace_province": null,
+        "coached_matchdays_source": "1-6",
+        "matches_managed": 6,
+        "yellow_cards": null,
+        "red_cards": null,
+        "source_views": [
+          "alignment",
+          "statistics"
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,550 @@
+{
+  "schema_version": 1,
+  "metadata": {
+    "source": "BDFutbol",
+    "season": "2026-27",
+    "competition": "Primera Federación",
+    "group": "I",
+    "team_id": 48,
+    "capture_id": "team01a-group1-48-source-evidence",
+    "captured_at_utc": "2026-10-11T11:39:17.727409+00:00",
+    "extractor_version": "0.1.0",
+    "related_team_catalog": {
+      "path": "data/exports/bdfutbol/group1_classification/20261010T202500.293648Z-b770724f/normalized/matches.json",
+      "group": "I",
+      "season": "2026-27",
+      "source_capture_id": "20261010T202500.293648Z-b770724f",
+      "source_captured_at_utc": "2026-10-10T20:25:00.293798+00:00",
+      "sha256": "1f9fb43796001c87186d7a8c1f4270d924f32f4dbdba704f39428d6d8201fd0f"
+    },
+    "source_snapshots": {
+      "alignment": {
+        "path": "raw/alignment.html",
+        "url": "https://www.bdfutbol.com/es/t/t2026-2748.html",
+        "title": "Plantilla del Racing de Ferrol 2026-27 1ª RFEF | BDFutbol",
+        "http_status": 200,
+        "sha256": "d3cfc966c4956e6293b527993e501023f479be74a967860a249778e0ed18203b",
+        "bytes_utf8": 1545993,
+        "access_status": "VALID",
+        "captured_at_utc": "2026-10-11T11:39:17.727409+00:00",
+        "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded"
+      },
+      "statistics": {
+        "path": "raw/statistics.html",
+        "url": "https://www.bdfutbol.com/es/t/t2026-2748.html?t=lista",
+        "title": "Plantilla del Racing de Ferrol 2026-27 1ª RFEF | BDFutbol",
+        "http_status": 200,
+        "sha256": "ef429b554279efbbb75556714f01c030e90d0a20b3c40e5c67bd8cf50ff5a991",
+        "bytes_utf8": 1662477,
+        "access_status": "VALID",
+        "captured_at_utc": "2026-10-11T11:44:35.524710+00:00",
+        "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded"
+      }
+    }
+  },
+  "records": [
+    {
+      "player_id": 13074,
+      "display_name": "Álvaro Juan",
+      "full_name": "Álvaro Juan de la Torre Sánchez",
+      "profile_url": "https://www.bdfutbol.com/es/j/j13074.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/13074.png",
+      "age_years": 27,
+      "birth_date": null,
+      "birthplace": null,
+      "birthplace_province": null,
+      "nationality_flag_url": null,
+      "source_position_code": "6",
+      "verified_indicators": [
+        "played_in_second_division"
+      ],
+      "source_views": [
+        "alignment",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 13194,
+      "display_name": "Edgar",
+      "full_name": "Edgar Climent Pujol Portorreal",
+      "profile_url": "https://www.bdfutbol.com/es/j/j13194.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/13194.png",
+      "age_years": 22,
+      "birth_date": null,
+      "birthplace": null,
+      "birthplace_province": null,
+      "nationality_flag_url": null,
+      "source_position_code": "4",
+      "verified_indicators": [
+        "youth_international"
+      ],
+      "source_views": [
+        "alignment",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 15141,
+      "display_name": "Monjonell",
+      "full_name": "Eric Monjonell Torras",
+      "profile_url": "https://www.bdfutbol.com/es/j/j15141.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/15141.png",
+      "age_years": 25,
+      "birth_date": null,
+      "birthplace": null,
+      "birthplace_province": null,
+      "nationality_flag_url": null,
+      "source_position_code": "4",
+      "verified_indicators": [
+        "new_signing",
+        "played_in_second_division"
+      ],
+      "source_views": [
+        "alignment",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 20236,
+      "display_name": "Ojeda",
+      "full_name": "Daniel Ojeda Saranova",
+      "profile_url": "https://www.bdfutbol.com/es/j/j20236.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/20236.png",
+      "age_years": 32,
+      "birth_date": null,
+      "birthplace": null,
+      "birthplace_province": null,
+      "nationality_flag_url": null,
+      "source_position_code": "10",
+      "verified_indicators": [
+        "new_signing",
+        "played_in_first_division"
+      ],
+      "source_views": [
+        "alignment",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 20263,
+      "display_name": "Fabio",
+      "full_name": "Fabio González Estupiñán",
+      "profile_url": "https://www.bdfutbol.com/es/j/j20263.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/20263.png",
+      "age_years": 29,
+      "birth_date": null,
+      "birthplace": null,
+      "birthplace_province": null,
+      "nationality_flag_url": null,
+      "source_position_code": "6",
+      "verified_indicators": [
+        "played_in_first_division"
+      ],
+      "source_views": [
+        "alignment",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 20815,
+      "display_name": "Esquerdo",
+      "full_name": "Vicente Esquerdo Santas",
+      "profile_url": "https://www.bdfutbol.com/es/j/j20815.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/20815.png",
+      "age_years": 27,
+      "birth_date": null,
+      "birthplace": null,
+      "birthplace_province": null,
+      "nationality_flag_url": null,
+      "source_position_code": "6",
+      "verified_indicators": [
+        "new_signing",
+        "played_in_first_division"
+      ],
+      "source_views": [
+        "alignment",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 20934,
+      "display_name": "Alcaina",
+      "full_name": "Raúl Toni Alcaina Fenollosa",
+      "profile_url": "https://www.bdfutbol.com/es/j/j20934.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/20934.png",
+      "age_years": 26,
+      "birth_date": null,
+      "birthplace": null,
+      "birthplace_province": null,
+      "nationality_flag_url": null,
+      "source_position_code": "9",
+      "verified_indicators": [
+        "new_signing"
+      ],
+      "source_views": [
+        "alignment",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 21519,
+      "display_name": "Bernal",
+      "full_name": "Jesús José Bernal Villarig",
+      "profile_url": "https://www.bdfutbol.com/es/j/j21519.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/21519.png",
+      "age_years": 30,
+      "birth_date": null,
+      "birthplace": null,
+      "birthplace_province": null,
+      "nationality_flag_url": null,
+      "source_position_code": "6",
+      "verified_indicators": [
+        "new_signing",
+        "played_in_second_division"
+      ],
+      "source_views": [
+        "alignment",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 21548,
+      "display_name": "Castro",
+      "full_name": "David Castro Pazos",
+      "profile_url": "https://www.bdfutbol.com/es/j/j21548.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/21548.png",
+      "age_years": 31,
+      "birth_date": null,
+      "birthplace": null,
+      "birthplace_province": null,
+      "nationality_flag_url": null,
+      "source_position_code": "4",
+      "verified_indicators": [
+        "new_signing",
+        "played_in_second_division"
+      ],
+      "source_views": [
+        "alignment",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 21932,
+      "display_name": "Leal",
+      "full_name": "Miguel Ángel Leal Díaz",
+      "profile_url": "https://www.bdfutbol.com/es/j/j21932.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/21932.png",
+      "age_years": 29,
+      "birth_date": null,
+      "birthplace": null,
+      "birthplace_province": null,
+      "nationality_flag_url": null,
+      "source_position_code": "2",
+      "verified_indicators": [
+        "played_in_second_division"
+      ],
+      "source_views": [
+        "alignment",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 26664,
+      "display_name": "Álvaro Ramón",
+      "full_name": "Álvaro Ramón Álvarez",
+      "profile_url": "https://www.bdfutbol.com/es/j/j26664.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/26664.png",
+      "age_years": 26,
+      "birth_date": null,
+      "birthplace": null,
+      "birthplace_province": null,
+      "nationality_flag_url": null,
+      "source_position_code": "3",
+      "verified_indicators": [],
+      "source_views": [
+        "alignment",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 27824,
+      "display_name": "Ropero",
+      "full_name": "Unai Ropero Pérez",
+      "profile_url": "https://www.bdfutbol.com/es/j/j27824.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/27824.png",
+      "age_years": 25,
+      "birth_date": null,
+      "birthplace": null,
+      "birthplace_province": null,
+      "nationality_flag_url": null,
+      "source_position_code": "10",
+      "verified_indicators": [
+        "new_signing",
+        "played_in_first_division"
+      ],
+      "source_views": [
+        "alignment",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 43004,
+      "display_name": "César Fernández",
+      "full_name": "César Fernández González",
+      "profile_url": "https://www.bdfutbol.com/es/j/j43004.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/43004.png",
+      "age_years": 22,
+      "birth_date": null,
+      "birthplace": null,
+      "birthplace_province": null,
+      "nationality_flag_url": null,
+      "source_position_code": "1",
+      "verified_indicators": [
+        "youth_international"
+      ],
+      "source_views": [
+        "alignment",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 43008,
+      "display_name": "Raúl Blanco",
+      "full_name": "Raúl Blanco Juncal",
+      "profile_url": "https://www.bdfutbol.com/es/j/j43008.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/43008.png",
+      "age_years": 25,
+      "birth_date": null,
+      "birthplace": null,
+      "birthplace_province": null,
+      "nationality_flag_url": null,
+      "source_position_code": "10",
+      "verified_indicators": [
+        "played_in_second_division"
+      ],
+      "source_views": [
+        "alignment",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 102284,
+      "display_name": "Lucas Díaz",
+      "full_name": "Lucas Díaz Parcero",
+      "profile_url": "https://www.bdfutbol.com/es/j/j102284.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/102284.png",
+      "age_years": 30,
+      "birth_date": null,
+      "birthplace": null,
+      "birthplace_province": null,
+      "nationality_flag_url": null,
+      "source_position_code": "1",
+      "verified_indicators": [
+        "played_in_second_division"
+      ],
+      "source_views": [
+        "alignment",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 103110,
+      "display_name": "Nóvoa",
+      "full_name": "Germán Nóvoa Enríquez",
+      "profile_url": "https://www.bdfutbol.com/es/j/j103110.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/103110.png",
+      "age_years": 30,
+      "birth_date": null,
+      "birthplace": null,
+      "birthplace_province": null,
+      "nationality_flag_url": null,
+      "source_position_code": "4",
+      "verified_indicators": [
+        "new_signing"
+      ],
+      "source_views": [
+        "alignment",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 109202,
+      "display_name": "Rubo",
+      "full_name": "Rubén Martínez Pardo",
+      "profile_url": "https://www.bdfutbol.com/es/j/j109202.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/109202.png",
+      "age_years": 20,
+      "birth_date": null,
+      "birthplace": null,
+      "birthplace_province": null,
+      "nationality_flag_url": null,
+      "source_position_code": "10",
+      "verified_indicators": [
+        "new_signing"
+      ],
+      "source_views": [
+        "alignment",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 200661,
+      "display_name": "Arroyo",
+      "full_name": "Roberto Arroyo Gregorio",
+      "profile_url": "https://www.bdfutbol.com/es/j/j200661.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/200661.png",
+      "age_years": 23,
+      "birth_date": null,
+      "birthplace": null,
+      "birthplace_province": null,
+      "nationality_flag_url": null,
+      "source_position_code": "10",
+      "verified_indicators": [
+        "new_signing",
+        "played_in_first_division"
+      ],
+      "source_views": [
+        "alignment",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 202089,
+      "display_name": "Saúl",
+      "full_name": "Saúl García Cabrero",
+      "profile_url": "https://www.bdfutbol.com/es/j/j202089.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/202089.png",
+      "age_years": 32,
+      "birth_date": null,
+      "birthplace": null,
+      "birthplace_province": null,
+      "nationality_flag_url": null,
+      "source_position_code": "3",
+      "verified_indicators": [
+        "played_in_first_division"
+      ],
+      "source_views": [
+        "alignment",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 208815,
+      "display_name": "Azael",
+      "full_name": "Azael García López",
+      "profile_url": "https://www.bdfutbol.com/es/j/j208815.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/208815.png",
+      "age_years": 22,
+      "birth_date": null,
+      "birthplace": null,
+      "birthplace_province": null,
+      "nationality_flag_url": null,
+      "source_position_code": "6",
+      "verified_indicators": [],
+      "source_views": [
+        "alignment",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 209622,
+      "display_name": "Álex González",
+      "full_name": "Alejandro González Bermejo",
+      "profile_url": "https://www.bdfutbol.com/es/j/j209622.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/209622.png",
+      "age_years": 22,
+      "birth_date": null,
+      "birthplace": null,
+      "birthplace_province": null,
+      "nationality_flag_url": null,
+      "source_position_code": "3",
+      "verified_indicators": [
+        "new_signing"
+      ],
+      "source_views": [
+        "alignment",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 210405,
+      "display_name": "Djanbou",
+      "full_name": "Sekou Djanbou",
+      "profile_url": "https://www.bdfutbol.com/es/j/j210405.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/210405.png",
+      "age_years": 22,
+      "birth_date": null,
+      "birthplace": null,
+      "birthplace_province": null,
+      "nationality_flag_url": null,
+      "source_position_code": "6",
+      "verified_indicators": [
+        "new_signing"
+      ],
+      "source_views": [
+        "alignment",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 211019,
+      "display_name": "Tenreiro",
+      "full_name": "Joel Tenreiro Rodríguez",
+      "profile_url": "https://www.bdfutbol.com/es/j/j211019.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/211019.png",
+      "age_years": 19,
+      "birth_date": null,
+      "birthplace": null,
+      "birthplace_province": null,
+      "nationality_flag_url": null,
+      "source_position_code": "6",
+      "verified_indicators": [],
+      "source_views": [
+        "alignment",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 405432,
+      "display_name": "Eto'o",
+      "full_name": "Etienne Eto'o Pineda",
+      "profile_url": "https://www.bdfutbol.com/es/j/j405432.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/405432.png",
+      "age_years": 24,
+      "birth_date": null,
+      "birthplace": null,
+      "birthplace_province": null,
+      "nationality_flag_url": null,
+      "source_position_code": "10",
+      "verified_indicators": [
+        "new_signing",
+        "played_in_first_division"
+      ],
+      "source_views": [
+        "alignment",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 1080822,
+      "display_name": "Buján",
+      "full_name": "Endika Buján de Rueda",
+      "profile_url": "https://www.bdfutbol.com/es/j/j1080822.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/1080822.png",
+      "age_years": 23,
+      "birth_date": null,
+      "birthplace": null,
+      "birthplace_province": null,
+      "nationality_flag_url": null,
+      "source_position_code": "10",
+      "verified_indicators": [
+        "new_signing",
+        "played_in_first_division"
+      ],
+      "source_views": [
+        "alignment",
+        "statistics"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "valid": true,
+  "summary": {
+    "team_id": 48,
+    "players": 25,
+    "memberships": 25,
+    "coaches": 1,
+    "player_statistics": 25,
+    "player_match_minutes": 0,
+    "transfers": 0,
+    "profile_match_references": 0,
+    "catalog_teams_in_profile": 20,
+    "requested_views": [
+      "alignment",
+      "statistics"
+    ]
+  },
+  "issues": [],
+  "warnings": [
+    "No se capturó la vista Plantilla con fecha/lugar de nacimiento",
+    "No se capturó Seguimiento",
+    "No se capturó Traspasos",
+    "No se capturó la vista Partidos"
+  ],
+  "cross_references": {
+    "team_ids_match_catalog": true,
+    "profile_match_ids_in_group_results": null,
+    "follow_match_ids_in_group_results": null,
+    "duplicate_match_records_exported": false
+  }
+}

@@ -8,7 +8,7 @@ version = "0.2.0"
 description = "Adquisición deportiva, dominio y API independiente para datos de fútbol."
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = ["beautifulsoup4>=4.13,<5"]
 
 [project.optional-dependencies]
 api = ["fastapi>=0.115", "uvicorn[standard]>=0.34"]
