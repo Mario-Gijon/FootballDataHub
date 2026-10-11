@@ -115,6 +115,24 @@ class PlayerMatchMinutes:
 
 
 @dataclass(frozen=True, slots=True)
+class PlayerMatchMetric:
+    """Positive player-match facts from BDFutbol Seguimiento states."""
+
+    player_id: int
+    team_id: int
+    season: str
+    competition: str
+    group: str
+    matchday: int
+    match_id: str
+    metric: Literal["yellow_cards", "goals"]
+    value: int
+    raw_value: str
+    source_view: str
+    source_state: Literal["t", "go"]
+
+
+@dataclass(frozen=True, slots=True)
 class TeamTransfer:
     player_id: int
     player_display_name: str
@@ -145,6 +163,8 @@ class TeamProfileData:
     memberships: tuple[PlayerTeamMembership, ...]
     player_statistics: tuple[PlayerSeasonStatistics, ...]
     player_match_minutes: tuple[PlayerMatchMinutes, ...]
+    player_match_metrics: tuple[PlayerMatchMetric, ...]
+    follow_states_captured: tuple[str, ...]
     transfers: tuple[TeamTransfer, ...]
     group_team_ids_from_profile: tuple[int, ...]
     team_match_ids_from_profile: tuple[str, ...]

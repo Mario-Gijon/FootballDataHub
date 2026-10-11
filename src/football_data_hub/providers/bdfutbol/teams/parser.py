@@ -13,6 +13,7 @@ from football_data_hub.providers.bdfutbol.context import CompetitionContext
 
 from .models import (
     PlayerIdentity,
+    PlayerMatchMetric,
     PlayerMatchMinutes,
     PlayerSeasonStatistics,
     PlayerTeamMembership,
@@ -620,6 +621,130 @@ def _parse_follow(
     return tuple(records)
 
 
+def _parse_follow_event_metrics(
+    soup: BeautifulSoup,
+    *,
+    state: str,
+    team_id: int,
+    season: str,
+    competition: str,
+    group: str,
+) -> tuple[tuple[PlayerMatchMetric, ...], tuple[str, ...]]:
+    """Parse positive card/goal facts from their dedicated Seguimiento views.
+
+    The numeric labels in state ``t`` remain playing minutes, so card values
+    are taken only from the source's explicit event classes. The ``go`` state
+    changes the cell number to a goals-against-that-player count.
+    """
+    table = soup.find(id="taula-seguiment")
+    if not isinstance(table, Tag):
+        return (), ()
+    if state not in {"t", "go"}:
+        raise TeamProfileParseError(f"Estado de eventos no admitido: {state!r}")
+    rows = _table_rows(table)
+    if not rows:
+        return (), ()
+    matchdays: list[tuple[int, int]] = []
+    for index, header in enumerate(rows[0][1:], start=1):
+        matchday = _optional_int(header.get_text(" ", strip=True), field_name="tracking_matchday")
+        if matchday is not None:
+            matchdays.append((index, matchday))
+    records: list[PlayerMatchMetric] = []
+    warnings: list[str] = []
+    for row in rows[1:]:
+        anchor = _row_player_anchor(row)
+        linked_player = _id_from_link(anchor, _PLAYER_URL_ID) if anchor else None
+        if linked_player is None:
+            continue
+        player_id, _ = linked_player
+        for cell_index, matchday in matchdays:
+            if cell_index >= len(row):
+                continue
+            cell = row[cell_index]
+            match_link = next(
+                (link for link in cell.select("a[href]") if "p.php?id=" in str(link["href"])),
+                None,
+            )
+            match = _MATCH_URL_ID.search(str(match_link["href"])) if match_link else None
+            if match is None:
+                continue
+            wrapper = cell.select_one(".segdiv")
+            classes = set(wrapper.get("class", [])) if wrapper else set()
+            raw_value = clean_text(cell.get_text(" ", strip=True))
+            if state == "t":
+                if "tg2" in classes or "tv" in classes:
+                    warnings.append(
+                        f"Seguimiento estado t: marcador de tarjeta pendiente de semántica en player_id={player_id}, match_id={match.group(1)}"
+                    )
+                if "tg1" not in classes:
+                    continue
+                records.append(PlayerMatchMetric(
+                    player_id=player_id,
+                    team_id=team_id,
+                    season=season,
+                    competition=competition,
+                    group=group,
+                    matchday=matchday,
+                    match_id=match.group(1),
+                    metric="yellow_cards",
+                    value=1,
+                    raw_value="tg1",
+                    source_view="follow",
+                    source_state="t",
+                ))
+                continue
+            if "gol" not in classes:
+                continue
+            value = _optional_int(raw_value, field_name="follow_goals")
+            if value is None:
+                raise TeamProfileParseError(
+                    f"Seguimiento estado go marca gol sin valor: player_id={player_id}, match_id={match.group(1)}"
+                )
+            records.append(PlayerMatchMetric(
+                player_id=player_id,
+                team_id=team_id,
+                season=season,
+                competition=competition,
+                group=group,
+                matchday=matchday,
+                match_id=match.group(1),
+                metric="goals",
+                value=value,
+                raw_value=raw_value,
+                source_view="follow",
+                source_state="go",
+            ))
+    keys = {(item.player_id, item.match_id, item.metric) for item in records}
+    if len(keys) != len(records):
+        raise TeamProfileParseError(f"Seguimiento estado {state} repite jugador, partido y métrica")
+    return tuple(records), tuple(dict.fromkeys(warnings))
+
+
+def _follow_marker_keys(soup: BeautifulSoup, *, marker_class: str) -> set[tuple[int, str]]:
+    keys: set[tuple[int, str]] = set()
+    table = soup.find(id="taula-seguiment")
+    if not isinstance(table, Tag):
+        return keys
+    for row in _table_rows(table)[1:]:
+        player_anchor = _row_player_anchor(row)
+        linked_player = _id_from_link(player_anchor, _PLAYER_URL_ID) if player_anchor else None
+        if linked_player is None:
+            continue
+        player_id, _ = linked_player
+        for cell in row:
+            wrapper = cell.select_one(".segdiv")
+            if wrapper is None or marker_class not in wrapper.get("class", []):
+                continue
+            match_link = next(
+                (link for link in cell.select("a[href]") if "p.php?id=" in str(link["href"])),
+                None,
+            )
+            match = _MATCH_URL_ID.search(str(match_link["href"])) if match_link else None
+            if match:
+                keys.add((player_id, match.group(1)))
+    return keys
+
+
 def _parse_transfers(
     soup: BeautifulSoup,
     *,
@@ -747,6 +872,7 @@ def parse_team_profile_pages(
     *,
     team_catalog_record: dict[str, Any],
     competition_context: CompetitionContext,
+    follow_state_html: dict[str, str] | None = None,
 ) -> TeamProfileData:
     """Normalize available team views without browser access or name-based joins."""
     team_id = int(team_catalog_record["team_id"])
@@ -884,6 +1010,16 @@ def parse_team_profile_pages(
     )
 
     follow = _require_view(views, "follow", "#taula-seguiment") if "follow" in views else None
+    for state, state_html in (follow_state_html or {}).items():
+        state_soup = BeautifulSoup(state_html, "html.parser")
+        if state not in {"p", "t", "go", "tot"}:
+            raise TeamProfileParseError(f"Estado de seguimiento no reconocido: {state!r}")
+        if state_soup.select_one("#taula-seguiment") is None:
+            raise TeamProfileParseError(f"El snapshot de seguimiento {state!r} no contiene la tabla")
+        select = state_soup.select_one("#vista_jornades")
+        option_values = {str(option.get("value")) for option in select.select("option")} if select else set()
+        if state not in option_values:
+            raise TeamProfileParseError(f"El snapshot de seguimiento no ofrece la opción {state!r}")
     match_minutes = (
         _parse_follow(
             follow,
@@ -895,10 +1031,65 @@ def parse_team_profile_pages(
         if follow
         else ()
     )
+    follow_metrics: list[PlayerMatchMetric] = []
+    follow_warnings: list[str] = []
+    state_soups: dict[str, BeautifulSoup] = {}
+    for state, state_html in (follow_state_html or {}).items():
+        state_soup = BeautifulSoup(state_html, "html.parser")
+        state_soups[state] = state_soup
+        if state == "t":
+            rows, warnings = _parse_follow_event_metrics(
+                state_soup,
+                state=state,
+                team_id=team_id,
+                season=competition_context.season,
+                competition=competition_context.competition,
+                group=competition_context.group_roman,
+            )
+            follow_metrics.extend(rows)
+            follow_warnings.extend(warnings)
+        elif state == "go":
+            rows, warnings = _parse_follow_event_metrics(
+                state_soup,
+                state=state,
+                team_id=team_id,
+                season=competition_context.season,
+                competition=competition_context.competition,
+                group=competition_context.group_roman,
+            )
+            follow_metrics.extend(rows)
+            follow_warnings.extend(warnings)
+
+    if "tot" in state_soups and "t" in state_soups and "go" in state_soups:
+        total_soup = state_soups["tot"]
+        yellow_keys = {
+            (item.player_id, item.match_id)
+            for item in follow_metrics
+            if item.metric == "yellow_cards"
+        }
+        total_yellow_keys = _follow_marker_keys(total_soup, marker_class="tg1")
+        goal_keys = {
+            (item.player_id, item.match_id)
+            for item in follow_metrics
+            if item.metric == "goals"
+        }
+        total_goal_keys = _follow_marker_keys(total_soup, marker_class="gol-marca")
+        if yellow_keys != total_yellow_keys:
+            follow_warnings.append("La vista Todo no reproduce todas las marcas amarillas del estado Tarjetas")
+        if goal_keys != total_goal_keys:
+            follow_warnings.append("La vista Todo no reproduce todas las marcas de gol del estado Goles")
+    follow_metric_keys = {
+        (item.player_id, item.match_id, item.metric) for item in follow_metrics
+    }
+    if len(follow_metric_keys) != len(follow_metrics):
+        raise TeamProfileParseError("Seguimiento repite una métrica por jugador y partido")
     transfers_soup = views.get("transfers")
+    transfers_parsed_soup = BeautifulSoup(transfers_soup, "html.parser") if transfers_soup else None
+    if transfers_parsed_soup is not None and transfers_parsed_soup.select_one("#pestaltesbaixes") is None:
+        raise TeamProfileParseError("La vista Traspasos no contiene el contenedor #pestaltesbaixes")
     transfers = (
         _parse_transfers(
-            BeautifulSoup(transfers_soup, "html.parser"),
+            transfers_parsed_soup,
             team_id=team_id,
             season=competition_context.season,
             competition=competition_context.competition,
@@ -932,7 +1123,7 @@ def parse_team_profile_pages(
     if dangling_memberships:
         raise TeamProfileParseError(f"Pertenencias sin identidad de jugador: {sorted(dangling_memberships)}")
 
-    warnings = list(issues)
+    warnings = list(issues) + follow_warnings
     if "squad" not in views:
         warnings.append("No se capturó la vista Plantilla con fecha/lugar de nacimiento")
     if "follow" not in views:
@@ -965,6 +1156,8 @@ def parse_team_profile_pages(
         memberships=memberships,
         player_statistics=tuple(statistics[key] for key in sorted(statistics)),
         player_match_minutes=match_minutes,
+        player_match_metrics=tuple(sorted(follow_metrics, key=lambda item: (item.matchday, item.player_id, item.metric))),
+        follow_states_captured=tuple(sorted(follow_state_html or {})),
         transfers=transfers,
         group_team_ids_from_profile=group_team_ids,
         team_match_ids_from_profile=match_ids,

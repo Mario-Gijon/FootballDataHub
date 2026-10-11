@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 import hashlib
+import gzip
+from collections import Counter
 import json
 from pathlib import Path
+from urllib.parse import urlsplit
 import pytest
 from bs4 import BeautifulSoup
 
 from football_data_hub.core.browser_session import BrowserInfo, PageVisit
 from football_data_hub.providers.bdfutbol.context import get_competition_context
 from football_data_hub.providers.bdfutbol.teams import acquisition as team_acquisition
+from football_data_hub.providers.bdfutbol.teams import cli as team_acquisition_cli
 from football_data_hub.providers.bdfutbol.teams.acquisition import (
     TeamAcquisitionBundle,
     TeamAcquisitionStopped,
@@ -31,7 +35,7 @@ GROUP_CATALOGS = {
     2: ROOT / "data/exports/bdfutbol/group2_classification/derived-res01-20261010T102656Z/normalized/matches.json",
 }
 PROFILE_RUNS = {
-    1: ROOT / "data/exports/bdfutbol/teams/2026-27/48/team01a-group1-48-source-evidence",
+    1: ROOT / "data/exports/bdfutbol/teams/2026-27/48/20261011T123240.190812Z-8f307d1c",
     2: ROOT / "data/exports/bdfutbol/teams/2026-27/49/team01a-group2-49-source-evidence",
 }
 
@@ -46,14 +50,26 @@ def _load_pilot(group: int, team_id: int):
     record = next(item for item in team_payload["teams"] if item["team_id"] == team_id)
     run = PROFILE_RUNS[group]
     capture = _read_json(run / "metadata/capture.json")
-    views = {
-        view: (run / "raw" / f"{view}.html").read_text(encoding="utf-8")
-        for view in capture["requested_views"]
-    }
+    views = {}
+    for view in capture["requested_views"]:
+        evidence = capture.get("source_snapshots", {}).get(view, {})
+        path = run / evidence.get("path", f"raw/{view}.html")
+        raw = path.read_bytes()
+        if evidence.get("compression") == "gzip" or path.suffix == ".gz":
+            raw = gzip.decompress(raw)
+        views[view] = raw.decode("utf-8")
+    follow_state_html = {}
+    for state, evidence in capture.get("follow_states", {}).items():
+        path = run / evidence["path"]
+        raw = path.read_bytes()
+        if evidence.get("compression") == "gzip" or path.suffix == ".gz":
+            raw = gzip.decompress(raw)
+        follow_state_html[state] = raw.decode("utf-8")
     parsed = parse_team_profile_pages(
         views,
         team_catalog_record=record,
         competition_context=context,
+        follow_state_html=follow_state_html,
     )
     validation = validate_team_profile(
         parsed,
@@ -113,7 +129,11 @@ def test_jaen_normalizes_team_coach_squad_stats_and_references(jaen):
     assert len(parsed.players) == len(parsed.memberships) == 25
     assert len(parsed.player_statistics) == 25
     assert len(parsed.player_match_minutes) == 150
+    assert any(item.value is None and item.raw_value == "" for item in parsed.player_match_minutes)
+    assert any(item.value == 0 and item.raw_value == "0" for item in parsed.player_match_minutes)
     assert len(parsed.transfers) == 34
+    assert {item.direction for item in parsed.transfers} == {"incoming"}
+    assert all(item.transfer_date is None and item.fee is None for item in parsed.transfers)
     assert all(item.player_id > 0 and item.player_display_name and item.player_profile_url for item in parsed.transfers)
     assert len(parsed.group_team_ids_from_profile) == 20
     assert len(parsed.team_match_ids_from_profile) == 6
@@ -144,10 +164,65 @@ def test_group1_pilot_uses_same_parser_and_catalog_identity(racing):
     assert len(parsed.players) == len(parsed.player_statistics) == 25
     assert len(parsed.season.coaches) == 1
     assert parsed.season.coaches[0].coach_id == 400293
-    assert parsed.player_match_minutes == ()
-    assert "follow" not in capture["requested_views"]
+    assert len(parsed.player_match_minutes) == 150
+    assert len(parsed.player_match_metrics) == 17
+    assert parsed.follow_states_captured == ("go", "p", "t", "tot")
+    assert set(capture["requested_views"]) == {"alignment", "squad", "statistics", "follow", "transfers", "matches"}
+    assert len(parsed.transfers) == 30
+    assert {item.direction for item in parsed.transfers} == {"incoming"}
+    assert all(item.transfer_date is None and item.fee is None for item in parsed.transfers)
     assert validation["valid"] is True
     assert len(parsed.group_team_ids_from_profile) == len(payload["teams"]) == 20
+
+
+def test_racing_follow_states_normalize_verified_goals_and_yellow_cards(racing):
+    _, payload, _, run, capture, views, parsed, validation = racing
+    assert parsed.follow_states_captured == ("go", "p", "t", "tot")
+    counts = Counter(item.metric for item in parsed.player_match_metrics)
+    assert counts == {"yellow_cards": 10, "goals": 7}
+    assert all(item.source_state == ("t" if item.metric == "yellow_cards" else "go") for item in parsed.player_match_metrics)
+    assert all(item.value > 0 for item in parsed.player_match_metrics)
+    assert len({(item.player_id, item.match_id, item.metric) for item in parsed.player_match_metrics}) == 17
+    stat_totals = {
+        "yellow_cards": sum(item.yellow_cards or 0 for item in parsed.player_statistics),
+        "goals": sum(item.goals or 0 for item in parsed.player_statistics),
+    }
+    metric_totals = Counter()
+    for item in parsed.player_match_metrics:
+        metric_totals[item.metric] += item.value
+        assert item.match_id in {str(match["match_id"]) for match in payload["matches"]}
+    assert dict(metric_totals) == stat_totals == {"yellow_cards": 10, "goals": 7}
+    assert validation["valid"] is True
+    follow_scripts = " ".join(
+        script.get_text()
+        for script in BeautifulSoup(views["follow"], "html.parser").select("script")
+    )
+    assert "var JSEGJ=" in follow_scripts
+    assert "JSEGC['lig']" in follow_scripts
+    assert "JSEGG['lig']" in follow_scripts
+    assert "JSEGID=JSON.parse(" in follow_scripts
+    assert "json_data = JSON.parse(" in follow_scripts
+    assert all(match_id in follow_scripts for match_id in ("269411", "269426", "269432", "269442", "269453", "269460"))
+    metadata = _read_json(run / "metadata/capture.json")
+    state_diagnostics = metadata["follow_states"]
+    assert {state: item["selected_value"] for state, item in state_diagnostics.items()} == {
+        "p": "p", "t": "t", "go": "go", "tot": "tot"
+    }
+    assert len({item["url"] for item in state_diagnostics.values()}) == 1
+    assert all(item["table_rows"] == 26 for item in state_diagnostics.values())
+    assert not any(
+        (urlsplit(resource).hostname or "").endswith("bdfutbol.com")
+        for item in state_diagnostics.values()
+        for resource in item["resource_urls_added_since_previous_state"]
+    )
+    assert all(item.raw_value == "tg1" for item in parsed.player_match_metrics if item.metric == "yellow_cards")
+
+
+def test_follow_empty_is_not_zero_and_unverified_states_are_not_fabricated(jaen):
+    *_, parsed, _ = jaen
+    assert parsed.player_match_metrics == ()
+    assert parsed.follow_states_captured == ()
+    assert any(item.value is None and item.raw_value == "" for item in parsed.player_match_minutes)
 
 
 def test_player_and_match_relationships_use_ids_not_names(jaen):
@@ -174,6 +249,8 @@ def test_snapshot_metadata_and_sha256_are_reproducible(jaen, racing):
         assert access["views"] == metadata["access_by_view"]
         for view, evidence in metadata["source_snapshots"].items():
             html = (run / evidence["path"]).read_bytes()
+            if evidence.get("compression") == "gzip":
+                html = gzip.decompress(html)
             assert hashlib.sha256(html).hexdigest() == evidence["sha256"]
             assert evidence["access_status"] == "VALID"
         assert capture["extractor_version"]
@@ -219,6 +296,31 @@ def test_export_json_can_be_read_back_and_capture_is_create_only(racing, tmp_pat
     assert paths["players"].read_bytes() == players_before
 
 
+def test_offline_cli_reparses_compressed_real_snapshots_without_browser(racing, monkeypatch, tmp_path, capsys):
+    _, _, record, run, _, _, _, _ = racing
+
+    def unexpected_network(*_args, **_kwargs):
+        raise AssertionError("El modo offline no debe iniciar el navegador")
+
+    monkeypatch.setattr(team_acquisition_cli, "acquire_team_profile", unexpected_network)
+    result = team_acquisition_cli.main([
+        "--group", "1",
+        "--team-id", str(record["team_id"]),
+        "--snapshot-dir", str(run),
+        "--derived-capture",
+        "--output-root", str(tmp_path / "exports"),
+    ])
+    assert result == 0
+    output = json.loads(capsys.readouterr().out)
+    assert output["acquired_views"] == ["squad", "follow", "transfers", "matches"]
+    assert output["reused_views"] == ["alignment", "statistics"]
+    exported = Path(output["files"]["run_directory"])
+    metrics = _read_json(exported / "normalized/player_match_metrics.json")
+    assert Counter(item["metric"] for item in metrics["records"]) == {"yellow_cards": 10, "goals": 7}
+    assert "20261011T123240.190812Z-8f307d1c" in metrics["metadata"]["reused_source_capture_ids"]
+    assert all(item["compression"] == "gzip" for item in _read_json(exported / "metadata/capture.json")["source_snapshots"].values())
+
+
 def test_parser_rejects_wrong_catalog_identity_and_invalid_html(jaen):
     context, _, record, _, _, views, *_ = jaen
     wrong_record = {**record, "team_url": "https://www.bdfutbol.com/es/t/t2026-2748.html"}
@@ -230,6 +332,61 @@ def test_parser_rejects_wrong_catalog_identity_and_invalid_html(jaen):
             team_catalog_record=record,
             competition_context=context,
         )
+
+
+def test_transfer_section_allows_a_genuine_empty_section_but_rejects_missing_root(jaen):
+    context, _, record, _, _, views, _, _ = jaen
+    soup = BeautifulSoup(views["transfers"], "html.parser")
+    root = soup.select_one("#pestaltesbaixes")
+    assert root is not None
+    root.clear()
+    empty_views = {**views, "transfers": str(soup)}
+    assert team_acquisition._view_markers("transfers", str(soup)) == ()
+    parsed = parse_team_profile_pages(
+        empty_views,
+        team_catalog_record=record,
+        competition_context=context,
+    )
+    assert parsed.transfers == ()
+    broken = BeautifulSoup(views["transfers"], "html.parser")
+    broken.select_one("#pestaltesbaixes").decompose()
+    assert team_acquisition._view_markers("transfers", str(broken)) == ("#pestaltesbaixes",)
+    with pytest.raises(TeamProfileParseError, match="#pestaltesbaixes"):
+        parse_team_profile_pages(
+            {**views, "transfers": str(broken)},
+            team_catalog_record=record,
+            competition_context=context,
+        )
+
+
+def test_optional_coach_and_jersey_fields_do_not_invalidate_a_roster(jaen):
+    context, _, record, _, _, views, _, _ = jaen
+    modified: dict[str, str] = {}
+    for view, html in views.items():
+        soup = BeautifulSoup(html, "html.parser")
+        coach_table = soup.select_one("#taulaentrenadors")
+        if coach_table:
+            coach_table.decompose()
+        if view in {"alignment", "squad"}:
+            table = soup.select_one("#taulaplantilla" if view == "alignment" else "#c3p1")
+            if table:
+                selector = 'th[data-colid="dor"]' if view == "alignment" else 'th[title="Dorsal"]'
+                header = table.select_one(selector)
+                if header:
+                    index = len(header.find_previous_siblings(["th", "td"]))
+                    for row in table.select("tr"):
+                        cells = row.select("th, td")
+                        if index < len(cells):
+                            cells[index].decompose()
+        modified[view] = str(soup)
+    parsed = parse_team_profile_pages(
+        modified,
+        team_catalog_record=record,
+        competition_context=context,
+    )
+    assert parsed.season.coaches == ()
+    assert all(item.jersey_number is None for item in parsed.memberships)
+    assert len(parsed.players) == 25
 
 
 class _FakeDocument:
@@ -315,6 +472,46 @@ def test_acquisition_orchestration_uses_pure_cdp_access_contract(jaen, monkeypat
     assert result.parsed.identity.team_id == 49
     assert result.validation["valid"] is True
     assert result.browser["backend"] == "seleniumbase-pure-cdp"
+
+
+def test_incremental_acquisition_reuses_validated_alignment_and_statistics(racing, monkeypatch, tmp_path):
+    context, payload, record, _, _, views, _, _ = racing
+    seed = team_acquisition_cli._reuse_capture_seed(
+        ROOT / "data/exports/bdfutbol/teams/2026-27/48/team01a-group1-48-source-evidence",
+        team_catalog_record=record,
+        competition=context,
+    )
+    assert set(seed["raw_views"]) == {"alignment", "statistics"}
+    seed_urls = resolve_team_view_urls(seed["raw_views"]["alignment"], record["team_url"])
+    pages = {
+        seed_urls[view]: (views[view], 200)
+        for view in ("squad", "matches")
+    }
+    fake_session = _FakeSession(pages)
+    monkeypatch.setattr(
+        team_acquisition,
+        "BrowserSessionManager",
+        lambda *_args, **_kwargs: _FakeSessionManager(fake_session),
+    )
+    result = team_acquisition.acquire_team_profile(
+        team_catalog_record=record,
+        team_catalog_reference={"path": "fixture", "sha256": "fixture"},
+        group_team_catalog=payload["teams"],
+        known_matches=payload["matches"],
+        competition=context,
+        profile_dir=tmp_path / "profile",
+        requested_views=("squad", "matches"),
+        seed_raw_views=seed["raw_views"],
+        seed_access_by_view=seed["access_by_view"],
+        seed_view_urls=seed["view_urls"],
+        seed_page_titles=seed["page_titles"],
+        seed_browser=seed["browser"],
+        seed_capture_id=seed["capture_id"],
+    )
+    assert fake_session.opened_urls == [seed_urls["squad"], seed_urls["matches"]]
+    assert result.acquired_views == ("squad", "matches")
+    assert result.seed_capture_ids == ("team01a-group1-48-source-evidence",)
+    assert set(result.raw_views) == {"alignment", "squad", "statistics", "matches"}
 
 
 def test_acquisition_stops_on_challenge_without_retry(jaen, monkeypatch, tmp_path):

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import gzip
 import json
 import os
 import shutil
@@ -26,8 +27,9 @@ def _dataset_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
         key: metadata[key]
         for key in (
             "source", "season", "competition", "group", "team_id",
-            "capture_id", "captured_at_utc", "extractor_version",
+            "capture_id", "captured_at_utc", "started_at_utc", "extractor_version",
             "related_team_catalog", "source_snapshots",
+            "follow_states", "acquired_views", "reused_views", "reused_source_capture_ids",
         )
     }
 
@@ -49,18 +51,22 @@ def export_team_capture(
     try:
         source_snapshots: dict[str, dict[str, Any]] = {}
         for view, html in bundle.raw_views.items():
-            relative = Path("raw") / f"{view}.html"
+            html_bytes = html.encode("utf-8")
+            compressed_bytes = gzip.compress(html_bytes, compresslevel=9, mtime=0)
+            relative = Path("raw") / f"{view}.html.gz"
             source_path = staging_dir / relative
             source_path.parent.mkdir(parents=True, exist_ok=True)
-            with source_path.open("x", encoding="utf-8") as target:
-                target.write(html)
+            with source_path.open("xb") as target:
+                target.write(compressed_bytes)
             source_snapshots[view] = {
                 "path": relative.as_posix(),
+                "compression": "gzip",
                 "url": bundle.view_urls[view],
                 "title": bundle.page_titles.get(view),
                 "http_status": bundle.access_by_view[view].get("http_status"),
-                "sha256": hashlib.sha256(html.encode("utf-8")).hexdigest(),
-                "bytes_utf8": len(html.encode("utf-8")),
+                "sha256": hashlib.sha256(html_bytes).hexdigest(),
+                "bytes_utf8": len(html_bytes),
+                "stored_bytes": len(compressed_bytes),
                 "access_status": bundle.access_by_view[view].get("status"),
                 "captured_at_utc": bundle.access_by_view[view].get("captured_at_utc"),
                 "capture_timestamp_basis": bundle.access_by_view[view].get("capture_timestamp_basis"),
@@ -79,14 +85,19 @@ def export_team_capture(
             "team_name": bundle.parsed.identity.name,
             "team_url": bundle.parsed.identity.team_url,
             "requested_views": list(bundle.requested_views),
+            "acquired_views": list(bundle.acquired_views),
+            "reused_views": [view for view in bundle.requested_views if view not in bundle.acquired_views],
             "view_urls": bundle.view_urls,
             "captured_at_utc": bundle.captured_at_utc,
+            "started_at_utc": bundle.started_at_utc,
             "capture_timestamp_basis": capture_timestamp_basis,
             "extractor_version": EXTRACTOR_VERSION,
             "browser": bundle.browser,
             "profile_dir": str(profile_dir.expanduser()) if profile_dir is not None else None,
             "access_by_view": bundle.access_by_view,
             "source_snapshots": source_snapshots,
+            "reused_source_capture_ids": list(bundle.seed_capture_ids),
+            "follow_states": {},
             "related_team_catalog": bundle.team_catalog_reference,
             "created_at_utc": datetime.now(timezone.utc).isoformat(),
             "data_scope_notes": [
@@ -105,6 +116,37 @@ def export_team_capture(
         })
         _write_json(staging_dir / "metadata" / "capture.json", metadata)
 
+        follow_state_metadata: dict[str, dict[str, Any]] = {}
+        for state, html in bundle.follow_state_html.items():
+            html_bytes = html.encode("utf-8")
+            compressed_bytes = gzip.compress(html_bytes, compresslevel=9, mtime=0)
+            relative = Path("raw") / "follow_states" / f"{state}.html.gz"
+            source_path = staging_dir / relative
+            source_path.parent.mkdir(parents=True, exist_ok=True)
+            with source_path.open("xb") as target:
+                target.write(compressed_bytes)
+            follow_state_metadata[state] = {
+                "path": relative.as_posix(),
+                "compression": "gzip",
+                "sha256": hashlib.sha256(html_bytes).hexdigest(),
+                "bytes_utf8": len(html_bytes),
+                "stored_bytes": len(compressed_bytes),
+                **bundle.follow_state_diagnostics.get(state, {}),
+            }
+        metadata["follow_states"] = follow_state_metadata
+        if follow_state_metadata:
+            # Rewrite the still-unpublished metadata file with the complete raw
+            # evidence index; all writes remain inside the atomic staging dir.
+            metadata_path = staging_dir / "metadata" / "capture.json"
+            metadata_path.unlink()
+            _write_json(metadata_path, metadata)
+        if follow_state_metadata:
+            access_path = staging_dir / "raw" / "access.json"
+            access_payload = json.loads(access_path.read_text(encoding="utf-8"))
+            access_payload["follow_states"] = follow_state_metadata
+            access_path.unlink()
+            _write_json(access_path, access_payload)
+
         identity = asdict(bundle.parsed.identity)
         season = asdict(bundle.parsed.season)
         payloads: dict[str, Any] = {
@@ -114,6 +156,10 @@ def export_team_capture(
             "memberships": {"records": [asdict(item) for item in bundle.parsed.memberships]},
             "player_statistics": {"records": [asdict(item) for item in bundle.parsed.player_statistics]},
             "player_match_minutes": {"records": [asdict(item) for item in bundle.parsed.player_match_minutes]},
+            "player_match_metrics": {
+                "records": [asdict(item) for item in bundle.parsed.player_match_metrics],
+                "captured_states": list(bundle.parsed.follow_states_captured),
+            },
             "transfers": {"records": [asdict(item) for item in bundle.parsed.transfers]},
             "profile_references": {
                 "team_ids_from_profile": list(bundle.parsed.group_team_ids_from_profile),

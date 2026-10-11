@@ -114,6 +114,36 @@ def validate_team_profile(
     if any(item.value is not None and item.value < 0 for item in data.player_match_minutes):
         issues.append({"code": "negative_match_minutes", "message": "Seguimiento contiene minutos negativos."})
 
+    metric_keys = [(item.player_id, item.match_id, item.metric) for item in data.player_match_metrics]
+    if len(metric_keys) != len(set(metric_keys)):
+        issues.append({"code": "duplicate_follow_metric", "message": "Seguimiento repite jugador, partido y métrica."})
+    metric_match_ids = {item.match_id for item in data.player_match_metrics}
+    if metric_match_ids - match_ids:
+        issues.append({"code": "unknown_follow_metric_match", "message": "Una métrica de Seguimiento refiere un match_id ajeno al catálogo."})
+    if any(item.player_id not in player_id_set for item in data.player_match_metrics):
+        issues.append({"code": "orphan_follow_metric_player", "message": "Una métrica de Seguimiento refiere un jugador sin identidad."})
+    for item in data.player_match_metrics:
+        if item.team_id != team_id or item.season != data.season.season or item.group != data.season.group:
+            issues.append({"code": "follow_metric_scope", "message": f"Métrica fuera del ámbito para player_id={item.player_id}."})
+        if item.value < 0:
+            issues.append({"code": "negative_follow_metric", "message": f"Métrica negativa para player_id={item.player_id}."})
+        if (item.metric, item.source_state) not in {("yellow_cards", "t"), ("goals", "go")}:
+            issues.append({"code": "follow_metric_state", "message": f"Estado {item.source_state} no respalda {item.metric}."})
+    follow_metric_totals = Counter()
+    for item in data.player_match_metrics:
+        follow_metric_totals[item.metric] += item.value
+    source_metric_totals = {
+        "yellow_cards": sum(item.yellow_cards or 0 for item in data.player_statistics),
+        "goals": sum(item.goals or 0 for item in data.player_statistics),
+    }
+    for metric in ("yellow_cards", "goals"):
+        state = "t" if metric == "yellow_cards" else "go"
+        if state in data.follow_states_captured and follow_metric_totals[metric] != source_metric_totals[metric]:
+            warnings.append(
+                f"Seguimiento estado {state}: suma observada de {metric}={follow_metric_totals[metric]} "
+                f"frente a Estadísticas={source_metric_totals[metric]}; se conservan ambas fuentes."
+            )
+
     expected_team_ids = {int(item["team_id"]) for item in group_team_catalog}
     profile_team_ids = set(data.group_team_ids_from_profile)
     if "alignment" in requested_views and expected_team_ids != profile_team_ids:
@@ -148,6 +178,8 @@ def validate_team_profile(
             "coaches": len(data.season.coaches),
             "player_statistics": len(data.player_statistics),
             "player_match_minutes": len(data.player_match_minutes),
+            "player_match_metrics": len(data.player_match_metrics),
+            "follow_states_captured": list(data.follow_states_captured),
             "transfers": len(data.transfers),
             "profile_match_references": len(profile_match_ids),
             "catalog_teams_in_profile": len(profile_team_ids),
@@ -159,6 +191,7 @@ def validate_team_profile(
             "team_ids_match_catalog": expected_team_ids == profile_team_ids if "alignment" in requested_views else None,
             "profile_match_ids_in_group_results": not unknown_match_ids if "matches" in requested_views else None,
             "follow_match_ids_in_group_results": not unknown_follow_ids if "follow" in requested_views else None,
+            "follow_metric_match_ids_in_group_results": not (metric_match_ids - match_ids) if data.player_match_metrics else None,
             "duplicate_match_records_exported": False,
         },
     }

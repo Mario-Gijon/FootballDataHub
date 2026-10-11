@@ -44,11 +44,11 @@ Las pestañas principales son enlaces de navegación a documentos distintos:
 | Vista | Enlace observado | Estructura/fuente | Estado |
 |---|---|---|---|
 | Plantilla / Alineación | URL base del catálogo | `#plantilles`, `#taulaentrenadors`, `#taulaplantilla`, gráfico en `#alineacio` | Adquirida para Jaén y Racing de Ferrol. |
-| Plantilla / Plantilla | opción del selector de vista, `t=plantilla` | `#c3p1` y `#taulaentrenadors`; incluye fecha y lugar de nacimiento | Adquirida para Jaén. En Racing se confirmó la opción en el HTML inicial, pero no se adquirió esta variante. |
+| Plantilla / Plantilla | opción del selector de vista, `t=plantilla` | `#c3p1`; incluye fecha y lugar de nacimiento | Adquirida para Jaén y Racing. |
 | Plantilla / Estadísticas | opción del selector de vista, `t=lista` | `#c3p0`, `#taulaentrenadors` | Adquirida para Jaén y Racing de Ferrol; ambas respondieron HTTP 200. |
-| Seguimiento | enlace `t=seg` | `#taula-seguiment`, IDs de partidos en las celdas y variable `JSEGID` | Adquirida para Jaén. |
-| Traspasos | enlace `t=altas` | bloques titulados `Altas` y `Bajas`, tabla bajo `Altas` en el piloto | Adquirida para Jaén. El bloque `Bajas` no tenía registros visibles. |
-| Partidos | enlace `tab=partits` | `#taula-resultats-plantilla` | Adquirida para Jaén. Los seis partidos disputados enlazan por ID con el dataset existente; los próximos encuentros no exponen ID de partido en esas filas. |
+| Seguimiento | enlace `t=seg` | `#taula-seguiment`; las celdas y matrices JavaScript enlazan por `player_id`, jornada y `match_id` | Adquirida para ambos pilotos; los cuatro estados se probaron en Racing. |
+| Traspasos | enlace `t=altas` | raíz `#pestaltesbaixes`, con bloques `Altas` y `Bajas` cuando existen | Adquirida para ambos pilotos. Jaén: 34 altas y ningún registro visible bajo Bajas; Racing: 30 movimientos. |
+| Partidos | enlace `tab=partits` | `#taula-resultats-plantilla` | Adquirida para ambos. Los seis partidos disputados de cada piloto enlazan por ID con el dataset existente; los próximos encuentros no exponen ID estable en esas filas. |
 | Clasificación | enlace al URL de la competición del grupo | `#classific` es una lista de escudos/equipos; la pestaña enlaza a la clasificación de grupo | No se normaliza como otra clasificación. Reutilizar clasificación existente. |
 
 El selector de vista de Plantilla contiene `Alineación`, `Plantilla` y
@@ -61,20 +61,33 @@ observó que son filtros de la tabla, pero no se verificó aquí su interacción
 no se guardan como filtros aplicados.
 
 En Seguimiento, `#vista_jornades` publica `p` Partidos, `t` Tarjetas, `go`
-Goles y `tot` Todo. Se probaron sobre el mismo documento: la URL permaneció
-estable y el DOM varió para Goles. Las entradas de recursos del navegador
-aumentaron una vez al pasar por Goles y Todo; no se registró el destino de esas
-entradas, así que no se afirma que todas las variantes sean estrictamente sin
-red. La captura normalizada de este hito conserva el estado `Partidos` que
-publica `#taula-seguiment`; las otras tres variantes quedan pendientes de
-captura y validación semántica. `#comp` mostró solo Liga.
+Goles y `tot` Todo. Las cuatro opciones se seleccionaron en la misma página de
+Racing. La URL y el número de filas se mantuvieron (26, incluida cabecera); las
+clases y los valores de las celdas cambiaron. No se inició otra navegación ni
+se observó una petición de datos deportivos a BDFutbol. Durante el intervalo
+de `go` apareció una llamada de telemetría de Google Analytics que incluía la
+URL de la página; no contiene los registros del partido. El HTML inicial ya
+incluye las matrices JavaScript `JSEG`, `JSEGC`, `JSEGG`, `JSEGID` y el resumen
+`json_data`, de modo que el navegador no necesita descargar una fuente
+deportiva al cambiar el control. `#comp` ofreció Liga (`lig`).
 
-La tabla Seguimiento incluye las jornadas 1–6 disputadas en el momento de la
-captura. Sus encabezados son jornadas y cada celda enlaza a un partido
-`p.php?id=...`. En el estado Partidos los valores representan minutos jugados
-en esa jornada: por ejemplo, Moyano tiene 90, 45 y 16 minutos, suma 151 y
-coincide con Minutos en Estadísticas. Una celda en blanco se conserva como
-`null`, no se sustituye por cero.
+La tabla Seguimiento de ambos pilotos incluye seis jornadas disputadas en el
+momento de la captura; cada encabezado aporta el número de jornada y cada celda
+de partido enlaza a `p.php?id=...`. En `p`, el número visible y `JSEG` son
+minutos jugados; una celda en blanco se conserva como `null`. En `t`, el número
+sigue siendo el minuto, no el número de tarjetas: la marca de tarjeta procede
+de `JSEGC` y de las clases de la celda. Se observaron 10 marcas `tg1` en
+Racing, y su suma por jugador coincide con las 10 tarjetas amarillas de
+Estadísticas. En este piloto no aparecieron `tg2` ni `tv`; su interpretación
+como segunda amarilla/roja queda pendiente de una observación positiva.
+
+En `go`, `JSEGG` y las celdas muestran el número de goles del jugador en ese
+partido; se observaron 7 goles y la suma coincide con Estadísticas. Un valor
+vacío no se convierte en cero ni crea un registro de evento. En `tot`, los
+minutos permanecen y se combinan con marcadores de gol y tarjeta; las marcas
+de goles y amarillas coinciden con `go` y `t`, respectivamente. No aporta una
+métrica numérica exclusiva en estos datos, por lo que no se duplican registros
+desde ese estado.
 
 ## Campos semánticos
 
@@ -179,17 +192,24 @@ esos casos). No se convierte un ausente en cero.
 
 ## Seguimiento, traspasos y datos ya existentes
 
-- Seguimiento aporta minutos por jugador y partido en el estado `Partidos`.
-  El ID de cada partido se obtiene de la URL de la celda; la jornada del
-  encabezado se puede reconciliar por ese ID con `matches.json`. Son datos
-  nuevos de granularidad individual.
+- Seguimiento aporta minutos por jugador y partido en `p`, marcas de
+  amonestación en `t`, goles por jugador-partido en `go`, y una combinación en
+  `tot`. El ID de la celda se enlaza por `match_id`, no por el nombre del
+  rival. Las tarjetas amarillas observadas se normalizan como
+  `yellow_cards=1` solo cuando `JSEGC`/DOM contiene `tg1`; el texto numérico de
+  `t` es tiempo jugado. Los goles se toman de `JSEGG`/el número de `go` y se
+  conservan solo cuando la fuente publica un valor numérico. Los marcadores
+  `tg2` y `tv` quedan pendientes de validación positiva.
 - Traspasos de Jaén presenta una tabla `Altas` con Apodo y Nombre, Edad, Pos y
   Equipo origen. Los enlaces permiten identificar el jugador y el club de
   origen; cada movimiento conserva también los nombres y URL de perfil del
   jugador asociados al mismo `player_id`, sin crear una segunda identidad.
   No se observaron importes ni fecha del movimiento. `Bajas` no tenía
   filas visibles en esta captura; eso no demuestra que el club no tuviera
-  bajas fuera de lo publicado en esa vista.
+  bajas fuera de lo publicado en esa vista. El contenedor raíz
+  `#pestaltesbaixes` distingue una sección válida sin filas de una página
+  incompleta; un encabezado `Bajas` sin tabla produce cero registros, no datos
+  inventados.
 - Partidos presenta fecha, competición, jornada/tipo, local, marcador,
   visitante y estadio. Seis filas disputadas enlazaron por `match_id` con los
   datos ya capturados. La tabla incluyó 38 jornadas, pero las filas futuras no
@@ -217,12 +237,12 @@ al unirla.
 
 Racing de Ferrol se eligió desde el catálogo del Grupo I como segundo piloto
 con identidad distinta a Jaén y para comprobar que un único parser sirve en
-ambos grupos. Sus IDs, título,
-plantilla principal, entrenador y estructura de Estadísticas fueron válidos;
-ambas vistas devuelven 25 jugadores. Sus datos del roster completo,
-Seguimiento, Traspasos y Partidos no se adquirieron en este piloto. La
-generalización de esas vistas queda pendiente de una captura de Grupo I en
-TEAM-01B si ese lote las necesita.
+ambos grupos. Las seis vistas fueron válidas: 25 jugadores y 25 estadísticas,
+un entrenador, 150 celdas de minutos, 17 métricas positivas del Seguimiento
+(10 amarillas y 7 goles), 30 traspasos y seis referencias a partidos. Las
+cuatro vistas pendientes se adquirieron mediante la CLI en una sesión Pure
+CDP; se reutilizaron Alineación y Estadísticas del snapshot anterior y el
+manifiesto conserva su captura de origen y las horas por vista.
 
 La página tiene elementos de comentarios, fotos de comunidad y consentimiento
 de publicidad que no forman parte del dominio de equipo. No se almacenan ni se
@@ -236,13 +256,13 @@ ficha.
 |---|---|---|---|
 | Identidad, grupo y temporada 2026/27 | Verificada en dos fichas reales | Catálogo existente, ID y URL sin reconstruir | 2 fichas HTTP 200; no desafíos |
 | Alineación, entrenador, jugadores y estadísticas básicas | Verificada en dos fichas | Incluida | Mismo parser; IDs reales |
-| Plantilla completa con nacimiento | Verificada en Jaén | Incluida cuando la vista está disponible | Pendiente de comparación en Grupo I |
+| Plantilla completa con nacimiento | Verificada en ambos grupos | Incluida cuando la vista está disponible | IDs cruzados en ambos |
 | Estadísticas individuales extendidas | Verificada en ambos grupos | Incluida | Encabezados semánticos de origen; checks con partidos |
-| Seguimiento de minutos por partido | Verificado en Jaén | Incluido para estado Partidos | Suma individual contrastada con minutos agregados |
-| Seguimiento Tarjetas/Goles/Todo | Opciones y cambio del DOM explorados | No se exportan todavía | Pendiente semántica/carga de recursos |
-| Altas y Bajas | Tabla de Altas y bloque Bajas explorados para Jaén | Altas incluidas; vacíos conservados | No demuestra ausencia real de bajas |
+| Seguimiento de minutos por partido | Verificado en ambos pilotos | Incluido | `player_id`, `match_id`, minutos; ausencias permanecen `null` |
+| Seguimiento Tarjetas/Goles/Todo | Probado en el mismo documento Racing | Amarillas `tg1` y goles normalizados; Todo es combinación | 10 TA y 7 goles coinciden con Estadísticas; `tg2`/`tv` pendientes |
+| Altas y Bajas | Verificadas en Jaén y Racing | 34 registros Jaén; 30 Racing | Contenedor requerido; encabezado vacío no genera filas inventadas |
 | Partidos y clasificación de equipo | Vistas reales exploradas; IDs cruzados | Solo referencias/validación | No duplican datasets de competición |
-| Traspasos, seguimiento y altas/bajas en Grupo I | Enlaces visibles en Grupo I | Pendiente | TEAM-01B |
+| Parser compartido de las seis vistas en Grupo I y II | Verificado con ambos pilotos | Incluido | Relaciones por ID |
 
 ## Extractor y capturas TEAM-01A
 
@@ -253,7 +273,7 @@ inmutable. La URL de cada vista se resuelve desde los enlaces y opciones reales
 del HTML base. La adquisición se limita a un equipo y se detiene en la primera
 denegación o contenido inválido; no reintenta ni resuelve desafíos.
 
-Las capturas reales normalizadas en este hito están bajo:
+Las capturas reales normalizadas de los pilotos están bajo:
 
 - Jaén, Grupo II, `team_id=49`:
   `data/exports/bdfutbol/teams/2026-27/49/team01a-group2-49-source-evidence/`.
@@ -261,20 +281,26 @@ Las capturas reales normalizadas en este hito están bajo:
   Partidos; 25 personas, un entrenador, 25 estadísticas, 150 celdas de minutos,
   34 altas y seis referencias a partidos disputados.
 - Racing de Ferrol, Grupo I, `team_id=48`:
-  `data/exports/bdfutbol/teams/2026-27/48/team01a-group1-48-source-evidence/`.
-  Se guardaron Alineación y Estadísticas; 25 personas, un entrenador y 25
-  estadísticas. No se atribuyen al piloto las demás vistas del Grupo I.
+  - `data/exports/bdfutbol/teams/2026-27/48/team01a-group1-48-source-evidence/`
+    conserva la captura previa de Alineación y Estadísticas.
+  - `data/exports/bdfutbol/teams/2026-27/48/20261011T121730.599917Z-f3f61e3d/`
+    es la salida de la CLI real: adquirió Plantilla, Seguimiento, Traspasos y
+    Partidos, reutilizó Alineación y Estadísticas, y guardó las cuatro variantes
+    de Seguimiento.
+  - `data/exports/bdfutbol/teams/2026-27/48/20261011T123240.190812Z-8f307d1c/`
+    vuelve a normalizar offline esa evidencia con el parser semántico ampliado
+    y referencia el run de origen. Los snapshots de ambos runs usan gzip
+    reproducible y conservan el SHA-256 del HTML descomprimido.
 - El inventario versionado de los 40 clubes está en
   `data/exports/bdfutbol/teams/2026-27/catalog/20261011T115607.387269Z-f86d8190/`.
   Deriva de los dos catálogos existentes; no crea IDs ni modifica esos catálogos.
 
-Cada directorio de captura conserva HTML por vista, URL y evaluación de acceso,
-fecha de evidencia, SHA-256, catálogos de origen, modelos normalizados y
-validación. El tiempo de las capturas exploratorias se tomó del archivo de
-diagnóstico local porque los scripts de exploración no guardaron una hora de
-navegación por vista; ese criterio queda explícito en `raw/access.json` y no se
-presenta como una hora registrada por BDFutbol. Las ejecuciones futuras del
-extractor guardarán su propia hora de adquisición.
+Cada captura conserva contenido de origen por vista, URL, evaluación de acceso,
+fecha de adquisición, SHA-256 del HTML descomprimido, catálogos de origen,
+datos normalizados y validación. Seguimiento conserva las cuatro variantes
+DOM, los valores de control confirmados, hashes y deltas de recursos. Las horas
+de Alineación y Estadísticas reutilizadas siguen siendo las de su captura
+original y no se presentan como si pertenecieran a la sesión nueva.
 
 Para normalizar snapshots autorizados sin abrir un navegador:
 
@@ -288,10 +314,10 @@ PYTHONPATH=src .venv/bin/python scripts/acquire_bdfutbol_team.py \
   --snapshot-dir /ruta/a/snapshots-racing
 ```
 
-Las carpetas deben contener `alignment.html`, las vistas solicitadas y
-`access.json` con una evaluación `VALID`, HTTP 200, URLs finales iguales a las
-resueltas del HTML base y hashes correctos. `core` captura Alineación y
-Estadísticas; `all` añade Plantilla, Seguimiento, Traspasos y Partidos.
+Los snapshots planos antiguos siguen admitidos. Las capturas exportadas por la
+CLI usan `metadata/capture.json` y rutas con gzip; la normalización verifica
+hashes, URLs y HTTP antes de parsear. `core` captura Alineación y Estadísticas;
+`all` añade Plantilla, Seguimiento, Traspasos y Partidos.
 
 Para una adquisición normal de un solo equipo con Pure CDP, Xvfb y un perfil
 aislado o persistente configurado:
@@ -316,9 +342,31 @@ PYTHONPATH=src .venv/bin/python scripts/acquire_bdfutbol_team.py \
   --output-root data/exports/bdfutbol/teams
 ```
 
-La suite offline usa los snapshots guardados, comprueba las dos identidades,
-vistas, estadísticas, nulos, relaciones por ID, referencias a resultados,
-hashes y lectura de JSON. No descarga imágenes, perfiles individuales ni
+Para adquirir solo vistas pendientes, resolver sus URLs desde la Alineación ya
+capturada y conservar la procedencia de las vistas reutilizadas:
+
+```bash
+PYTHONPATH=src xvfb-run -a -s '-screen 0 1920x1080x24' \
+  .venv/bin/python scripts/acquire_bdfutbol_team.py \
+  --season 2026-27 --group 1 --team-id 48 \
+  --reuse-capture data/exports/bdfutbol/teams/2026-27/48/team01a-group1-48-source-evidence \
+  --view squad --view follow --view transfers --view matches \
+  --output-root data/exports/bdfutbol/teams
+```
+
+Para volver a normalizar una captura sin navegador y publicar un run derivado
+inmutable con una referencia a la captura de origen:
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/acquire_bdfutbol_team.py \
+  --season 2026-27 --group 1 --team-id 48 \
+  --snapshot-dir /ruta/a/captura --derived-capture \
+  --output-root /ruta/a/exports
+```
+
+La suite offline comprueba los dos pilotos, transiciones, métricas observadas,
+nulos, relaciones por ID, referencias a resultados, hashes, compresión gzip y
+lectura posterior de JSON. No descarga imágenes, perfiles individuales ni
 temporadas históricas, y no copia partidos a los exports de equipo. La
-exploración de `Tarjetas`, `Goles` y `Todo` en Seguimiento sigue pendiente de
-normalización semántica; solo se exporta el estado `Partidos` (minutos).
+adquisición por lotes, sus estados y política de reanudación están en
+[`docs/team_batch_acquisition.md`](team_batch_acquisition.md).

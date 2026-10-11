@@ -1,0 +1,453 @@
+{
+  "schema_version": 1,
+  "metadata": {
+    "source": "BDFutbol",
+    "season": "2026-27",
+    "competition": "Primera Federación",
+    "group": "I",
+    "team_id": 48,
+    "capture_id": "20261011T121730.599917Z-f3f61e3d",
+    "captured_at_utc": "2026-10-11T12:17:30.599975+00:00",
+    "extractor_version": "0.1.0",
+    "related_team_catalog": {
+      "path": "data/exports/bdfutbol/group1_classification/20261010T202500.293648Z-b770724f/normalized/matches.json",
+      "group": "I",
+      "season": "2026-27",
+      "source_capture_id": "20261010T202500.293648Z-b770724f",
+      "source_captured_at_utc": "2026-10-10T20:25:00.293798+00:00",
+      "sha256": "1f9fb43796001c87186d7a8c1f4270d924f32f4dbdba704f39428d6d8201fd0f"
+    },
+    "source_snapshots": {
+      "alignment": {
+        "path": "raw/alignment.html.gz",
+        "compression": "gzip",
+        "url": "https://www.bdfutbol.com/es/t/t2026-2748.html",
+        "title": "Plantilla del Racing de Ferrol 2026-27 1ª RFEF | BDFutbol",
+        "http_status": 200,
+        "sha256": "d3cfc966c4956e6293b527993e501023f479be74a967860a249778e0ed18203b",
+        "bytes_utf8": 1545993,
+        "stored_bytes": 118213,
+        "access_status": "VALID",
+        "captured_at_utc": "2026-10-11T11:39:17.727409+00:00",
+        "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded"
+      },
+      "statistics": {
+        "path": "raw/statistics.html.gz",
+        "compression": "gzip",
+        "url": "https://www.bdfutbol.com/es/t/t2026-2748.html?t=lista",
+        "title": "Plantilla del Racing de Ferrol 2026-27 1ª RFEF | BDFutbol",
+        "http_status": 200,
+        "sha256": "ef429b554279efbbb75556714f01c030e90d0a20b3c40e5c67bd8cf50ff5a991",
+        "bytes_utf8": 1662477,
+        "stored_bytes": 123858,
+        "access_status": "VALID",
+        "captured_at_utc": "2026-10-11T11:44:35.524710+00:00",
+        "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded"
+      },
+      "squad": {
+        "path": "raw/squad.html.gz",
+        "compression": "gzip",
+        "url": "https://www.bdfutbol.com/es/t/t2026-2748.html?t=plantilla",
+        "title": "Plantilla del Racing de Ferrol 2026-27 1ª RFEF | BDFutbol",
+        "http_status": 200,
+        "sha256": "866304dd0fc33e5415e99c5e6dc6c870f500f8b47a8b8b446553590f9d756054",
+        "bytes_utf8": 1508377,
+        "stored_bytes": 114807,
+        "access_status": "VALID",
+        "captured_at_utc": "2026-10-11T12:17:35.932447+00:00",
+        "capture_timestamp_basis": "browser navigation and DOM serialization"
+      },
+      "follow": {
+        "path": "raw/follow.html.gz",
+        "compression": "gzip",
+        "url": "https://www.bdfutbol.com/es/t/t2026-2748.html?t=seg",
+        "title": "Plantilla del Racing de Ferrol 2026-27 1ª RFEF | BDFutbol",
+        "http_status": 200,
+        "sha256": "b5f8a4e9f3a87d39939ee020bcb2229e519010520ae725eef36499e6c2a7a339",
+        "bytes_utf8": 1641737,
+        "stored_bytes": 122325,
+        "access_status": "VALID",
+        "captured_at_utc": "2026-10-11T12:17:40.250501+00:00",
+        "capture_timestamp_basis": "browser navigation and DOM serialization"
+      },
+      "transfers": {
+        "path": "raw/transfers.html.gz",
+        "compression": "gzip",
+        "url": "https://www.bdfutbol.com/es/t/t2026-2748.html?t=altas",
+        "title": "Plantilla del Racing de Ferrol 2026-27 1ª RFEF | BDFutbol",
+        "http_status": 200,
+        "sha256": "8047b4edc468afbbf7d048a680a4815bbcf19273b95e220a46aec7e46d9a3cba",
+        "bytes_utf8": 1634870,
+        "stored_bytes": 121882,
+        "access_status": "VALID",
+        "captured_at_utc": "2026-10-11T12:17:47.972236+00:00",
+        "capture_timestamp_basis": "browser navigation and DOM serialization"
+      },
+      "matches": {
+        "path": "raw/matches.html.gz",
+        "compression": "gzip",
+        "url": "https://www.bdfutbol.com/es/t/t2026-2748.html?tab=partits",
+        "title": "Plantilla del Racing de Ferrol 2026-27 1ª RFEF | BDFutbol",
+        "http_status": 200,
+        "sha256": "cbd0fe018dc3d7c5711c90209b915bb564e6e9bfe404314862b0564764aa9bd2",
+        "bytes_utf8": 1653956,
+        "stored_bytes": 123070,
+        "access_status": "VALID",
+        "captured_at_utc": "2026-10-11T12:17:52.039759+00:00",
+        "capture_timestamp_basis": "browser navigation and DOM serialization"
+      }
+    }
+  },
+  "records": [
+    {
+      "player_id": 13074,
+      "team_id": 48,
+      "season": "2026-27",
+      "competition": "Primera Federación",
+      "group": "I",
+      "jersey_number": 7,
+      "squad_group_label": "Suplentes",
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 13194,
+      "team_id": 48,
+      "season": "2026-27",
+      "competition": "Primera Federación",
+      "group": "I",
+      "jersey_number": 3,
+      "squad_group_label": "Suplentes",
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 15141,
+      "team_id": 48,
+      "season": "2026-27",
+      "competition": "Primera Federación",
+      "group": "I",
+      "jersey_number": 5,
+      "squad_group_label": "Titulares",
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 20236,
+      "team_id": 48,
+      "season": "2026-27",
+      "competition": "Primera Federación",
+      "group": "I",
+      "jersey_number": 10,
+      "squad_group_label": "Titulares",
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 20263,
+      "team_id": 48,
+      "season": "2026-27",
+      "competition": "Primera Federación",
+      "group": "I",
+      "jersey_number": 6,
+      "squad_group_label": "Titulares",
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 20815,
+      "team_id": 48,
+      "season": "2026-27",
+      "competition": "Primera Federación",
+      "group": "I",
+      "jersey_number": 8,
+      "squad_group_label": "Suplentes",
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 20934,
+      "team_id": 48,
+      "season": "2026-27",
+      "competition": "Primera Federación",
+      "group": "I",
+      "jersey_number": 20,
+      "squad_group_label": "Titulares",
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 21519,
+      "team_id": 48,
+      "season": "2026-27",
+      "competition": "Primera Federación",
+      "group": "I",
+      "jersey_number": 14,
+      "squad_group_label": "Titulares",
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 21548,
+      "team_id": 48,
+      "season": "2026-27",
+      "competition": "Primera Federación",
+      "group": "I",
+      "jersey_number": 15,
+      "squad_group_label": "Suplentes",
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 21932,
+      "team_id": 48,
+      "season": "2026-27",
+      "competition": "Primera Federación",
+      "group": "I",
+      "jersey_number": 2,
+      "squad_group_label": "Titulares",
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 26664,
+      "team_id": 48,
+      "season": "2026-27",
+      "competition": "Primera Federación",
+      "group": "I",
+      "jersey_number": 17,
+      "squad_group_label": "Titulares",
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 27824,
+      "team_id": 48,
+      "season": "2026-27",
+      "competition": "Primera Federación",
+      "group": "I",
+      "jersey_number": 9,
+      "squad_group_label": "Suplentes",
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 43004,
+      "team_id": 48,
+      "season": "2026-27",
+      "competition": "Primera Federación",
+      "group": "I",
+      "jersey_number": 13,
+      "squad_group_label": "Suplentes",
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 43008,
+      "team_id": 48,
+      "season": "2026-27",
+      "competition": "Primera Federación",
+      "group": "I",
+      "jersey_number": 16,
+      "squad_group_label": "Suplentes",
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 102284,
+      "team_id": 48,
+      "season": "2026-27",
+      "competition": "Primera Federación",
+      "group": "I",
+      "jersey_number": 1,
+      "squad_group_label": "Titulares",
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 103110,
+      "team_id": 48,
+      "season": "2026-27",
+      "competition": "Primera Federación",
+      "group": "I",
+      "jersey_number": 4,
+      "squad_group_label": "Titulares",
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 109202,
+      "team_id": 48,
+      "season": "2026-27",
+      "competition": "Primera Federación",
+      "group": "I",
+      "jersey_number": 28,
+      "squad_group_label": "Suplentes",
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 200661,
+      "team_id": 48,
+      "season": "2026-27",
+      "competition": "Primera Federación",
+      "group": "I",
+      "jersey_number": 19,
+      "squad_group_label": "Titulares",
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 202089,
+      "team_id": 48,
+      "season": "2026-27",
+      "competition": "Primera Federación",
+      "group": "I",
+      "jersey_number": 22,
+      "squad_group_label": "Suplentes",
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 208815,
+      "team_id": 48,
+      "season": "2026-27",
+      "competition": "Primera Federación",
+      "group": "I",
+      "jersey_number": 21,
+      "squad_group_label": "Suplentes",
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 209622,
+      "team_id": 48,
+      "season": "2026-27",
+      "competition": "Primera Federación",
+      "group": "I",
+      "jersey_number": 34,
+      "squad_group_label": "Suplentes",
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 210405,
+      "team_id": 48,
+      "season": "2026-27",
+      "competition": "Primera Federación",
+      "group": "I",
+      "jersey_number": 23,
+      "squad_group_label": "Suplentes",
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 211019,
+      "team_id": 48,
+      "season": "2026-27",
+      "competition": "Primera Federación",
+      "group": "I",
+      "jersey_number": 27,
+      "squad_group_label": "Suplentes",
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 405432,
+      "team_id": 48,
+      "season": "2026-27",
+      "competition": "Primera Federación",
+      "group": "I",
+      "jersey_number": 18,
+      "squad_group_label": "Suplentes",
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 1080822,
+      "team_id": 48,
+      "season": "2026-27",
+      "competition": "Primera Federación",
+      "group": "I",
+      "jersey_number": 11,
+      "squad_group_label": "Titulares",
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    }
+  ]
+}
