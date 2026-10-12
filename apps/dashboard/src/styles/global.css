@@ -1003,6 +1003,76 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .team-roster { min-width: 0; }
 .team-roster-content { display: grid; gap: 11px; }
 .team-roster-content .team-profile-panel { margin: 0; }
+.team-follow { display: grid; gap: 12px; min-width: 0; }
+.team-follow-header { display: grid; gap: 13px; margin: 0; }
+.team-follow-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.team-follow-heading h2 { margin: 3px 0 0; color: var(--text); font: 700 18px/1.2 "Manrope", sans-serif; }
+.team-follow-heading p { margin: 4px 0 0; color: var(--text-muted); font-size: 11px; }
+.team-follow-round-count { flex: 0 0 auto; padding: 6px 9px; border: 1px solid var(--line-soft); border-radius: 999px; color: var(--text-muted); background: rgb(15 17 20 / 50%); font-size: 10px; }
+.team-follow-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.team-follow-control-label { color: var(--text-subtle); font-size: 10px; font-weight: 650; text-transform: uppercase; letter-spacing: .08em; }
+.follow-mode-tabs { display: inline-flex; max-width: 100%; gap: 3px; padding: 3px; border: 1px solid var(--line-soft); border-radius: 8px; background: rgb(18 20 23 / 76%); }
+.follow-mode-tab { min-height: 32px; padding: 0 12px; border: 1px solid transparent; border-radius: 6px; color: var(--text-muted); background: transparent; cursor: pointer; font-size: 11px; font-weight: 550; }
+.follow-mode-tab:hover { color: var(--text); background: var(--surface-hover); }
+.follow-mode-tab.is-active { border-color: rgb(134 82 183 / 42%); color: var(--text); background: rgb(134 82 183 / 17%); }
+.follow-capture-details { color: var(--text-subtle); font-size: 10px; }
+.follow-capture-details summary { width: fit-content; cursor: pointer; }
+.follow-capture-details dl { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 8px 0 0; }
+.follow-capture-details dl > div { display: grid; gap: 2px; }
+.follow-capture-details dt { color: var(--text-subtle); }
+.follow-capture-details dd { margin: 0; color: var(--text-muted); overflow-wrap: anywhere; }
+.follow-capture-details a { color: var(--text); }
+.team-follow-view, .team-follow-panel { min-width: 0; }
+.team-follow-panel { display: grid; gap: 12px; overflow: hidden; }
+.team-follow-legend { display: flex; flex-wrap: wrap; gap: 7px 16px; margin: 0; padding: 0; list-style: none; }
+.team-follow-legend li { display: inline-flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 10px; }
+.team-follow-legend li > span { width: 9px; height: 9px; display: inline-block; border: 1px solid var(--line-soft); border-radius: 3px; background: #555b63; }
+.team-follow-legend .follow-legend-yellow { border-color: #e5c451; background: #e5c451; }
+.team-follow-legend .follow-legend-goal { border-color: #65b987; background: #65b987; }
+.team-follow-legend .follow-legend-neutral { background: #646a72; }
+.follow-coverage-note, .follow-warning { margin: 0; color: var(--text-muted); font-size: 10px; line-height: 1.5; }
+.follow-warning { padding: 0 3px; color: var(--text-subtle); }
+.follow-coverage { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 10px 12px; }
+.follow-coverage > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.follow-coverage dt { color: var(--text-subtle); font-size: 10px; }
+.follow-coverage dd { margin: 0; color: var(--text-muted); font-size: 10px; text-align: right; }
+.team-follow-matrix-scroll { width: 100%; max-width: 100%; overflow: auto; overscroll-behavior-x: contain; border: 1px solid var(--line-soft); border-radius: 7px; background: rgb(15 17 20 / 38%); scrollbar-color: #555b63 transparent; }
+.team-follow-matrix { width: max-content; min-width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; font-size: 11px; }
+.team-follow-matrix th, .team-follow-matrix td { min-width: 84px; height: 45px; padding: 5px 7px; border-right: 1px solid rgb(255 255 255 / 5%); border-bottom: 1px solid rgb(255 255 255 / 5%); background: rgb(27 30 34 / 60%); text-align: center; vertical-align: middle; }
+.team-follow-matrix thead th { height: 52px; color: var(--text-muted); background: rgb(36 40 45 / 91%); font-size: 10px; font-weight: 650; }
+.team-follow-matrix thead th > span, .team-follow-matrix thead th > small { display: block; }
+.team-follow-matrix thead th > small { max-width: 110px; overflow: hidden; margin: 3px auto 0; color: var(--text-subtle); font-size: 9px; font-weight: 450; text-overflow: ellipsis; white-space: nowrap; }
+.team-follow-matrix .follow-player-heading, .team-follow-matrix .follow-player-cell { position: sticky; left: 0; z-index: 1; width: 205px; min-width: 205px; text-align: left; }
+.team-follow-matrix .follow-player-heading { z-index: 2; background: #24282d; }
+.team-follow-matrix .follow-player-cell { color: var(--text); background: #1b1e22; font-weight: 550; }
+.team-follow-matrix tbody tr:hover .follow-player-cell, .team-follow-matrix tbody tr:hover td { background: #25292e; }
+.follow-player-cell { display: flex; align-items: center; gap: 8px; }
+.follow-player-avatar { width: 27px; height: 27px; flex: 0 0 27px; display: grid; place-items: center; border: 1px solid var(--line-soft); border-radius: 50%; color: var(--text-muted); background: var(--surface-raised); font-size: 9px; }
+.follow-player-copy { min-width: 0; display: grid; gap: 2px; }
+.follow-player-copy a, .follow-player-copy strong { max-width: 150px; overflow: hidden; color: var(--text); font-size: 11px; font-weight: 600; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
+.follow-player-copy a:hover { color: var(--accent); }
+.follow-player-copy small { color: var(--text-subtle); font-size: 9px; font-weight: 450; }
+.follow-cell-content { display: inline-flex; align-items: center; justify-content: center; gap: 4px; flex-wrap: wrap; }
+.follow-minute-value { color: var(--text); font-variant-numeric: tabular-nums; }
+.follow-cell-empty { color: var(--text-subtle); }
+.follow-yellow-marker, .follow-goal-marker, .follow-goal-value { min-width: 20px; display: inline-grid; place-items: center; padding: 2px 4px; border-radius: 4px; font-size: 9px; font-weight: 750; line-height: 1.2; }
+.follow-yellow-marker { border: 1px solid rgb(229 196 81 / 65%); color: #211c0c; background: #e5c451; }
+.follow-goal-marker, .follow-goal-value { border: 1px solid rgb(101 185 135 / 55%); color: #c5f0d4; background: rgb(43 118 74 / 48%); }
+.team-follow-panel .roster-state { padding: 0; }
+@media (max-width: 720px) {
+  .team-follow-heading { gap: 8px; }
+  .team-follow-round-count { padding: 5px 7px; font-size: 9px; }
+  .team-follow-controls { align-items: flex-start; flex-direction: column; gap: 6px; }
+  .follow-mode-tabs { width: 100%; }
+  .follow-mode-tab { min-width: 0; flex: 1 1 0; padding: 0 6px; font-size: 10px; }
+  .follow-coverage { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .team-follow-matrix { font-size: 10px; }
+  .team-follow-matrix th, .team-follow-matrix td { min-width: 68px; height: 41px; padding: 4px; }
+  .team-follow-matrix .follow-player-heading, .team-follow-matrix .follow-player-cell { width: 154px; min-width: 154px; }
+  .follow-player-avatar { width: 23px; height: 23px; flex-basis: 23px; }
+  .follow-player-copy a, .follow-player-copy strong { max-width: 105px; font-size: 10px; }
+  .team-follow-matrix thead th > small { max-width: 62px; }
+}
 .roster-mode-tabs { width: fit-content; max-width: 100%; display: flex; gap: 3px; padding: 3px; border: 1px solid var(--line-soft); border-radius: 8px; background: rgb(18 20 23 / 76%); }
 .roster-mode-tab { min-height: 34px; padding: 0 14px; border: 1px solid transparent; border-radius: 6px; color: var(--text-muted); background: transparent; cursor: pointer; font-size: 11px; font-weight: 550; transition: color .15s ease, border-color .15s ease, background .15s ease; }
 .roster-mode-tab:hover { color: var(--text); background: var(--surface-hover); }

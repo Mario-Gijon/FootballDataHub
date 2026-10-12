@@ -3,13 +3,14 @@ import { loadTeamRoster, type TeamRosterLoadResult } from "../api/client";
 import type { Bootstrap } from "../api/contracts";
 import { calculateStandings, createClassificationIndexes, type StandingsFilters } from "../domain/classification/engine";
 import { TeamCrest } from "./TeamCard";
-import { teamPath, teamRosterPath, type CatalogTeam } from "../domain/teams";
+import { teamPath, teamRosterPath, teamFollowPath, type CatalogTeam } from "../domain/teams";
 import { TeamRosterSection } from "./TeamRoster";
+import { TeamFollow } from "./TeamFollow";
 
 interface Props {
   team: CatalogTeam;
   data: Bootstrap;
-  activeSection: "summary" | "roster";
+  activeSection: "summary" | "roster" | "follow";
   onNavigate: (path: string) => void;
 }
 
@@ -72,8 +73,8 @@ export function TeamOverview({ team, data, activeSection, onNavigate }: Props) {
     return () => { current = false; };
   }, [activeSection, retryVersion, team.season, team.team_id]);
 
-  function navigateSection(section: "summary" | "roster") {
-    onNavigate(section === "summary" ? teamPath(team.team_id) : teamRosterPath(team.team_id));
+  function navigateSection(section: "summary" | "roster" | "follow") {
+    onNavigate(section === "summary" ? teamPath(team.team_id) : section === "roster" ? teamRosterPath(team.team_id) : teamFollowPath(team.team_id));
   }
 
   return (
@@ -106,6 +107,12 @@ export function TeamOverview({ team, data, activeSection, onNavigate }: Props) {
           href={teamRosterPath(team.team_id)}
           onClick={(event) => { if (isPlainNavigation(event)) { event.preventDefault(); navigateSection("roster"); } }}
         >Plantilla</a>
+        <a
+          aria-current={activeSection === "follow" ? "page" : undefined}
+          className={activeSection === "follow" ? "team-section-tab is-active" : "team-section-tab"}
+          href={teamFollowPath(team.team_id)}
+          onClick={(event) => { if (isPlainNavigation(event)) { event.preventDefault(); navigateSection("follow"); } }}
+        >Seguimiento</a>
       </nav>
 
       {activeSection === "summary" && <>
@@ -177,6 +184,7 @@ export function TeamOverview({ team, data, activeSection, onNavigate }: Props) {
       {activeSection === "roster" && !rosterLoading && !rosterError && rosterResult?.status === "available" && (
         <TeamRosterSection key={`${team.team_id}:${rosterResult.roster.metadata.capture_id}`} roster={rosterResult.roster} />
       )}
+      {activeSection === "follow" && <TeamFollow key={`${team.team_id}:${team.season}`} teamId={team.team_id} season={team.season} />}
     </main>
   );
 }

@@ -39,17 +39,20 @@ import jaenTeamSeason from "../../../../data/exports/bdfutbol/teams/2026-27/49/t
 import jaenPlayers from "../../../../data/exports/bdfutbol/teams/2026-27/49/team01a-group2-49-source-evidence/normalized/players.json";
 import jaenMemberships from "../../../../data/exports/bdfutbol/teams/2026-27/49/team01a-group2-49-source-evidence/normalized/memberships.json";
 import jaenPlayerStatistics from "../../../../data/exports/bdfutbol/teams/2026-27/49/team01a-group2-49-source-evidence/normalized/player_statistics.json";
+import jaenPlayerMatchMinutes from "../../../../data/exports/bdfutbol/teams/2026-27/49/team01a-group2-49-source-evidence/normalized/player_match_minutes.json";
 import racingTeamCapture from "../../../../data/exports/bdfutbol/teams/2026-27/48/20261011T123240.190812Z-8f307d1c/metadata/capture.json";
 import racingTeamIdentity from "../../../../data/exports/bdfutbol/teams/2026-27/48/20261011T123240.190812Z-8f307d1c/normalized/team_identity.json";
 import racingTeamSeason from "../../../../data/exports/bdfutbol/teams/2026-27/48/20261011T123240.190812Z-8f307d1c/normalized/team_season.json";
 import racingPlayers from "../../../../data/exports/bdfutbol/teams/2026-27/48/20261011T123240.190812Z-8f307d1c/normalized/players.json";
 import racingMemberships from "../../../../data/exports/bdfutbol/teams/2026-27/48/20261011T123240.190812Z-8f307d1c/normalized/memberships.json";
 import racingPlayerStatistics from "../../../../data/exports/bdfutbol/teams/2026-27/48/20261011T123240.190812Z-8f307d1c/normalized/player_statistics.json";
+import racingPlayerMatchMinutes from "../../../../data/exports/bdfutbol/teams/2026-27/48/20261011T123240.190812Z-8f307d1c/normalized/player_match_minutes.json";
+import racingPlayerMatchMetrics from "../../../../data/exports/bdfutbol/teams/2026-27/48/20261011T123240.190812Z-8f307d1c/normalized/player_match_metrics.json";
 import { buildTopProgressData, TopSection } from "../components/TopSection";
 import { TeamRosterSection } from "../components/TeamRoster";
 import { clearTeamProfileCache } from "../api/client";
-import type { RefereeBootstrap, StatisticsBootstrap, TeamRoster, TopBootstrap } from "../api/contracts";
-import { RefereeBootstrapSchema, StatisticsBootstrapSchema, TeamRosterSchema, TopBootstrapSchema } from "../api/contracts";
+import type { RefereeBootstrap, StatisticsBootstrap, TeamFollow, TeamRoster, TopBootstrap } from "../api/contracts";
+import { RefereeBootstrapSchema, StatisticsBootstrapSchema, TeamFollowSchema, TeamRosterSchema, TopBootstrapSchema } from "../api/contracts";
 import App from "../App";
 
 function toPublicMatches(source: typeof matchesSource) {
@@ -466,6 +469,8 @@ const fetchMock = vi.fn();
 function payloadFor(input: RequestInfo | URL): unknown {
   const url = String(input);
   const group = url.includes("/groups/1/") ? "1" : "2";
+  const followPath = url.match(/\/api\/v1\/teams\/(\d+)\/seasons\/2026-27\/follow$/);
+  if (followPath) return teamFollowPayload(Number(followPath[1]));
   const rosterPath = url.match(/\/api\/v1\/teams\/(\d+)\/seasons\/2026-27\/roster$/);
   if (rosterPath) return teamRosterPayload(Number(rosterPath[1]));
   if (url.includes("/referees/bootstrap")) return refereeBootstrap;
@@ -583,6 +588,97 @@ function teamRosterPayload(teamId: number): TeamRoster {
     warnings: teamId === 49
       ? ["La captura no contiene estados enriquecidos de Seguimiento; no son necesarios para Plantilla."]
       : [],
+  });
+}
+
+function teamFollowPayload(teamId: number): TeamFollow {
+  if (teamId !== 48 && teamId !== 49) throw new Error(`No hay una captura de Seguimiento de prueba para ${teamId}.`);
+  const isRacing = teamId === 48;
+  const capture = asJsonObject(isRacing ? racingTeamCapture : jaenTeamCapture);
+  const roster = teamRosterPayload(teamId);
+  const minuteRecords = asJsonObject(isRacing ? racingPlayerMatchMinutes : jaenPlayerMatchMinutes).records as JsonObject[];
+  const metricDocument = isRacing ? asJsonObject(racingPlayerMatchMetrics) : null;
+  const metricRecords = metricDocument ? metricDocument.records as JsonObject[] : [];
+  const groupBootstrap = isRacing ? group1Bootstrap : apiBootstrap;
+  const matchById = new Map(groupBootstrap.matches.map((match) => [match.match_id, match]));
+  const teamById = new Map(groupBootstrap.teams.map((team) => [team.team_id, team]));
+  const matchIds = new Set([...minuteRecords, ...metricRecords].map((item) => String(item.match_id)));
+  const matches = [...matchIds].map((matchId) => {
+    const match = matchById.get(matchId);
+    if (!match) throw new Error(`No existe el partido ${matchId} en el grupo de fixture.`);
+    return {
+      match_id: match.match_id,
+      matchday: match.matchday,
+      matchday_date: match.matchday_date,
+      source_match_date: match.source_match_date,
+      home_team_id: match.home_team_id,
+      home_team_name: teamById.get(match.home_team_id)!.name,
+      away_team_id: match.away_team_id,
+      away_team_name: teamById.get(match.away_team_id)!.name,
+      home_goals: match.home_goals,
+      away_goals: match.away_goals,
+      status: match.status,
+    };
+  }).sort((left, right) => left.matchday - right.matchday);
+  const capturedStates = new Set(isRacing ? ["p", "t", "go", "tot"] : ["p"]);
+  const matchdays = [...new Set(matches.map((match) => match.matchday))].sort((left, right) => left - right);
+  const metricSum = (metric: string) => metricRecords.filter((item) => item.metric === metric)
+    .reduce((sum, item) => sum + Number(item.value), 0);
+  const followSnapshot = asJsonObject(asJsonObject(capture.source_snapshots).follow);
+  return TeamFollowSchema.parse({
+    status: "available",
+    metadata: {
+      contract_version: 1,
+      source: "BDFutbol",
+      url: followSnapshot.url,
+      competition: "Primera Federación",
+      competition_scope: "Liga",
+      season: "2026-27",
+      group: isRacing ? "I" : "II",
+      team_id: teamId,
+      capture_id: capture.capture_id,
+      captured_at: capture.captured_at_utc,
+      extractor_version: capture.extractor_version,
+      content_sha256: "c".repeat(64),
+      match_capture_id: groupBootstrap.metadata.capture_id,
+      match_catalog_sha256: "d".repeat(64),
+    },
+    team: roster.team,
+    players: roster.players.map((player) => ({
+      player_id: player.player_id,
+      display_name: player.display_name,
+      profile_url: player.profile_url,
+      photo_url: player.photo_url,
+      jersey_number: roster.memberships.find((item) => item.player_id === player.player_id)?.jersey_number ?? null,
+    })),
+    matches,
+    matchdays,
+    minutes: minuteRecords.map((item) => ({
+      player_id: item.player_id,
+      match_id: String(item.match_id),
+      matchday: item.matchday,
+      minutes_played: item.value,
+      source_value: item.raw_value,
+      source_view: item.source_view,
+      source_state: item.source_state,
+    })),
+    metrics: metricRecords.map((item) => ({
+      player_id: item.player_id,
+      match_id: String(item.match_id),
+      matchday: item.matchday,
+      metric: item.metric,
+      value: item.value,
+      source_value: item.raw_value,
+      source_view: item.source_view,
+      source_state: item.source_state,
+    })),
+    coverage: [
+      { state: "p", available: true, record_count: minuteRecords.length, value_total: null, matchdays },
+      { state: "t", available: capturedStates.has("t"), record_count: metricRecords.filter((item) => item.metric === "yellow_cards").length, value_total: capturedStates.has("t") ? metricSum("yellow_cards") : null, matchdays: capturedStates.has("t") ? matchdays : [] },
+      { state: "go", available: capturedStates.has("go"), record_count: metricRecords.filter((item) => item.metric === "goals").length, value_total: capturedStates.has("go") ? metricSum("goals") : null, matchdays: capturedStates.has("go") ? matchdays : [] },
+      { state: "tot", available: capturedStates.has("tot"), record_count: 0, value_total: null, matchdays: capturedStates.has("tot") ? matchdays : [] },
+    ],
+    warnings: isRacing ? ["No se interpretan marcadores tg2/tv ni se infieren tarjetas rojas."] : ["Los eventos individuales de tipo Tarjetas todavía no están disponibles en la captura del equipo.", "Los eventos individuales de tipo Goles todavía no están disponibles en la captura del equipo."],
   });
 }
 
@@ -1453,7 +1549,7 @@ describe("dashboard de clasificación", () => {
     expect(await screen.findByRole("heading", { name: "Jaén" })).toBeInTheDocument();
     expect(await screen.findByText("Entrenadores publicados")).toBeInTheDocument();
     const sectionNavigation = screen.getByRole("navigation", { name: "Secciones de Jaén" });
-    expect(within(sectionNavigation).getAllByRole("link").map((link) => link.textContent)).toEqual(["Resumen", "Plantilla"]);
+    expect(within(sectionNavigation).getAllByRole("link").map((link) => link.textContent)).toEqual(["Resumen", "Plantilla", "Seguimiento"]);
     expect(screen.getByRole("tab", { name: "Alineación" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("tab", { name: "Plantilla" })).toHaveAttribute("aria-selected", "false");
     expect(screen.queryByRole("heading", { name: "Estadísticas de temporada" })).not.toBeInTheDocument();
@@ -1647,5 +1743,90 @@ describe("dashboard de clasificación", () => {
     const zeroRow = document.querySelector(`tr[data-player-id="${zeroPlayer!.player_id}"]`);
     expect(nullRow?.children[11]).toHaveTextContent("—");
     expect(zeroRow?.children[11]).toHaveTextContent("0");
+  });
+
+  it("abre el Seguimiento de Jaén y distingue los estados ausentes sin nuevas peticiones al cambiar de modo", async () => {
+    window.history.replaceState({}, "", "/teams/49/follow");
+    render(<App />);
+
+    expect(await screen.findByRole("heading", { name: "Seguimiento" })).toBeInTheDocument();
+    const matrix = await screen.findByTestId("team-follow-matrix");
+    const sectionNavigation = screen.getByRole("navigation", { name: "Secciones de Jaén" });
+    expect(within(sectionNavigation).getAllByRole("link").map((link) => link.textContent)).toEqual(["Resumen", "Plantilla", "Seguimiento"]);
+    expect(screen.getByRole("tab", { name: "Partidos" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("6 jornadas capturadas")).toBeInTheDocument();
+    expect(within(matrix).getAllByRole("row")).toHaveLength(26);
+    expect(within(matrix).getAllByRole("columnheader")).toHaveLength(7);
+    const minuteRows = jaenPlayerMatchMinutes.records as Array<{ player_id: number; match_id: string; value: number | null }>;
+    expect(minuteRows.some((item) => item.value === 0)).toBe(true);
+    expect(minuteRows.some((item) => item.value === null)).toBe(true);
+    expect(document.querySelector('.team-follow-matrix [aria-label="0 minutos"]')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Tarjetas" }));
+    expect(await screen.findByText("Los eventos individuales de este tipo todavía no están disponibles en la captura del equipo.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Goles" }));
+    expect(screen.getByText("Los eventos individuales de este tipo todavía no están disponibles en la captura del equipo.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Todo" }));
+    expect(screen.getByText("La captura permite mostrar los minutos. Tarjetas y goles no están disponibles todavía para este equipo.")).toBeInTheDocument();
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/teams/49/seasons/2026-27/follow"))).toHaveLength(1);
+
+    fireEvent.click(within(sectionNavigation).getByRole("link", { name: "Plantilla" }));
+    expect(await screen.findByText("Entrenadores publicados")).toBeInTheDocument();
+    fireEvent.click(within(screen.getByRole("navigation", { name: "Secciones de Jaén" })).getByRole("link", { name: "Seguimiento" }));
+    expect(await screen.findByTestId("team-follow-matrix")).toBeInTheDocument();
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/teams/49/seasons/2026-27/follow"))).toHaveLength(1);
+  });
+
+  it("resuelve acceso directo y navegación Atrás/Adelante a Seguimiento en la ruta de equipo", async () => {
+    window.history.replaceState({}, "", "/teams/49/follow");
+    render(<App />);
+    expect(await screen.findByTestId("team-follow-matrix")).toBeInTheDocument();
+
+    window.history.replaceState({}, "", "/teams/49");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    expect(await screen.findByRole("heading", { name: "Resumen deportivo" })).toBeInTheDocument();
+
+    window.history.replaceState({}, "", "/teams/49/follow");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    expect(await screen.findByTestId("team-follow-matrix")).toBeInTheDocument();
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/teams/49/seasons/2026-27/follow"))).toHaveLength(1);
+  });
+
+  it("muestra los eventos verificados de Racing y mantiene las cuatro vistas locales", async () => {
+    window.history.replaceState({}, "", "/teams/48/follow");
+    render(<App />);
+
+    expect(await screen.findByRole("heading", { name: "Seguimiento" })).toBeInTheDocument();
+    const table = await screen.findByTestId("team-follow-matrix");
+    expect(screen.getByText("GRUPO I · TEMPORADA 2026/27")).toBeInTheDocument();
+    expect(within(table).getAllByRole("row")).toHaveLength(26);
+    const yellowMetricCount = racingPlayerMatchMetrics.records.filter((item) => item.metric === "yellow_cards").length;
+    const goalSum = racingPlayerMatchMetrics.records.filter((item) => item.metric === "goals").reduce((sum, item) => sum + item.value, 0);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Tarjetas" }));
+    expect(await screen.findAllByLabelText("Tarjeta amarilla verificada")).toHaveLength(yellowMetricCount);
+    fireEvent.click(screen.getByRole("tab", { name: "Goles" }));
+    const goalCells = await screen.findAllByLabelText(/\d+ gol(?:es)?/);
+    expect(goalCells.reduce((sum, cell) => sum + Number(cell.textContent), 0)).toBe(goalSum);
+    fireEvent.click(screen.getByRole("tab", { name: "Todo" }));
+    expect(await screen.findAllByLabelText("Tarjeta amarilla verificada")).toHaveLength(yellowMetricCount);
+    expect(screen.getAllByLabelText(/\d+ gol(?:es)? verificado(?:s)?/).reduce((sum, cell) => sum + Number(cell.textContent.match(/\d+/)?.[0] ?? 0), 0)).toBe(goalSum);
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/teams/48/seasons/2026-27/follow"))).toHaveLength(1);
+  });
+
+  it("declara Seguimiento no adquirido para otros equipos sin afectar Resumen", async () => {
+    const uncaptured = apiBootstrap.teams.find((team) => team.team_id !== 48 && team.team_id !== 49)!;
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      if (String(input).endsWith(`/api/v1/teams/${uncaptured.team_id}/seasons/2026-27/follow`)) {
+        return Promise.resolve(response(404, { detail: { code: "follow_not_captured", message: "not captured" } }));
+      }
+      return Promise.resolve(response(200, payloadFor(input)));
+    });
+    window.history.replaceState({}, "", `/teams/${uncaptured.team_id}/follow`);
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "Seguimiento aún no adquirido" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("link", { name: "Resumen" }));
+    expect(await screen.findByRole("heading", { name: "Resumen deportivo" })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });

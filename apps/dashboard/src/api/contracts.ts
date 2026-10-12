@@ -315,6 +315,111 @@ export const TeamRosterSchema = z.object({
 
 export type TeamRoster = z.infer<typeof TeamRosterSchema>;
 
+export const TeamFollowSchema = z.object({
+  status: z.literal("available"),
+  metadata: z.object({
+    contract_version: z.literal(1),
+    source: z.literal("BDFutbol"),
+    url: z.string().url(),
+    competition: z.literal("Primera Federación"),
+    competition_scope: z.literal("Liga"),
+    season: z.literal("2026-27"),
+    group: z.enum(["I", "II"]),
+    team_id: positiveInteger,
+    capture_id: z.string().min(1),
+    captured_at: z.string().datetime({ offset: true }),
+    extractor_version: z.string(),
+    content_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    match_capture_id: z.string().min(1),
+    match_catalog_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  }).strict(),
+  team: TeamSchema,
+  players: z.array(z.object({
+    player_id: positiveInteger,
+    display_name: z.string().min(1),
+    profile_url: z.string().url().nullable(),
+    photo_url: z.string().url().nullable(),
+    jersey_number: nullableInteger,
+  }).strict()).min(1),
+  matches: z.array(z.object({
+    match_id: z.string().min(1),
+    matchday: z.number().int().min(1).max(38),
+    matchday_date: dateOnly,
+    source_match_date: dateOnly,
+    home_team_id: positiveInteger,
+    home_team_name: z.string().min(1),
+    away_team_id: positiveInteger,
+    away_team_name: z.string().min(1),
+    home_goals: nullableInteger,
+    away_goals: nullableInteger,
+    status: z.enum(["played", "unplayed", "incomplete"]),
+  }).strict()),
+  matchdays: z.array(z.number().int().min(1).max(38)),
+  minutes: z.array(z.object({
+    player_id: positiveInteger,
+    match_id: z.string().min(1),
+    matchday: z.number().int().min(1).max(38),
+    minutes_played: z.number().int().nonnegative().nullable(),
+    source_value: z.string(),
+    source_view: z.literal("follow"),
+    source_state: z.literal("p"),
+  }).strict()),
+  metrics: z.array(z.object({
+    player_id: positiveInteger,
+    match_id: z.string().min(1),
+    matchday: z.number().int().min(1).max(38),
+    metric: z.enum(["yellow_cards", "goals"]),
+    value: z.number().int().positive(),
+    source_value: z.string(),
+    source_view: z.literal("follow"),
+    source_state: z.enum(["t", "go"]),
+  }).strict()),
+  coverage: z.array(z.object({
+    state: z.enum(["p", "t", "go", "tot"]),
+    available: z.boolean(),
+    record_count: z.number().int().nonnegative(),
+    value_total: z.number().int().nonnegative().nullable(),
+    matchdays: z.array(z.number().int().min(1).max(38)),
+  }).strict()).length(4),
+  warnings: z.array(z.string()),
+}).strict().superRefine((follow, context) => {
+  const playerIds = new Set(follow.players.map((player) => player.player_id));
+  const matches = new Map(follow.matches.map((match) => [match.match_id, match]));
+  if (playerIds.size !== follow.players.length || matches.size !== follow.matches.length) {
+    context.addIssue({ code: "custom", message: "Seguimiento repite IDs de jugador o partido." });
+  }
+  if (follow.metadata.team_id !== follow.team.team_id) {
+    context.addIssue({ code: "custom", message: "Seguimiento pertenece a otro equipo." });
+  }
+  const records = [...follow.minutes, ...follow.metrics];
+  for (const record of records) {
+    const match = matches.get(record.match_id);
+    if (!playerIds.has(record.player_id) || !match || match.matchday !== record.matchday) {
+      context.addIssue({ code: "custom", message: "Una celda no enlaza jugador y partido correctamente." });
+    }
+  }
+  const minuteKeys = follow.minutes.map((item) => `${item.player_id}:${item.match_id}`);
+  const metricKeys = follow.metrics.map((item) => `${item.player_id}:${item.match_id}:${item.metric}`);
+  if (new Set(minuteKeys).size !== minuteKeys.length || new Set(metricKeys).size !== metricKeys.length) {
+    context.addIssue({ code: "custom", message: "La matriz repite una celda de minutos o métrica." });
+  }
+  if (follow.metrics.some((item) => (item.metric === "yellow_cards" ? "t" : "go") !== item.source_state)) {
+    context.addIssue({ code: "custom", message: "La métrica no coincide con el estado fuente." });
+  }
+  if (follow.matchdays.some((day, index) => index > 0 && day <= follow.matchdays[index - 1]!)) {
+    context.addIssue({ code: "custom", message: "Las jornadas deben ser únicas y estar ordenadas." });
+  }
+  if (new Set(follow.matches.map((item) => item.matchday)).size !== follow.matches.length
+    || new Set(follow.matchdays).size !== new Set(follow.matches.map((item) => item.matchday)).size) {
+    context.addIssue({ code: "custom", message: "La matriz tiene jornadas repetidas o incompletas." });
+  }
+  if (new Set(follow.coverage.map((entry) => entry.state)).size !== 4) {
+    context.addIssue({ code: "custom", message: "La cobertura debe declarar una vez cada modo." });
+  }
+});
+
+export type TeamFollow = z.infer<typeof TeamFollowSchema>;
+
 export const TopCategorySchema = z.enum([
   "goals", "minutes", "yellow_cards", "red_cards", "youngest", "oldest",
 ]);

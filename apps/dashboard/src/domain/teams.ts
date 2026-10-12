@@ -20,6 +20,10 @@ export function teamRosterPath(teamId: number): string {
   return `${teamPath(teamId)}/roster`;
 }
 
+export function teamFollowPath(teamId: number): string {
+  return `${teamPath(teamId)}/follow`;
+}
+
 export function normalizeTeamSearch(value: string): string {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es-ES").trim();
 }

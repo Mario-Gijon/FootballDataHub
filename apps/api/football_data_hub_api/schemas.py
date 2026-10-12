@@ -196,6 +196,120 @@ class TeamRosterResponse(ApiModel):
         return self
 
 
+class TeamFollowPlayerResponse(ApiModel):
+    player_id: StrictInt = Field(gt=0)
+    display_name: str = Field(min_length=1)
+    profile_url: str | None
+    photo_url: str | None
+    jersey_number: OptionalInt
+
+
+class TeamFollowMatchResponse(ApiModel):
+    match_id: str = Field(min_length=1)
+    matchday: StrictInt = Field(ge=1, le=38)
+    matchday_date: date | None
+    source_match_date: date | None
+    home_team_id: StrictInt = Field(gt=0)
+    home_team_name: str = Field(min_length=1)
+    away_team_id: StrictInt = Field(gt=0)
+    away_team_name: str = Field(min_length=1)
+    home_goals: OptionalInt
+    away_goals: OptionalInt
+    status: Literal["played", "unplayed", "incomplete"]
+
+
+class TeamFollowMinutesResponse(ApiModel):
+    player_id: StrictInt = Field(gt=0)
+    match_id: str = Field(min_length=1)
+    matchday: StrictInt = Field(ge=1, le=38)
+    minutes_played: OptionalInt
+    source_value: str
+    source_view: Literal["follow"]
+    source_state: Literal["p"]
+
+
+class TeamFollowMetricResponse(ApiModel):
+    player_id: StrictInt = Field(gt=0)
+    match_id: str = Field(min_length=1)
+    matchday: StrictInt = Field(ge=1, le=38)
+    metric: Literal["yellow_cards", "goals"]
+    value: StrictInt = Field(gt=0)
+    source_value: str
+    source_view: Literal["follow"]
+    source_state: Literal["t", "go"]
+
+    @model_validator(mode="after")
+    def validate_metric_source(self) -> TeamFollowMetricResponse:
+        expected_state = "t" if self.metric == "yellow_cards" else "go"
+        if self.source_state != expected_state:
+            raise ValueError("La métrica no coincide con el estado fuente de Seguimiento.")
+        return self
+
+
+class TeamFollowStateCoverageResponse(ApiModel):
+    state: Literal["p", "t", "go", "tot"]
+    available: bool
+    record_count: StrictInt = Field(ge=0)
+    value_total: StrictInt | None = Field(default=None, ge=0)
+    matchdays: list[StrictInt]
+
+
+class TeamFollowMetadataResponse(ApiModel):
+    contract_version: Literal[1]
+    source: Literal["BDFutbol"]
+    url: str
+    competition: Literal["Primera Federación"]
+    competition_scope: Literal["Liga"]
+    season: Literal["2026-27"]
+    group: Literal["I", "II"]
+    team_id: StrictInt = Field(gt=0)
+    capture_id: str = Field(min_length=1)
+    captured_at: datetime
+    extractor_version: str
+    content_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    match_capture_id: str = Field(min_length=1)
+    match_catalog_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+
+
+class TeamFollowResponse(ApiModel):
+    status: Literal["available"]
+    metadata: TeamFollowMetadataResponse
+    team: TeamResponse
+    players: list[TeamFollowPlayerResponse]
+    matches: list[TeamFollowMatchResponse]
+    matchdays: list[StrictInt]
+    minutes: list[TeamFollowMinutesResponse]
+    metrics: list[TeamFollowMetricResponse]
+    coverage: list[TeamFollowStateCoverageResponse]
+    warnings: list[str]
+
+    @model_validator(mode="after")
+    def validate_follow_references(self) -> TeamFollowResponse:
+        player_ids = {player.player_id for player in self.players}
+        match_ids = {match.match_id for match in self.matches}
+        if len(player_ids) != len(self.players) or len(match_ids) != len(self.matches):
+            raise ValueError("Seguimiento repite jugadores o partidos.")
+        if len({match.matchday for match in self.matches}) != len(self.matches):
+            raise ValueError("Seguimiento no puede repetir partidos de un equipo en la misma jornada.")
+        if self.metadata.team_id != self.team.team_id:
+            raise ValueError("Seguimiento corresponde a otro equipo.")
+        if any(row.player_id not in player_ids or row.match_id not in match_ids for row in self.minutes + self.metrics):
+            raise ValueError("Una celda de Seguimiento no enlaza jugador y partido.")
+        if any(row.matchday != next(match.matchday for match in self.matches if match.match_id == row.match_id) for row in self.minutes + self.metrics):
+            raise ValueError("La jornada de una celda no coincide con el partido.")
+        minute_keys = [(row.player_id, row.match_id) for row in self.minutes]
+        metric_keys = [(row.player_id, row.match_id, row.metric) for row in self.metrics]
+        if len(minute_keys) != len(set(minute_keys)) or len(metric_keys) != len(set(metric_keys)):
+            raise ValueError("Seguimiento repite una celda de minutos o métrica.")
+        matchdays_from_matches = {match.matchday for match in self.matches}
+        if self.matchdays != sorted(set(self.matchdays)) or set(self.matchdays) != matchdays_from_matches:
+            raise ValueError("La lista de jornadas de Seguimiento no es coherente.")
+        states = [item.state for item in self.coverage]
+        if set(states) != {"p", "t", "go", "tot"} or len(states) != 4:
+            raise ValueError("Seguimiento debe indicar cobertura para sus cuatro estados.")
+        return self
+
+
 class TeamResponse(ApiModel):
     team_id: StrictInt = Field(gt=0)
     name: str = Field(min_length=1)

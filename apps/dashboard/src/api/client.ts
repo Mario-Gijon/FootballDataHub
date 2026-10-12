@@ -3,11 +3,13 @@ import {
   RefereeBootstrapSchema,
   StatisticsBootstrapSchema,
   TeamRosterSchema,
+  TeamFollowSchema,
   TopBootstrapSchema,
   type Bootstrap,
   type RefereeBootstrap,
   type StatisticsBootstrap,
   type TeamRoster,
+  type TeamFollow,
   type TopBootstrap,
 } from "./contracts";
 import type { ZodType } from "zod";
@@ -28,6 +30,18 @@ export class TeamRosterApiError extends Error {
 }
 
 const teamProfileCache = new Map<string, Promise<TeamRosterLoadResult>>();
+export type TeamFollowLoadResult =
+  | { status: "available"; follow: TeamFollow }
+  | { status: "not_captured" };
+
+export class TeamFollowApiError extends Error {
+  constructor(message: string, readonly code: string, readonly statusCode: number) {
+    super(message);
+    this.name = "TeamFollowApiError";
+  }
+}
+
+const teamFollowCache = new Map<string, Promise<TeamFollowLoadResult>>();
 
 export function loadTeamRoster(teamId: number, season: string): Promise<TeamRosterLoadResult> {
   const key = `${teamId}:${season}:roster`;
@@ -43,6 +57,55 @@ export function loadTeamRoster(teamId: number, season: string): Promise<TeamRost
 
 export function clearTeamProfileCache(): void {
   teamProfileCache.clear();
+  teamFollowCache.clear();
+}
+
+export function loadTeamFollow(teamId: number, season: string): Promise<TeamFollowLoadResult> {
+  const key = `${teamId}:${season}:follow`;
+  const cached = teamFollowCache.get(key);
+  if (cached) return cached;
+  const pending = requestTeamFollow(teamId, season).catch((error: unknown) => {
+    teamFollowCache.delete(key);
+    throw error;
+  });
+  teamFollowCache.set(key, pending);
+  return pending;
+}
+
+async function requestTeamFollow(teamId: number, season: string): Promise<TeamFollowLoadResult> {
+  let response: Response;
+  try {
+    response = await fetch(`${apiBase}/api/v1/teams/${teamId}/seasons/${season}/follow`, {
+      headers: { Accept: "application/json" },
+    });
+  } catch {
+    throw new TeamFollowApiError("No se pudo conectar con la API de FootballDataHub.", "connection_error", 0);
+  }
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    throw new TeamFollowApiError("La API devolvió una respuesta que no es JSON válido.", "invalid_json", response.status);
+  }
+  if (!response.ok) {
+    const detail = typeof body === "object" && body !== null && "detail" in body
+      ? (body as { detail?: unknown }).detail : undefined;
+    const errorBody = typeof detail === "object" && detail !== null ? detail as { code?: unknown; message?: unknown } : {};
+    if (response.status === 404 && errorBody.code === "follow_not_captured") return { status: "not_captured" };
+    throw new TeamFollowApiError(
+      typeof errorBody.message === "string" ? errorBody.message : `La API respondió con un error (${response.status}).`,
+      typeof errorBody.code === "string" ? errorBody.code : "request_failed",
+      response.status,
+    );
+  }
+  const parsed = TeamFollowSchema.safeParse(body);
+  if (!parsed.success) {
+    throw new TeamFollowApiError("La respuesta de Seguimiento no coincide con su contrato.", "contract_error", response.status);
+  }
+  if (parsed.data.team.team_id !== teamId || parsed.data.metadata.season !== season) {
+    throw new TeamFollowApiError("El Seguimiento devuelto no coincide con el equipo o temporada solicitados.", "scope_mismatch", response.status);
+  }
+  return { status: "available", follow: parsed.data };
 }
 
 async function requestTeamRoster(teamId: number, season: string): Promise<TeamRosterLoadResult> {

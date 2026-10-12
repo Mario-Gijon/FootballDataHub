@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -30,6 +31,7 @@ from football_data_hub_api.schemas import (
     StatisticsBootstrapResponse,
     TeamRosterResponse,
     TopBootstrapResponse,
+    TeamFollowResponse,
 )
 from football_data_hub_api.statistics_dataset import (
     StatisticsDatasetBundle,
@@ -44,6 +46,10 @@ from football_data_hub_api.top_dataset import (
 from football_data_hub_api.team_roster_dataset import (
     TeamRosterRegistry,
     load_team_roster_registry,
+)
+from football_data_hub_api.team_follow_dataset import (
+    TeamFollowRegistry,
+    load_team_follow_registry,
 )
 
 logger = logging.getLogger("football_data_hub_api")
@@ -65,6 +71,7 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         app.state.referee_dataset_error = None
         app.state.referee_group_errors = {}
         app.state.team_roster_registry = TeamRosterRegistry({}, {}, {}, None, {})
+        app.state.team_follow_registry = TeamFollowRegistry({}, {}, {}, None, {})
 
         group_settings = {}
         for group in ("1", "2"):
@@ -148,6 +155,13 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
             configured.team_profiles_index_path,
             datasets=app.state.datasets,
             matches_paths=matches_paths,
+            unavailable_group_errors=unavailable_groups,
+        )
+        app.state.team_follow_registry = load_team_follow_registry(
+            configured.team_profiles_index_path,
+            datasets=app.state.datasets,
+            matches_paths=matches_paths,
+            roster_registry=app.state.team_roster_registry,
             unavailable_group_errors=unavailable_groups,
         )
         yield
@@ -298,6 +312,58 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         etag = (
             f'"team-roster-v{profile.metadata.contract_version}-'
             f'{team_id}-{season}-{profile.metadata.content_sha256[:24]}"'
+        )
+        response.headers["ETag"] = etag
+        if _etag_matches(request.headers.get("if-none-match"), etag):
+            return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": etag})
+        return profile
+
+    @app.get(
+        "/api/v1/teams/{team_id}/seasons/{season}/follow",
+        response_model=TeamFollowResponse,
+        tags=["teams", "follow"],
+        summary="Seguimiento por jugador y partido de un equipo",
+    )
+    def team_follow(
+        team_id: int, season: str, request: Request, response: Response
+    ) -> TeamFollowResponse | Response:
+        if season != "2026-27":
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"code": "season_not_available", "message": "Solo está disponible 2026/27."},
+            )
+        registry: TeamFollowRegistry = request.app.state.team_follow_registry
+        if team_id not in registry.known_teams:
+            if registry.unavailable_group_errors:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail={"code": "team_catalog_unavailable", "message": "No se pudieron validar todos los catálogos de equipos."},
+                )
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"code": "team_unknown", "message": "No existe un equipo con ese identificador."},
+            )
+        profile = registry.profiles.get(team_id)
+        if profile is None:
+            if team_id in registry.profile_errors:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail={"code": "follow_invalid", "message": "La captura seleccionada no superó las validaciones de Seguimiento."},
+                )
+            if registry.index_error:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail={"code": "follow_index_unavailable", "message": "El índice de capturas de equipo no está disponible."},
+                )
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"code": "follow_not_captured", "message": "El Seguimiento de este equipo aún no tiene una captura publicada."},
+            )
+        representation = profile.model_dump_json().encode("utf-8")
+        representation_sha = hashlib.sha256(representation).hexdigest()[:24]
+        etag = (
+            f'"team-follow-v{profile.metadata.contract_version}-'
+            f'{team_id}-{season}-{representation_sha}"'
         )
         response.headers["ETag"] = etag
         if _etag_matches(request.headers.get("if-none-match"), etag):

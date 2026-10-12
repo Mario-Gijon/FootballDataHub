@@ -14,6 +14,10 @@
         "normalized/players.json": "a415e8972cd5c15979ebb9bd952f2e8af22ccdf33dbc0cb856fc6f8f9dd1ce3a",
         "normalized/memberships.json": "37e8540820c6deb6971e6c2e7a3a8b5436a89ac186491eb7b8b61a0940168f12",
         "normalized/player_statistics.json": "450a471d04833f557af41510a4652fec67d1beccb0745d5604e1fcc24574e102"
+      },
+      "follow_files_sha256": {
+        "normalized/player_match_minutes.json": "9e311958633077996c4f4247fb29f0e1342741fdf0b6b728fcfe9614455d7f73",
+        "raw/follow.html": "58de1ddc33da93ac868d378e9ac7de55350df8f6c06ef96e77435026ad33ba05"
       }
     },
     "48": {
@@ -28,6 +32,15 @@
         "normalized/players.json": "df23416d0e0037aecb76cb972776adcbcf81ce64befbb591d694f1dc0552cf7f",
         "normalized/memberships.json": "51e3046aee668fb122d07239651bbe1c15730d7e4182fa476ef0775941fd6a3d",
         "normalized/player_statistics.json": "517bae4d8dd4c914d70b1bfb0987e959757d2f2c6857b816afa8cfee71fdd8ea"
+      },
+      "follow_files_sha256": {
+        "normalized/player_match_minutes.json": "fbf94922d695c35c57efb3e3365087b2f38fd5c6f3271068c7fd230f1dbd9870",
+        "normalized/player_match_metrics.json": "5eb092141cf009f2f4bade7bc84e3c58b6753da8c3553d1f73a4e1c16b2b4889",
+        "raw/follow.html.gz": "ba0ac65a0694b7fb1717d79bb8b9c446c43e02a45fb7de4ad6a592c06374fda2",
+        "raw/follow_states/p.html.gz": "09d9dd12b769383445c0e330735f3b7247ecbe7ffce799afdb556bde136abe63",
+        "raw/follow_states/t.html.gz": "14bad251df7ca8f877f456034a3582c1c3ba308658a655a277d6810e8dafed31",
+        "raw/follow_states/go.html.gz": "354a66d5b044f836b5601bbf17a9b0bb7d8d3548792ab3d50bff8594e7421fb8",
+        "raw/follow_states/tot.html.gz": "56b06d8d7bbfee9e7d6a1513bbc95976d2b75e1e3f105405f46ca5b8f3f761bf"
       }
     }
   }
