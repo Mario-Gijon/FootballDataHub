@@ -164,7 +164,8 @@ def export_team_capture(
                     for key, value in bundle.follow_state_diagnostics.get(state, {}).items()
                     if key not in {"path", "compression", "sha256", "stored_bytes", "bytes_utf8"}
                 },
-                "status": "VALID",
+                "status": bundle.follow_state_diagnostics.get(state, {}).get("status", "VALID"),
+                "origin": bundle.follow_state_diagnostics.get(state, {}).get("origin", "source_capture"),
                 "selected_value": state,
                 "source_capture_id": bundle.follow_state_diagnostics.get(state, {}).get("source_capture_id") or bundle.capture_id,
                 "sha256": hashlib.sha256(html_bytes).hexdigest(),

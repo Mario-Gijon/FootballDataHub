@@ -124,6 +124,7 @@ function FollowContent({ follow, mode }: { follow: TeamFollowData; mode: FollowM
 }
 
 function CaptureDetails({ follow }: { follow: TeamFollowData }) {
+  const stateLabels = { p: "Partidos", t: "Tarjetas", go: "Goles", tot: "Todo" } as const;
   return <details className="follow-capture-details">
     <summary>Captura {formatDateTime(follow.metadata.captured_at)}</summary>
     <dl>
@@ -131,6 +132,10 @@ function CaptureDetails({ follow }: { follow: TeamFollowData }) {
       <div><dt>Fuente</dt><dd><a href={follow.metadata.url} target="_blank" rel="noreferrer">BDFutbol ↗</a></dd></div>
       <div><dt>Catálogo de partidos</dt><dd>{follow.metadata.match_capture_id}</dd></div>
     </dl>
+    {follow.metadata.derived_states.length > 0 && <p className="follow-derived-note">
+      {follow.metadata.derived_states.map((state) => stateLabels[state]).join(", ")} reconstruidos offline
+      {follow.metadata.derived_at ? ` el ${formatDateTime(follow.metadata.derived_at)}` : ""} a partir de las matrices JavaScript de la captura fuente del {formatDateTime(follow.metadata.captured_at)}.
+    </p>}
   </details>;
 }
 

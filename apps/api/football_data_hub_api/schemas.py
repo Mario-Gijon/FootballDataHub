@@ -232,7 +232,7 @@ class TeamFollowMetricResponse(ApiModel):
     player_id: StrictInt = Field(gt=0)
     match_id: str = Field(min_length=1)
     matchday: StrictInt = Field(ge=1, le=38)
-    metric: Literal["yellow_cards", "goals"]
+    metric: Literal["yellow_cards", "red_cards", "goals"]
     value: StrictInt = Field(gt=0)
     source_value: str
     source_view: Literal["follow"]
@@ -240,7 +240,7 @@ class TeamFollowMetricResponse(ApiModel):
 
     @model_validator(mode="after")
     def validate_metric_source(self) -> TeamFollowMetricResponse:
-        expected_state = "t" if self.metric == "yellow_cards" else "go"
+        expected_state = "go" if self.metric == "goals" else "t"
         if self.source_state != expected_state:
             raise ValueError("La métrica no coincide con el estado fuente de Seguimiento.")
         return self
@@ -255,7 +255,7 @@ class TeamFollowStateCoverageResponse(ApiModel):
 
 
 class TeamFollowMetadataResponse(ApiModel):
-    contract_version: Literal[1]
+    contract_version: Literal[2]
     source: Literal["BDFutbol"]
     url: str
     competition: Literal["Primera Federación"]
@@ -269,6 +269,8 @@ class TeamFollowMetadataResponse(ApiModel):
     content_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
     match_capture_id: str = Field(min_length=1)
     match_catalog_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    derived_states: list[Literal["p", "t", "go", "tot"]] = Field(default_factory=list)
+    derived_at: datetime | None = None
 
 
 class TeamFollowResponse(ApiModel):

@@ -1028,6 +1028,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .team-follow-legend li { display: inline-flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 10px; }
 .team-follow-legend li > span { width: 9px; height: 9px; display: inline-block; border: 1px solid var(--line-soft); border-radius: 3px; background: #555b63; }
 .team-follow-legend .follow-legend-yellow { border-color: #e5c451; background: #e5c451; }
+.team-follow-legend .follow-legend-red { border-color: #d5555c; background: #a1272d; }
 .team-follow-legend .follow-legend-goal { border-color: #65b987; background: #65b987; }
 .team-follow-legend .follow-legend-neutral { background: #646a72; }
 .follow-coverage-note, .follow-warning { margin: 0; color: var(--text-muted); font-size: 10px; line-height: 1.5; }
@@ -1047,7 +1048,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .team-follow-matrix .follow-player-cell { color: var(--text); background: #1b1e22; font-weight: 550; }
 .team-follow-matrix tbody tr:hover .follow-player-cell, .team-follow-matrix tbody tr:hover td { background: #25292e; }
 .follow-player-cell { display: flex; align-items: center; gap: 8px; }
-.follow-player-avatar { width: 27px; height: 27px; flex: 0 0 27px; display: grid; place-items: center; border: 1px solid var(--line-soft); border-radius: 50%; color: var(--text-muted); background: var(--surface-raised); font-size: 9px; }
+.follow-player-photo, .follow-player-photo.profile-image-fallback { width: 29px; height: 29px; flex: 0 0 29px; display: grid; place-items: center; overflow: hidden; border: 1px solid var(--line-soft); border-radius: 50%; color: var(--text-muted); background: var(--surface-raised); font-size: 9px; object-fit: cover; }
 .follow-player-copy { min-width: 0; display: grid; gap: 2px; }
 .follow-player-copy a, .follow-player-copy strong { max-width: 150px; overflow: hidden; color: var(--text); font-size: 11px; font-weight: 600; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
 .follow-player-copy a:hover { color: var(--accent); }
@@ -1055,10 +1056,12 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .follow-cell-content { display: inline-flex; align-items: center; justify-content: center; gap: 4px; flex-wrap: wrap; }
 .follow-minute-value { color: var(--text); font-variant-numeric: tabular-nums; }
 .follow-cell-empty { color: var(--text-subtle); }
-.follow-yellow-marker, .follow-goal-marker, .follow-goal-value { min-width: 20px; display: inline-grid; place-items: center; padding: 2px 4px; border-radius: 4px; font-size: 9px; font-weight: 750; line-height: 1.2; }
+.follow-yellow-marker, .follow-red-marker, .follow-goal-marker, .follow-goal-value { min-width: 20px; display: inline-grid; place-items: center; padding: 2px 4px; border-radius: 4px; font-size: 9px; font-weight: 750; line-height: 1.2; }
 .follow-yellow-marker { border: 1px solid rgb(229 196 81 / 65%); color: #211c0c; background: #e5c451; }
+.follow-red-marker { border: 1px solid rgb(231 91 91 / 70%); color: #fff1f1; background: rgb(161 39 45 / 78%); }
 .follow-goal-marker, .follow-goal-value { border: 1px solid rgb(101 185 135 / 55%); color: #c5f0d4; background: rgb(43 118 74 / 48%); }
 .team-follow-panel .roster-state { padding: 0; }
+.follow-derived-note { max-width: 720px; margin: 10px 0 0; color: var(--text-subtle); font-size: 10px; line-height: 1.45; }
 @media (max-width: 720px) {
   .team-follow-heading { gap: 8px; }
   .team-follow-round-count { padding: 5px 7px; font-size: 9px; }
@@ -1069,7 +1072,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
   .team-follow-matrix { font-size: 10px; }
   .team-follow-matrix th, .team-follow-matrix td { min-width: 68px; height: 41px; padding: 4px; }
   .team-follow-matrix .follow-player-heading, .team-follow-matrix .follow-player-cell { width: 154px; min-width: 154px; }
-  .follow-player-avatar { width: 23px; height: 23px; flex-basis: 23px; }
+  .follow-player-photo, .follow-player-photo.profile-image-fallback { width: 25px; height: 25px; flex-basis: 25px; }
   .follow-player-copy a, .follow-player-copy strong { max-width: 105px; font-size: 10px; }
   .team-follow-matrix thead th > small { max-width: 62px; }
 }

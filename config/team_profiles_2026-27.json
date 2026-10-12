@@ -3,21 +3,26 @@
   "season": "2026-27",
   "profiles": {
     "49": {
-      "capture_id": "team01a-group2-49-source-evidence",
-      "directory": "../data/exports/bdfutbol/teams/2026-27/49/team01a-group2-49-source-evidence",
+      "capture_id": "20261012T120720.895650Z-8c75b830",
+      "directory": "../data/exports/bdfutbol/teams/2026-27/49/20261012T120720.895650Z-8c75b830",
       "files_sha256": {
-        "metadata/capture.json": "5b3a67c79c2e3f596a44b0fd20c010d4ab1583efa0dee1e9ba732ab2b9d9a097",
-        "validation/results.json": "01bf960887ad42c5b4aafdccb578780136c82d24519358936ef05acee70b50e9",
-        "raw/access.json": "d2dbe53e08686fbb75113afc30cfc18458ffb7d1f701ac238e4a1fc3f0fc44f5",
-        "normalized/team_identity.json": "3fb994e7b4b5b18b2a3a2900001d9676fb8e63927a1606b38817e99d733cadc4",
-        "normalized/team_season.json": "aa04e3d2d7ba929f68c0f05588cc6cca584ea9a4dce702c23935e6f47ccb079f",
-        "normalized/players.json": "a415e8972cd5c15979ebb9bd952f2e8af22ccdf33dbc0cb856fc6f8f9dd1ce3a",
-        "normalized/memberships.json": "37e8540820c6deb6971e6c2e7a3a8b5436a89ac186491eb7b8b61a0940168f12",
-        "normalized/player_statistics.json": "450a471d04833f557af41510a4652fec67d1beccb0745d5604e1fcc24574e102"
+        "metadata/capture.json": "522c1b93b4474791872263014ba4684dfd2bb3662860133406584b477a7cc096",
+        "validation/results.json": "753f21659c368f4d219d81d781a06017ad515da713d85e3a0e13d8083c6c096c",
+        "raw/access.json": "fe96419889b724d2448657b3f9d33a601f55db9b8b6bf62e900d382bfa666ce5",
+        "normalized/team_identity.json": "051b828cbd02cb9d2483b468a1bf1a3eb1170dcac0ff7d2ac2636389c8af93fe",
+        "normalized/team_season.json": "361c2177a4a87684bab310049519e05fb0d1f8ada7495a1459951d77181a1306",
+        "normalized/players.json": "75b96a11330246f343e4f1989750cbdec9963e3bd840e91de15c9f93063b62c1",
+        "normalized/memberships.json": "c7bbe3ed0bc569ca66758d48d881d62ab60f916f9ce2ff2c4e8af9b3d13449dd",
+        "normalized/player_statistics.json": "2f995b48030dfe6efe67bb4cf35bb50e5634c3323887b2222b1354e38d11894c"
       },
       "follow_files_sha256": {
-        "normalized/player_match_minutes.json": "9e311958633077996c4f4247fb29f0e1342741fdf0b6b728fcfe9614455d7f73",
-        "raw/follow.html": "58de1ddc33da93ac868d378e9ac7de55350df8f6c06ef96e77435026ad33ba05"
+        "normalized/player_match_minutes.json": "dff839a3cbd84ebcdaaafd0721ea21d77b3114ac40d42b46364b3cbce136d6d9",
+        "normalized/player_match_metrics.json": "503fd72a0523a0d98ed4d58d45d5fbab188ff8b851912403d4c07d12dcef6f98",
+        "raw/follow.html.gz": "16d62a4156d8539ff70d1996297cd21a7dfd5ec8a10d053552e80ca50f27c7ec",
+        "raw/follow_states/p.html.gz": "16d62a4156d8539ff70d1996297cd21a7dfd5ec8a10d053552e80ca50f27c7ec",
+        "raw/follow_states/t.html.gz": "827344bb8b7ee34938009cb5a4c7330ab8d5d9def4ff7171c9dff936e3d1ac24",
+        "raw/follow_states/go.html.gz": "12230b1f8963cf49fcad07c71686cb07b403a8d86723da0f90b91c50a32f5d6d",
+        "raw/follow_states/tot.html.gz": "81b2773037dbcaa635e7507957c70f3679d1c6890ddd9f00dd55236c54e05bb0"
       }
     },
     "48": {

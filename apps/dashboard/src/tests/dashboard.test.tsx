@@ -40,6 +40,9 @@ import jaenPlayers from "../../../../data/exports/bdfutbol/teams/2026-27/49/team
 import jaenMemberships from "../../../../data/exports/bdfutbol/teams/2026-27/49/team01a-group2-49-source-evidence/normalized/memberships.json";
 import jaenPlayerStatistics from "../../../../data/exports/bdfutbol/teams/2026-27/49/team01a-group2-49-source-evidence/normalized/player_statistics.json";
 import jaenPlayerMatchMinutes from "../../../../data/exports/bdfutbol/teams/2026-27/49/team01a-group2-49-source-evidence/normalized/player_match_minutes.json";
+import jaenFollowCapture from "../../../../data/exports/bdfutbol/teams/2026-27/49/20261012T120720.895650Z-8c75b830/metadata/capture.json";
+import jaenFollowMinutes from "../../../../data/exports/bdfutbol/teams/2026-27/49/20261012T120720.895650Z-8c75b830/normalized/player_match_minutes.json";
+import jaenFollowMetrics from "../../../../data/exports/bdfutbol/teams/2026-27/49/20261012T120720.895650Z-8c75b830/normalized/player_match_metrics.json";
 import racingTeamCapture from "../../../../data/exports/bdfutbol/teams/2026-27/48/20261011T123240.190812Z-8f307d1c/metadata/capture.json";
 import racingTeamIdentity from "../../../../data/exports/bdfutbol/teams/2026-27/48/20261011T123240.190812Z-8f307d1c/normalized/team_identity.json";
 import racingTeamSeason from "../../../../data/exports/bdfutbol/teams/2026-27/48/20261011T123240.190812Z-8f307d1c/normalized/team_season.json";
@@ -50,6 +53,7 @@ import racingPlayerMatchMinutes from "../../../../data/exports/bdfutbol/teams/20
 import racingPlayerMatchMetrics from "../../../../data/exports/bdfutbol/teams/2026-27/48/20261011T123240.190812Z-8f307d1c/normalized/player_match_metrics.json";
 import { buildTopProgressData, TopSection } from "../components/TopSection";
 import { TeamRosterSection } from "../components/TeamRoster";
+import { ProfileImage } from "../components/TeamRosterShared";
 import { clearTeamProfileCache } from "../api/client";
 import type { RefereeBootstrap, StatisticsBootstrap, TeamFollow, TeamRoster, TopBootstrap } from "../api/contracts";
 import { RefereeBootstrapSchema, StatisticsBootstrapSchema, TeamFollowSchema, TeamRosterSchema, TopBootstrapSchema } from "../api/contracts";
@@ -594,11 +598,11 @@ function teamRosterPayload(teamId: number): TeamRoster {
 function teamFollowPayload(teamId: number): TeamFollow {
   if (teamId !== 48 && teamId !== 49) throw new Error(`No hay una captura de Seguimiento de prueba para ${teamId}.`);
   const isRacing = teamId === 48;
-  const capture = asJsonObject(isRacing ? racingTeamCapture : jaenTeamCapture);
+  const capture = asJsonObject(isRacing ? racingTeamCapture : jaenFollowCapture);
   const roster = teamRosterPayload(teamId);
-  const minuteRecords = asJsonObject(isRacing ? racingPlayerMatchMinutes : jaenPlayerMatchMinutes).records as JsonObject[];
-  const metricDocument = isRacing ? asJsonObject(racingPlayerMatchMetrics) : null;
-  const metricRecords = metricDocument ? metricDocument.records as JsonObject[] : [];
+  const minuteRecords = asJsonObject(isRacing ? racingPlayerMatchMinutes : jaenFollowMinutes).records as JsonObject[];
+  const metricDocument = asJsonObject(isRacing ? racingPlayerMatchMetrics : jaenFollowMetrics);
+  const metricRecords = metricDocument.records as JsonObject[];
   const groupBootstrap = isRacing ? group1Bootstrap : apiBootstrap;
   const matchById = new Map(groupBootstrap.matches.map((match) => [match.match_id, match]));
   const teamById = new Map(groupBootstrap.teams.map((team) => [team.team_id, team]));
@@ -620,7 +624,7 @@ function teamFollowPayload(teamId: number): TeamFollow {
       status: match.status,
     };
   }).sort((left, right) => left.matchday - right.matchday);
-  const capturedStates = new Set(isRacing ? ["p", "t", "go", "tot"] : ["p"]);
+  const capturedStates = new Set(["p", "t", "go", "tot"]);
   const matchdays = [...new Set(matches.map((match) => match.matchday))].sort((left, right) => left - right);
   const metricSum = (metric: string) => metricRecords.filter((item) => item.metric === metric)
     .reduce((sum, item) => sum + Number(item.value), 0);
@@ -628,7 +632,7 @@ function teamFollowPayload(teamId: number): TeamFollow {
   return TeamFollowSchema.parse({
     status: "available",
     metadata: {
-      contract_version: 1,
+      contract_version: 2,
       source: "BDFutbol",
       url: followSnapshot.url,
       competition: "Primera Federación",
@@ -642,6 +646,8 @@ function teamFollowPayload(teamId: number): TeamFollow {
       content_sha256: "c".repeat(64),
       match_capture_id: groupBootstrap.metadata.capture_id,
       match_catalog_sha256: "d".repeat(64),
+      derived_states: isRacing ? [] : ["t", "go", "tot"],
+      derived_at: isRacing ? null : "2026-10-12T12:07:20.895591+00:00",
     },
     team: roster.team,
     players: roster.players.map((player) => ({
@@ -674,11 +680,11 @@ function teamFollowPayload(teamId: number): TeamFollow {
     })),
     coverage: [
       { state: "p", available: true, record_count: minuteRecords.length, value_total: null, matchdays },
-      { state: "t", available: capturedStates.has("t"), record_count: metricRecords.filter((item) => item.metric === "yellow_cards").length, value_total: capturedStates.has("t") ? metricSum("yellow_cards") : null, matchdays: capturedStates.has("t") ? matchdays : [] },
+      { state: "t", available: capturedStates.has("t"), record_count: metricRecords.filter((item) => item.metric === "yellow_cards" || item.metric === "red_cards").length, value_total: capturedStates.has("t") ? metricSum("yellow_cards") + metricSum("red_cards") : null, matchdays: capturedStates.has("t") ? matchdays : [] },
       { state: "go", available: capturedStates.has("go"), record_count: metricRecords.filter((item) => item.metric === "goals").length, value_total: capturedStates.has("go") ? metricSum("goals") : null, matchdays: capturedStates.has("go") ? matchdays : [] },
       { state: "tot", available: capturedStates.has("tot"), record_count: 0, value_total: null, matchdays: capturedStates.has("tot") ? matchdays : [] },
     ],
-    warnings: isRacing ? ["No se interpretan marcadores tg2/tv ni se infieren tarjetas rojas."] : ["Los eventos individuales de tipo Tarjetas todavía no están disponibles en la captura del equipo.", "Los eventos individuales de tipo Goles todavía no están disponibles en la captura del equipo."],
+    warnings: [],
   });
 }
 
@@ -1745,7 +1751,7 @@ describe("dashboard de clasificación", () => {
     expect(zeroRow?.children[11]).toHaveTextContent("0");
   });
 
-  it("abre el Seguimiento de Jaén y distingue los estados ausentes sin nuevas peticiones al cambiar de modo", async () => {
+  it("muestra el Seguimiento completo de Jaén, con fotos y eventos validados, sin nuevas peticiones al cambiar de modo", async () => {
     window.history.replaceState({}, "", "/teams/49/follow");
     render(<App />);
 
@@ -1757,17 +1763,28 @@ describe("dashboard de clasificación", () => {
     expect(screen.getByText("6 jornadas capturadas")).toBeInTheDocument();
     expect(within(matrix).getAllByRole("row")).toHaveLength(26);
     expect(within(matrix).getAllByRole("columnheader")).toHaveLength(7);
+    const jaenPhotoPlayer = teamFollowPayload(49).players.find((player) => player.photo_url)!;
+    const photoRow = matrix.querySelector(`tbody tr[data-player-id="${jaenPhotoPlayer.player_id}"]`);
+    expect(photoRow?.querySelector("img.follow-player-photo")).toHaveAttribute("src", jaenPhotoPlayer.photo_url);
     const minuteRows = jaenPlayerMatchMinutes.records as Array<{ player_id: number; match_id: string; value: number | null }>;
     expect(minuteRows.some((item) => item.value === 0)).toBe(true);
     expect(minuteRows.some((item) => item.value === null)).toBe(true);
     expect(document.querySelector('.team-follow-matrix [aria-label="0 minutos"]')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("tab", { name: "Tarjetas" }));
-    expect(await screen.findByText("Los eventos individuales de este tipo todavía no están disponibles en la captura del equipo.")).toBeInTheDocument();
+    const yellowCards = await screen.findAllByLabelText(/\d+ tarjetas? amarillas? verificadas?/);
+    const redCards = await screen.findAllByLabelText(/\d+ tarjetas? rojas? verificadas?/);
+    expect(yellowCards).toHaveLength(13);
+    expect(redCards).toHaveLength(2);
+    expect(yellowCards.some((item) => item.textContent?.includes("×2"))).toBe(true);
     fireEvent.click(screen.getByRole("tab", { name: "Goles" }));
-    expect(screen.getByText("Los eventos individuales de este tipo todavía no están disponibles en la captura del equipo.")).toBeInTheDocument();
+    const goals = await screen.findAllByLabelText(/\d+ gol(?:es)?/);
+    expect(goals.reduce((sum, item) => sum + Number(item.textContent), 0)).toBe(8);
     fireEvent.click(screen.getByRole("tab", { name: "Todo" }));
-    expect(screen.getByText("La captura permite mostrar los minutos. Tarjetas y goles no están disponibles todavía para este equipo.")).toBeInTheDocument();
+    expect(await screen.findAllByLabelText(/\d+ tarjetas? amarillas? verificadas?/)).toHaveLength(13);
+    expect(screen.getAllByLabelText(/\d+ tarjetas? rojas? verificadas?/)).toHaveLength(2);
+    expect(screen.getAllByLabelText(/\d+ gol(?:es)? verificado(?:s)?/).reduce((sum, item) => sum + Number(item.getAttribute("aria-label")?.match(/^\d+/)?.[0] ?? 0), 0)).toBe(8);
+    expect(screen.getByText(/Tarjetas, Goles, Todo reconstruidos offline/)).toBeInTheDocument();
     expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/teams/49/seasons/2026-27/follow"))).toHaveLength(1);
 
     fireEvent.click(within(sectionNavigation).getByRole("link", { name: "Plantilla" }));
@@ -1800,18 +1817,30 @@ describe("dashboard de clasificación", () => {
     const table = await screen.findByTestId("team-follow-matrix");
     expect(screen.getByText("GRUPO I · TEMPORADA 2026/27")).toBeInTheDocument();
     expect(within(table).getAllByRole("row")).toHaveLength(26);
+    const racingPhotoPlayer = teamFollowPayload(48).players.find((player) => player.photo_url)!;
+    const racingPhotoRow = table.querySelector(`tbody tr[data-player-id="${racingPhotoPlayer.player_id}"]`);
+    expect(racingPhotoRow?.querySelector("img.follow-player-photo")).toHaveAttribute("src", racingPhotoPlayer.photo_url);
     const yellowMetricCount = racingPlayerMatchMetrics.records.filter((item) => item.metric === "yellow_cards").length;
     const goalSum = racingPlayerMatchMetrics.records.filter((item) => item.metric === "goals").reduce((sum, item) => sum + item.value, 0);
 
     fireEvent.click(screen.getByRole("tab", { name: "Tarjetas" }));
-    expect(await screen.findAllByLabelText("Tarjeta amarilla verificada")).toHaveLength(yellowMetricCount);
+    expect(await screen.findAllByLabelText(/\d+ tarjetas? amarillas? verificadas?/)).toHaveLength(yellowMetricCount);
     fireEvent.click(screen.getByRole("tab", { name: "Goles" }));
     const goalCells = await screen.findAllByLabelText(/\d+ gol(?:es)?/);
     expect(goalCells.reduce((sum, cell) => sum + Number(cell.textContent), 0)).toBe(goalSum);
     fireEvent.click(screen.getByRole("tab", { name: "Todo" }));
-    expect(await screen.findAllByLabelText("Tarjeta amarilla verificada")).toHaveLength(yellowMetricCount);
+    expect(await screen.findAllByLabelText(/\d+ tarjetas? amarillas? verificadas?/)).toHaveLength(yellowMetricCount);
     expect(screen.getAllByLabelText(/\d+ gol(?:es)? verificado(?:s)?/).reduce((sum, cell) => sum + Number(cell.textContent.match(/\d+/)?.[0] ?? 0), 0)).toBe(goalSum);
     expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/teams/48/seasons/2026-27/follow"))).toHaveLength(1);
+  });
+
+  it("ProfileImage conserva fallback de iniciales solo si falta o falla la foto", () => {
+    const { container, rerender } = render(<ProfileImage src={null} name="Jugador Demo" className="follow-player-photo" />);
+    expect(container.querySelector(".profile-image-fallback")).toHaveTextContent("JD");
+    rerender(<ProfileImage src="https://www.bdfutbol.com/i/m/demo.png" name="Jugador Demo" className="follow-player-photo" />);
+    fireEvent.error(container.querySelector("img")!);
+    expect(container.querySelector("img")).not.toBeInTheDocument();
+    expect(container.querySelector(".profile-image-fallback")).toHaveTextContent("JD");
   });
 
   it("declara Seguimiento no adquirido para otros equipos sin afectar Resumen", async () => {

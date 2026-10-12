@@ -22,7 +22,7 @@ from football_data_hub_api.team_roster_dataset import (
 
 INDEX_PATH = PROJECT_ROOT / "config/team_profiles_2026-27.json"
 JAEN_CAPTURE = PROJECT_ROOT / (
-    "data/exports/bdfutbol/teams/2026-27/49/team01a-group2-49-source-evidence"
+    "data/exports/bdfutbol/teams/2026-27/49/20261012T120720.895650Z-8c75b830"
 )
 
 
@@ -134,7 +134,8 @@ def test_jaen_and_racing_rosters_are_loaded_from_the_published_captures(
         assert all(item.player_id in players for item in tactic.positions)
         assert all(0 <= item.horizontal <= 1 and 0 <= item.vertical <= 1 for item in tactic.positions)
 
-    assert any("Seguimiento" in warning for warning in registry.profiles[49].warnings)
+    assert registry.profiles[49].metadata.capture_id == "20261012T120720.895650Z-8c75b830"
+    assert not any("Seguimiento no capturado" in warning for warning in registry.profiles[49].warnings)
 
 
 def test_roster_route_distinguishes_available_uncaptured_unknown_and_etag(
@@ -229,6 +230,16 @@ def test_valid_capture_does_not_require_a_fixed_player_count_or_follow_data(
     memberships_path.write_text(json.dumps(memberships, ensure_ascii=False), encoding="utf-8")
     statistics_path.write_text(json.dumps(statistics, ensure_ascii=False), encoding="utf-8")
 
+    capture_metadata_path = selected / "metadata/capture.json"
+    capture_metadata = json.loads(capture_metadata_path.read_text(encoding="utf-8"))
+    for name in ("players", "memberships", "player_statistics"):
+        relative = f"normalized/{name}.json"
+        digest = hashlib.sha256((selected / relative).read_bytes()).hexdigest()
+        capture_metadata["normalized_snapshots"][f"{name}.json"]["sha256"] = digest
+    capture_metadata_path.write_text(
+        json.dumps(capture_metadata, ensure_ascii=False), encoding="utf-8"
+    )
+
     index = json.loads(INDEX_PATH.read_text(encoding="utf-8"))
     absolute_capture_paths(index)
     selected_entry = index["profiles"]["49"]
@@ -237,6 +248,7 @@ def test_valid_capture_does_not_require_a_fixed_player_count_or_follow_data(
         "normalized/players.json",
         "normalized/memberships.json",
         "normalized/player_statistics.json",
+        "metadata/capture.json",
     ):
         selected_entry["files_sha256"][relative] = hashlib.sha256(
             (selected / relative).read_bytes()

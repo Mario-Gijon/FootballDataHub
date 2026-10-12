@@ -23,6 +23,7 @@ from football_data_hub_api.team_roster_dataset import load_team_roster_registry
 
 INDEX_PATH = PROJECT_ROOT / "config/team_profiles_2026-27.json"
 RACING_CAPTURE = PROJECT_ROOT / "data/exports/bdfutbol/teams/2026-27/48/20261011T123240.190812Z-8f307d1c"
+JAEN_CAPTURE = PROJECT_ROOT / "data/exports/bdfutbol/teams/2026-27/49/20261012T120720.895650Z-8c75b830"
 
 
 @pytest.fixture(scope="module")
@@ -84,18 +85,32 @@ def test_racing_and_jaen_publish_their_real_follow_coverage(loaded: tuple) -> No
     assert len(racing.minutes) == 150
     assert sum(metric.value for metric in racing.metrics if metric.metric == "yellow_cards") == 10
     assert sum(metric.value for metric in racing.metrics if metric.metric == "goals") == 7
+    assert not any(metric.metric == "red_cards" for metric in racing.metrics)
     assert {item.state for item in racing.coverage if item.available} == {"p", "t", "go", "tot"}
-    assert any("tg2/tv" in warning for warning in racing.warnings)
+    assert racing.metadata.derived_states == []
 
     jaen = follow_registry.profiles[49]
     assert jaen.metadata.group == "II"
     assert len(jaen.players) == 25
     assert jaen.matchdays == [1, 2, 3, 4, 5, 6]
     assert len(jaen.minutes) == 150
-    assert jaen.metrics == []
-    assert {item.state for item in jaen.coverage if item.available} == {"p"}
-    assert not any(item.available for item in jaen.coverage if item.state in {"t", "go", "tot"})
-    assert any("no incluye eventos de tarjetas ni goles" in warning for warning in jaen.warnings)
+    assert len(jaen.metrics) == 22
+    assert sum(metric.value for metric in jaen.metrics if metric.metric == "yellow_cards") == 15
+    assert sum(metric.value for metric in jaen.metrics if metric.metric == "red_cards") == 2
+    assert sum(metric.value for metric in jaen.metrics if metric.metric == "goals") == 8
+    assert {item.state for item in jaen.coverage if item.available} == {"p", "t", "go", "tot"}
+    assert jaen.metadata.contract_version == 2
+    assert jaen.metadata.derived_states == ["go", "t", "tot"]
+    assert jaen.metadata.derived_at is not None
+    assert jaen.metadata.captured_at < jaen.metadata.derived_at
+    assert any(player.photo_url for player in jaen.players)
+    assert not any("no incluye eventos" in warning for warning in jaen.warnings)
+
+    statistics = json.loads((JAEN_CAPTURE / "normalized/player_statistics.json").read_text(encoding="utf-8"))["records"]
+    for record in statistics:
+        for metric in ("yellow_cards", "red_cards", "goals"):
+            actual = sum(item.value for item in jaen.metrics if item.player_id == record["player_id"] and item.metric == metric)
+            assert actual == record[metric]
 
 
 def test_match_player_relations_and_published_zero_null_values_are_preserved(loaded: tuple) -> None:
@@ -122,9 +137,9 @@ def test_follow_route_etag_unknown_uncaptured_and_wrong_season(loaded: tuple) ->
     jaen, response = invoke_follow_endpoint(registry, 49)
     assert isinstance(jaen, TeamFollowResponse)
     assert response.status_code == 200
-    assert jaen.metadata.contract_version == 1
+    assert jaen.metadata.contract_version == 2
     etag = response.headers["etag"]
-    assert etag.startswith('"team-follow-v1-49-2026-27-')
+    assert etag.startswith('"team-follow-v2-49-2026-27-')
     not_modified, cached_response = invoke_follow_endpoint(registry, 49, if_none_match=etag)
     assert isinstance(not_modified, Response)
     assert not_modified.status_code == 304

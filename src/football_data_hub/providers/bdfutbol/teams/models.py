@@ -125,7 +125,7 @@ class PlayerMatchMetric:
     group: str
     matchday: int
     match_id: str
-    metric: Literal["yellow_cards", "goals"]
+    metric: Literal["yellow_cards", "red_cards", "goals"]
     value: int
     raw_value: str
     source_view: str

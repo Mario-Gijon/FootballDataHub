@@ -104,10 +104,12 @@ Inspección offline realizada en TEAM-01B:
   versión 1. El preflight no programa nuevas visitas para este equipo.
 - **Jaén, Grupo II, `team_id=49`, captura
   `team01a-group2-49-source-evidence`:** válida para su alcance original y
-  reutilizable como semilla; contiene las seis vistas y el estado `p`, pero no
-  `t`, `go`, `tot` ni `normalized/player_match_metrics.json`. El plan requiere
-  una visita a Seguimiento que adquiere los tres estados faltantes. La captura
-  histórica se mantiene sin cambios.
+  reutilizable como semilla; en origen contiene las seis vistas y el estado
+  `p`, pero no `t`, `go`, `tot` ni `normalized/player_match_metrics.json`. Ese
+  preflight histórico precede a TEAM-02C1: las tres vistas se derivaron luego
+  offline de las matrices embebidas, en la captura
+  `20261012T120720.895650Z-8c75b830`. No se hizo una visita adicional a
+  BDFutbol y la captura fuente continúa inmutable.
 
 Una clasificación `complete` no exige que haya goles, tarjetas u otros eventos
 positivos. Se valida que los archivos y sus relaciones sean íntegros, no que

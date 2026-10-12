@@ -324,8 +324,17 @@ def inspect_team_capture(
                         raise ValueError("La procedencia del estado no está referenciada por la captura")
                     if evidence.get("selected_value") != state:
                         raise ValueError("El valor seleccionado registrado no coincide")
-                    if evidence.get("status", "VALID") != "VALID":
-                        raise ValueError("El estado del snapshot no es VALID")
+                    state_status = evidence.get("status", "VALID")
+                    if state_status == "DERIVED_OFFLINE":
+                        if (
+                            evidence.get("origin") != "derived_offline"
+                            or evidence.get("derivation_method") != "embedded_javascript_matrices_v1"
+                            or evidence.get("source_snapshot_sha256") != snapshots.get("follow", {}).get("sha256")
+                            or not evidence.get("derived_at_utc")
+                        ):
+                            raise ValueError("La procedencia de la derivación offline no es válida")
+                    elif state_status != "VALID":
+                        raise ValueError("El estado del snapshot no es VALID ni DERIVED_OFFLINE")
                     if evidence.get("url") != view_urls["follow"]:
                         raise ValueError("La URL del estado no coincide con Seguimiento")
                     state_soup = BeautifulSoup(html, "html.parser")

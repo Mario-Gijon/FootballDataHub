@@ -29,7 +29,7 @@ from football_data_hub_api.team_roster_dataset import TeamRosterRegistry
 
 logger = logging.getLogger("football_data_hub_api.team_follow")
 FOLLOW_SEASON = "2026-27"
-FOLLOW_CONTRACT_VERSION = 1
+FOLLOW_CONTRACT_VERSION = 2
 FOLLOW_INDEX_FILES = (
     "metadata/capture.json",
     "validation/results.json",
@@ -226,6 +226,18 @@ def _load_selected_follow(
         state_html = _decompress(state_bytes, state_info.get("compression"), state_path)
         if _sha256(state_html) != state_info.get("sha256") or state_info.get("selected_value") != state:
             raise TeamFollowLoadError(f"El snapshot del estado {state} no coincide con sus metadatos.")
+        if state_info.get("status") == "DERIVED_OFFLINE":
+            referenced_captures = {capture_id, *(str(item) for item in capture.get("reused_source_capture_ids", []))}
+            if (
+                state_info.get("origin") != "derived_offline"
+                or state_info.get("derivation_method") != "embedded_javascript_matrices_v1"
+                or state_info.get("source_snapshot_sha256") != follow_evidence.get("sha256")
+                or state_info.get("source_capture_id") not in referenced_captures
+                or not isinstance(state_info.get("derived_at_utc"), str)
+            ):
+                raise TeamFollowLoadError(f"La procedencia offline del estado {state} no está validada.")
+        elif state_info.get("status", "VALID") != "VALID":
+            raise TeamFollowLoadError(f"El estado {state} no es una captura válida ni una derivación reconocida.")
         captured_states.add(state)
 
     identity = _decode(file_bytes["normalized/team_identity.json"], "normalized/team_identity.json")
@@ -326,7 +338,7 @@ def _load_selected_follow(
         _check_scope(record, team_id=team_id, group=group_label, label="métricas")
         metric_name = record.get("metric")
         source_state = record.get("source_state")
-        expected_state = {"yellow_cards": "t", "goals": "go"}.get(metric_name)
+        expected_state = {"yellow_cards": "t", "red_cards": "t", "goals": "go"}.get(metric_name)
         key = (record.get("player_id"), str(record.get("match_id")), str(metric_name))
         if expected_state is None or source_state != expected_state or expected_state not in captured_states:
             raise TeamFollowLoadError("Una métrica no está respaldada por su estado fuente.")
@@ -359,7 +371,11 @@ def _load_selected_follow(
 
     coverage: list[TeamFollowStateCoverageResponse] = []
     for state in FOLLOW_STATES:
-        state_metrics = [item for item in metrics if (item.metric == "yellow_cards" and state == "t") or (item.metric == "goals" and state == "go")]
+        state_metrics = [
+            item for item in metrics
+            if (item.metric in {"yellow_cards", "red_cards"} and state == "t")
+            or (item.metric == "goals" and state == "go")
+        ]
         available = state in captured_states
         if state == "p":
             known_values = [item.minutes_played for item in minutes]
@@ -389,8 +405,15 @@ def _load_selected_follow(
             + " ni ".join(missing)
             + "; no se han inferido."
         )
-    if "t" in captured_states:
-        warnings.append("No se interpretan marcadores tg2/tv ni se infieren tarjetas rojas.")
+    derived_states = sorted(
+        state for state, info in state_manifest.items()
+        if isinstance(info, dict) and info.get("status") == "DERIVED_OFFLINE"
+    )
+    derived_times = [
+        str(info["derived_at_utc"])
+        for info in state_manifest.values()
+        if isinstance(info, dict) and info.get("status") == "DERIVED_OFFLINE" and isinstance(info.get("derived_at_utc"), str)
+    ]
     content_sha = hashlib.sha256(json.dumps({
         "contract_version": FOLLOW_CONTRACT_VERSION,
         "team_id": team_id,
@@ -407,6 +430,8 @@ def _load_selected_follow(
         "extractor_version": capture.get("extractor_version", "unknown"),
         "content_sha256": content_sha, "match_capture_id": active_group_capture,
         "match_catalog_sha256": active_match_hash,
+        "derived_states": derived_states,
+        "derived_at": max(derived_times) if derived_times else None,
     })
     try:
         return TeamFollowResponse.model_validate({

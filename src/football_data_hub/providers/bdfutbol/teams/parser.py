@@ -672,26 +672,38 @@ def _parse_follow_event_metrics(
             classes = set(wrapper.get("class", [])) if wrapper else set()
             raw_value = clean_text(cell.get_text(" ", strip=True))
             if state == "t":
-                if "tg2" in classes or "tv" in classes:
-                    warnings.append(
-                        f"Seguimiento estado t: marcador de tarjeta pendiente de semántica en player_id={player_id}, match_id={match.group(1)}"
-                    )
-                if "tg1" not in classes:
-                    continue
-                records.append(PlayerMatchMetric(
-                    player_id=player_id,
-                    team_id=team_id,
-                    season=season,
-                    competition=competition,
-                    group=group,
-                    matchday=matchday,
-                    match_id=match.group(1),
-                    metric="yellow_cards",
-                    value=1,
-                    raw_value="tg1",
-                    source_view="follow",
-                    source_state="t",
-                ))
+                yellow_count = int("tg1" in classes) + int("tg2" in classes)
+                if yellow_count:
+                    yellow_markers = [marker for marker in ("tg1", "tg2") if marker in classes]
+                    records.append(PlayerMatchMetric(
+                        player_id=player_id,
+                        team_id=team_id,
+                        season=season,
+                        competition=competition,
+                        group=group,
+                        matchday=matchday,
+                        match_id=match.group(1),
+                        metric="yellow_cards",
+                        value=yellow_count,
+                        raw_value=" ".join(yellow_markers),
+                        source_view="follow",
+                        source_state="t",
+                    ))
+                if "tv" in classes:
+                    records.append(PlayerMatchMetric(
+                        player_id=player_id,
+                        team_id=team_id,
+                        season=season,
+                        competition=competition,
+                        group=group,
+                        matchday=matchday,
+                        match_id=match.group(1),
+                        metric="red_cards",
+                        value=1,
+                        raw_value="tv",
+                        source_view="follow",
+                        source_state="t",
+                    ))
                 continue
             if "gol" not in classes:
                 continue
@@ -1068,6 +1080,13 @@ def parse_team_profile_pages(
             if item.metric == "yellow_cards"
         }
         total_yellow_keys = _follow_marker_keys(total_soup, marker_class="tg1")
+        total_yellow_keys.update(_follow_marker_keys(total_soup, marker_class="tg2"))
+        red_keys = {
+            (item.player_id, item.match_id)
+            for item in follow_metrics
+            if item.metric == "red_cards"
+        }
+        total_red_keys = _follow_marker_keys(total_soup, marker_class="tv")
         goal_keys = {
             (item.player_id, item.match_id)
             for item in follow_metrics
@@ -1076,6 +1095,8 @@ def parse_team_profile_pages(
         total_goal_keys = _follow_marker_keys(total_soup, marker_class="gol-marca")
         if yellow_keys != total_yellow_keys:
             follow_warnings.append("La vista Todo no reproduce todas las marcas amarillas del estado Tarjetas")
+        if red_keys != total_red_keys:
+            follow_warnings.append("La vista Todo no reproduce todas las marcas rojas del estado Tarjetas")
         if goal_keys != total_goal_keys:
             follow_warnings.append("La vista Todo no reproduce todas las marcas de gol del estado Goles")
     follow_metric_keys = {

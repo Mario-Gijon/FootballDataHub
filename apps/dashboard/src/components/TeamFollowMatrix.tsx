@@ -1,4 +1,5 @@
 import type { TeamFollow } from "../api/contracts";
+import { ProfileImage } from "./TeamRosterShared";
 import type { FollowMode } from "./TeamFollowLegend";
 
 export { type FollowMode };
@@ -26,7 +27,7 @@ export function TeamFollowMatrix({ follow, mode }: { follow: TeamFollow; mode: F
       </tr></thead>
       <tbody>{follow.players.map((player) => <tr data-player-id={player.player_id} key={player.player_id}>
         <th className="follow-player-cell" scope="row">
-          <span className="follow-player-avatar" aria-hidden="true">{initials(player.display_name)}</span>
+          <ProfileImage src={player.photo_url} name={player.display_name} className="follow-player-photo" />
           <span className="follow-player-copy">
             {player.profile_url ? <a href={player.profile_url} target="_blank" rel="noreferrer">{player.display_name}</a> : <strong>{player.display_name}</strong>}
             {player.jersey_number !== null && <small>Dorsal {player.jersey_number}</small>}
@@ -53,13 +54,18 @@ function FollowCell({ mode, minutes, hasMinutesRecord, metrics }: {
   metrics: TeamFollow["metrics"];
 }) {
   const goals = metrics.filter((item) => item.metric === "goals").reduce((total, item) => total + item.value, 0);
-  const yellow = metrics.some((item) => item.metric === "yellow_cards");
+  const yellow = metrics.filter((item) => item.metric === "yellow_cards").reduce((total, item) => total + item.value, 0);
+  const red = metrics.filter((item) => item.metric === "red_cards").reduce((total, item) => total + item.value, 0);
   if (mode === "go") return goals > 0 ? <span className="follow-goal-value" aria-label={goalQuantity(goals)}>{goals}</span>
     : <span className="follow-cell-empty" aria-label="Sin gol positivo registrado">—</span>;
   if (!hasMinutesRecord) {
-    if (mode === "t" && yellow) return <span className="follow-yellow-marker" aria-label="Tarjeta amarilla verificada" title="Tarjeta amarilla verificada">TA</span>;
-    if (mode === "tot" && (yellow || goals > 0)) return <span className="follow-cell-content">
-      {yellow && <span className="follow-yellow-marker" aria-label="Tarjeta amarilla verificada" title="Tarjeta amarilla verificada">TA</span>}
+    if (mode === "t" && (yellow || red)) return <span className="follow-cell-content">
+      {yellow > 0 && <CardMarker color="yellow" count={yellow} />}
+      {red > 0 && <CardMarker color="red" count={red} />}
+    </span>;
+    if (mode === "tot" && (yellow > 0 || red > 0 || goals > 0)) return <span className="follow-cell-content">
+      {yellow > 0 && <CardMarker color="yellow" count={yellow} />}
+      {red > 0 && <CardMarker color="red" count={red} />}
       {goals > 0 && <span className="follow-goal-marker" aria-label={verifiedGoalsLabel(goals)} title={verifiedGoalsLabel(goals)}>G {goals}</span>}
     </span>;
     return <span className="follow-cell-empty" aria-label="Sin registro de minutos">—</span>;
@@ -67,7 +73,8 @@ function FollowCell({ mode, minutes, hasMinutesRecord, metrics }: {
   const minuteLabel = minutes === null || minutes === undefined ? "—" : String(minutes);
   return <span className="follow-cell-content">
     <span className="follow-minute-value" aria-label={minutes === null || minutes === undefined ? "Minutos ausentes" : `${minutes} minutos`}>{minuteLabel}</span>
-    {(mode === "t" || mode === "tot") && yellow && <span className="follow-yellow-marker" aria-label="Tarjeta amarilla verificada" title="Tarjeta amarilla verificada">TA</span>}
+    {(mode === "t" || mode === "tot") && yellow > 0 && <CardMarker color="yellow" count={yellow} />}
+    {(mode === "t" || mode === "tot") && red > 0 && <CardMarker color="red" count={red} />}
     {mode === "tot" && goals > 0 && <span className="follow-goal-marker" aria-label={verifiedGoalsLabel(goals)} title={verifiedGoalsLabel(goals)}>G {goals}</span>}
   </span>;
 }
@@ -82,13 +89,15 @@ function cellTooltip(
   const date = match.source_match_date ?? match.matchday_date;
   const result = match.home_goals === null || match.away_goals === null ? "Resultado no disponible" : `${match.home_goals}–${match.away_goals}`;
   const goalCount = metrics.filter((item) => item.metric === "goals").reduce((sum, item) => sum + item.value, 0);
-  const hasYellow = metrics.some((item) => item.metric === "yellow_cards");
+  const yellow = metrics.filter((item) => item.metric === "yellow_cards").reduce((sum, item) => sum + item.value, 0);
+  const red = metrics.filter((item) => item.metric === "red_cards").reduce((sum, item) => sum + item.value, 0);
   return [
     `Jornada ${match.matchday} · ${side} vs ${opponentFor(teamId, match)}`,
     date ? `Fecha: ${date}` : "Fecha no publicada",
     `Resultado: ${result}`,
     `Minutos: ${minutes === undefined ? "sin registro" : minutes === null ? "ausentes" : minutes}`,
-    ...(hasYellow ? ["Tarjeta amarilla verificada"] : []),
+    ...(yellow > 0 ? [`Tarjeta(s) amarilla(s) verificada(s): ${yellow}`] : []),
+    ...(red > 0 ? [`Tarjeta(s) roja(s) verificada(s): ${red}`] : []),
     ...(goalCount > 0 ? [`Goles: ${goalCount}`] : []),
   ].join(" · ");
 }
@@ -108,8 +117,13 @@ function opponentFor(teamId: number, match: TeamFollow["matches"][number]): stri
   return match.home_team_id === teamId ? match.away_team_name : match.home_team_name;
 }
 
-function initials(name: string): string {
-  return name.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toLocaleUpperCase("es-ES");
+function CardMarker({ color, count }: { color: "yellow" | "red"; count: number }) {
+  const label = color === "yellow"
+    ? `${count} ${count === 1 ? "tarjeta amarilla" : "tarjetas amarillas"} verificada${count === 1 ? "" : "s"}`
+    : `${count} ${count === 1 ? "tarjeta roja" : "tarjetas rojas"} verificada${count === 1 ? "" : "s"}`;
+  return <span className={color === "yellow" ? "follow-yellow-marker" : "follow-red-marker"} aria-label={label} title={label}>
+    {color === "yellow" ? "TA" : "TR"}{count > 1 ? ` ×${count}` : ""}
+  </span>;
 }
 
 function goalQuantity(value: number): string { return `${value} ${value === 1 ? "gol" : "goles"}`; }

@@ -18,6 +18,7 @@ from football_data_hub.providers.bdfutbol.teams.acquisition import (
     TeamAcquisitionStopped,
 )
 from football_data_hub.providers.bdfutbol.teams.catalog import load_team_catalog
+from football_data_hub.providers.bdfutbol.teams.capture_store import inspect_team_capture
 from football_data_hub.providers.bdfutbol.teams.export import export_team_capture
 from football_data_hub.providers.bdfutbol.teams.parser import (
     TeamProfileParseError,
@@ -580,6 +581,62 @@ def test_refreshing_a_view_preserves_follow_metrics_and_provenance(racing, monke
         assert current["source_capture_id"] == previous.get("source_capture_id", capture["capture_id"])
         assert current["sha256"] == previous["sha256"]
     assert capture["capture_id"] in exported_metadata["reused_source_capture_ids"]
+
+
+def test_cli_derives_jaen_follow_states_offline_without_opening_browser(capsys, monkeypatch, tmp_path):
+    source = PROFILE_RUNS[2]
+    source_metadata_path = source / "metadata/capture.json"
+    source_sha = hashlib.sha256(source_metadata_path.read_bytes()).hexdigest()
+
+    def unexpected_browser(*_args, **_kwargs):
+        raise AssertionError("La derivación offline no debe abrir un navegador")
+
+    monkeypatch.setattr(team_acquisition, "BrowserSessionManager", unexpected_browser)
+    result = team_acquisition_cli.main([
+        "--season", "2026-27",
+        "--group", "2",
+        "--team-id", "49",
+        "--view", "follow",
+        "--reuse-capture", str(source),
+        "--derive-follow-states-offline",
+        "--output-root", str(tmp_path / "teams"),
+    ])
+    assert result == 0
+    output = json.loads(capsys.readouterr().out)
+    assert output["team_id"] == 49
+    assert output["acquired_views"] == []
+    assert set(output["follow_states"]) == {"go", "p", "t", "tot"}
+
+    derived_dir = Path(output["files"]["run_directory"])
+    derived_metadata = _read_json(derived_dir / "metadata/capture.json")
+    assert derived_metadata["capture_id"] != "team01a-group2-49-source-evidence"
+    assert derived_metadata["captured_at_utc"] == _read_json(source_metadata_path)["captured_at_utc"]
+    assert derived_metadata["reused_source_capture_ids"] == ["team01a-group2-49-source-evidence"]
+    assert derived_metadata["capture_timestamp_basis"].startswith("offline derivation")
+    assert derived_metadata["follow_states"]["p"]["status"] == "VALID"
+    for state in ("t", "go", "tot"):
+        evidence = derived_metadata["follow_states"][state]
+        assert evidence["status"] == "DERIVED_OFFLINE"
+        assert evidence["origin"] == "derived_offline"
+        assert evidence["source_capture_id"] == "team01a-group2-49-source-evidence"
+        assert evidence["source_snapshot_sha256"] == derived_metadata["source_snapshots"]["follow"]["sha256"]
+        assert evidence["derived_at_utc"]
+    assert hashlib.sha256(source_metadata_path.read_bytes()).hexdigest() == source_sha
+
+    context = get_competition_context(group=2)
+    teams, known_matches, reference = load_team_catalog(GROUP_CATALOGS[2], competition=context)
+    team = next(item for item in teams if int(item["team_id"]) == 49)
+    inspection = inspect_team_capture(
+        derived_dir,
+        team_catalog_record=team,
+        competition=context,
+        team_catalog_reference=reference,
+        group_team_catalog=teams,
+        known_matches=known_matches,
+    )
+    assert inspection.classification == "complete"
+    assert inspection.valid_follow_states == ("p", "t", "go", "tot")
+    assert inspection.normalized_valid is True
 
 
 def test_acquisition_stops_on_challenge_without_retry(jaen, monkeypatch, tmp_path):

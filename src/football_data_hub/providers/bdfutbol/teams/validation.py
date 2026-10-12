@@ -129,22 +129,47 @@ def validate_team_profile(
             issues.append({"code": "follow_metric_scope", "message": f"Métrica fuera del ámbito para player_id={item.player_id}."})
         if item.value < 0:
             issues.append({"code": "negative_follow_metric", "message": f"Métrica negativa para player_id={item.player_id}."})
-        if (item.metric, item.source_state) not in {("yellow_cards", "t"), ("goals", "go")}:
+        if (item.metric, item.source_state) not in {
+            ("yellow_cards", "t"),
+            ("red_cards", "t"),
+            ("goals", "go"),
+        }:
             issues.append({"code": "follow_metric_state", "message": f"Estado {item.source_state} no respalda {item.metric}."})
     follow_metric_totals = Counter()
     for item in data.player_match_metrics:
         follow_metric_totals[item.metric] += item.value
     source_metric_totals = {
         "yellow_cards": sum(item.yellow_cards or 0 for item in data.player_statistics),
+        "red_cards": sum(item.red_cards or 0 for item in data.player_statistics),
         "goals": sum(item.goals or 0 for item in data.player_statistics),
     }
-    for metric in ("yellow_cards", "goals"):
-        state = "t" if metric == "yellow_cards" else "go"
+    for metric in ("yellow_cards", "red_cards", "goals"):
+        state = "go" if metric == "goals" else "t"
         if state in data.follow_states_captured and follow_metric_totals[metric] != source_metric_totals[metric]:
             warnings.append(
                 f"Seguimiento estado {state}: suma observada de {metric}={follow_metric_totals[metric]} "
                 f"frente a Estadísticas={source_metric_totals[metric]}; se conservan ambas fuentes."
             )
+
+    if "t" in data.follow_states_captured:
+        observed_cards: dict[tuple[int, str], int] = defaultdict(int)
+        for item in data.player_match_metrics:
+            if item.source_state == "t" and item.metric in {"yellow_cards", "red_cards"}:
+                observed_cards[(item.player_id, item.metric)] += item.value
+        for stat in data.player_statistics:
+            for metric, source_value in (
+                ("yellow_cards", stat.yellow_cards),
+                ("red_cards", stat.red_cards),
+            ):
+                if source_value is not None and observed_cards[(stat.player_id, metric)] != source_value:
+                    issues.append({
+                        "code": "follow_card_statistics_mismatch",
+                        "message": (
+                            f"Seguimiento {metric} no coincide con Estadísticas para "
+                            f"player_id={stat.player_id}: {observed_cards[(stat.player_id, metric)]} "
+                            f"frente a {source_value}."
+                        ),
+                    })
 
     expected_team_ids = {int(item["team_id"]) for item in group_team_catalog}
     profile_team_ids = set(data.group_team_ids_from_profile)

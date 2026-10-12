@@ -302,6 +302,25 @@ DOM, los valores de control confirmados, hashes y deltas de recursos. Las horas
 de Alineación y Estadísticas reutilizadas siguen siendo las de su captura
 original y no se presentan como si pertenecieran a la sesión nueva.
 
+### Actualización offline de Seguimiento de Jaén (TEAM-02C1)
+
+La captura fuente `team01a-group2-49-source-evidence` contenía las matrices
+JavaScript `JSEG`, `JSEGC`, `JSEGG` y `JSEGID`, además de la vista `p`. El
+12-10-2026 se derivaron localmente desde ese snapshot las vistas `t`, `go` y
+`tot`, sin abrir el navegador ni visitar BDFutbol. El resultado inmutable es
+`data/exports/bdfutbol/teams/2026-27/49/20261012T120720.895650Z-8c75b830/`.
+
+Las seis jornadas tienen un partido enlazado por ID. Las matrices reproducen
+25 filas de jugadores y 150 celdas de minutos; los eventos suman 15 amarillas
+(`tg1`/`tg2`), 2 rojas (`tv`) y 8 goles. Para cada jugador, amarillas, rojas y
+goles concuerdan con sus estadísticas extendidas del mismo snapshot; los
+match IDs y jornadas también coinciden con el catálogo del Grupo II. Los
+estados derivados están marcados `DERIVED_OFFLINE`, conservan la hora original
+de captura fuente y añaden su propia hora `derived_at_utc`. No se cambia ni se
+reescribe la captura fuente. Esta derivación valida esos datos históricos y no
+demuestra que una futura captura BDFutbol vaya a exponer exactamente las mismas
+matrices.
+
 Para normalizar snapshots autorizados sin abrir un navegador:
 
 ```bash

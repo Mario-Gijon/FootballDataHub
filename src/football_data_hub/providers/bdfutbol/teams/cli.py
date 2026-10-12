@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import sys
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Sequence
@@ -24,6 +25,7 @@ from .acquisition import (
 from .capture_store import inspect_team_capture
 from .catalog import load_team_catalog, write_team_inventory
 from .export import export_team_capture
+from .follow_states import derive_follow_states
 from .parser import parse_team_profile_pages, resolve_team_view_urls
 from .validation import validate_team_profile
 
@@ -46,6 +48,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--snapshot-dir", type=Path, help="Carpeta offline con alignment.html y vistas seleccionadas.")
     parser.add_argument("--reuse-capture", type=Path, help="Reutiliza vistas validadas de una captura anterior sin volver a navegarlas.")
     parser.add_argument("--derived-capture", action="store_true", help="Crea un run nuevo al volver a normalizar offline una captura ya existente.")
+    parser.add_argument(
+        "--derive-follow-states-offline",
+        action="store_true",
+        help="Reconstruye p/t/go/tot desde las matrices JavaScript de un --reuse-capture validado, sin abrir el navegador.",
+    )
     parser.add_argument("--access-report", type=Path, help="Informe de acceso offline; por defecto <snapshot-dir>/access.json.")
     parser.add_argument("--views", choices=("core", "all"), default="all")
     parser.add_argument("--view", action="append", choices=tuple(DEFAULT_VIEWS), help="Vista concreta; puede repetirse para adquirir solo vistas pendientes.")
@@ -274,6 +281,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         if team_catalog_record is None:
             raise ValueError(f"team_id={args.team_id} no está en el catálogo del Grupo {competition.group_roman}")
         requested_views = tuple(dict.fromkeys(args.view)) if args.view else (CORE_VIEWS if args.views == "core" else DEFAULT_VIEWS)
+        if args.derive_follow_states_offline and (not args.reuse_capture or "follow" not in requested_views):
+            raise ValueError("--derive-follow-states-offline requiere --reuse-capture y --view follow")
         if args.snapshot_dir and args.reuse_capture:
             raise ValueError("--snapshot-dir y --reuse-capture son modos excluyentes")
         if args.snapshot_dir:
@@ -303,42 +312,99 @@ def main(argv: Sequence[str] | None = None) -> int:
                 group_team_catalog=group_teams,
                 known_matches=matches,
             ) if args.reuse_capture else None
-            views_to_acquire = tuple(
-                view for view in requested_views
-                if seed is None or view not in seed["raw_views"]
-            )
-            if seed is None and "alignment" not in views_to_acquire:
-                views_to_acquire = ("alignment", *views_to_acquire)
-            bundle = acquire_team_profile(
-                team_catalog_record=team_catalog_record,
-                team_catalog_reference=team_catalog_reference,
-                group_team_catalog=group_teams,
-                known_matches=matches,
-                competition=competition,
-                profile_dir=args.profile,
-                requested_views=views_to_acquire,
-                browser="chromium",
-                browser_executable_path=args.browser_executable,
-                startup_timeout_seconds=args.startup_timeout_seconds,
-                navigation_timeout_ms=args.navigation_timeout_ms,
-                use_xvfb=args.use_xvfb,
-                seed_raw_views=(seed or {}).get("raw_views"),
-                seed_access_by_view=(seed or {}).get("access_by_view"),
-                seed_view_urls=(seed or {}).get("view_urls"),
-                seed_page_titles=(seed or {}).get("page_titles"),
-                seed_browser=(seed or {}).get("browser"),
-                seed_capture_id=(seed or {}).get("capture_id"),
-                seed_follow_state_html=(seed or {}).get("follow_state_html"),
-                seed_follow_state_diagnostics=(seed or {}).get("follow_state_diagnostics"),
-                seed_capture_ids=(seed or {}).get("seed_capture_ids", ()),
-                require_follow_states=("follow" in requested_views),
-            )
-            timestamp_basis = (
-                "browser navigation capture time; reused views retain per-view source timestamps"
-                if bundle.acquired_views
-                else "offline re-normalization; inherited source timestamps retained"
-            )
-            profile_dir = args.profile
+            if args.derive_follow_states_offline:
+                assert seed is not None
+                source_follow = seed["raw_views"].get("follow")
+                if not isinstance(source_follow, str):
+                    raise ValueError("La captura validada no incluye el snapshot original de Seguimiento")
+                derived = derive_follow_states(source_follow)
+                now = datetime.now(timezone.utc).isoformat()
+                follow_states = dict(seed["follow_state_html"])
+                diagnostics = dict(seed["follow_state_diagnostics"])
+                follow_states["p"] = follow_states.get("p", derived.html_by_state["p"])
+                for state in ("t", "go", "tot"):
+                    follow_states[state] = derived.html_by_state[state]
+                    diagnostics[state] = {
+                        "label": {"t": "Tarjetas", "go": "Goles", "tot": "Todo"}[state],
+                        "selected_value": state,
+                        "url": seed["view_urls"]["follow"],
+                        "table_rows": derived.player_count + 1,
+                        "source_capture_id": seed["capture_id"],
+                        "source_view_snapshot": "follow",
+                        "source_snapshot_sha256": derived.source_sha256,
+                        "origin": "derived_offline",
+                        "status": "DERIVED_OFFLINE",
+                        "derivation_method": "embedded_javascript_matrices_v1",
+                        "derived_at_utc": now,
+                        "capture_timestamp_basis": "offline reconstruction from JSEG/JSEGC/JSEGG/JSEGID; no live page state was acquired",
+                        "matchdays": list(derived.matchdays),
+                        "match_ids": list(derived.match_ids),
+                        "resource_urls_added_since_previous_state": [],
+                    }
+                bundle = acquire_team_profile(
+                    team_catalog_record=team_catalog_record,
+                    team_catalog_reference=team_catalog_reference,
+                    group_team_catalog=group_teams,
+                    known_matches=matches,
+                    competition=competition,
+                    profile_dir=args.profile,
+                    requested_views=(),
+                    browser="chromium",
+                    seed_raw_views=seed["raw_views"],
+                    seed_access_by_view=seed["access_by_view"],
+                    seed_view_urls=seed["view_urls"],
+                    seed_page_titles=seed["page_titles"],
+                    seed_browser=seed["browser"],
+                    seed_capture_id=seed["capture_id"],
+                    seed_follow_state_html=follow_states,
+                    seed_follow_state_diagnostics=diagnostics,
+                    seed_capture_ids=seed["seed_capture_ids"],
+                    explore_follow_states=False,
+                    require_follow_states=False,
+                )
+                source_capture_metadata = json.loads(
+                    (args.reuse_capture / "metadata" / "capture.json").read_text(encoding="utf-8")
+                )
+                bundle = replace(bundle, captured_at_utc=source_capture_metadata["captured_at_utc"])
+                timestamp_basis = "offline derivation from embedded JavaScript; source acquisition times remain unchanged"
+                profile_dir = None
+            else:
+                views_to_acquire = tuple(
+                    view for view in requested_views
+                    if seed is None or view not in seed["raw_views"]
+                )
+                if seed is None and "alignment" not in views_to_acquire:
+                    views_to_acquire = ("alignment", *views_to_acquire)
+                bundle = acquire_team_profile(
+                    team_catalog_record=team_catalog_record,
+                    team_catalog_reference=team_catalog_reference,
+                    group_team_catalog=group_teams,
+                    known_matches=matches,
+                    competition=competition,
+                    profile_dir=args.profile,
+                    requested_views=views_to_acquire,
+                    browser="chromium",
+                    browser_executable_path=args.browser_executable,
+                    startup_timeout_seconds=args.startup_timeout_seconds,
+                    navigation_timeout_ms=args.navigation_timeout_ms,
+                    use_xvfb=args.use_xvfb,
+                    seed_raw_views=(seed or {}).get("raw_views"),
+                    seed_access_by_view=(seed or {}).get("access_by_view"),
+                    seed_view_urls=(seed or {}).get("view_urls"),
+                    seed_page_titles=(seed or {}).get("page_titles"),
+                    seed_browser=(seed or {}).get("browser"),
+                    seed_capture_id=(seed or {}).get("capture_id"),
+                    seed_follow_state_html=(seed or {}).get("follow_state_html"),
+                    seed_follow_state_diagnostics=(seed or {}).get("follow_state_diagnostics"),
+                    seed_capture_ids=(seed or {}).get("seed_capture_ids", ()),
+                    require_follow_states=("follow" in requested_views),
+                )
+                timestamp_basis = (
+                    "browser navigation capture time; reused views retain per-view source timestamps"
+                    if bundle.acquired_views
+                    else "offline re-normalization; inherited source timestamps retained"
+                )
+                profile_dir = args.profile
         paths = export_team_capture(
             args.output_root,
             bundle,

@@ -36,9 +36,9 @@ Estados de error diferenciados:
 | Estado | Contenido normalizado | Disponibilidad actual |
 |---|---|---|
 | `p` · Partidos | `minutes_played`, conservando entero, `0` o `null`, más `source_value` | Jaén y Racing |
-| `t` · Tarjetas | minutos de la celda y hechos positivos `yellow_cards` respaldados por `tg1` | Racing; Jaén pendiente |
-| `go` · Goles | hechos positivos `goals` por jugador y `match_id`; se conservan valores mayores que uno | Racing; Jaén pendiente |
-| `tot` · Todo | estado original combinado, comprobado como disponible, sin crear métricas duplicadas | Racing; Jaén pendiente |
+| `t` · Tarjetas | minutos y hechos positivos `yellow_cards` (`tg1`/`tg2`) y `red_cards` (`tv`) | Jaén derivado offline y Racing capturado |
+| `go` · Goles | hechos positivos `goals` por jugador y `match_id`; se conservan valores mayores que uno | Jaén derivado offline y Racing capturado |
+| `tot` · Todo | minutos y eventos combinados, sin crear métricas duplicadas | Jaén derivado offline y Racing capturado |
 
 Los valores de `player_statistics.json` no se usan para inventar eventos por
 jornada. Los estados de métricas conservan los hechos positivos exportados en
@@ -52,22 +52,34 @@ categoría por jugador y partido (completo, titular, suplente o convocado sin
 jugar), por lo que la matriz usa minutos neutrales y no muestra colores de
 participación que aparenten esas categorías.
 
-`tg2` y `tv` siguen sin interpretación positiva validada. No se normalizan
-tarjetas rojas ni se derivan de estadísticas acumuladas. En Racing se
-verificaron 10 amarillas `tg1` y 7 goles, coincidentes con la exploración
-documentada en
+Para Jaén, los estados `t`, `go` y `tot` se reconstruyeron offline a partir de
+las matrices JavaScript (`JSEG`, `JSEGC`, `JSEGG`, `JSEGID`) ya incluidas en el
+snapshot original. No hubo navegación nueva ni se ejecutó el JavaScript de
+BDFutbol. `tg1` y `tg2` se normalizan como una y dos tarjetas amarillas;
+`tv` como tarjeta roja. Esta interpretación se aceptó porque las sumas por
+jugador coinciden exactamente con las estadísticas extendidas de la misma
+captura de Jaén. Los goles también coinciden jugador por jugador. Para Racing,
+los datos capturados en navegador siguen reconciliando 10 amarillas `tg1` y 7
+goles con Estadísticas, conforme a la exploración de
 [`bdfutbol_team_profiles_semantics.md`](bdfutbol_team_profiles_semantics.md).
 
 ## Cobertura de los pilotos
 
 - Real Jaén, `team_id=49`, Grupo II: 25 jugadores, jornadas 1–6 y 150 celdas
-  de minutos. Sólo está publicado `p`; Tarjetas, Goles y Todo se presentan como
-  estados aún no capturados. Los ceros y nulos de la captura se mantienen.
+  de minutos. Tiene `p` del snapshot fuente y estados `t`, `go`, `tot`
+  reconstruidos offline: 15 amarillas, 2 rojas y 8 goles en sus eventos
+  positivos. El snapshot original permanece inmutable; el índice publica la
+  captura derivada `20261012T120720.895650Z-8c75b830` como conjunto validado.
 - Racing de Ferrol, `team_id=48`, Grupo I: 25 jugadores, jornadas 1–6, 150
   celdas de minutos, 10 hechos amarillos y 7 goles; se capturaron `p`, `t`,
   `go` y `tot`.
 - Los otros equipos aparecen en el catálogo de competición, pero no tienen
   captura de perfil publicada; el endpoint informa Seguimiento no adquirido.
+
+La respuesta del endpoint distingue la hora de captura de la página fuente de
+`derived_at` para los estados reconstruidos y lista `derived_states`. El
+contrato de seguimiento es la versión 2 e incluye métricas `red_cards`.
+Derivar estos estados no actualiza ni rellena los `null` del conjunto de minutos.
 
 La matriz crea una columna por jornada presente en registros verificados. No
 completa las 38 jornadas ni crea combinaciones de jugador-partido que no estén

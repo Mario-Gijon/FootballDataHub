@@ -318,7 +318,7 @@ export type TeamRoster = z.infer<typeof TeamRosterSchema>;
 export const TeamFollowSchema = z.object({
   status: z.literal("available"),
   metadata: z.object({
-    contract_version: z.literal(1),
+    contract_version: z.literal(2),
     source: z.literal("BDFutbol"),
     url: z.string().url(),
     competition: z.literal("Primera Federación"),
@@ -332,6 +332,8 @@ export const TeamFollowSchema = z.object({
     content_sha256: z.string().regex(/^[a-f0-9]{64}$/),
     match_capture_id: z.string().min(1),
     match_catalog_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    derived_states: z.array(z.enum(["p", "t", "go", "tot"])),
+    derived_at: z.string().datetime({ offset: true }).nullable(),
   }).strict(),
   team: TeamSchema,
   players: z.array(z.object({
@@ -368,7 +370,7 @@ export const TeamFollowSchema = z.object({
     player_id: positiveInteger,
     match_id: z.string().min(1),
     matchday: z.number().int().min(1).max(38),
-    metric: z.enum(["yellow_cards", "goals"]),
+    metric: z.enum(["yellow_cards", "red_cards", "goals"]),
     value: z.number().int().positive(),
     source_value: z.string(),
     source_view: z.literal("follow"),
@@ -403,7 +405,7 @@ export const TeamFollowSchema = z.object({
   if (new Set(minuteKeys).size !== minuteKeys.length || new Set(metricKeys).size !== metricKeys.length) {
     context.addIssue({ code: "custom", message: "La matriz repite una celda de minutos o métrica." });
   }
-  if (follow.metrics.some((item) => (item.metric === "yellow_cards" ? "t" : "go") !== item.source_state)) {
+  if (follow.metrics.some((item) => (item.metric === "goals" ? "go" : "t") !== item.source_state)) {
     context.addIssue({ code: "custom", message: "La métrica no coincide con el estado fuente." });
   }
   if (follow.matchdays.some((day, index) => index > 0 && day <= follow.matchdays[index - 1]!)) {
