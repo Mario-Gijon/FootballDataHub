@@ -6,6 +6,7 @@ import argparse
 import json
 import math
 import os
+import shutil
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -14,9 +15,17 @@ from football_data_hub.core.browser_session import BrowserSessionError
 from football_data_hub.providers.bdfutbol.access import AccessStatus
 from football_data_hub.providers.bdfutbol.context import SUPPORTED_SEASON, get_competition_context
 
-from .acquisition import DEFAULT_VIEWS, FOLLOW_STATES, TeamAcquisitionStopped, acquire_team_profile
+from .acquisition import (
+    DEFAULT_VIEWS,
+    FOLLOW_STATES,
+    StaleMatchCatalogError,
+    TeamAcquisitionStopped,
+    acquire_team_profile,
+    create_team_capture_id,
+)
 from .batch import (
     BatchAccessDenied,
+    BatchLocalFailure,
     BatchStop,
     BatchTeamOutcome,
     inspect_team_captures,
@@ -27,6 +36,7 @@ from .capture_store import CaptureInspection
 from .catalog import load_team_catalog
 from .export import CAPTURE_POLICY_ID, export_team_capture
 from .cli import _DEFAULT_MATCH_CATALOGS, _reuse_capture_seed
+from .evidence_store import TeamEvidenceCheckpoint, find_pending_evidence
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -38,14 +48,23 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--pause-seconds",
         type=float,
-        default=2.0,
-        help="Pausa entre páginas y equipos adquiridos; use 0 solo para pruebas controladas.",
+        default=5.0,
+        help="Pausa entre páginas y equipos adquiridos; los pilotos reales deben respetar al menos 5 s.",
     )
     parser.add_argument("--dry-run", action="store_true", help="Inspecciona el inventario y muestra el plan sin abrir navegador.")
     parser.add_argument("--view", action="append", choices=tuple(DEFAULT_VIEWS))
     parser.add_argument("--group1-catalog", type=Path)
     parser.add_argument("--group2-catalog", type=Path)
-    parser.add_argument("--output-root", type=Path, default=Path("data/exports/bdfutbol/teams"))
+    parser.add_argument(
+        "--output-root",
+        type=Path,
+        default=Path(os.environ.get("FDH_TEAM_CAPTURE_ROOT", "data/exports/bdfutbol/teams")),
+    )
+    parser.add_argument(
+        "--allow-repository-storage",
+        action="store_true",
+        help="Permite explícitamente guardar capturas bajo el checkout Git (solo desarrollo controlado).",
+    )
     parser.add_argument(
         "--profile",
         type=Path,
@@ -76,6 +95,35 @@ def _assessment_key(assessment: CaptureInspection | None) -> tuple[Any, ...]:
         or assessment.capture_id
     )
     return (*assessment.coverage_score, created, assessment.capture_id)
+
+
+def _storage_preflight(root: Path) -> dict[str, Any]:
+    """Report space and permissions without creating or changing the root."""
+    candidate = root.expanduser()
+    probe = candidate
+    while not probe.exists() and probe != probe.parent:
+        probe = probe.parent
+    usage = shutil.disk_usage(probe)
+    permission_target = candidate if candidate.exists() else probe
+    return {
+        "configured_root": str(candidate),
+        "resolved_root": str(candidate.resolve()),
+        "root_exists": candidate.exists(),
+        "permission_check_path": str(permission_target),
+        "readable": os.access(permission_target, os.R_OK),
+        "writable": os.access(permission_target, os.W_OK),
+        "available_bytes": usage.free,
+        "probe_note": "No se creó ni modificó ningún archivo para esta comprobación.",
+    }
+
+
+def _is_inside_repository(path: Path) -> bool:
+    repository_root = Path(__file__).resolve().parents[5]
+    try:
+        path.expanduser().resolve().relative_to(repository_root)
+        return True
+    except ValueError:
+        return False
 
 
 def _inspect_best(
@@ -111,11 +159,15 @@ def _team_plan(
     views: tuple[str, ...],
     assessment: CaptureInspection | None,
     catalog_reference: dict[str, Any],
+    pending_evidence=None,
 ) -> dict[str, Any]:
     valid_views = set(assessment.valid_views if assessment else ())
     valid_states = set(assessment.valid_follow_states if assessment else ())
+    if pending_evidence is not None:
+        valid_views.update(pending_evidence.valid_views)
+        valid_states.update(pending_evidence.valid_follow_states)
     missing_views = [view for view in views if view not in valid_views]
-    if assessment is None and "alignment" not in missing_views:
+    if "alignment" not in valid_views and "alignment" not in missing_views:
         missing_views.insert(0, "alignment")
     required_states = FOLLOW_STATES if "follow" in views else ()
     missing_states = [state for state in required_states if state not in valid_states]
@@ -131,8 +183,18 @@ def _team_plan(
         "group": "I" if group == 1 else "II",
         "team_id": int(record["team_id"]),
         "team_name": str(record.get("name") or record.get("team_name") or ""),
-        "action": "skip_complete" if already_complete else "acquire_or_rebuild",
+        "action": "skip_complete" if already_complete else (
+            "recover_offline" if pending_evidence and not visit_views else
+            "resume_pending" if pending_evidence else "acquire_or_rebuild"
+        ),
         "capture": assessment.manifest_summary() if assessment else None,
+        "pending_evidence": ({
+            "capture_id": pending_evidence.capture_id,
+            "path": str(pending_evidence.path),
+            "valid_views": list(pending_evidence.valid_views),
+            "valid_follow_states": list(pending_evidence.valid_follow_states),
+            "warnings": list(pending_evidence.warnings),
+        } if pending_evidence else None),
         "requested_views": list(views),
         "missing_views": missing_views,
         "missing_follow_states": missing_states,
@@ -223,6 +285,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     groups = (1, 2) if args.groups == "both" else ((1,) if args.groups == "I" else (2,))
     selected_views = tuple(dict.fromkeys(args.view)) if args.view else DEFAULT_VIEWS
     output_root = args.output_root.expanduser()
+    if not args.dry_run and _is_inside_repository(output_root) and not args.allow_repository_storage:
+        raise ValueError(
+            "La adquisición real requiere almacenamiento externo al checkout; "
+            "use FDH_TEAM_CAPTURE_ROOT/--output-root o confirme desarrollo con --allow-repository-storage."
+        )
     team_records: dict[int, list[dict[str, Any]]] = {}
     matches_by_group: dict[int, list[dict[str, Any]]] = {}
     references: dict[int, dict[str, Any]] = {}
@@ -242,6 +309,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
 
     inspections: dict[tuple[int, int], CaptureInspection | None] = {}
+    pending_by_team = {}
     plans: list[dict[str, Any]] = []
     for group in groups:
         for record in team_records[group]:
@@ -257,11 +325,21 @@ def main(argv: Sequence[str] | None = None) -> int:
                 required_views=selected_views,
             )
             inspections[(group, int(record["team_id"]))] = inspection
+            pending = None
+            if not (inspection and inspection.complete_for_current_policy):
+                pending = find_pending_evidence(
+                    output_root,
+                    season=args.season,
+                    group="I" if group == 1 else "II",
+                    team_record=record,
+                )
+            pending_by_team[(group, int(record["team_id"]))] = pending
             plans.append(_team_plan(
                 record=record,
                 group=group,
                 views=selected_views,
                 assessment=inspection,
+                pending_evidence=pending,
                 catalog_reference=references[group],
             ))
 
@@ -283,6 +361,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "catalog_team_count": sum(len(catalog_teams_by_group[group]) for group in groups),
             "full_catalog_scope": full_catalog_scope,
             "planned_navigation_count": sum(item["planned_navigation_count"] for item in plans),
+            "storage": _storage_preflight(output_root),
             "teams": plans,
         }, ensure_ascii=False, indent=2))
         return 0
@@ -309,6 +388,46 @@ def main(argv: Sequence[str] | None = None) -> int:
                 group_team_catalog=catalog_teams_by_group[group],
                 known_matches=matches_by_group[group],
             )
+        pending = pending_by_team.get((group, team_id))
+        if pending is not None:
+            pending_seed = pending.seed
+            if seed is None:
+                seed = pending_seed
+            else:
+                for key in ("raw_views", "access_by_view", "view_urls", "page_titles"):
+                    seed.setdefault(key, {})
+                    for name, value in pending_seed.get(key, {}).items():
+                        seed[key].setdefault(name, value)
+                for key in ("follow_state_html", "follow_state_diagnostics"):
+                    seed.setdefault(key, {})
+                    for name, value in pending_seed.get(key, {}).items():
+                        seed[key].setdefault(name, value)
+                seed["seed_capture_ids"] = tuple(dict.fromkeys((
+                    *seed.get("seed_capture_ids", ()),
+                    pending.capture_id,
+                )))
+                seed["pending_capture_id"] = pending.capture_id
+        checkpoint = TeamEvidenceCheckpoint(
+            output_root,
+            season=args.season,
+            group="I" if group == 1 else "II",
+            team_record=record,
+            catalog_reference=references[group],
+            requested_views=views,
+            capture_id=(pending.capture_id if pending else create_team_capture_id()),
+            resume_path=(pending.path if pending else None),
+        )
+
+        def record_failure(kind: str, message: str) -> None:
+            try:
+                checkpoint.record_failure(kind=kind, message=message)
+            except OSError as exc:
+                raise BatchStop(
+                    f"No se pudo preservar el checkpoint tras {kind}: {type(exc).__name__}: {exc}",
+                    kind="storage_error",
+                    capture_id=checkpoint.capture_id,
+                ) from exc
+
         acquired_views_needed = tuple(
             view for view in views if seed is None or view not in seed["raw_views"]
         )
@@ -338,20 +457,36 @@ def main(argv: Sequence[str] | None = None) -> int:
                 seed_follow_state_html=(seed or {}).get("follow_state_html"),
                 seed_follow_state_diagnostics=(seed or {}).get("follow_state_diagnostics"),
                 seed_capture_ids=(seed or {}).get("seed_capture_ids", ()),
+                capture_id=checkpoint.capture_id,
                 require_follow_states=("follow" in views),
                 navigation_pause_seconds=args.pause_seconds,
+                evidence_checkpoint=checkpoint,
             )
         except TeamAcquisitionStopped as exc:
+            record_failure(kind="access_denied", message=str(exc))
             if exc.assessment.status is AccessStatus.CHALLENGE_REQUIRED:
-                raise BatchAccessDenied(str(exc), kind="challenge_required") from exc
+                raise BatchAccessDenied(str(exc), kind="challenge_required", capture_id=checkpoint.capture_id) from exc
             if exc.assessment.status is AccessStatus.HTTP_ERROR:
                 kind = "http_denial" if exc.assessment.http_status in {401, 403, 407, 429} else "http_error"
-                raise BatchStop(str(exc), kind=kind) from exc
+                raise BatchStop(str(exc), kind=kind, capture_id=checkpoint.capture_id) from exc
             if exc.assessment.status is AccessStatus.NAVIGATION_ERROR:
-                raise BatchStop(str(exc), kind="navigation_error") from exc
+                raise BatchStop(str(exc), kind="navigation_error", capture_id=checkpoint.capture_id) from exc
             raise
         except (BrowserRuntimeError, BrowserSessionError) as exc:
-            raise BatchStop(f"{type(exc).__name__}: {exc}", kind="browser_environment_error") from exc
+            record_failure(kind="browser_environment_error", message=f"{type(exc).__name__}: {exc}")
+            raise BatchStop(f"{type(exc).__name__}: {exc}", kind="browser_environment_error", capture_id=checkpoint.capture_id) from exc
+        except StaleMatchCatalogError as exc:
+            record_failure(kind="stale_match_catalog", message=str(exc))
+            raise BatchStop(str(exc), kind="stale_match_catalog", capture_id=checkpoint.capture_id) from exc
+        except OSError as exc:
+            record_failure(kind="storage_error", message=f"{type(exc).__name__}: {exc}")
+            raise BatchStop(f"{type(exc).__name__}: {exc}", kind="storage_error", capture_id=checkpoint.capture_id) from exc
+        except Exception as exc:
+            record_failure(kind="parse_failed", message=f"{type(exc).__name__}: {exc}")
+            raise BatchLocalFailure(
+                f"{type(exc).__name__}: {exc}",
+                capture_id=checkpoint.capture_id,
+            ) from exc
 
         try:
             paths = export_team_capture(
@@ -365,7 +500,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 ),
             )
         except OSError as exc:
-            raise BatchStop(f"{type(exc).__name__}: {exc}", kind="storage_error") from exc
+            record_failure(kind="storage_error", message=f"{type(exc).__name__}: {exc}")
+            raise BatchStop(f"{type(exc).__name__}: {exc}", kind="storage_error", capture_id=checkpoint.capture_id) from exc
+        checkpoint.mark_complete_and_remove_checkpoint(paths["run_directory"])
 
         metadata = json.loads(paths["metadata"].read_text(encoding="utf-8"))
         acquired_states = tuple(

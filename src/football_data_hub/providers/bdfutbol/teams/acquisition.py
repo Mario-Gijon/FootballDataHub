@@ -50,6 +50,14 @@ class TeamAcquisitionStopped(RuntimeError):
         )
 
 
+class StaleMatchCatalogError(ValueError):
+    """A team page references match IDs absent from the exact group catalog."""
+
+    def __init__(self, issues: list[dict[str, Any]]) -> None:
+        self.issues = issues
+        super().__init__(f"El catálogo de partidos no cubre las referencias de la ficha: {issues}")
+
+
 @dataclass(frozen=True, slots=True)
 class TeamAcquisitionBundle:
     capture_id: str
@@ -130,6 +138,7 @@ def acquire_team_profile(
     explore_follow_states: bool = True,
     require_follow_states: bool | None = None,
     navigation_pause_seconds: float = 0.0,
+    evidence_checkpoint: Any | None = None,
 ) -> TeamAcquisitionBundle:
     """Acquire selected team views and optionally reuse validated seed snapshots."""
     views = tuple(dict.fromkeys(requested_views))
@@ -215,6 +224,8 @@ def acquire_team_profile(
                         "reused": False,
                         "resource_urls_added_since_previous_state": _resource_origins(resource_urls_after - resource_urls_before),
                     }
+                    if evidence_checkpoint is not None:
+                        evidence_checkpoint.record_follow_state(state, state_html, follow_state_diagnostics[state])
                     resource_urls_before = resource_urls_after
 
             def open_and_capture(view: str, url: str, *, capture_as_view: bool) -> None:
@@ -248,6 +259,15 @@ def acquire_team_profile(
                             "captured_at_utc": captured_at_view,
                             "capture_timestamp_basis": "browser navigation and DOM serialization",
                         }
+                        if evidence_checkpoint is not None:
+                            evidence_checkpoint.record_view(
+                                view,
+                                raw_views[view],
+                                requested_url=assessment.requested_url,
+                                final_url=assessment.final_url or "",
+                                title=assessment.page_title,
+                                access=access_by_view[view],
+                            )
                         if view not in captured_views:
                             captured_views.append(view)
                     if view == "follow" and explore_follow_states:
@@ -279,6 +299,8 @@ def acquire_team_profile(
                 "uses_xvfb": info.uses_xvfb if info else use_xvfb,
                 "xvfb_external": info.xvfb_external if info else use_xvfb,
             }
+            if evidence_checkpoint is not None:
+                evidence_checkpoint.record_browser(browser_info)
     if seed_browser:
         browser_info["reused_seed_browser"] = seed_browser
 
@@ -297,6 +319,16 @@ def acquire_team_profile(
         requested_views=full_views,
     )
     if not validation["valid"]:
+        stale_catalog_issues = [
+            issue for issue in validation["issues"]
+            if issue.get("code") in {
+                "unknown_profile_match",
+                "unknown_follow_match",
+                "unknown_follow_metric_match",
+            }
+        ]
+        if stale_catalog_issues:
+            raise StaleMatchCatalogError(stale_catalog_issues)
         raise ValueError(f"La ficha no pasó validación: {validation['issues']}")
     if captured_views:
         captured_at_utc = datetime.now(timezone.utc).isoformat()

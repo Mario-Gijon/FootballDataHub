@@ -22,13 +22,22 @@ BatchStatus = Literal["complete", "incomplete", "failed", "pending"]
 class BatchStop(RuntimeError):
     """A condition makes further navigations in this run unhelpful."""
 
-    def __init__(self, message: str, *, kind: str = "access_denied") -> None:
+    def __init__(self, message: str, *, kind: str = "access_denied", capture_id: str | None = None) -> None:
         self.kind = kind
+        self.capture_id = capture_id
         super().__init__(message)
 
 
 class BatchAccessDenied(BatchStop):
     """The provider reported a challenge or explicit access denial."""
+
+
+class BatchLocalFailure(RuntimeError):
+    """An isolated local parsing failure whose source evidence was retained."""
+
+    def __init__(self, message: str, *, capture_id: str) -> None:
+        self.capture_id = capture_id
+        super().__init__(message)
 
 
 @dataclass(frozen=True, slots=True)
@@ -177,7 +186,7 @@ def run_team_batch(
                     team_name=team_name,
                     status="incomplete" if previous_capture else "failed",
                     requested_views=views,
-                    capture_id=previous_id,
+                    capture_id=exc.capture_id or previous_id,
                     seed_capture_id=previous_id,
                     coverage=previous_info.manifest_summary() if previous_info else None,
                     catalog_reference=(catalog_references_by_group or {}).get(group),
@@ -190,6 +199,7 @@ def run_team_batch(
                     "kind": exc.kind,
                     "group": "I" if group == 1 else "II",
                     "team_id": team_id,
+                    "capture_id": exc.capture_id,
                     "message": str(exc),
                 }
                 break
@@ -201,7 +211,7 @@ def run_team_batch(
                     team_name=team_name,
                     status="incomplete" if previous_capture else "failed",
                     requested_views=views,
-                    capture_id=previous_id,
+                    capture_id=exc.capture_id or previous_id,
                     seed_capture_id=previous_id,
                     coverage=previous_info.manifest_summary() if previous_info else None,
                     catalog_reference=(catalog_references_by_group or {}).get(group),
@@ -214,9 +224,28 @@ def run_team_batch(
                     "kind": exc.kind,
                     "group": "I" if group == 1 else "II",
                     "team_id": team_id,
+                    "capture_id": exc.capture_id,
                     "message": str(exc),
                 }
                 break
+            except BatchLocalFailure as exc:
+                last_process_at = time.monotonic()
+                entries.append(BatchTeamEntry(
+                    group="I" if group == 1 else "II",
+                    team_id=team_id,
+                    team_name=team_name,
+                    status="incomplete",
+                    requested_views=views,
+                    capture_id=exc.capture_id,
+                    seed_capture_id=previous_id,
+                    coverage=previous_info.manifest_summary() if previous_info else None,
+                    catalog_reference=(catalog_references_by_group or {}).get(group),
+                    captured_at_utc=previous_captured_at,
+                    acquisition_timestamps=previous_acquisition_timestamps,
+                    failure_class="local_acquisition_or_validation",
+                    error=str(exc),
+                ))
+                continue
             except Exception as exc:  # local parser/browser failures are isolated per team
                 last_process_at = time.monotonic()
                 entries.append(BatchTeamEntry(
@@ -352,7 +381,7 @@ def inspect_team_captures(
         return ()
     inspections: list[CaptureInspection] = []
     for run in sorted(team_root.iterdir()):
-        if not run.is_dir() or run.name.startswith("."):
+        if not run.is_dir() or run.name.startswith(".") or run.name == "diagnostics":
             continue
         inspections.append(inspect_team_capture(
             run,

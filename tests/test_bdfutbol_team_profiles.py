@@ -14,12 +14,25 @@ from football_data_hub.providers.bdfutbol.context import get_competition_context
 from football_data_hub.providers.bdfutbol.teams import acquisition as team_acquisition
 from football_data_hub.providers.bdfutbol.teams import cli as team_acquisition_cli
 from football_data_hub.providers.bdfutbol.teams.acquisition import (
+    DEFAULT_VIEWS,
+    StaleMatchCatalogError,
     TeamAcquisitionBundle,
     TeamAcquisitionStopped,
 )
 from football_data_hub.providers.bdfutbol.teams.catalog import load_team_catalog
 from football_data_hub.providers.bdfutbol.teams.capture_store import inspect_team_capture
+from football_data_hub.providers.bdfutbol.teams.batch_cli import (
+    _is_inside_repository,
+    _team_plan,
+    main as team_batch_main,
+    parse_args as parse_team_batch_args,
+)
+from football_data_hub.providers.bdfutbol.teams.batch import inspect_team_captures
 from football_data_hub.providers.bdfutbol.teams.export import export_team_capture
+from football_data_hub.providers.bdfutbol.teams.evidence_store import (
+    TeamEvidenceCheckpoint,
+    read_pending_evidence,
+)
 from football_data_hub.providers.bdfutbol.teams.parser import (
     TeamProfileParseError,
     parse_team_profile_pages,
@@ -768,3 +781,311 @@ def test_acquisition_stops_on_challenge_without_retry(jaen, monkeypatch, tmp_pat
         )
     assert str(stopped.value.assessment.status) == "CHALLENGE_REQUIRED"
     assert fake_session.opened_urls == [record["team_url"]]
+
+
+def _checkpoint_from_complete_jaen(root: Path, *, capture_id: str = "diag-jaen-1"):
+    context = get_competition_context(group=2)
+    payload = _read_json(GROUP_CATALOGS[2])
+    record = next(item for item in payload["teams"] if int(item["team_id"]) == 49)
+    reference = load_team_catalog(GROUP_CATALOGS[2], competition=context)[2]
+    source = ROOT / "data/exports/bdfutbol/teams/2026-27/49/20261012T131457.209360Z-602005d8"
+    source_metadata = _read_json(source / "metadata/capture.json")
+    checkpoint = TeamEvidenceCheckpoint(
+        root,
+        season=context.season,
+        group=context.group_roman,
+        team_record=record,
+        catalog_reference=reference,
+        requested_views=DEFAULT_VIEWS,
+        capture_id=capture_id,
+    )
+    views: dict[str, str] = {}
+    for view, evidence in source_metadata["source_snapshots"].items():
+        raw = (source / evidence["path"]).read_bytes()
+        html = gzip.decompress(raw).decode("utf-8")
+        views[view] = html
+        access = dict(source_metadata["access_by_view"][view])
+        access.setdefault("captured_at_utc", evidence.get("captured_at_utc"))
+        checkpoint.record_view(
+            view,
+            html,
+            requested_url=access["requested_url"],
+            final_url=access["final_url"],
+            title=evidence.get("title") or access.get("page_title", ""),
+            access=access,
+        )
+    follow_state_html: dict[str, str] = {}
+    for state, evidence in source_metadata["follow_states"].items():
+        html = gzip.decompress((source / evidence["path"]).read_bytes()).decode("utf-8")
+        follow_state_html[state] = html
+        checkpoint.record_follow_state(state, html, {
+            "selected_value": state,
+            "captured_at_utc": evidence.get("captured_at_utc"),
+            "url": evidence.get("url"),
+        })
+    return checkpoint, context, payload, record, reference, views, follow_state_html
+
+
+def test_valid_html_is_durable_before_parse_and_recovers_offline(tmp_path):
+    checkpoint, context, payload, record, _, _, _ = _checkpoint_from_complete_jaen(tmp_path / "captures")
+    checkpoint.record_failure(kind="parse_failed", message="simulated parser regression")
+    manifest = _read_json(checkpoint.manifest_path)
+    assert manifest["status"] == "parse_failed"
+    assert set(manifest["source_snapshots"]) == set(DEFAULT_VIEWS)
+    assert (checkpoint.path / "raw/squad.html.gz").is_file()
+
+    pending = read_pending_evidence(
+        checkpoint.path,
+        season=context.season,
+        group=context.group_roman,
+        team_record=record,
+    )
+    assert set(pending.valid_views) == set(DEFAULT_VIEWS)
+    assert set(pending.valid_follow_states) == {"p", "t", "go", "tot"}
+    parsed = parse_team_profile_pages(
+        pending.seed["raw_views"],
+        team_catalog_record=record,
+        competition_context=context,
+        follow_state_html=pending.seed["follow_state_html"],
+    )
+    validation = validate_team_profile(
+        parsed,
+        catalog_record=record,
+        group_team_catalog=payload["teams"],
+        known_matches=payload["matches"],
+        requested_views=DEFAULT_VIEWS,
+    )
+    assert validation["valid"] is True
+
+
+def test_acquisition_checkpoints_valid_html_before_parser_exception(jaen, monkeypatch, tmp_path):
+    context, payload, record, _, _, views, _, _ = jaen
+    soup = BeautifulSoup(views["squad"], "html.parser")
+    table = soup.select_one("#c3p1")
+    assert table is not None
+    header_cells = table.select("tr")[0].select("th, td")
+    birth_index = next(index for index, cell in enumerate(header_cells) if cell.get("title") == "Fecha de nacimiento")
+    player_row = next(row for row in table.select("tr")[1:] if row.select_one('a[href*="/j/j"]'))
+    birth_cell = player_row.select("th, td")[birth_index]
+    birth_cell.string = "not-a-date"
+    malformed_squad = str(soup)
+    urls = resolve_team_view_urls(views["alignment"], record["team_url"])
+    session = _FakeSession({
+        urls["alignment"]: (views["alignment"], 200),
+        urls["squad"]: (malformed_squad, 200),
+    })
+    monkeypatch.setattr(
+        team_acquisition,
+        "BrowserSessionManager",
+        lambda *_args, **_kwargs: _FakeSessionManager(session),
+    )
+    reference = load_team_catalog(GROUP_CATALOGS[2], competition=context)[2]
+    checkpoint = TeamEvidenceCheckpoint(
+        tmp_path / "captures",
+        season=context.season,
+        group=context.group_roman,
+        team_record=record,
+        catalog_reference=reference,
+        requested_views=("alignment", "squad"),
+        capture_id="parser-failure-jaen",
+    )
+    with pytest.raises(TeamProfileParseError, match="Fecha no interpretable"):
+        team_acquisition.acquire_team_profile(
+            team_catalog_record=record,
+            team_catalog_reference=reference,
+            group_team_catalog=payload["teams"],
+            known_matches=payload["matches"],
+            competition=context,
+            profile_dir=tmp_path / "profile",
+            requested_views=("alignment", "squad"),
+            evidence_checkpoint=checkpoint,
+        )
+    checkpoint.record_failure(kind="parse_failed", message="Fecha no interpretable")
+    pending = read_pending_evidence(
+        checkpoint.path,
+        season=context.season,
+        group=context.group_roman,
+        team_record=record,
+    )
+    assert session.opened_urls == [urls["alignment"], urls["squad"]]
+    assert set(pending.valid_views) == {"alignment", "squad"}
+    assert pending.manifest["status"] == "parse_failed"
+    assert not (checkpoint.path / "normalized").exists()
+
+
+def test_pending_recovery_rejects_hash_missing_identity_and_denial(tmp_path):
+    checkpoint, context, _, record, _, _, _ = _checkpoint_from_complete_jaen(tmp_path / "tampered")
+    (checkpoint.path / "raw/squad.html.gz").write_bytes(b"tampered gzip")
+    (checkpoint.path / "raw/statistics.html.gz").unlink()
+    pending = read_pending_evidence(
+        checkpoint.path,
+        season=context.season,
+        group=context.group_roman,
+        team_record=record,
+    )
+    assert "squad" not in pending.valid_views
+    assert "statistics" not in pending.valid_views
+    assert any("squad" in warning for warning in pending.warnings)
+    assert any("statistics" in warning for warning in pending.warnings)
+    with pytest.raises(ValueError, match="identidad, grupo, temporada o procedencia"):
+        read_pending_evidence(
+            checkpoint.path,
+            season=context.season,
+            group="I",
+            team_record=record,
+        )
+
+    denied = TeamEvidenceCheckpoint(
+        tmp_path / "denied",
+        season=context.season,
+        group=context.group_roman,
+        team_record=record,
+        catalog_reference={},
+        requested_views=DEFAULT_VIEWS,
+        capture_id="denied-jaen",
+    )
+    with pytest.raises(ValueError, match="VALID y HTTP 200"):
+        denied.record_view(
+            "alignment",
+            "<html>Just a moment</html>",
+            requested_url=record["team_url"],
+            final_url=record["team_url"],
+            title="Just a moment",
+            access={"status": "CHALLENGE_REQUIRED", "http_status": 403},
+        )
+    denied.record_failure(kind="access_denied", message="HTTP 403")
+    assert denied.manifest["source_snapshots"] == {}
+    with pytest.raises(ValueError, match="no es reutilizable"):
+        read_pending_evidence(
+            denied.path,
+            season=context.season,
+            group=context.group_roman,
+            team_record=record,
+        )
+
+
+def test_diagnostic_checkpoints_are_not_returned_as_published_captures(tmp_path):
+    checkpoint, context, payload, record, reference, _, _ = _checkpoint_from_complete_jaen(
+        tmp_path / "exports", capture_id="diagnostic-only"
+    )
+    captures = inspect_team_captures(
+        tmp_path / "exports",
+        season=context.season,
+        team_catalog_record=record,
+        competition=context,
+        team_catalog_reference=reference,
+        group_team_catalog=payload["teams"],
+        known_matches=payload["matches"],
+        required_views=DEFAULT_VIEWS,
+    )
+    assert captures == ()
+    assert checkpoint.path.exists()
+
+
+def test_pending_resume_requests_only_the_page_without_valid_evidence(monkeypatch, tmp_path):
+    checkpoint, context, payload, record, reference, views, _ = _checkpoint_from_complete_jaen(
+        tmp_path / "resume", capture_id="resume-jaen"
+    )
+    (checkpoint.path / "raw/squad.html.gz").unlink()
+    pending = read_pending_evidence(
+        checkpoint.path,
+        season=context.season,
+        group=context.group_roman,
+        team_record=record,
+    )
+    urls = resolve_team_view_urls(views["alignment"], record["team_url"])
+    session = _FakeSession({urls["squad"]: (views["squad"], 200)})
+    monkeypatch.setattr(
+        team_acquisition,
+        "BrowserSessionManager",
+        lambda *_args, **_kwargs: _FakeSessionManager(session),
+    )
+    resumed_checkpoint = TeamEvidenceCheckpoint(
+        tmp_path / "resume",
+        season=context.season,
+        group=context.group_roman,
+        team_record=record,
+        catalog_reference=reference,
+        requested_views=DEFAULT_VIEWS,
+        capture_id=pending.capture_id,
+        resume_path=pending.path,
+    )
+    bundle = team_acquisition.acquire_team_profile(
+        team_catalog_record=record,
+        team_catalog_reference=reference,
+        group_team_catalog=payload["teams"],
+        known_matches=payload["matches"],
+        competition=context,
+        profile_dir=tmp_path / "profile",
+        requested_views=("squad",),
+        seed_raw_views=pending.seed["raw_views"],
+        seed_access_by_view=pending.seed["access_by_view"],
+        seed_view_urls=pending.seed["view_urls"],
+        seed_page_titles=pending.seed["page_titles"],
+        seed_browser=pending.seed["browser"],
+        seed_capture_id=pending.capture_id,
+        seed_follow_state_html=pending.seed["follow_state_html"],
+        seed_follow_state_diagnostics=pending.seed["follow_state_diagnostics"],
+        seed_capture_ids=(pending.capture_id,),
+        capture_id=pending.capture_id,
+        require_follow_states=True,
+        evidence_checkpoint=resumed_checkpoint,
+    )
+    assert session.opened_urls == [urls["squad"]]
+    assert bundle.acquired_views == ("squad",)
+    assert bundle.validation["valid"] is True
+
+
+def test_dry_run_plan_counts_only_missing_pages_in_pending_evidence(tmp_path, monkeypatch):
+    checkpoint, context, _, record, reference, _, _ = _checkpoint_from_complete_jaen(tmp_path / "plan")
+    (checkpoint.path / "raw/squad.html.gz").unlink()
+    pending = read_pending_evidence(
+        checkpoint.path,
+        season=context.season,
+        group=context.group_roman,
+        team_record=record,
+    )
+    plan = _team_plan(
+        record=record,
+        group=2,
+        views=DEFAULT_VIEWS,
+        assessment=None,
+        catalog_reference=reference,
+        pending_evidence=pending,
+    )
+    assert plan["action"] == "resume_pending"
+    assert plan["planned_page_visits"] == ["squad"]
+    assert plan["planned_navigation_count"] == 1
+
+
+def test_batch_defaults_are_slow_and_storage_is_configurable(monkeypatch, tmp_path):
+    monkeypatch.setenv("FDH_TEAM_CAPTURE_ROOT", str(tmp_path / "persistent" / "captures"))
+    args = parse_team_batch_args([])
+    assert args.pause_seconds >= 5
+    assert args.output_root == tmp_path / "persistent" / "captures"
+    assert _is_inside_repository(ROOT / "data/exports/bdfutbol/teams") is True
+    assert _is_inside_repository(tmp_path / "captures") is False
+    with pytest.raises(ValueError, match="requiere almacenamiento externo"):
+        team_batch_main([
+            "--groups", "both",
+            "--team-id", "76",
+            "--output-root", str(ROOT / "data/exports/bdfutbol/teams"),
+        ])
+
+
+def test_unknown_match_ids_raise_stale_catalog_error_offline(jaen):
+    context, payload, record, _, _, views, parsed, _ = jaen
+    referenced_id = parsed.team_match_ids_from_profile[0]
+    incomplete_catalog = [item for item in payload["matches"] if str(item["match_id"]) != referenced_id]
+    with pytest.raises(StaleMatchCatalogError, match="no cubre las referencias"):
+        team_acquisition.acquire_team_profile(
+            team_catalog_record=record,
+            team_catalog_reference={"path": "fixture", "sha256": "fixture"},
+            group_team_catalog=payload["teams"],
+            known_matches=incomplete_catalog,
+            competition=context,
+            profile_dir=Path("unused-profile"),
+            requested_views=(),
+            seed_raw_views=views,
+            require_follow_states=False,
+        )

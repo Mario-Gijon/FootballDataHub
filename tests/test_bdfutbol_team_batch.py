@@ -7,6 +7,7 @@ import pytest
 
 from football_data_hub.providers.bdfutbol.teams.batch import (
     BatchAccessDenied,
+    BatchLocalFailure,
     BatchStop,
     BatchTeamOutcome,
     run_team_batch,
@@ -89,6 +90,41 @@ def test_batch_stops_after_environment_failure_without_calling_next_team():
     assert calls == [1]
     assert [item["status"] for item in manifest["teams"]] == ["failed", "pending"]
     assert manifest["stopped_on_access_denial"] is False
+
+
+def test_batch_manifest_links_preserved_local_evidence_and_continues():
+    def process(_group, team, views):
+        if team["team_id"] == 1:
+            raise BatchLocalFailure("parser error", capture_id="diag-1")
+        return BatchTeamOutcome("capture-2", views)
+
+    manifest = run_team_batch(
+        teams_by_group={1: [_team(1), _team(2)]},
+        groups=(1,),
+        requested_views=("alignment",),
+        find_complete_capture=lambda *_args: None,
+        find_partial_capture=lambda *_args: None,
+        process_team=process,
+    )
+    assert manifest["teams"][0]["status"] == "incomplete"
+    assert manifest["teams"][0]["capture_id"] == "diag-1"
+    assert manifest["teams"][1]["status"] == "complete"
+
+
+def test_batch_stop_reason_references_diagnostic_capture():
+    def stop(*_args):
+        raise BatchStop("stale catalog", kind="stale_match_catalog", capture_id="diag-1")
+
+    manifest = run_team_batch(
+        teams_by_group={1: [_team(1), _team(2)]},
+        groups=(1,),
+        requested_views=("alignment",),
+        find_complete_capture=lambda *_args: None,
+        find_partial_capture=lambda *_args: None,
+        process_team=stop,
+    )
+    assert manifest["teams"][0]["capture_id"] == "diag-1"
+    assert manifest["stop_reason"]["capture_id"] == "diag-1"
 
 
 def test_batch_manifest_is_versioned_create_only(tmp_path: Path):

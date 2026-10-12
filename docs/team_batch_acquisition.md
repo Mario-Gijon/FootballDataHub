@@ -56,7 +56,7 @@ Opciones disponibles:
 - `--limit N`: limita globalmente el número seleccionado, manteniendo el orden
   de grupo y catálogo.
 - `--pause-seconds SEGUNDOS`: pausa entre páginas y equipos. El valor
-  predeterminado es 2 segundos.
+  predeterminado es 5 segundos.
 - `--groups I`, `--groups II` o `--groups both`: selecciona grupos.
 - `--view VISTA`: repetible para pedir un alcance menor en un piloto.
 - `--output-root RUTA`: raíz configurable. Para el servidor UJA se recomienda
@@ -199,3 +199,115 @@ PYTHONPATH=src xvfb-run -a -s '-screen 0 1920x1080x24' \
 Los comandos son una preparación reproducible, no evidencia de que el lote se
 haya ejecutado. Antes de usar el servidor, sus catálogos y perfil deben estar
 disponibles y un piloto real debe confirmar el entorno de adquisición.
+
+## Persistencia antes del parser y reanudación (TEAM-03B1)
+
+El orquestador guarda cada vista después de validar el acceso (`VALID`, HTTP
+200, URL y estructura), antes de ejecutar el parser. El checkpoint se escribe
+bajo:
+
+```text
+<root>/<season>/<team_id>/diagnostics/<capture_id>/
+```
+
+`metadata/evidence.json` registra identidad, grupo, temporada, catálogo, URLs,
+título, estado HTTP, hora, navegador y SHA-256. Cada HTML se comprime de forma
+determinista y se publica mediante escritura temporal, `fsync` y `replace`.
+Seguimiento se conserva por estado con la misma política. Desafíos, respuestas
+403/429 y documentos inválidos no se guardan como snapshots. Si falla el parser
+o la validación local, el checkpoint queda como `parse_failed` o `local_error`;
+no se crea una captura `complete` ni puede seleccionarla FastAPI.
+
+Al reanudar, la CLI verifica identidad, URLs y hashes; planifica únicamente las
+vistas y estados sin evidencia íntegra. Si todas las páginas ya están, vuelve a
+parsear offline. Cuando la captura normalizada se publica atómicamente, el
+checkpoint temporal se elimina, porque sus bytes ya están conservados en la
+captura completa. Las capturas publicadas anteriores son inmutables.
+
+Las referencias de Partidos y Seguimiento se validan por `match_id` exacto
+contra los 380 registros del catálogo del grupo. Un ID ausente produce una
+condición `stale_match_catalog` que detiene el bloque; no hay reconciliación por
+nombre o marcador y no se edita el catálogo desde esta CLI. Los catálogos
+actuales fueron capturados el 10/10/2026. Antes de adquirir nuevas fichas tras
+cambios de calendario habrá que actualizar y validar los datasets de
+competición en una fase autorizada independiente.
+
+## Almacenamiento externo y despliegue UJA
+
+`--output-root` acepta rutas absolutas o relativas y se puede configurar con
+`FDH_TEAM_CAPTURE_ROOT`; `FDH_BDFUTBOL_GROUP1_MATCHES` y
+`FDH_BDFUTBOL_GROUP2_MATCHES` apuntan a los catálogos. `FDH_BDFUTBOL_PROFILE`
+configura el perfil local del navegador. El servidor debe usar su propio perfil
+persistente y almacenamiento, nunca una ruta del usuario de desarrollo.
+Una adquisición real se niega si `--output-root` resuelve dentro del checkout;
+la excepción explícita `--allow-repository-storage` se reserva para pruebas
+locales controladas. `--dry-run` sí puede inspeccionar el root del repositorio.
+
+Para migrar a un volumen del servidor:
+
+1. Copiar catálogos y capturas completas preservando bytes y permisos; comparar
+   los SHA-256 de manifiestos antes y después.
+2. Configurar `FDH_TEAM_CAPTURE_ROOT` a un directorio persistente fuera del
+   checkout, conceder acceso de lectura/escritura al usuario del servicio y
+   confirmar el espacio libre.
+3. Ejecutar el `--dry-run` contra esa raíz; verificar que el plan reutiliza las
+   cuatro capturas completas sin visitas y que no propone más de cinco equipos.
+4. Hacer un piloto de hasta cinco equipos, con `--pause-seconds 5` y sin
+   paralelismo. Detener el lote ante desafío, denegación o catálogo desactualizado.
+5. Validar offline manifiestos, hashes y normalización; publicar al índice de la
+   aplicación en una operación posterior e independiente.
+
+En Git hay actualmente snapshots piloto bajo seguimiento. Los siguientes lotes
+deben dirigirse al volumen externo y añadirse a una política de exclusión de
+artefactos antes de adquirir más equipos; no se deben borrar ni reescribir los
+pilotos existentes. Los manifiestos y hashes deben quedar en el volumen
+persistente y en copias de seguridad versionadas fuera del checkout.
+
+El piloto TEAM-03A fue local y no acredita disponibilidad de la UJA. La ruta
+`/srv/football-data-hub/team-captures` no está creada en la máquina de
+desarrollo y el usuario `mario` no tiene permiso de escritura en `/srv`. La
+ejecución de un bloque en este host no se considera sustituto del piloto UJA.
+
+### Preflight TEAM-03B1 (13/10/2026)
+
+La CLI actual, sin navegador, volvió a inspeccionar los 40 clubes y confirmó:
+
+- Capturas completas y reutilizables: UD Logroñés (I, 178), Racing de Ferrol
+  (I, 48), Zaragoza (II, 39) y Jaén (II, 49); las seis vistas y los estados
+  `p`, `t`, `go`, `tot` están íntegros en las cuatro.
+- Pendientes: 36; plan actual: 216 navegaciones, seis por club.
+- Los catálogos contienen 380 partidos cada uno. Grupo I fue capturado
+  `2026-10-10T20:25:00Z`; Grupo II, `2026-10-10T10:26:56Z`. Las cuatro fichas
+  completas existentes se revalidan contra sus IDs y no contienen referencias
+  desconocidas. Las páginas nuevas aún no se han contrastado; si introducen un
+  ID ausente, el bloque se detendrá con `stale_match_catalog`.
+- El root local está legible/escribible, con aproximadamente 9.3 GiB libres,
+  pero está dentro del checkout. En el checkout hay 87 archivos raw de equipo
+  bajo seguimiento Git, aproximadamente 24 MiB. No se añadieron ni migraron
+  snapshots en este hito.
+
+El candidato de primer bloque, obtenido del catálogo validado, sería:
+
+| Grupo | `team_id` | Equipo | Vistas a visitar |
+|---|---:|---|---:|
+| I | 76 | Lugo | 6 |
+| I | 72 | Bilbao Athletic | 6 |
+| I | 149 | Cacereño | 6 |
+| II | 94 | Villarreal B | 6 |
+| II | 107 | Alcorcón | 6 |
+
+Son 30 navegaciones previstas; cada selección de los cuatro estados de
+Seguimiento ocurre en la vista ya abierta. Solo se ejecutó su dry-run. En esta
+sesión no se ha confirmado que el host remoto `torre` sea un servidor UJA; la
+resolución local de SSH tampoco fue posible por un error de permisos en
+`/etc/ssh/ssh_config.d/20-omarchy-keepalive.conf`. Por eso no se trasladó ni se
+ejecutó el bloque en la máquina de desarrollo.
+
+El host local tiene Chromium 152, SeleniumBase 4.55.2, `xvfb-run` y el perfil
+Pure CDP de `mario` con permisos `0700` (66 MiB). Esto acredita solamente el
+entorno local; no acredita la configuración, acceso ni almacenamiento del
+servidor UJA.
+
+La verificación automática final del código TEAM-03B1 terminó con 253 tests
+pasando en 462.85 s, Ruff, compilación Python y `git diff --check` correctos.
+No se modificó el índice `config/team_profiles_2026-27.json`.
