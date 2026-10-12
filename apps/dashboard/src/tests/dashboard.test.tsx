@@ -630,6 +630,7 @@ function bootstrapForGeneralJ5() {
 
 beforeEach(() => {
   window.history.replaceState({}, "", "/");
+  window.sessionStorage.clear();
   clearTeamProfileCache();
   fetchMock.mockReset();
   fetchMock.mockImplementation((input: RequestInfo | URL) => Promise.resolve(response(200, payloadFor(input))));
@@ -1453,8 +1454,8 @@ describe("dashboard de clasificación", () => {
     expect(await screen.findByText("Entrenadores publicados")).toBeInTheDocument();
     const sectionNavigation = screen.getByRole("navigation", { name: "Secciones de Jaén" });
     expect(within(sectionNavigation).getAllByRole("link").map((link) => link.textContent)).toEqual(["Resumen", "Plantilla"]);
-    expect(screen.queryByRole("button", { name: "Alineación" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Estadísticas" })).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Alineación" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Plantilla" })).toHaveAttribute("aria-selected", "false");
     expect(screen.queryByRole("heading", { name: "Estadísticas de temporada" })).not.toBeInTheDocument();
     expect(screen.getByText("La captura no contiene estados enriquecidos de Seguimiento; no son necesarios para Plantilla.")).toBeInTheDocument();
 
@@ -1515,9 +1516,101 @@ describe("dashboard de clasificación", () => {
     expect(screen.getByRole("heading", { name: "Titulares" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Suplentes" })).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Representación aproximada de la táctica" }).querySelectorAll("[data-player-id]")).toHaveLength(11);
-    expect(screen.queryByRole("button", { name: "Alineación" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Estadísticas" })).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Alineación" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Plantilla" })).toHaveAttribute("aria-selected", "false");
     expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/teams/48/seasons/2026-27/roster"))).toHaveLength(1);
+  });
+
+  it("ofrece biografías y todas las estadísticas locales para los 25 jugadores", async () => {
+    const roster = teamRosterPayload(49);
+    window.history.replaceState({}, "", "/teams/49/roster");
+    render(<App />);
+
+    expect(await screen.findByRole("heading", { name: "Entrenadores publicados" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Plantilla" }));
+    expect(screen.getByRole("heading", { name: "Jugadores" })).toBeInTheDocument();
+    const bioTable = screen.getByRole("region", { name: "Tabla biográfica de jugadores" });
+    const bioRows = [...bioTable.querySelectorAll<HTMLTableRowElement>("tbody tr[data-player-id]")];
+    expect(bioRows).toHaveLength(25);
+    expect(bioRows[0]?.dataset.playerId).toBe(String(roster.players[0]?.player_id));
+    const firstPlayer = roster.players[0]!;
+    const birthDate = firstPlayer.birth_date ? `${firstPlayer.birth_date.slice(8, 10)}/${firstPlayer.birth_date.slice(5, 7)}/${firstPlayer.birth_date.slice(0, 4)}` : "—";
+    expect(bioRows[0]?.cells[3]).toHaveTextContent(birthDate);
+    expect(bioRows[0]?.cells[2]).toHaveTextContent(firstPlayer.full_name ?? "—");
+    expect(bioRows[0]?.cells[6]).toHaveTextContent("equivalencia no verificada");
+    expect(screen.getByRole("region", { name: "Datos biográficos de entrenadores" })).toBeInTheDocument();
+    expect(screen.getByText(roster.coaches[0]!.full_name!)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Buscar en la plantilla" }), { target: { value: firstPlayer.display_name } });
+    expect(bioTable.querySelectorAll("tbody tr[data-player-id]")).toHaveLength(1);
+    fireEvent.change(screen.getByRole("textbox", { name: "Buscar en la plantilla" }), { target: { value: "" } });
+    fireEvent.click(within(bioTable).getByRole("button", { name: "Ordenar por Dorsal" }));
+    const jerseyByPlayer = new Map(roster.memberships.map((membership) => [membership.player_id, membership.jersey_number]));
+    const expectedJerseyOrder = roster.players.map((player, sourceIndex) => ({ playerId: player.player_id, jersey: jerseyByPlayer.get(player.player_id), sourceIndex }))
+      .sort((left, right) => {
+        if (left.jersey === null || left.jersey === undefined) return right.jersey === null || right.jersey === undefined ? left.sourceIndex - right.sourceIndex : 1;
+        if (right.jersey === null || right.jersey === undefined) return -1;
+        return left.jersey - right.jersey || left.sourceIndex - right.sourceIndex;
+      })
+      .map((item) => String(item.playerId));
+    expect([...bioTable.querySelectorAll<HTMLTableRowElement>("tbody tr[data-player-id]")].map((row) => row.dataset.playerId)).toEqual(expectedJerseyOrder);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Análisis" }));
+    const analysisTable = screen.getByRole("region", { name: "Tabla de estadísticas de jugadores" });
+    const analysisRows = [...analysisTable.querySelectorAll<HTMLTableRowElement>("tbody tr[data-player-id]")];
+    expect(screen.getByRole("heading", { name: "Estadísticas de temporada" })).toBeInTheDocument();
+    expect(analysisRows).toHaveLength(25);
+    expect(within(analysisTable).getAllByRole("columnheader")).toHaveLength(20);
+    for (const header of [
+      "PJ · Partidos jugados", "PT · Partidos como titular", "PC · Partidos completos",
+      "PS · Partidos como suplente", "PX · Partidos en los que fue sustituido", "C · Convocado sin jugar",
+      "MIN · Minutos jugados", "TA · Tarjetas amarillas", "TR · Tarjetas rojas", "G · Goles",
+      "MIN/G · Minutos por gol", "GP · Goles de penalti", "GPP · Goles en propia puerta",
+      "GE · Goles encajados", "PG · Victorias del equipo", "PE · Empates del equipo", "PP · Derrotas del equipo",
+    ]) expect(within(analysisTable).getByRole("button", { name: `Ordenar por ${header}` })).toBeInTheDocument();
+    const firstStatistics = roster.statistics.find((item) => item.player_id === firstPlayer.player_id)!;
+    const firstAnalysisRow = analysisRows.find((row) => row.dataset.playerId === String(firstPlayer.player_id))!;
+    expect(firstAnalysisRow.cells[3 + 6]).toHaveTextContent(String(firstStatistics.minutes_played));
+    expect(firstAnalysisRow.cells[3 + 11]).toHaveTextContent(String(firstStatistics.penalty_goals));
+    expect(firstAnalysisRow.cells[3 + 16]).toHaveTextContent(String(firstStatistics.team_losses));
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/teams/49/seasons/2026-27/roster"))).toHaveLength(1);
+  });
+
+  it("deja los valores ausentes al final en ambos sentidos y no arrastra la vista entre equipos", () => {
+    const jaen = teamRosterPayload(49);
+    const racing = teamRosterPayload(48);
+    const nullPlayerId = jaen.players[0]!.player_id;
+    const rosterWithNull = TeamRosterSchema.parse({
+      ...jaen,
+      statistics: jaen.statistics.map((item) => item.player_id === nullPlayerId ? { ...item, goals: null } : item),
+    });
+    const { rerender } = render(<TeamRosterSection roster={rosterWithNull} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Análisis" }));
+    const analysisTable = screen.getByRole("region", { name: "Tabla de estadísticas de jugadores" });
+    const goalSort = within(analysisTable).getByRole("button", { name: "Ordenar por G · Goles" });
+    fireEvent.click(goalSort);
+    const rowsAscending = [...analysisTable.querySelectorAll<HTMLTableRowElement>("tbody tr[data-player-id]")];
+    expect(rowsAscending.at(-1)?.dataset.playerId).toBe(String(nullPlayerId));
+    expect(rowsAscending.at(-1)?.cells[12]).toHaveTextContent("—");
+    fireEvent.click(goalSort);
+    const rowsDescending = [...analysisTable.querySelectorAll<HTMLTableRowElement>("tbody tr[data-player-id]")];
+    expect(rowsDescending.at(-1)?.dataset.playerId).toBe(String(nullPlayerId));
+
+    rerender(<TeamRosterSection roster={racing} />);
+    expect(screen.getByRole("tab", { name: "Alineación" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("heading", { name: "Titulares" })).toBeInTheDocument();
+  });
+
+  it("recuerda la vista por equipo al volver desde Resumen sin volver a pedir la Plantilla", async () => {
+    window.history.replaceState({}, "", "/teams/49/roster");
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "Entrenadores publicados" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Plantilla" }));
+    fireEvent.click(screen.getByRole("link", { name: "Resumen" }));
+    expect(await screen.findByRole("heading", { name: "Resumen deportivo" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("link", { name: "Plantilla" }));
+    expect(await screen.findByRole("heading", { name: "Jugadores" })).toBeInTheDocument();
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/teams/49/seasons/2026-27/roster"))).toHaveLength(1);
   });
 
   it("mantiene el resumen disponible si un equipo conocido aún no tiene Plantilla adquirida", async () => {

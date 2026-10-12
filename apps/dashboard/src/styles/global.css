@@ -1003,6 +1003,11 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .team-roster { min-width: 0; }
 .team-roster-content { display: grid; gap: 11px; }
 .team-roster-content .team-profile-panel { margin: 0; }
+.roster-mode-tabs { width: fit-content; max-width: 100%; display: flex; gap: 3px; padding: 3px; border: 1px solid var(--line-soft); border-radius: 8px; background: rgb(18 20 23 / 76%); }
+.roster-mode-tab { min-height: 34px; padding: 0 14px; border: 1px solid transparent; border-radius: 6px; color: var(--text-muted); background: transparent; cursor: pointer; font-size: 11px; font-weight: 550; transition: color .15s ease, border-color .15s ease, background .15s ease; }
+.roster-mode-tab:hover { color: var(--text); background: var(--surface-hover); }
+.roster-mode-tab.is-active { border-color: rgb(134 82 183 / 42%); color: var(--text); background: rgb(134 82 183 / 17%); }
+.roster-view { min-width: 0; }
 .roster-coaches, .roster-alignment-group, .roster-table-panel, .roster-indicator-legend, .tactical-panel { min-width: 0; padding: 14px; border: 1px solid var(--glass-border); border-radius: 10px; background: var(--surface); backdrop-filter: blur(10px); }
 .profile-image-fallback { display: grid; place-items: center; color: var(--text-muted); font-family: var(--mono); font-size: 11px; }
 .roster-player-identity { min-width: 0; display: inline-flex; align-items: center; gap: 8px; }
@@ -1019,6 +1024,8 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .roster-coach-table { min-width: 700px; }
 .roster-table thead th { position: sticky; z-index: 1; top: 0; height: 37px; padding: 0 8px; border-bottom: 1px solid var(--line); color: var(--text-subtle); background: var(--surface-raised); font-family: var(--mono); font-size: 9px; font-weight: 500; text-align: left; white-space: nowrap; }
 .roster-table thead th:not(:first-child) { text-align: center; }
+.roster-sort-button { max-width: 100%; padding: 0; border: 0; color: inherit; background: transparent; cursor: pointer; font: inherit; text-align: inherit; white-space: inherit; }
+.roster-sort-button:hover, .roster-sort-button:focus-visible { color: var(--purple-light); outline: none; }
 .roster-table tbody tr { height: 46px; }
 .roster-table tbody tr:nth-child(even) { background: rgb(255 255 255 / 1.5%); }
 .roster-table tbody tr:hover { background: var(--surface-hover); }
@@ -1027,6 +1034,19 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .roster-table tbody td:not(:first-child) { text-align: center; }
 .roster-squad-table tbody td:nth-child(2) { text-align: left; }
 .roster-squad-table .roster-player-identity { min-width: 235px; }
+.roster-biography-table { min-width: 1510px; }
+.roster-biography-table .roster-player-identity { min-width: 185px; }
+.roster-biography-table tbody td:nth-child(1), .roster-analysis-table tbody td:nth-child(1) { position: sticky; z-index: 2; left: 0; min-width: 200px; background: var(--surface); text-align: left; box-shadow: 1px 0 var(--line-soft); }
+.roster-biography-table thead th:nth-child(1), .roster-analysis-table thead th:nth-child(1) { position: sticky; z-index: 3; left: 0; background: var(--surface-raised); box-shadow: 1px 0 var(--line-soft); }
+.roster-biography-table tbody tr:nth-child(even) td:nth-child(1), .roster-analysis-table tbody tr:nth-child(even) td:nth-child(1) { background: #202328; }
+.roster-biography-table tbody tr:hover td:nth-child(1), .roster-analysis-table tbody tr:hover td:nth-child(1) { background: var(--surface-hover); }
+.roster-coach-biography-table { min-width: 1260px; }
+.roster-coach-biography-table .roster-player-identity { min-width: 190px; }
+.roster-analysis-table { min-width: 1950px; }
+.roster-analysis-table thead th { padding: 0 9px; }
+.roster-analysis-table .roster-sort-button { min-width: 58px; }
+.roster-analysis-table tbody td { min-width: 72px; }
+.roster-analysis-table .roster-player-identity { min-width: 185px; }
 .roster-photo, .roster-photo.profile-image-fallback { width: 29px; height: 33px; flex: 0 0 29px; border: 1px solid var(--line-soft); border-radius: 4px; object-fit: cover; background: var(--surface-raised); }
 .roster-table .roster-player-name > a, .roster-table .roster-player-name > strong { font-size: 10px; }
 .roster-table .roster-player-name > small { max-width: 220px; font-size: 8px; }
@@ -1062,6 +1082,8 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 @media (max-width: 720px) {
   .team-section-tabs { width: 100%; }
   .team-section-tab { min-width: 0; flex: 1 1 0; padding: 0 7px; font-size: 10px; }
+  .roster-mode-tabs { width: 100%; }
+  .roster-mode-tab { min-width: 0; flex: 1 1 0; padding: 0 8px; }
   .roster-coaches, .roster-alignment-group, .roster-indicator-legend, .tactical-panel { padding: 10px; }
   .roster-player-name > a, .roster-player-name > strong { font-size: 9px; }
   .roster-search { width: 100%; }
