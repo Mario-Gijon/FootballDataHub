@@ -1023,6 +1023,56 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .team-transfers-table tbody tr:hover td { background: rgb(255 255 255 / 2%); }
 .team-transfers-table th:first-child, .team-transfers-table td:first-child { width: 52px; text-align: center; }
 .team-transfers-table td:nth-child(2) { min-width: 135px; color: var(--text); white-space: nowrap; }
+.team-matches { display: grid; gap: 12px; min-width: 0; }
+.team-matches-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 0; }
+.team-matches-header h2 { margin: 3px 0 4px; color: var(--text); font: 700 18px/1.2 "Manrope", sans-serif; }
+.team-matches-header p { margin: 0; color: var(--text-muted); font-size: 11px; }
+.team-matches-capture { display: grid; justify-items: end; gap: 4px; color: var(--text-subtle); font-size: 10px; text-align: right; }
+.team-matches-panel { display: grid; gap: 10px; min-width: 0; margin: 0; }
+.team-matches-panel h3 { margin: 3px 0 0; color: var(--text); font: 700 15px/1.2 "Manrope", sans-serif; }
+.team-match-count { color: var(--text-subtle); font-size: 10px; white-space: nowrap; }
+.team-match-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.team-match-filters label { display: grid; gap: 4px; color: var(--text-subtle); font-size: 10px; }
+.team-match-filters select { min-width: 150px; min-height: 33px; padding: 0 26px 0 9px; border: 1px solid var(--line-soft); border-radius: 6px; color: var(--text); background: rgb(15 17 20 / 60%); font: inherit; }
+.team-match-filters select:focus-visible { outline: 2px solid rgb(173 134 211 / 75%); outline-offset: 1px; }
+.team-match-table-scroll { width: 100%; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; border: 1px solid var(--line-soft); border-radius: 7px; background: rgb(15 17 20 / 34%); scrollbar-color: #555b63 transparent; }
+.team-match-table { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 11px; }
+.team-match-table th, .team-match-table td { padding: 8px 9px; border-bottom: 1px solid rgb(255 255 255 / 5%); color: var(--text-muted); text-align: left; vertical-align: middle; }
+.team-match-table th { color: var(--text-subtle); background: rgb(36 40 45 / 88%); font-size: 10px; font-weight: 650; white-space: nowrap; }
+.team-match-table tbody tr:last-child td { border-bottom: 0; }
+.team-match-table tbody tr:hover td { background: rgb(255 255 255 / 2%); }
+.team-match-table th:nth-child(1), .team-match-table td:nth-child(1) { min-width: 105px; }
+.team-match-table th:nth-child(2), .team-match-table td:nth-child(2) { min-width: 130px; }
+.team-match-table th:nth-child(3), .team-match-table td:nth-child(3) { width: 62px; text-align: center; }
+.team-match-table th:nth-child(5), .team-match-table td:nth-child(5) { min-width: 120px; text-align: center; }
+.team-match-table th:nth-child(7), .team-match-table td:nth-child(7) { min-width: 130px; }
+.team-match-table td { white-space: nowrap; }
+.team-match-date time, .team-match-date small { display: block; }
+.team-match-date small { margin-top: 2px; color: var(--text-subtle); font-size: 9px; }
+.team-match-team { display: inline-flex; align-items: center; gap: 6px; color: var(--text); text-decoration: none; }
+.team-match-team:hover, .team-match-stadium a:hover, .team-record-card a:hover { color: var(--purple-bright); }
+.team-match-crest { width: 19px; height: 19px; flex: 0 0 19px; object-fit: contain; }
+.team-card-crest-fallback.team-match-crest { display: inline-grid; place-items: center; border-radius: 50%; color: var(--text-muted); background: var(--surface-raised); font-size: 8px; }
+.team-match-score { display: inline-block; min-width: 72px; padding: 4px 7px; border: 1px solid transparent; border-radius: 5px; color: var(--text); font-weight: 700; text-align: center; text-decoration: none; }
+.team-match-score.is-win { border-color: rgb(75 173 117 / 30%); color: #94d6aa; background: rgb(59 132 85 / 14%); }
+.team-match-score.is-draw { border-color: rgb(255 255 255 / 9%); color: var(--text); background: rgb(255 255 255 / 4%); }
+.team-match-score.is-loss { border-color: rgb(219 99 99 / 27%); color: #efa0a0; background: rgb(154 52 52 / 13%); }
+.team-match-score.is-pending, .team-match-score.is-incomplete { color: var(--text-subtle); font-size: 10px; font-weight: 550; }
+.team-match-stadium a, .team-record-card a { color: inherit; text-decoration: none; }
+.team-match-empty { height: 68px; color: var(--text-subtle) !important; text-align: center !important; }
+.team-match-chart { width: 100%; height: 250px; min-width: 0; }
+.team-records-method { margin: -4px 0 0; color: var(--text-subtle); font-size: 10px; }
+.team-record-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.team-record-card { min-width: 0; padding: 10px; border: 1px solid var(--line-soft); border-radius: 7px; background: rgb(15 17 20 / 35%); }
+.team-record-card-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.team-record-card h4 { margin: 0; color: var(--text-muted); font-size: 10px; font-weight: 600; }
+.team-record-card strong { flex: 0 0 auto; color: var(--text); font-size: 12px; }
+.team-record-card ul { display: grid; gap: 5px; margin: 8px 0 0; padding: 0; list-style: none; }
+.team-record-card li { display: grid; grid-template-columns: 30px 17px minmax(0, 1fr); align-items: center; gap: 5px; color: var(--text-subtle); font-size: 9px; }
+.team-record-card li.is-new-run { margin-top: 4px; padding-top: 4px; border-top: 1px solid rgb(255 255 255 / 7%); }
+.team-record-card li span:nth-child(2) { color: var(--text-muted); font-weight: 700; }
+.team-record-card li a, .team-record-card li > span:last-child { overflow: hidden; color: var(--text-muted); text-overflow: ellipsis; white-space: nowrap; }
+.team-record-card > p { margin: 8px 0 0; color: var(--text-subtle); font-size: 9px; }
 .team-transfers-table td:nth-child(4) { width: 50px; color: var(--text); text-align: center; }
 .team-transfers-table td:nth-child(5) { min-width: 155px; font-size: 10px; }
 .team-transfers-table th:nth-child(4) { text-align: center; }
@@ -1181,11 +1231,19 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 }
 @media (max-width: 720px) {
   .team-section-tabs { width: 100%; }
-  .team-section-tab { min-width: 0; flex: 1 1 0; padding: 0 7px; font-size: 10px; }
+  .team-section-tab { min-width: 0; flex: 1 1 0; padding: 0 5px; font-size: 9px; }
   .team-transfers-header { grid-template-columns: 1fr; align-items: flex-start; gap: 8px; }
   .team-transfers-search { grid-column: auto; width: 100%; }
   .team-transfers-table { min-width: 690px; font-size: 10px; }
   .team-transfers-table th, .team-transfers-table td { padding: 7px; }
+  .team-matches-header { align-items: flex-start; flex-direction: column; gap: 9px; }
+  .team-matches-capture { justify-items: start; text-align: left; }
+  .team-match-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .team-match-filters select { min-width: 0; width: 100%; }
+  .team-match-table { min-width: 870px; font-size: 10px; }
+  .team-match-table th, .team-match-table td { padding: 7px; }
+  .team-record-grid { grid-template-columns: 1fr; }
+  .team-match-chart { height: 220px; }
   .roster-mode-tabs { width: 100%; }
   .roster-mode-tab { min-width: 0; flex: 1 1 0; padding: 0 8px; }
   .roster-coaches, .roster-alignment-group, .roster-indicator-legend, .tactical-panel { padding: 10px; }

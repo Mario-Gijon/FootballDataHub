@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import group1Matches from "../../../../data/exports/bdfutbol/group1_classification/20261010T202500.293648Z-b770724f/normalized/matches.json";
 import group2Matches from "../../../../data/exports/bdfutbol/group2_classification/derived-res01-20261010T102656Z/normalized/matches.json";
 import type { Bootstrap } from "../api/contracts";
-import { buildTeamCatalog, findTeamGroup, normalizeTeamSearch, searchTeams, teamPath } from "./teams";
+import { buildTeamCatalog, findTeamGroup, normalizeTeamSearch, searchTeams, teamMatchesPath, teamPath } from "./teams";
 
 const group1 = {
   metadata: { season: "2026/27", capture_id: "fixture-group1" },
@@ -34,6 +34,7 @@ describe("catálogo de equipos", () => {
     expect(findTeamGroup({ "1": group1, "2": group2 }, 49)).toBe("2");
     expect(findTeamGroup({ "1": group1, "2": group2 }, 99999)).toBeNull();
     expect(teamPath(49)).toBe("/teams/49");
+    expect(teamMatchesPath(49)).toBe("/teams/49/matches");
     expect(() => teamPath(0)).toThrow(RangeError);
   });
 

@@ -3,15 +3,16 @@ import { loadTeamRoster, type TeamRosterLoadResult } from "../api/client";
 import type { Bootstrap } from "../api/contracts";
 import { calculateStandings, createClassificationIndexes, type StandingsFilters } from "../domain/classification/engine";
 import { TeamCrest } from "./TeamCard";
-import { teamPath, teamRosterPath, teamFollowPath, teamTransfersPath, type CatalogTeam } from "../domain/teams";
+import { teamPath, teamRosterPath, teamFollowPath, teamTransfersPath, teamMatchesPath, type CatalogTeam } from "../domain/teams";
 import { TeamRosterSection } from "./TeamRoster";
 import { TeamFollow } from "./TeamFollow";
 import { TeamTransfers } from "./TeamTransfers";
+import { TeamMatches } from "./TeamMatches";
 
 interface Props {
   team: CatalogTeam;
   data: Bootstrap;
-  activeSection: "summary" | "roster" | "follow" | "transfers";
+  activeSection: "summary" | "roster" | "follow" | "transfers" | "matches";
   onNavigate: (path: string) => void;
 }
 
@@ -74,10 +75,11 @@ export function TeamOverview({ team, data, activeSection, onNavigate }: Props) {
     return () => { current = false; };
   }, [activeSection, retryVersion, team.season, team.team_id]);
 
-  function navigateSection(section: "summary" | "roster" | "follow" | "transfers") {
+  function navigateSection(section: "summary" | "roster" | "follow" | "transfers" | "matches") {
     onNavigate(section === "summary" ? teamPath(team.team_id)
       : section === "roster" ? teamRosterPath(team.team_id)
-        : section === "follow" ? teamFollowPath(team.team_id) : teamTransfersPath(team.team_id));
+        : section === "follow" ? teamFollowPath(team.team_id)
+          : section === "transfers" ? teamTransfersPath(team.team_id) : teamMatchesPath(team.team_id));
   }
 
   return (
@@ -122,6 +124,12 @@ export function TeamOverview({ team, data, activeSection, onNavigate }: Props) {
           href={teamTransfersPath(team.team_id)}
           onClick={(event) => { if (isPlainNavigation(event)) { event.preventDefault(); navigateSection("transfers"); } }}
         >Traspasos</a>
+        <a
+          aria-current={activeSection === "matches" ? "page" : undefined}
+          className={activeSection === "matches" ? "team-section-tab is-active" : "team-section-tab"}
+          href={teamMatchesPath(team.team_id)}
+          onClick={(event) => { if (isPlainNavigation(event)) { event.preventDefault(); navigateSection("matches"); } }}
+        >Partidos</a>
       </nav>
 
       {activeSection === "summary" && <>
@@ -195,6 +203,7 @@ export function TeamOverview({ team, data, activeSection, onNavigate }: Props) {
       )}
       {activeSection === "follow" && <TeamFollow key={`${team.team_id}:${team.season}`} teamId={team.team_id} season={team.season} />}
       {activeSection === "transfers" && <TeamTransfers key={`${team.team_id}:${team.season}`} teamId={team.team_id} season={team.season} />}
+      {activeSection === "matches" && <TeamMatches key={`${team.team_id}:${data.metadata.capture_id}`} team={team} data={data} onNavigate={onNavigate} />}
     </main>
   );
 }

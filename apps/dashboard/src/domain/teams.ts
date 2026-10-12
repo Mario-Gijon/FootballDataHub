@@ -28,6 +28,10 @@ export function teamTransfersPath(teamId: number): string {
   return `${teamPath(teamId)}/transfers`;
 }
 
+export function teamMatchesPath(teamId: number): string {
+  return `${teamPath(teamId)}/matches`;
+}
+
 export function normalizeTeamSearch(value: string): string {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es-ES").trim();
 }

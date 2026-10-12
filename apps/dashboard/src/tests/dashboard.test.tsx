@@ -1594,7 +1594,7 @@ describe("dashboard de clasificación", () => {
     expect(await screen.findByRole("heading", { name: "Jaén" })).toBeInTheDocument();
     expect(await screen.findByText("Entrenadores publicados")).toBeInTheDocument();
     const sectionNavigation = screen.getByRole("navigation", { name: "Secciones de Jaén" });
-    expect(within(sectionNavigation).getAllByRole("link").map((link) => link.textContent)).toEqual(["Resumen", "Plantilla", "Seguimiento", "Traspasos"]);
+    expect(within(sectionNavigation).getAllByRole("link").map((link) => link.textContent)).toEqual(["Resumen", "Plantilla", "Seguimiento", "Traspasos", "Partidos"]);
     expect(screen.getByRole("tab", { name: "Alineación" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("tab", { name: "Plantilla" })).toHaveAttribute("aria-selected", "false");
     expect(screen.queryByRole("heading", { name: "Estadísticas de temporada" })).not.toBeInTheDocument();
@@ -1797,7 +1797,7 @@ describe("dashboard de clasificación", () => {
     expect(await screen.findByRole("heading", { name: "Seguimiento" })).toBeInTheDocument();
     const matrix = await screen.findByTestId("team-follow-matrix");
     const sectionNavigation = screen.getByRole("navigation", { name: "Secciones de Jaén" });
-    expect(within(sectionNavigation).getAllByRole("link").map((link) => link.textContent)).toEqual(["Resumen", "Plantilla", "Seguimiento", "Traspasos"]);
+    expect(within(sectionNavigation).getAllByRole("link").map((link) => link.textContent)).toEqual(["Resumen", "Plantilla", "Seguimiento", "Traspasos", "Partidos"]);
     expect(screen.getByRole("tab", { name: "Partidos" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByText("6 jornadas capturadas")).toBeInTheDocument();
     expect(within(matrix).getAllByRole("row")).toHaveLength(26);
@@ -1868,7 +1868,7 @@ describe("dashboard de clasificación", () => {
     expect(within(bajas).getAllByRole("row")).toHaveLength(2);
     expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/teams/49/seasons/2026-27/transfers"))).toHaveLength(1);
     expect(within(screen.getByRole("navigation", { name: "Secciones de Jaén" })).getAllByRole("link").map((link) => link.textContent))
-      .toEqual(["Resumen", "Plantilla", "Seguimiento", "Traspasos"]);
+      .toEqual(["Resumen", "Plantilla", "Seguimiento", "Traspasos", "Partidos"]);
   });
 
   it("cambia entre Traspasos directos de equipos sin mezclar sus filas y conserva navegación", async () => {
@@ -1905,6 +1905,126 @@ describe("dashboard de clasificación", () => {
     fireEvent.click(screen.getByRole("link", { name: "Resumen" }));
     expect(await screen.findByRole("heading", { name: "Resumen deportivo" })).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("muestra el calendario, progreso y récords reales del Jaén con filtros locales", async () => {
+    window.history.replaceState({}, "", "/teams/49/matches");
+    render(<App />);
+
+    expect(await screen.findByRole("heading", { name: "Partidos" })).toBeInTheDocument();
+    expect(screen.getByText("6 disputados · 32 pendientes")).toBeInTheDocument();
+    expect(screen.getByText(/Datos capturados el 10 de octubre de 2026/)).toBeInTheDocument();
+    expect(screen.getByRole("table").querySelectorAll("tbody tr[data-match-id]")).toHaveLength(38);
+    const firstJaenFixture = document.querySelector('tr[data-match-id="272523"]');
+    expect(firstJaenFixture).toHaveTextContent("J1");
+    expect(firstJaenFixture?.querySelector("time")).toHaveTextContent("30 ago 2026");
+    expect(firstJaenFixture?.querySelector(".team-match-score")).toHaveTextContent("0 : 3");
+    expect(firstJaenFixture?.querySelector(".team-match-score")).toHaveClass("is-win");
+    expect(firstJaenFixture?.querySelector(".team-match-score")).toHaveAttribute("aria-label", "Victoria: 0 : 3");
+    expect(firstJaenFixture?.querySelector('a[href="/teams/89"]')).toBeInTheDocument();
+    expect(screen.getByTestId("team-progress-chart")).toHaveAttribute("data-progress-count", "6");
+    expect(screen.getByRole("heading", { name: "Mayor victoria en casa" })).toBeInTheDocument();
+    expect(screen.getByText("1 gol")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Filtrar partidos por estado" }), { target: { value: "played" } });
+    expect(screen.getByRole("table").querySelectorAll("tbody tr[data-match-id]")).toHaveLength(6);
+    fireEvent.change(screen.getByRole("combobox", { name: "Filtrar partidos por estado" }), { target: { value: "all" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Filtrar partidos por condición" }), { target: { value: "home" } });
+    expect(screen.getByRole("table").querySelectorAll("tbody tr[data-match-id]")).toHaveLength(19);
+    expect([...screen.getByRole("table").querySelectorAll("tbody tr[data-match-id]")].every((row) => {
+      const matchId = row.getAttribute("data-match-id");
+      return matchesSource.matches.find((match) => match.match_id === matchId)?.home_team_id === 49;
+    })).toBe(true);
+    fireEvent.change(screen.getByRole("combobox", { name: "Filtrar partidos por condición" }), { target: { value: "away" } });
+    expect(screen.getByRole("table").querySelectorAll("tbody tr[data-match-id]")).toHaveLength(19);
+    expect([...screen.getByRole("table").querySelectorAll("tbody tr[data-match-id]")].every((row) => {
+      const matchId = row.getAttribute("data-match-id");
+      return matchesSource.matches.find((match) => match.match_id === matchId)?.away_team_id === 49;
+    })).toBe(true);
+    const drawRecord = screen.getByRole("heading", { name: "Mayor racha de empates" }).closest("article");
+    expect(drawRecord?.querySelectorAll("li.is-new-run")).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls.every(([url]) => /\/api\/v1\/groups\/[12]\/bootstrap$/.test(String(url)))).toBe(true);
+  });
+
+  it("abre Partidos del Grupo I y un tercer club sin perfil adquirido desde su bootstrap", async () => {
+    window.history.replaceState({}, "", "/teams/48/matches");
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "Partidos" })).toBeInTheDocument();
+    expect(screen.getByText("GRUPO I · TEMPORADA 2026/27")).toBeInTheDocument();
+    expect(screen.getByRole("table").querySelectorAll("tbody tr[data-match-id]")).toHaveLength(38);
+    expect(screen.queryByText("Jaén", { selector: ".team-match-team span" })).not.toBeInTheDocument();
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls.some(([url]) => /\/api\/v1\/teams\/\d+\/seasons\/2026-27\/(roster|follow|transfers)$/.test(String(url)))).toBe(false);
+  });
+
+  it("muestra el calendario de un tercer club aunque no tenga captura de perfil", async () => {
+    const uncapturedTeam = apiBootstrap.teams.find((team) => team.team_id !== 48 && team.team_id !== 49)!;
+    window.history.replaceState({}, "", `/teams/${uncapturedTeam.team_id}/matches`);
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "Partidos" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: uncapturedTeam.name })).toBeInTheDocument();
+    expect(screen.getByRole("table").querySelectorAll("tbody tr[data-match-id]")).toHaveLength(38);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls.some(([url]) => /\/api\/v1\/teams\/\d+\/seasons\/2026-27\/(roster|follow|transfers)$/.test(String(url)))).toBe(false);
+  });
+
+  it("distingue una fecha de jornada y una fecha ausente sin inventar valores", async () => {
+    const datesBootstrap = {
+      ...apiBootstrap,
+      matches: apiBootstrap.matches.map((match) => match.match_id === "272523"
+        ? { ...match, source_match_date: null }
+        : match.match_id === "272532"
+          ? { ...match, source_match_date: null, matchday_date: null }
+          : match),
+    };
+    fetchMock.mockImplementation((input: RequestInfo | URL) => Promise.resolve(
+      String(input).endsWith("/api/v1/groups/2/bootstrap")
+        ? response(200, datesBootstrap)
+        : response(200, payloadFor(input)),
+    ));
+    window.history.replaceState({}, "", "/teams/49/matches");
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "Partidos" })).toBeInTheDocument();
+    expect(document.querySelector('tr[data-match-id="272523"] .team-match-date')).toHaveTextContent("30 ago 2026Fecha de jornada");
+    expect(document.querySelector('tr[data-match-id="272532"] .team-match-date')).toHaveTextContent("—");
+    expect(document.querySelector('tr[data-match-id="272532"] .team-match-date')).not.toHaveTextContent("2026");
+  });
+
+  it("no dibuja progreso cuando el bootstrap no contiene la serie del equipo", async () => {
+    const progresslessBootstrap = { ...apiBootstrap, progress: [] };
+    fetchMock.mockImplementation((input: RequestInfo | URL) => Promise.resolve(
+      String(input).endsWith("/api/v1/groups/2/bootstrap")
+        ? response(200, progresslessBootstrap)
+        : response(200, payloadFor(input)),
+    ));
+    window.history.replaceState({}, "", "/teams/49/matches");
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "Partidos" })).toBeInTheDocument();
+    expect(screen.queryByTestId("team-progress-chart")).not.toBeInTheDocument();
+    expect(screen.getByText("No hay una serie de progreso disponible para este equipo.")).toBeInTheDocument();
+  });
+
+  it("navega a la ficha del rival y vuelve por historial sin adquirir partidos ni mezclar grupos", async () => {
+    window.history.replaceState({}, "", "/teams/49/matches");
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "Partidos" })).toBeInTheDocument();
+
+    fireEvent.click(document.querySelector('tr[data-match-id="272523"] a[href="/teams/89"]') as HTMLAnchorElement);
+    expect(window.location.pathname).toBe("/teams/89");
+    expect(await screen.findByRole("heading", { name: "Resumen deportivo" })).toBeInTheDocument();
+    fireEvent.click(within(screen.getByRole("navigation", { name: "Secciones de Europa" })).getByRole("link", { name: "Partidos" }));
+    expect(window.location.pathname).toBe("/teams/89/matches");
+    expect(await screen.findByRole("heading", { name: "Partidos" })).toBeInTheDocument();
+    expect(screen.getByRole("table").querySelectorAll("tbody tr[data-match-id]")).toHaveLength(38);
+    expect(screen.queryByText("Racing de Ferrol", { selector: ".team-match-team span" })).not.toBeInTheDocument();
+
+    window.history.replaceState({}, "", "/teams/49/matches");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    expect(await screen.findByRole("heading", { name: "Jaén" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Partidos" })).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("muestra los eventos verificados de Racing y mantiene las cuatro vistas locales", async () => {
