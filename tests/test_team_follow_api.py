@@ -22,8 +22,8 @@ from football_data_hub_api.team_roster_dataset import load_team_roster_registry
 
 
 INDEX_PATH = PROJECT_ROOT / "config/team_profiles_2026-27.json"
-RACING_CAPTURE = PROJECT_ROOT / "data/exports/bdfutbol/teams/2026-27/48/20261011T123240.190812Z-8f307d1c"
-JAEN_CAPTURE = PROJECT_ROOT / "data/exports/bdfutbol/teams/2026-27/49/20261012T120720.895650Z-8c75b830"
+RACING_CAPTURE = PROJECT_ROOT / "data/exports/bdfutbol/teams/2026-27/48/20261012T131518.543469Z-43ff1122"
+JAEN_CAPTURE = PROJECT_ROOT / "data/exports/bdfutbol/teams/2026-27/49/20261012T131457.209360Z-602005d8"
 
 
 @pytest.fixture(scope="module")

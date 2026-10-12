@@ -22,6 +22,7 @@ from .models import (
     TeamSeason,
     TeamSeasonCoach,
     TeamTransfer,
+    TeamTransferSection,
 )
 
 
@@ -765,84 +766,188 @@ def _parse_transfers(
     competition: str,
     group: str,
     base_url: str,
-) -> tuple[TeamTransfer, ...]:
+) -> tuple[tuple[TeamTransfer, ...], tuple[TeamTransferSection, ...]]:
+    """Parse the shared Altas/Bajas table using its explicit section headers.
+
+    BDFutbol places both sections in one table. The Bajas title is a separator
+    row and is followed by a second column-header row whose final column changes
+    from "Equipo origen" to "Equipo destino". Unknown layouts are rejected so
+    a section can never silently inherit the wrong direction.
+    """
+    root = soup.select_one("#pestaltesbaixes")
+    if not isinstance(root, Tag):
+        raise TeamProfileParseError("La vista Traspasos no contiene #pestaltesbaixes")
+    headings = [clean_text(item.get_text(" ", strip=True)) for item in root.select("h2")]
+    if headings != ["Altas", "Bajas"]:
+        raise TeamProfileParseError(
+            f"Encabezados de Traspasos inesperados: {headings!r}; se requieren Altas y Bajas"
+        )
+    tables = root.select("table")
+    if len(tables) != 1:
+        raise TeamProfileParseError(
+            f"Estructura de Traspasos desconocida: se esperaba una tabla compartida, hay {len(tables)}"
+        )
+    table_rows = _table_rows(tables[0])
+    if not table_rows:
+        raise TeamProfileParseError("La tabla de Traspasos está vacía y no demuestra sus secciones")
+
+    expected_column = {"incoming": "equipo origen", "outgoing": "equipo destino"}
+    heading_by_direction = {"incoming": "Altas", "outgoing": "Bajas"}
+    direction = "incoming"
+    section_counts = {"incoming": 0, "outgoing": 0}
+    seen_headers: set[str] = set()
     transfers: list[TeamTransfer] = []
-    for heading in soup.select("h2"):
-        label = clean_text(heading.get_text(" ", strip=True))
-        if label not in {"Altas", "Bajas"}:
+    for row in table_rows:
+        section_heading = next(
+            (clean_text(item.get_text(" ", strip=True)) for cell in row for item in cell.select("h2")),
+            None,
+        )
+        if section_heading is not None:
+            if section_heading != "Bajas" or direction != "incoming":
+                raise TeamProfileParseError(f"Separador de sección inesperado: {section_heading!r}")
+            direction = "outgoing"
             continue
-        container = heading.parent
-        sibling = container.find_next_sibling() if isinstance(container, Tag) else None
-        table = sibling if isinstance(sibling, Tag) and sibling.name == "table" else None
-        if table is None:
+
+        header_cells = [
+            clean_text(str(cell.get("title") or cell.get_text(" ", strip=True))).casefold()
+            for cell in row
+        ]
+        relation_columns = [value for value in header_cells if value in {"equipo origen", "equipo destino"}]
+        if relation_columns:
+            if len(relation_columns) != 1 or relation_columns[0] != expected_column[direction]:
+                raise TeamProfileParseError(
+                    f"Cabecera incompatible con {heading_by_direction[direction]}: {relation_columns!r}"
+                )
+            if "apodo y nombre" not in header_cells or "edad" not in header_cells:
+                raise TeamProfileParseError("La cabecera de Traspasos no contiene identidad y edad reconocibles")
+            if (
+                len(row) != 6
+                or header_cells[2] != "apodo y nombre"
+                or header_cells[3] != "edad"
+                or header_cells[4] not in {"demarcación", "pos"}
+                or header_cells[5] != expected_column[direction]
+            ):
+                raise TeamProfileParseError("La disposición de columnas de Traspasos no coincide con la estructura verificada")
+            if direction in seen_headers:
+                raise TeamProfileParseError(f"Cabecera duplicada para {heading_by_direction[direction]}")
+            seen_headers.add(direction)
             continue
-        table_rows = _table_rows(table)
-        transfer_indexes = _header_indexes(table)
-        for row in table_rows[1:]:
-            player_link = _row_player_anchor(row)
-            player_ref = _id_from_link(player_link, _PLAYER_URL_ID) if player_link else None
-            if player_ref is None:
+
+        player_anchors = [
+            anchor
+            for cell in row
+            for anchor in cell.select("a[href]")
+            if _PLAYER_URL_ID.search(urlsplit(str(anchor["href"])).path)
+        ]
+        if not player_anchors:
+            row_text = clean_text(" ".join(cell.get_text(" ", strip=True) for cell in row))
+            if not row_text:
                 continue
-            player_id, player_href = player_ref
-            player_display_name, player_full_name = _name_parts(player_link)
-            if not player_display_name:
-                raise TeamProfileParseError(f"Traspaso sin nombre visible para player_id={player_id}")
-            player_photo = row[0].select_one("img[src]") if row else None
-            team_link = next(
-                (
-                    anchor
-                    for cell in row
-                    for anchor in cell.select("a[href]")
-                    if not _PLAYER_URL_ID.search(urlsplit(str(anchor["href"])).path)
-                ),
+            raise TeamProfileParseError(
+                f"Fila de Traspasos no reconocida bajo {heading_by_direction[direction]}: {row_text[:120]!r}"
+            )
+        if direction not in seen_headers:
+            raise TeamProfileParseError(f"Hay jugadores antes de la cabecera de {heading_by_direction[direction]}")
+        if len(player_anchors) != 1:
+            raise TeamProfileParseError("Una fila de Traspasos contiene varias identidades de jugador")
+        player_link = player_anchors[0]
+        player_ref = _id_from_link(player_link, _PLAYER_URL_ID)
+        if player_ref is None:
+            raise TeamProfileParseError("Fila de Traspasos con enlace de jugador inválido")
+        player_id, player_href = player_ref
+        player_display_name, player_full_name = _name_parts(player_link)
+        if not player_display_name:
+            raise TeamProfileParseError(f"Traspaso sin nombre visible para player_id={player_id}")
+
+        cells = row
+        if len(cells) != 7 or not cells[2].select_one('a[href*="/j/j"]'):
+            raise TeamProfileParseError(f"Fila incompleta o mal alineada para player_id={player_id}")
+        age = _optional_int(
+            cells[3].get_text(" ", strip=True), field_name="transfer_age"
+        ) if clean_text(cells[3].get_text(" ", strip=True)) else None
+        position = None
+        position_div = cells[4].select_one("div[class]") if len(cells) > 4 else None
+        if position_div:
+            position = next(
+                (str(value) for value in position_div.get("class", []) if str(value) in {"por", "def", "mig", "dav"}),
                 None,
             )
-            other_url = _absolute(base_url, str(team_link["href"])) if team_link else None
-            other_name = clean_text(team_link.get_text(" ", strip=True)) if team_link else None
-            other_id = team_id_from_url(other_url) if other_url else None
-            age_cell = _cell(row, transfer_indexes, "edad")
-            age = _int_cell(age_cell, field_name="transfer_age") if age_cell else None
-            position_index = transfer_indexes.get("demarcación")
-            position_cell = row[position_index] if position_index is not None and position_index < len(row) else None
-            position = None
-            if position_cell is not None:
-                position_div = position_cell.select_one("div[class]")
-                if position_div:
-                    position = next(
-                        (
-                            str(class_name)
-                            for class_name in position_div.get("class", [])
-                            if str(class_name) in {"por", "def", "mig", "dav"}
-                        ),
-                        None,
-                    )
-            transfers.append(
-                TeamTransfer(
-                    player_id=player_id,
-                    player_display_name=player_display_name,
-                    player_full_name=player_full_name,
-                    player_profile_url=_absolute(base_url, player_href) or player_href,
-                    player_photo_url=_absolute(base_url, str(player_photo["src"])) if player_photo else None,
-                    team_id=team_id,
-                    season=season,
-                    competition=competition,
-                    group=group,
-                    direction="incoming" if label == "Altas" else "outgoing",
-                    other_team_name=other_name,
-                    other_team_id=other_id,
-                    other_team_url=other_url,
-                    age_years=age,
-                    source_position_code=position,
-                    transfer_date=None,
-                    fee=None,
-                    source_view="transfers",
-                    source_heading=label,
-                )
+        photo = cells[0].select_one("img[src]")
+        other_cell = cells[-1]
+        other_links = [
+            anchor
+            for anchor in other_cell.select("a[href]")
+            if not _PLAYER_URL_ID.search(urlsplit(str(anchor["href"])).path)
+        ]
+        if len(other_links) > 1:
+            raise TeamProfileParseError(f"Más de un equipo relacionado para player_id={player_id}")
+        team_link = other_links[0] if other_links else None
+        other_url = _absolute(base_url, str(team_link["href"])) if team_link else None
+        other_name = clean_text((team_link or other_cell).get_text(" ", strip=True)) or None
+        other_id = team_id_from_url(other_url) if other_url else None
+        if other_url and other_id is None:
+            raise TeamProfileParseError(f"URL del equipo relacionado no interpretable: {other_url}")
+        transfers.append(
+            TeamTransfer(
+                player_id=player_id,
+                player_display_name=player_display_name,
+                player_full_name=player_full_name,
+                player_profile_url=_absolute(base_url, player_href) or player_href,
+                player_photo_url=_absolute(base_url, str(photo["src"])) if photo else None,
+                team_id=team_id,
+                season=season,
+                competition=competition,
+                group=group,
+                direction=direction,
+                other_team_name=other_name,
+                other_team_id=other_id,
+                other_team_url=other_url,
+                age_years=age,
+                source_position_code=position,
+                transfer_date=None,
+                fee=None,
+                source_view="transfers",
+                source_heading=heading_by_direction[direction],
             )
+        )
+        section_counts[direction] += 1
+
+    if seen_headers != {"incoming", "outgoing"}:
+        raise TeamProfileParseError(f"No se validaron las dos cabeceras de sección: {sorted(seen_headers)}")
     keys = {(item.direction, item.player_id) for item in transfers}
     if len(keys) != len(transfers):
         raise TeamProfileParseError("Traspasos repite una persona en la misma dirección")
-    return tuple(transfers)
+    sections = tuple(
+        TeamTransferSection(
+            direction=key,
+            source_heading=heading_by_direction[key],
+            status="verified_with_rows" if section_counts[key] else "verified_empty",
+            row_count=section_counts[key],
+            source_team_column="Equipo origen" if key == "incoming" else "Equipo destino",
+        )
+        for key in ("incoming", "outgoing")
+    )
+    return tuple(transfers), sections
+
+
+def parse_team_transfers_snapshot(
+    source_html: str,
+    *,
+    team_id: int,
+    season: str,
+    competition: str,
+    group: str,
+    base_url: str,
+) -> tuple[tuple[TeamTransfer, ...], tuple[TeamTransferSection, ...]]:
+    """Parse a single saved Traspasos document without a browser or network."""
+    return _parse_transfers(
+        BeautifulSoup(source_html, "html.parser"),
+        team_id=team_id,
+        season=season,
+        competition=competition,
+        group=group,
+        base_url=base_url,
+    )
 
 
 def _parse_match_ids(soup: BeautifulSoup) -> tuple[str, ...]:
@@ -1108,7 +1213,7 @@ def parse_team_profile_pages(
     transfers_parsed_soup = BeautifulSoup(transfers_soup, "html.parser") if transfers_soup else None
     if transfers_parsed_soup is not None and transfers_parsed_soup.select_one("#pestaltesbaixes") is None:
         raise TeamProfileParseError("La vista Traspasos no contiene el contenedor #pestaltesbaixes")
-    transfers = (
+    transfers, transfer_sections = (
         _parse_transfers(
             transfers_parsed_soup,
             team_id=team_id,
@@ -1118,7 +1223,7 @@ def parse_team_profile_pages(
             base_url=team_url,
         )
         if transfers_soup
-        else ()
+        else ((), ())
     )
     match_soup = (
         _require_view(views, "matches", "#taula-resultats-plantilla")
@@ -1180,6 +1285,7 @@ def parse_team_profile_pages(
         player_match_metrics=tuple(sorted(follow_metrics, key=lambda item: (item.matchday, item.player_id, item.metric))),
         follow_states_captured=tuple(sorted(follow_state_html or {})),
         transfers=transfers,
+        transfer_sections=transfer_sections,
         group_team_ids_from_profile=group_team_ids,
         team_match_ids_from_profile=match_ids,
         warnings=tuple(warnings),

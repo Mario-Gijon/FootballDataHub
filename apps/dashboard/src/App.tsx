@@ -322,17 +322,18 @@ export default function App() {
 type AppRoute =
   | { kind: "competitions" }
   | { kind: "teams" }
-  | { kind: "team"; teamId: number; section: "summary" | "roster" | "follow" }
+  | { kind: "team"; teamId: number; section: "summary" | "roster" | "follow" | "transfers" }
   | { kind: "not-found" };
 
 function parseRoute(pathname: string): AppRoute {
   if (pathname === "/" || pathname === "") return { kind: "competitions" };
   if (/^\/teams\/?$/.test(pathname)) return { kind: "teams" };
-  const match = pathname.match(/^\/teams\/(\d+)(?:\/(roster|follow))?\/?$/);
+  const match = pathname.match(/^\/teams\/(\d+)(?:\/(roster|follow|transfers))?\/?$/);
   if (match) {
     const teamId = Number(match[1]);
     if (Number.isSafeInteger(teamId) && teamId > 0) {
-      return { kind: "team", teamId, section: match[2] === "roster" ? "roster" : match[2] === "follow" ? "follow" : "summary" };
+      const section = match[2] === "roster" || match[2] === "follow" || match[2] === "transfers" ? match[2] : "summary";
+      return { kind: "team", teamId, section };
     }
   }
   return { kind: "not-found" };

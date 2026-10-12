@@ -156,6 +156,17 @@ class TeamTransfer:
 
 
 @dataclass(frozen=True, slots=True)
+class TeamTransferSection:
+    """Proof that one source transfer section was parsed, including empty ones."""
+
+    direction: Literal["incoming", "outgoing"]
+    source_heading: Literal["Altas", "Bajas"]
+    status: Literal["verified_with_rows", "verified_empty"]
+    row_count: int
+    source_team_column: Literal["Equipo origen", "Equipo destino"]
+
+
+@dataclass(frozen=True, slots=True)
 class TeamProfileData:
     identity: TeamIdentity
     season: TeamSeason
@@ -166,6 +177,7 @@ class TeamProfileData:
     player_match_metrics: tuple[PlayerMatchMetric, ...]
     follow_states_captured: tuple[str, ...]
     transfers: tuple[TeamTransfer, ...]
+    transfer_sections: tuple[TeamTransferSection, ...]
     group_team_ids_from_profile: tuple[int, ...]
     team_match_ids_from_profile: tuple[str, ...]
     warnings: tuple[str, ...]

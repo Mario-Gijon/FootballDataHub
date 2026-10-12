@@ -22,7 +22,7 @@ from football_data_hub_api.team_roster_dataset import (
 
 INDEX_PATH = PROJECT_ROOT / "config/team_profiles_2026-27.json"
 JAEN_CAPTURE = PROJECT_ROOT / (
-    "data/exports/bdfutbol/teams/2026-27/49/20261012T120720.895650Z-8c75b830"
+    "data/exports/bdfutbol/teams/2026-27/49/20261012T131457.209360Z-602005d8"
 )
 
 
@@ -134,7 +134,7 @@ def test_jaen_and_racing_rosters_are_loaded_from_the_published_captures(
         assert all(item.player_id in players for item in tactic.positions)
         assert all(0 <= item.horizontal <= 1 and 0 <= item.vertical <= 1 for item in tactic.positions)
 
-    assert registry.profiles[49].metadata.capture_id == "20261012T120720.895650Z-8c75b830"
+    assert registry.profiles[49].metadata.capture_id == "20261012T131457.209360Z-602005d8"
     assert not any("Seguimiento no capturado" in warning for warning in registry.profiles[49].warnings)
 
 

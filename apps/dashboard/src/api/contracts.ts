@@ -422,6 +422,111 @@ export const TeamFollowSchema = z.object({
 
 export type TeamFollow = z.infer<typeof TeamFollowSchema>;
 
+const TeamTransferSectionSchema = z.object({
+  direction: z.enum(["incoming", "outgoing"]),
+  source_heading: z.enum(["Altas", "Bajas"]),
+  status: z.enum(["verified_with_rows", "verified_empty"]),
+  row_count: z.number().int().nonnegative(),
+  source_team_column: z.enum(["Equipo origen", "Equipo destino"]),
+}).strict().superRefine((section, context) => {
+  const expected = section.direction === "incoming"
+    ? { heading: "Altas", column: "Equipo origen" }
+    : { heading: "Bajas", column: "Equipo destino" };
+  if (section.source_heading !== expected.heading || section.source_team_column !== expected.column) {
+    context.addIssue({ code: "custom", message: "La sección no coincide con su dirección." });
+  }
+  if ((section.status === "verified_empty") !== (section.row_count === 0)) {
+    context.addIssue({ code: "custom", message: "El estado vacío no coincide con el recuento." });
+  }
+});
+
+const TeamTransferRecordSchema = z.object({
+  player_id: positiveInteger,
+  player_display_name: z.string().min(1),
+  player_full_name: z.string().nullable(),
+  player_profile_url: z.string().url(),
+  player_photo_url: z.string().url().nullable(),
+  team_id: positiveInteger,
+  season: z.literal("2026-27"),
+  competition: z.literal("Primera Federación"),
+  group: z.enum(["I", "II"]),
+  direction: z.enum(["incoming", "outgoing"]),
+  other_team_name: z.string().nullable(),
+  other_team_id: positiveInteger.nullable(),
+  other_team_url: z.string().url().nullable(),
+  age_years: nullableInteger,
+  source_position_code: z.string().nullable(),
+  transfer_date: z.string().nullable(),
+  fee: z.string().nullable(),
+  source_view: z.literal("transfers"),
+  source_heading: z.enum(["Altas", "Bajas"]),
+}).strict().superRefine((record, context) => {
+  const expected = record.direction === "incoming" ? "Altas" : "Bajas";
+  const playerId = /\/j\/j(\d+)\.html$/.exec(new URL(record.player_profile_url).pathname)?.[1];
+  if (record.source_heading !== expected || Number(playerId) !== record.player_id) {
+    context.addIssue({ code: "custom", message: "La dirección o identidad del jugador no coincide con la fuente." });
+  }
+  if ((record.other_team_id === null) !== (record.other_team_url === null)) {
+    context.addIssue({ code: "custom", message: "El ID y la URL del otro equipo deben conservarse juntos." });
+  }
+  if (record.other_team_url) {
+    const otherId = /\/t\d{4}-\d{2}(\d+)\.html$/.exec(new URL(record.other_team_url).pathname)?.[1];
+    if (Number(otherId) !== record.other_team_id) {
+      context.addIssue({ code: "custom", message: "La URL del otro equipo no coincide con su ID." });
+    }
+  }
+});
+
+export const TeamTransfersSchema = z.object({
+  status: z.literal("available"),
+  metadata: z.object({
+    contract_version: z.literal(1),
+    validation_status: z.literal("valid"),
+    source: z.literal("BDFutbol"),
+    url: z.string().url(),
+    competition: z.literal("Primera Federación"),
+    competition_scope: z.literal("Liga"),
+    season: z.literal("2026-27"),
+    group: z.enum(["I", "II"]),
+    team_id: positiveInteger,
+    capture_id: z.string().min(1),
+    captured_at: z.string().datetime({ offset: true }),
+    derived_at: z.string().datetime({ offset: true }).nullable(),
+    extractor_version: z.string(),
+    source_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    content_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  }).strict(),
+  sections: z.array(TeamTransferSectionSchema).length(2),
+  incoming: z.array(TeamTransferRecordSchema),
+  outgoing: z.array(TeamTransferRecordSchema),
+  warnings: z.array(z.string()),
+}).strict().superRefine((transfers, context) => {
+  if (transfers.metadata.team_id <= 0) {
+    context.addIssue({ code: "custom", message: "team_id inválido." });
+  }
+  const sectionMap = new Map(transfers.sections.map((section) => [section.direction, section]));
+  if (sectionMap.size !== 2 || !sectionMap.has("incoming") || !sectionMap.has("outgoing")) {
+    context.addIssue({ code: "custom", message: "La respuesta debe demostrar Altas y Bajas." });
+  }
+  for (const [direction, records] of [["incoming", transfers.incoming], ["outgoing", transfers.outgoing]] as const) {
+    if (sectionMap.get(direction)?.row_count !== records.length) {
+      context.addIssue({ code: "custom", message: `El recuento de ${direction} no coincide.` });
+    }
+    if (records.some((record) => record.direction !== direction
+      || record.team_id !== transfers.metadata.team_id
+      || record.group !== transfers.metadata.group)) {
+      context.addIssue({ code: "custom", message: `Los registros ${direction} pertenecen a otro contexto.` });
+    }
+  }
+  const keys = [...transfers.incoming, ...transfers.outgoing].map((record) => `${record.direction}:${record.player_id}`);
+  if (new Set(keys).size !== keys.length) {
+    context.addIssue({ code: "custom", message: "Se repite un jugador dentro de la misma dirección." });
+  }
+});
+
+export type TeamTransferRecord = z.infer<typeof TeamTransferRecordSchema>;
+export type TeamTransfers = z.infer<typeof TeamTransfersSchema>;
+
 export const TopCategorySchema = z.enum([
   "goals", "minutes", "yellow_cards", "red_cards", "youngest", "oldest",
 ]);

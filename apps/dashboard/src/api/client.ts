@@ -4,12 +4,14 @@ import {
   StatisticsBootstrapSchema,
   TeamRosterSchema,
   TeamFollowSchema,
+  TeamTransfersSchema,
   TopBootstrapSchema,
   type Bootstrap,
   type RefereeBootstrap,
   type StatisticsBootstrap,
   type TeamRoster,
   type TeamFollow,
+  type TeamTransfers,
   type TopBootstrap,
 } from "./contracts";
 import type { ZodType } from "zod";
@@ -42,6 +44,18 @@ export class TeamFollowApiError extends Error {
 }
 
 const teamFollowCache = new Map<string, Promise<TeamFollowLoadResult>>();
+export type TeamTransfersLoadResult =
+  | { status: "available"; transfers: TeamTransfers }
+  | { status: "not_captured" };
+
+export class TeamTransfersApiError extends Error {
+  constructor(message: string, readonly code: string, readonly statusCode: number) {
+    super(message);
+    this.name = "TeamTransfersApiError";
+  }
+}
+
+const teamTransfersCache = new Map<string, Promise<TeamTransfersLoadResult>>();
 
 export function loadTeamRoster(teamId: number, season: string): Promise<TeamRosterLoadResult> {
   const key = `${teamId}:${season}:roster`;
@@ -58,6 +72,55 @@ export function loadTeamRoster(teamId: number, season: string): Promise<TeamRost
 export function clearTeamProfileCache(): void {
   teamProfileCache.clear();
   teamFollowCache.clear();
+  teamTransfersCache.clear();
+}
+
+export function loadTeamTransfers(teamId: number, season: string): Promise<TeamTransfersLoadResult> {
+  const key = `${teamId}:${season}:transfers`;
+  const cached = teamTransfersCache.get(key);
+  if (cached) return cached;
+  const pending = requestTeamTransfers(teamId, season).catch((error: unknown) => {
+    teamTransfersCache.delete(key);
+    throw error;
+  });
+  teamTransfersCache.set(key, pending);
+  return pending;
+}
+
+async function requestTeamTransfers(teamId: number, season: string): Promise<TeamTransfersLoadResult> {
+  let response: Response;
+  try {
+    response = await fetch(`${apiBase}/api/v1/teams/${teamId}/seasons/${season}/transfers`, {
+      headers: { Accept: "application/json" },
+    });
+  } catch {
+    throw new TeamTransfersApiError("No se pudo conectar con la API de FootballDataHub.", "connection_error", 0);
+  }
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    throw new TeamTransfersApiError("La API devolvió una respuesta que no es JSON válido.", "invalid_json", response.status);
+  }
+  if (!response.ok) {
+    const detail = typeof body === "object" && body !== null && "detail" in body
+      ? (body as { detail?: unknown }).detail : undefined;
+    const errorBody = typeof detail === "object" && detail !== null ? detail as { code?: unknown; message?: unknown } : {};
+    if (response.status === 404 && errorBody.code === "transfers_not_captured") return { status: "not_captured" };
+    throw new TeamTransfersApiError(
+      typeof errorBody.message === "string" ? errorBody.message : `La API respondió con un error (${response.status}).`,
+      typeof errorBody.code === "string" ? errorBody.code : "request_failed",
+      response.status,
+    );
+  }
+  const parsed = TeamTransfersSchema.safeParse(body);
+  if (!parsed.success) {
+    throw new TeamTransfersApiError("La respuesta de Traspasos no coincide con su contrato.", "contract_error", response.status);
+  }
+  if (parsed.data.metadata.team_id !== teamId || parsed.data.metadata.season !== season) {
+    throw new TeamTransfersApiError("Los Traspasos devueltos no coinciden con el equipo o temporada solicitados.", "scope_mismatch", response.status);
+  }
+  return { status: "available", transfers: parsed.data };
 }
 
 export function loadTeamFollow(teamId: number, season: string): Promise<TeamFollowLoadResult> {

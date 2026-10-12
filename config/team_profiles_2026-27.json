@@ -3,49 +3,129 @@
   "season": "2026-27",
   "profiles": {
     "49": {
-      "capture_id": "20261012T120720.895650Z-8c75b830",
-      "directory": "../data/exports/bdfutbol/teams/2026-27/49/20261012T120720.895650Z-8c75b830",
+      "capture_id": "20261012T131457.209360Z-602005d8",
+      "directory": "../data/exports/bdfutbol/teams/2026-27/49/20261012T131457.209360Z-602005d8",
       "files_sha256": {
-        "metadata/capture.json": "522c1b93b4474791872263014ba4684dfd2bb3662860133406584b477a7cc096",
-        "validation/results.json": "753f21659c368f4d219d81d781a06017ad515da713d85e3a0e13d8083c6c096c",
-        "raw/access.json": "fe96419889b724d2448657b3f9d33a601f55db9b8b6bf62e900d382bfa666ce5",
-        "normalized/team_identity.json": "051b828cbd02cb9d2483b468a1bf1a3eb1170dcac0ff7d2ac2636389c8af93fe",
-        "normalized/team_season.json": "361c2177a4a87684bab310049519e05fb0d1f8ada7495a1459951d77181a1306",
-        "normalized/players.json": "75b96a11330246f343e4f1989750cbdec9963e3bd840e91de15c9f93063b62c1",
-        "normalized/memberships.json": "c7bbe3ed0bc569ca66758d48d881d62ab60f916f9ce2ff2c4e8af9b3d13449dd",
-        "normalized/player_statistics.json": "2f995b48030dfe6efe67bb4cf35bb50e5634c3323887b2222b1354e38d11894c"
+        "metadata/capture.json": "86650e540f35059e468a55e2dd122edb32ee3da18c4d0239b1727870ecd41c69",
+        "validation/results.json": "23a3f716dbb27f0da160fea0eb7eeda6e32197d8c284e804ca7130a9da81aa1b",
+        "raw/access.json": "e5024b6c6eb4dff4bf3a900087cf75b9b9fb12d5ee956a86f3aa781add5f6ed1",
+        "normalized/team_identity.json": "63a810b04383433b2fe39d53539114b70cd39eaf391dae796b3275b417b76132",
+        "normalized/team_season.json": "c6d3aa4f2daf3f057a3e8e300c602df63e96edc388ae3252517e5870ad9dac0f",
+        "normalized/players.json": "4e0410ce0a97693c1d120b9cde4110666d4cbd824e9a71d6c2e9dfb3475c8d91",
+        "normalized/memberships.json": "cfd9f4b49fdc70310cad59380a052df4a80669398e17039369f0aeb417c9f316",
+        "normalized/player_statistics.json": "3a7494ee015835f11a819cb308d0b5d6039ecd06b2a446cf184f0f28b7bd2623"
       },
       "follow_files_sha256": {
-        "normalized/player_match_minutes.json": "dff839a3cbd84ebcdaaafd0721ea21d77b3114ac40d42b46364b3cbce136d6d9",
-        "normalized/player_match_metrics.json": "503fd72a0523a0d98ed4d58d45d5fbab188ff8b851912403d4c07d12dcef6f98",
+        "normalized/player_match_minutes.json": "acac8d66e3c8d74c061c734a30416483307cb85653cdf4c081d2e3e60bc35c06",
+        "normalized/player_match_metrics.json": "7975e02202e807389910a0b853eb521814de1ee12c02b020961b47442ac9f9d2",
         "raw/follow.html.gz": "16d62a4156d8539ff70d1996297cd21a7dfd5ec8a10d053552e80ca50f27c7ec",
         "raw/follow_states/p.html.gz": "16d62a4156d8539ff70d1996297cd21a7dfd5ec8a10d053552e80ca50f27c7ec",
         "raw/follow_states/t.html.gz": "827344bb8b7ee34938009cb5a4c7330ab8d5d9def4ff7171c9dff936e3d1ac24",
         "raw/follow_states/go.html.gz": "12230b1f8963cf49fcad07c71686cb07b403a8d86723da0f90b91c50a32f5d6d",
         "raw/follow_states/tot.html.gz": "81b2773037dbcaa635e7507957c70f3679d1c6890ddd9f00dd55236c54e05bb0"
+      },
+      "transfers_files_sha256": {
+        "metadata/capture.json": "86650e540f35059e468a55e2dd122edb32ee3da18c4d0239b1727870ecd41c69",
+        "validation/results.json": "23a3f716dbb27f0da160fea0eb7eeda6e32197d8c284e804ca7130a9da81aa1b",
+        "raw/access.json": "e5024b6c6eb4dff4bf3a900087cf75b9b9fb12d5ee956a86f3aa781add5f6ed1",
+        "raw/transfers.html.gz": "a927d7752129ba4c627bd1b4b8e6ffbbbf59c74b70fb63e427dbf4dbc9878271",
+        "normalized/team_identity.json": "63a810b04383433b2fe39d53539114b70cd39eaf391dae796b3275b417b76132",
+        "normalized/team_season.json": "c6d3aa4f2daf3f057a3e8e300c602df63e96edc388ae3252517e5870ad9dac0f",
+        "normalized/transfers.json": "16eff7297249f383bef0b224832af8be50cad1613024e9f4c41b275c31b06547"
+      },
+      "transfers_evidence": {
+        "capture_id": "20261012T131457.209360Z-602005d8",
+        "team_id": 49,
+        "season": "2026-27",
+        "group": "II",
+        "source_snapshot": {
+          "path": "raw/transfers.html.gz",
+          "sha256": "279774e069f3c0666f9c6dd3162f9faca6c44912b6cbbeb61e9f81b8a14303fe",
+          "url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=altas"
+        },
+        "normalized": {
+          "path": "normalized/transfers.json",
+          "sha256": "16eff7297249f383bef0b224832af8be50cad1613024e9f4c41b275c31b06547"
+        },
+        "sections": [
+          {
+            "direction": "incoming",
+            "source_heading": "Altas",
+            "status": "verified_with_rows",
+            "row_count": 14,
+            "source_team_column": "Equipo origen"
+          },
+          {
+            "direction": "outgoing",
+            "source_heading": "Bajas",
+            "status": "verified_with_rows",
+            "row_count": 20,
+            "source_team_column": "Equipo destino"
+          }
+        ]
       }
     },
     "48": {
-      "capture_id": "20261011T123240.190812Z-8f307d1c",
-      "directory": "../data/exports/bdfutbol/teams/2026-27/48/20261011T123240.190812Z-8f307d1c",
+      "capture_id": "20261012T131518.543469Z-43ff1122",
+      "directory": "../data/exports/bdfutbol/teams/2026-27/48/20261012T131518.543469Z-43ff1122",
       "files_sha256": {
-        "metadata/capture.json": "eab4918e37580b08a86efd726b219f7c773b74e70e94a8bf10297104a7727aa1",
-        "validation/results.json": "547928008b6f425f2826643e283022869cf370b3d44a7064344b77164cac8afd",
-        "raw/access.json": "24f79bfaa632e81e60338952a115500efa81859fd9dbb3e3bcc96e4cc42547a2",
-        "normalized/team_identity.json": "5789b87d10704400f4d9dd72a63c98eb04017e0882d92f37abc656703d75a36c",
-        "normalized/team_season.json": "64dd5038798a7d954ec1374bf7463b735b57667cf60930b57589393560f5468a",
-        "normalized/players.json": "df23416d0e0037aecb76cb972776adcbcf81ce64befbb591d694f1dc0552cf7f",
-        "normalized/memberships.json": "51e3046aee668fb122d07239651bbe1c15730d7e4182fa476ef0775941fd6a3d",
-        "normalized/player_statistics.json": "517bae4d8dd4c914d70b1bfb0987e959757d2f2c6857b816afa8cfee71fdd8ea"
+        "metadata/capture.json": "efc8e432701e72bfc74e8f683d181fb786ee942dee21034dd2008b399c746058",
+        "validation/results.json": "2e3e52b191d5c2aec861f6b68a9f9e84025269658b6919947ce775c17b441ca4",
+        "raw/access.json": "bfe08f7e386c56cf27faa8342c481ae408cfe092e78155a82205dcfb3af4922b",
+        "normalized/team_identity.json": "7c8044940438b8f392c91a5deeb14a69a202167fe9888aaad8975f4fa8d49e91",
+        "normalized/team_season.json": "a58f68ce181f56e20fb7decff79e6a8852c032a383f9c00d0eb51d5d8517b899",
+        "normalized/players.json": "850f492c1cc7a47b794ec1f825d440c1f1dae8b710df30ecdc0397e798e93bef",
+        "normalized/memberships.json": "01ba5cc093664fd8724c19e1755b8e99112cd6f89d6533afdd3b54b5c114b8d7",
+        "normalized/player_statistics.json": "62e8d91f1f065dcab7b92067532f4466432547534dd7281ccb06f29a2cd649ac"
       },
       "follow_files_sha256": {
-        "normalized/player_match_minutes.json": "fbf94922d695c35c57efb3e3365087b2f38fd5c6f3271068c7fd230f1dbd9870",
-        "normalized/player_match_metrics.json": "5eb092141cf009f2f4bade7bc84e3c58b6753da8c3553d1f73a4e1c16b2b4889",
+        "normalized/player_match_minutes.json": "3da1f6fc1c87ac48b5b91a9e65be8f82d6b7a8edc395ce065fa790dda5b76caa",
+        "normalized/player_match_metrics.json": "250dbb997bd21b8e6a4deefcf3dfb510860a0f587f570d2d4e444d5aee3fe10d",
         "raw/follow.html.gz": "ba0ac65a0694b7fb1717d79bb8b9c446c43e02a45fb7de4ad6a592c06374fda2",
         "raw/follow_states/p.html.gz": "09d9dd12b769383445c0e330735f3b7247ecbe7ffce799afdb556bde136abe63",
         "raw/follow_states/t.html.gz": "14bad251df7ca8f877f456034a3582c1c3ba308658a655a277d6810e8dafed31",
         "raw/follow_states/go.html.gz": "354a66d5b044f836b5601bbf17a9b0bb7d8d3548792ab3d50bff8594e7421fb8",
         "raw/follow_states/tot.html.gz": "56b06d8d7bbfee9e7d6a1513bbc95976d2b75e1e3f105405f46ca5b8f3f761bf"
+      },
+      "transfers_files_sha256": {
+        "metadata/capture.json": "efc8e432701e72bfc74e8f683d181fb786ee942dee21034dd2008b399c746058",
+        "validation/results.json": "2e3e52b191d5c2aec861f6b68a9f9e84025269658b6919947ce775c17b441ca4",
+        "raw/access.json": "bfe08f7e386c56cf27faa8342c481ae408cfe092e78155a82205dcfb3af4922b",
+        "raw/transfers.html.gz": "4f3b3a4c749562beff8c1f39693cd6d738931cdc8744489f7c45fecb6c921995",
+        "normalized/team_identity.json": "7c8044940438b8f392c91a5deeb14a69a202167fe9888aaad8975f4fa8d49e91",
+        "normalized/team_season.json": "a58f68ce181f56e20fb7decff79e6a8852c032a383f9c00d0eb51d5d8517b899",
+        "normalized/transfers.json": "060cb05f34b203439a2621fc73f515effb8273b4b390c24670514faf0ea06625"
+      },
+      "transfers_evidence": {
+        "capture_id": "20261012T131518.543469Z-43ff1122",
+        "team_id": 48,
+        "season": "2026-27",
+        "group": "I",
+        "source_snapshot": {
+          "path": "raw/transfers.html.gz",
+          "sha256": "8047b4edc468afbbf7d048a680a4815bbcf19273b95e220a46aec7e46d9a3cba",
+          "url": "https://www.bdfutbol.com/es/t/t2026-2748.html?t=altas"
+        },
+        "normalized": {
+          "path": "normalized/transfers.json",
+          "sha256": "060cb05f34b203439a2621fc73f515effb8273b4b390c24670514faf0ea06625"
+        },
+        "sections": [
+          {
+            "direction": "incoming",
+            "source_heading": "Altas",
+            "status": "verified_with_rows",
+            "row_count": 15,
+            "source_team_column": "Equipo origen"
+          },
+          {
+            "direction": "outgoing",
+            "source_heading": "Bajas",
+            "status": "verified_with_rows",
+            "row_count": 15,
+            "source_team_column": "Equipo destino"
+          }
+        ]
       }
     }
   }

@@ -32,7 +32,10 @@ def normalized_payloads(parsed: TeamProfileData) -> dict[str, dict[str, Any]]:
             "records": [asdict(item) for item in parsed.player_match_metrics],
             "captured_states": list(parsed.follow_states_captured),
         },
-        "transfers": {"records": [asdict(item) for item in parsed.transfers]},
+        "transfers": {
+            "records": [asdict(item) for item in parsed.transfers],
+            "sections": [asdict(item) for item in parsed.transfer_sections],
+        },
         "profile_references": {
             "team_ids_from_profile": list(parsed.group_team_ids_from_profile),
             "match_ids_from_profile": list(parsed.team_match_ids_from_profile),
@@ -55,7 +58,7 @@ def _dataset_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
             "source", "season", "competition", "group", "team_id",
             "capture_id", "captured_at_utc", "started_at_utc", "extractor_version",
             "semantic_validation_version", "capture_policy", "related_team_catalog", "source_snapshots",
-            "follow_states", "acquired_views", "reused_views", "reused_source_capture_ids",
+            "follow_states", "acquired_views", "reused_views", "reused_source_capture_ids", "derivation",
         )
     }
 
@@ -133,6 +136,7 @@ def export_team_capture(
             "follow_states": {},
             "related_team_catalog": bundle.team_catalog_reference,
             "created_at_utc": datetime.now(timezone.utc).isoformat(),
+            "derivation": bundle.derivation or None,
             "data_scope_notes": [
                 "The team profile supplements the group match/standings datasets.",
                 "Team-match references are IDs only; fixture and score records are not duplicated.",

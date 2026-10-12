@@ -69,6 +69,7 @@ class TeamAcquisitionBundle:
     follow_state_diagnostics: dict[str, dict[str, Any]] = field(default_factory=dict)
     seed_capture_ids: tuple[str, ...] = ()
     started_at_utc: str | None = None
+    derivation: dict[str, Any] = field(default_factory=dict)
 
 
 def create_team_capture_id(now: datetime | None = None) -> str:

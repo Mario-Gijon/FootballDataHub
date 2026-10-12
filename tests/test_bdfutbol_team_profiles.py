@@ -132,8 +132,16 @@ def test_jaen_normalizes_team_coach_squad_stats_and_references(jaen):
     assert len(parsed.player_match_minutes) == 150
     assert any(item.value is None and item.raw_value == "" for item in parsed.player_match_minutes)
     assert any(item.value == 0 and item.raw_value == "0" for item in parsed.player_match_minutes)
-    assert len(parsed.transfers) == 34
-    assert {item.direction for item in parsed.transfers} == {"incoming"}
+    assert Counter(item.direction for item in parsed.transfers) == {"incoming": 14, "outgoing": 20}
+    assert {item.direction: item.row_count for item in parsed.transfer_sections} == {"incoming": 14, "outgoing": 20}
+    assert {item.direction: item.status for item in parsed.transfer_sections} == {
+        "incoming": "verified_with_rows", "outgoing": "verified_with_rows"
+    }
+    assert {item.direction: item.source_heading for item in parsed.transfer_sections} == {
+        "incoming": "Altas", "outgoing": "Bajas"
+    }
+    assert next(item for item in parsed.transfers if item.player_id == 304042).source_heading == "Altas"
+    assert next(item for item in parsed.transfers if item.player_id == 22537).source_heading == "Bajas"
     assert all(item.transfer_date is None and item.fee is None for item in parsed.transfers)
     assert all(item.player_id > 0 and item.player_display_name and item.player_profile_url for item in parsed.transfers)
     assert len(parsed.group_team_ids_from_profile) == 20
@@ -169,8 +177,10 @@ def test_group1_pilot_uses_same_parser_and_catalog_identity(racing):
     assert len(parsed.player_match_metrics) == 17
     assert parsed.follow_states_captured == ("go", "p", "t", "tot")
     assert set(capture["requested_views"]) == {"alignment", "squad", "statistics", "follow", "transfers", "matches"}
-    assert len(parsed.transfers) == 30
-    assert {item.direction for item in parsed.transfers} == {"incoming"}
+    assert Counter(item.direction for item in parsed.transfers) == {"incoming": 15, "outgoing": 15}
+    assert {item.direction: item.row_count for item in parsed.transfer_sections} == {"incoming": 15, "outgoing": 15}
+    assert next(item for item in parsed.transfers if item.player_id == 15141).source_heading == "Altas"
+    assert next(item for item in parsed.transfers if item.player_id == 23024).source_heading == "Bajas"
     assert all(item.transfer_date is None and item.fee is None for item in parsed.transfers)
     assert validation["valid"] is True
     assert len(parsed.group_team_ids_from_profile) == len(payload["teams"]) == 20
@@ -335,26 +345,76 @@ def test_parser_rejects_wrong_catalog_identity_and_invalid_html(jaen):
         )
 
 
-def test_transfer_section_allows_a_genuine_empty_section_but_rejects_missing_root(jaen):
+def test_transfer_section_distinguishes_verified_empty_from_unparseable(jaen):
     context, _, record, _, _, views, _, _ = jaen
     soup = BeautifulSoup(views["transfers"], "html.parser")
     root = soup.select_one("#pestaltesbaixes")
     assert root is not None
-    root.clear()
+    table = root.select_one("table")
+    assert table is not None
+    after_bajas_heading = False
+    after_destination_header = False
+    for row in list(table.select("tr")):
+        if row.select_one("h2") and row.select_one("h2").get_text(" ", strip=True) == "Bajas":
+            after_bajas_heading = True
+            continue
+        if after_bajas_heading and "Equipo destino" in row.get_text(" ", strip=True):
+            after_destination_header = True
+            continue
+        if after_destination_header and row.select_one('a[href*="/j/j"]'):
+            row.decompose()
     empty_views = {**views, "transfers": str(soup)}
-    assert team_acquisition._view_markers("transfers", str(soup)) == ()
     parsed = parse_team_profile_pages(
         empty_views,
         team_catalog_record=record,
         competition_context=context,
     )
-    assert parsed.transfers == ()
+    assert Counter(item.direction for item in parsed.transfers) == {"incoming": 14}
+    assert {item.direction: item.status for item in parsed.transfer_sections} == {
+        "incoming": "verified_with_rows", "outgoing": "verified_empty"
+    }
+    assert {item.direction: item.row_count for item in parsed.transfer_sections} == {"incoming": 14, "outgoing": 0}
     broken = BeautifulSoup(views["transfers"], "html.parser")
-    broken.select_one("#pestaltesbaixes").decompose()
-    assert team_acquisition._view_markers("transfers", str(broken)) == ("#pestaltesbaixes",)
-    with pytest.raises(TeamProfileParseError, match="#pestaltesbaixes"):
+    broken.select_one("#pestaltesbaixes table").decompose()
+    with pytest.raises(TeamProfileParseError, match="Encabezados de Traspasos inesperados"):
         parse_team_profile_pages(
             {**views, "transfers": str(broken)},
+            team_catalog_record=record,
+            competition_context=context,
+        )
+
+
+def test_same_player_can_have_source_records_in_both_directions(jaen):
+    context, _, record, _, _, views, _, _ = jaen
+    soup = BeautifulSoup(views["transfers"], "html.parser")
+    table = soup.select_one("#pestaltesbaixes table")
+    assert table is not None
+    incoming_row = next(
+        row for row in table.select("tr")
+        if row.select_one('a[href*="/j/j304042.html"]')
+    )
+    clone = BeautifulSoup(str(incoming_row), "html.parser").select_one("tr")
+    assert clone is not None
+    table.append(clone)
+    parsed = parse_team_profile_pages(
+        {**views, "transfers": str(soup)},
+        team_catalog_record=record,
+        competition_context=context,
+    )
+    copies = [item for item in parsed.transfers if item.player_id == 304042]
+    assert {item.direction for item in copies} == {"incoming", "outgoing"}
+
+
+def test_transfer_parser_rejects_unrecognized_section_table(jaen):
+    context, _, record, _, _, views, _, _ = jaen
+    soup = BeautifulSoup(views["transfers"], "html.parser")
+    table = soup.select_one("#pestaltesbaixes table")
+    assert table is not None
+    destination_header = next(row for row in table.select("tr") if "Equipo destino" in row.get_text(" ", strip=True))
+    destination_header.decompose()
+    with pytest.raises(TeamProfileParseError, match="antes de la cabecera de Bajas"):
+        parse_team_profile_pages(
+            {**views, "transfers": str(soup)},
             team_catalog_record=record,
             competition_context=context,
         )

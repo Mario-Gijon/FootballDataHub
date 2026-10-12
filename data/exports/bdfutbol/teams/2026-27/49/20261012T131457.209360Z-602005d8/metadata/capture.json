@@ -1,0 +1,420 @@
+{
+  "schema_version": 1,
+  "capture_id": "20261012T131457.209360Z-602005d8",
+  "source": "BDFutbol",
+  "section": "team_profile",
+  "season": "2026-27",
+  "competition": "Primera Federación",
+  "competition_scope": "Liga",
+  "group": "II",
+  "group_number": 2,
+  "team_id": 49,
+  "team_name": "Jaén",
+  "team_url": "https://www.bdfutbol.com/es/t/t2026-2749.html",
+  "requested_views": [
+    "alignment",
+    "squad",
+    "statistics",
+    "follow",
+    "transfers",
+    "matches"
+  ],
+  "acquired_views": [
+    "alignment",
+    "squad",
+    "statistics",
+    "follow",
+    "transfers",
+    "matches"
+  ],
+  "reused_views": [],
+  "view_urls": {
+    "alignment": "https://www.bdfutbol.com/es/t/t2026-2749.html",
+    "squad": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=plantilla",
+    "statistics": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=lista",
+    "follow": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=seg",
+    "transfers": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=altas",
+    "matches": "https://www.bdfutbol.com/es/t/t2026-2749.html?tab=partits"
+  },
+  "captured_at_utc": "2026-10-11T11:40:34.526424+00:00",
+  "started_at_utc": "2026-10-11T11:39:13.407429+00:00",
+  "capture_timestamp_basis": "per-view access diagnostic timestamp or local snapshot mtime; see raw/access.json",
+  "extractor_version": "0.1.0",
+  "semantic_validation_version": 2,
+  "capture_policy": {
+    "id": "team-profile-six-views-follow-states-v1",
+    "version": 1,
+    "required_views": [
+      "alignment",
+      "squad",
+      "statistics",
+      "follow",
+      "transfers",
+      "matches"
+    ],
+    "required_follow_states": [
+      "p",
+      "t",
+      "go",
+      "tot"
+    ]
+  },
+  "browser": {
+    "backend": "seleniumbase-pure-cdp",
+    "browser_name": "Chromium",
+    "browser_executable": "/usr/bin/chromium",
+    "browser_version": "Chromium 152.0.7977.82 Arch Linux",
+    "automation_version": "4.55.2",
+    "display": ":99",
+    "uses_xvfb": true,
+    "xvfb_external": true,
+    "reused_seed_browser": {
+      "backend": "seleniumbase-pure-cdp",
+      "browser_name": "Chromium",
+      "browser_executable": "/usr/bin/chromium",
+      "browser_version": "Chromium 152.0.7977.82 Arch Linux",
+      "automation_version": "4.55.2",
+      "display": ":99",
+      "uses_xvfb": true,
+      "xvfb_external": true
+    }
+  },
+  "profile_dir": null,
+  "access_by_view": {
+    "alignment": {
+      "status": "VALID",
+      "requested_url": "https://www.bdfutbol.com/es/t/t2026-2749.html",
+      "final_url": "https://www.bdfutbol.com/es/t/t2026-2749.html",
+      "http_status": 200,
+      "page_title": "Plantilla del Jaén 2026-27 1ª RFEF | BDFutbol",
+      "reason": null,
+      "captured_at_utc": "2026-10-11T11:39:13.407429+00:00",
+      "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded",
+      "source_snapshot_sha256": "6a8b76da71eed468f6ed93c4bc66a47be297532421a1efa4f11979f1049dbcd9"
+    },
+    "squad": {
+      "status": "VALID",
+      "requested_url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=plantilla",
+      "final_url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=plantilla",
+      "http_status": 200,
+      "page_title": "Plantilla del Jaén 2026-27 1ª RFEF | BDFutbol",
+      "reason": null,
+      "captured_at_utc": "2026-10-11T11:40:25.322668+00:00",
+      "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded",
+      "source_snapshot_sha256": "188911ccf2f8690463b6e8662d88676a0171d154f2260b8de30393f53039aacf"
+    },
+    "statistics": {
+      "status": "VALID",
+      "requested_url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=lista",
+      "final_url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=lista",
+      "http_status": 200,
+      "page_title": "Plantilla del Jaén 2026-27 1ª RFEF | BDFutbol",
+      "reason": null,
+      "captured_at_utc": "2026-10-11T11:40:27.704382+00:00",
+      "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded",
+      "source_snapshot_sha256": "1d664c8cc22e5e8a85705a91b29ddd151caf1f8b3b9fd84444804f7e15085ac3"
+    },
+    "follow": {
+      "status": "VALID",
+      "requested_url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=seg",
+      "final_url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=seg",
+      "http_status": 200,
+      "page_title": "Plantilla del Jaén 2026-27 1ª RFEF | BDFutbol",
+      "reason": null,
+      "captured_at_utc": "2026-10-11T11:40:29.956883+00:00",
+      "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded",
+      "source_snapshot_sha256": "58de1ddc33da93ac868d378e9ac7de55350df8f6c06ef96e77435026ad33ba05"
+    },
+    "transfers": {
+      "status": "VALID",
+      "requested_url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=altas",
+      "final_url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=altas",
+      "http_status": 200,
+      "page_title": "Plantilla del Jaén 2026-27 1ª RFEF | BDFutbol",
+      "reason": null,
+      "captured_at_utc": "2026-10-11T11:40:32.178078+00:00",
+      "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded",
+      "source_snapshot_sha256": "279774e069f3c0666f9c6dd3162f9faca6c44912b6cbbeb61e9f81b8a14303fe"
+    },
+    "matches": {
+      "status": "VALID",
+      "requested_url": "https://www.bdfutbol.com/es/t/t2026-2749.html?tab=partits",
+      "final_url": "https://www.bdfutbol.com/es/t/t2026-2749.html?tab=partits",
+      "http_status": 200,
+      "page_title": "Plantilla del Jaén 2026-27 1ª RFEF | BDFutbol",
+      "reason": null,
+      "captured_at_utc": "2026-10-11T11:40:34.526424+00:00",
+      "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded",
+      "source_snapshot_sha256": "d11a7866fb1b813eff94433c4cd1b7350e0335644aca33b1e1d473ac2696aa1b"
+    }
+  },
+  "source_snapshots": {
+    "alignment": {
+      "path": "raw/alignment.html.gz",
+      "compression": "gzip",
+      "url": "https://www.bdfutbol.com/es/t/t2026-2749.html",
+      "title": "Plantilla del Jaén 2026-27 1ª RFEF | BDFutbol",
+      "http_status": 200,
+      "sha256": "6a8b76da71eed468f6ed93c4bc66a47be297532421a1efa4f11979f1049dbcd9",
+      "bytes_utf8": 1543233,
+      "stored_bytes": 117913,
+      "access_status": "VALID",
+      "captured_at_utc": "2026-10-11T11:39:13.407429+00:00",
+      "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded"
+    },
+    "squad": {
+      "path": "raw/squad.html.gz",
+      "compression": "gzip",
+      "url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=plantilla",
+      "title": "Plantilla del Jaén 2026-27 1ª RFEF | BDFutbol",
+      "http_status": 200,
+      "sha256": "188911ccf2f8690463b6e8662d88676a0171d154f2260b8de30393f53039aacf",
+      "bytes_utf8": 1627015,
+      "stored_bytes": 122066,
+      "access_status": "VALID",
+      "captured_at_utc": "2026-10-11T11:40:25.322668+00:00",
+      "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded"
+    },
+    "statistics": {
+      "path": "raw/statistics.html.gz",
+      "compression": "gzip",
+      "url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=lista",
+      "title": "Plantilla del Jaén 2026-27 1ª RFEF | BDFutbol",
+      "http_status": 200,
+      "sha256": "1d664c8cc22e5e8a85705a91b29ddd151caf1f8b3b9fd84444804f7e15085ac3",
+      "bytes_utf8": 1779016,
+      "stored_bytes": 128528,
+      "access_status": "VALID",
+      "captured_at_utc": "2026-10-11T11:40:27.704382+00:00",
+      "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded"
+    },
+    "follow": {
+      "path": "raw/follow.html.gz",
+      "compression": "gzip",
+      "url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=seg",
+      "title": "Plantilla del Jaén 2026-27 1ª RFEF | BDFutbol",
+      "http_status": 200,
+      "sha256": "58de1ddc33da93ac868d378e9ac7de55350df8f6c06ef96e77435026ad33ba05",
+      "bytes_utf8": 1754359,
+      "stored_bytes": 128240,
+      "access_status": "VALID",
+      "captured_at_utc": "2026-10-11T11:40:29.956883+00:00",
+      "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded"
+    },
+    "transfers": {
+      "path": "raw/transfers.html.gz",
+      "compression": "gzip",
+      "url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=altas",
+      "title": "Plantilla del Jaén 2026-27 1ª RFEF | BDFutbol",
+      "http_status": 200,
+      "sha256": "279774e069f3c0666f9c6dd3162f9faca6c44912b6cbbeb61e9f81b8a14303fe",
+      "bytes_utf8": 1749347,
+      "stored_bytes": 126841,
+      "access_status": "VALID",
+      "captured_at_utc": "2026-10-11T11:40:32.178078+00:00",
+      "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded"
+    },
+    "matches": {
+      "path": "raw/matches.html.gz",
+      "compression": "gzip",
+      "url": "https://www.bdfutbol.com/es/t/t2026-2749.html?tab=partits",
+      "title": "Plantilla del Jaén 2026-27 1ª RFEF | BDFutbol",
+      "http_status": 200,
+      "sha256": "d11a7866fb1b813eff94433c4cd1b7350e0335644aca33b1e1d473ac2696aa1b",
+      "bytes_utf8": 1765194,
+      "stored_bytes": 128850,
+      "access_status": "VALID",
+      "captured_at_utc": "2026-10-11T11:40:34.526424+00:00",
+      "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded"
+    }
+  },
+  "reused_source_capture_ids": [
+    "team01a-group2-49-source-evidence",
+    "20261012T120720.895650Z-8c75b830"
+  ],
+  "follow_states": {
+    "p": {
+      "selected_value": "p",
+      "url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=seg",
+      "source_capture_id": "team01a-group2-49-source-evidence",
+      "source_view_snapshot": "follow",
+      "captured_at_utc": "2026-10-11T11:40:29.956883+00:00",
+      "capture_timestamp_basis": "diagnostic JSON mtime; source navigation time not separately recorded",
+      "reused": true,
+      "status": "VALID",
+      "origin": "source_capture",
+      "sha256": "58de1ddc33da93ac868d378e9ac7de55350df8f6c06ef96e77435026ad33ba05",
+      "path": "raw/follow_states/p.html.gz",
+      "compression": "gzip",
+      "bytes_utf8": 1754359,
+      "stored_bytes": 128240
+    },
+    "t": {
+      "label": "Tarjetas",
+      "selected_value": "t",
+      "url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=seg",
+      "table_rows": 26,
+      "source_capture_id": "team01a-group2-49-source-evidence",
+      "source_view_snapshot": "follow",
+      "source_snapshot_sha256": "58de1ddc33da93ac868d378e9ac7de55350df8f6c06ef96e77435026ad33ba05",
+      "origin": "derived_offline",
+      "status": "DERIVED_OFFLINE",
+      "derivation_method": "embedded_javascript_matrices_v1",
+      "derived_at_utc": "2026-10-12T12:07:20.895591+00:00",
+      "capture_timestamp_basis": "offline reconstruction from JSEG/JSEGC/JSEGG/JSEGID; no live page state was acquired",
+      "matchdays": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "match_ids": [
+        "272523",
+        "272532",
+        "272545",
+        "272550",
+        "272558",
+        "272569"
+      ],
+      "resource_urls_added_since_previous_state": [],
+      "sha256": "df995b6fb04467c8b1c114d7982030cee84dd6d3792d9bbd0af77c47eb509903",
+      "path": "raw/follow_states/t.html.gz",
+      "compression": "gzip",
+      "bytes_utf8": 1694579,
+      "stored_bytes": 125761
+    },
+    "go": {
+      "label": "Goles",
+      "selected_value": "go",
+      "url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=seg",
+      "table_rows": 26,
+      "source_capture_id": "team01a-group2-49-source-evidence",
+      "source_view_snapshot": "follow",
+      "source_snapshot_sha256": "58de1ddc33da93ac868d378e9ac7de55350df8f6c06ef96e77435026ad33ba05",
+      "origin": "derived_offline",
+      "status": "DERIVED_OFFLINE",
+      "derivation_method": "embedded_javascript_matrices_v1",
+      "derived_at_utc": "2026-10-12T12:07:20.895591+00:00",
+      "capture_timestamp_basis": "offline reconstruction from JSEG/JSEGC/JSEGG/JSEGID; no live page state was acquired",
+      "matchdays": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "match_ids": [
+        "272523",
+        "272532",
+        "272545",
+        "272550",
+        "272558",
+        "272569"
+      ],
+      "resource_urls_added_since_previous_state": [],
+      "sha256": "44d5402f9d08024faa4be46b75be9d14616b29b78641df4613bffd01c8a54a0e",
+      "path": "raw/follow_states/go.html.gz",
+      "compression": "gzip",
+      "bytes_utf8": 1694336,
+      "stored_bytes": 125563
+    },
+    "tot": {
+      "label": "Todo",
+      "selected_value": "tot",
+      "url": "https://www.bdfutbol.com/es/t/t2026-2749.html?t=seg",
+      "table_rows": 26,
+      "source_capture_id": "team01a-group2-49-source-evidence",
+      "source_view_snapshot": "follow",
+      "source_snapshot_sha256": "58de1ddc33da93ac868d378e9ac7de55350df8f6c06ef96e77435026ad33ba05",
+      "origin": "derived_offline",
+      "status": "DERIVED_OFFLINE",
+      "derivation_method": "embedded_javascript_matrices_v1",
+      "derived_at_utc": "2026-10-12T12:07:20.895591+00:00",
+      "capture_timestamp_basis": "offline reconstruction from JSEG/JSEGC/JSEGG/JSEGID; no live page state was acquired",
+      "matchdays": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "match_ids": [
+        "272523",
+        "272532",
+        "272545",
+        "272550",
+        "272558",
+        "272569"
+      ],
+      "resource_urls_added_since_previous_state": [],
+      "sha256": "2482f3c208cf5ca1c6a0bffd5195738de14a6d8f8a1ef093a4ece0dc6acc88ea",
+      "path": "raw/follow_states/tot.html.gz",
+      "compression": "gzip",
+      "bytes_utf8": 1695603,
+      "stored_bytes": 125865
+    }
+  },
+  "related_team_catalog": {
+    "path": "data/exports/bdfutbol/group2_classification/derived-res01-20261010T102656Z/normalized/matches.json",
+    "group": "II",
+    "season": "2026-27",
+    "source_capture_id": "20261010T102656.252222Z-72f200ad",
+    "source_captured_at_utc": "2026-10-10T10:26:56.252397+00:00",
+    "sha256": "ac355bf8fff808cea9aa093ebfb274d9313f3137ae89b84132ca11a3e70c7a84"
+  },
+  "created_at_utc": "2026-10-12T13:14:57.562715+00:00",
+  "derivation": {
+    "method": "offline_reparse_saved_snapshots",
+    "derived_at_utc": "2026-10-12T13:14:57.209347+00:00",
+    "source_capture_ids": [
+      "20261012T120720.895650Z-8c75b830"
+    ]
+  },
+  "data_scope_notes": [
+    "The team profile supplements the group match/standings datasets.",
+    "Team-match references are IDs only; fixture and score records are not duplicated.",
+    "Images are represented by source URLs and were not downloaded."
+  ],
+  "normalized_snapshots": {
+    "memberships.json": {
+      "path": "normalized/memberships.json",
+      "sha256": "cfd9f4b49fdc70310cad59380a052df4a80669398e17039369f0aeb417c9f316"
+    },
+    "player_match_metrics.json": {
+      "path": "normalized/player_match_metrics.json",
+      "sha256": "7975e02202e807389910a0b853eb521814de1ee12c02b020961b47442ac9f9d2"
+    },
+    "player_match_minutes.json": {
+      "path": "normalized/player_match_minutes.json",
+      "sha256": "acac8d66e3c8d74c061c734a30416483307cb85653cdf4c081d2e3e60bc35c06"
+    },
+    "player_statistics.json": {
+      "path": "normalized/player_statistics.json",
+      "sha256": "3a7494ee015835f11a819cb308d0b5d6039ecd06b2a446cf184f0f28b7bd2623"
+    },
+    "players.json": {
+      "path": "normalized/players.json",
+      "sha256": "4e0410ce0a97693c1d120b9cde4110666d4cbd824e9a71d6c2e9dfb3475c8d91"
+    },
+    "profile_references.json": {
+      "path": "normalized/profile_references.json",
+      "sha256": "60ec5fd627f947cffd9730c71706ec3f302e95fda014da3a95308f7f229fec93"
+    },
+    "team_identity.json": {
+      "path": "normalized/team_identity.json",
+      "sha256": "63a810b04383433b2fe39d53539114b70cd39eaf391dae796b3275b417b76132"
+    },
+    "team_season.json": {
+      "path": "normalized/team_season.json",
+      "sha256": "c6d3aa4f2daf3f057a3e8e300c602df63e96edc388ae3252517e5870ad9dac0f"
+    },
+    "transfers.json": {
+      "path": "normalized/transfers.json",
+      "sha256": "16eff7297249f383bef0b224832af8be50cad1613024e9f4c41b275c31b06547"
+    }
+  }
+}

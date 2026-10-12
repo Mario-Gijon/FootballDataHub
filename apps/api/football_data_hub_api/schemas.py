@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+import re
 from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, StrictFloat, StrictInt, model_validator
 
@@ -317,6 +319,121 @@ class TeamResponse(ApiModel):
     name: str = Field(min_length=1)
     team_url: str | None
     crest_url: str | None
+
+
+class TeamTransferSectionResponse(ApiModel):
+    direction: Literal["incoming", "outgoing"]
+    source_heading: Literal["Altas", "Bajas"]
+    status: Literal["verified_with_rows", "verified_empty"]
+    row_count: StrictInt = Field(ge=0)
+    source_team_column: Literal["Equipo origen", "Equipo destino"]
+
+    @model_validator(mode="after")
+    def validate_section(self) -> TeamTransferSectionResponse:
+        expected = {
+            "incoming": ("Altas", "Equipo origen"),
+            "outgoing": ("Bajas", "Equipo destino"),
+        }[self.direction]
+        if (self.source_heading, self.source_team_column) != expected:
+            raise ValueError("La sección de traspasos no coincide con su dirección.")
+        if (self.status == "verified_empty") != (self.row_count == 0):
+            raise ValueError("El estado vacío de la sección no coincide con el recuento.")
+        return self
+
+
+class TeamTransferRecordResponse(ApiModel):
+    player_id: StrictInt = Field(gt=0)
+    player_display_name: str = Field(min_length=1)
+    player_full_name: str | None
+    player_profile_url: str
+    player_photo_url: str | None
+    team_id: StrictInt = Field(gt=0)
+    season: Literal["2026-27"]
+    competition: Literal["Primera Federación"]
+    group: Literal["I", "II"]
+    direction: Literal["incoming", "outgoing"]
+    other_team_name: str | None
+    other_team_id: StrictInt | None = Field(default=None, gt=0)
+    other_team_url: str | None
+    age_years: StrictInt | None = Field(default=None, ge=0)
+    source_position_code: str | None
+    transfer_date: str | None
+    fee: str | None
+    source_view: Literal["transfers"]
+    source_heading: Literal["Altas", "Bajas"]
+
+    @model_validator(mode="after")
+    def validate_transfer_record(self) -> TeamTransferRecordResponse:
+        expected_heading = "Altas" if self.direction == "incoming" else "Bajas"
+        if self.source_heading != expected_heading:
+            raise ValueError("La dirección del movimiento no coincide con source_heading.")
+        player_match = re.search(r"(?:^|/)j/j(\d+)\.html$", urlsplit(self.player_profile_url).path)
+        if player_match is None or int(player_match.group(1)) != self.player_id:
+            raise ValueError("player_profile_url no coincide con player_id.")
+        for value in (self.player_profile_url, self.player_photo_url, self.other_team_url):
+            if value is None:
+                continue
+            parsed = urlsplit(value)
+            if parsed.scheme != "https" or parsed.hostname not in {"bdfutbol.com", "www.bdfutbol.com"}:
+                raise ValueError("Las URL de traspasos deben apuntar a BDFutbol mediante HTTPS.")
+        if self.other_team_url:
+            team_match = re.search(r"(?:^|/)t\d{4}-\d{2}(\d+)\.html$", urlsplit(self.other_team_url).path)
+            if team_match is None or self.other_team_id is None or int(team_match.group(1)) != self.other_team_id:
+                raise ValueError("other_team_url no coincide con other_team_id.")
+        elif self.other_team_id is not None:
+            raise ValueError("other_team_id requiere una URL de origen/destino.")
+        return self
+
+
+class TeamTransfersMetadataResponse(ApiModel):
+    contract_version: Literal[1]
+    validation_status: Literal["valid"]
+    source: Literal["BDFutbol"]
+    url: str
+    competition: Literal["Primera Federación"]
+    competition_scope: Literal["Liga"]
+    season: Literal["2026-27"]
+    group: Literal["I", "II"]
+    team_id: StrictInt = Field(gt=0)
+    capture_id: str = Field(min_length=1)
+    captured_at: datetime
+    derived_at: datetime | None
+    extractor_version: str
+    source_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    content_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+
+
+class TeamTransfersResponse(ApiModel):
+    status: Literal["available"]
+    metadata: TeamTransfersMetadataResponse
+    sections: list[TeamTransferSectionResponse]
+    incoming: list[TeamTransferRecordResponse]
+    outgoing: list[TeamTransferRecordResponse]
+    warnings: list[str]
+
+    @model_validator(mode="after")
+    def validate_transfer_collections(self) -> TeamTransfersResponse:
+        if self.metadata.team_id <= 0 or len(self.sections) != 2:
+            raise ValueError("Metadatos o secciones de Traspasos incompletos.")
+        section_by_direction = {item.direction: item for item in self.sections}
+        if set(section_by_direction) != {"incoming", "outgoing"}:
+            raise ValueError("Traspasos debe declarar Altas y Bajas por separado.")
+        for direction, rows in (("incoming", self.incoming), ("outgoing", self.outgoing)):
+            section = section_by_direction[direction]
+            if section.row_count != len(rows):
+                raise ValueError("El recuento de sección no coincide con los movimientos publicados.")
+            if any(
+                row.direction != direction
+                or row.team_id != self.metadata.team_id
+                or row.group != self.metadata.group
+                or row.season != self.metadata.season
+                for row in rows
+            ):
+                raise ValueError("Un movimiento pertenece a otra dirección o contexto.")
+        keys = [(row.direction, row.player_id) for row in self.incoming + self.outgoing]
+        if len(keys) != len(set(keys)):
+            raise ValueError("Traspasos repite un jugador dentro de la misma dirección.")
+        return self
 
 
 class MatchResponse(ApiModel):

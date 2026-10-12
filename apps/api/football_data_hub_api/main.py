@@ -30,6 +30,7 @@ from football_data_hub_api.schemas import (
     RefereeBootstrapResponse,
     StatisticsBootstrapResponse,
     TeamRosterResponse,
+    TeamTransfersResponse,
     TopBootstrapResponse,
     TeamFollowResponse,
 )
@@ -50,6 +51,10 @@ from football_data_hub_api.team_roster_dataset import (
 from football_data_hub_api.team_follow_dataset import (
     TeamFollowRegistry,
     load_team_follow_registry,
+)
+from football_data_hub_api.team_transfers_dataset import (
+    TeamTransfersRegistry,
+    load_team_transfers_registry,
 )
 
 logger = logging.getLogger("football_data_hub_api")
@@ -72,6 +77,7 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         app.state.referee_group_errors = {}
         app.state.team_roster_registry = TeamRosterRegistry({}, {}, {}, None, {})
         app.state.team_follow_registry = TeamFollowRegistry({}, {}, {}, None, {})
+        app.state.team_transfers_registry = TeamTransfersRegistry({}, {}, {}, None, {})
 
         group_settings = {}
         for group in ("1", "2"):
@@ -164,6 +170,17 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
             roster_registry=app.state.team_roster_registry,
             unavailable_group_errors=unavailable_groups,
         )
+        try:
+            app.state.team_transfers_registry = load_team_transfers_registry(
+                configured.team_profiles_index_path,
+                roster_registry=app.state.team_roster_registry,
+                unavailable_group_errors=unavailable_groups,
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            logger.exception("Traspasos no están disponibles; el resto de secciones sigue aislado")
+            app.state.team_transfers_registry = TeamTransfersRegistry(
+                app.state.team_roster_registry.known_teams, {}, {}, str(exc), unavailable_groups
+            )
         yield
 
     app = FastAPI(
@@ -364,6 +381,56 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         etag = (
             f'"team-follow-v{profile.metadata.contract_version}-'
             f'{team_id}-{season}-{representation_sha}"'
+        )
+        response.headers["ETag"] = etag
+        if _etag_matches(request.headers.get("if-none-match"), etag):
+            return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": etag})
+        return profile
+
+    @app.get(
+        "/api/v1/teams/{team_id}/seasons/{season}/transfers",
+        response_model=TeamTransfersResponse,
+        tags=["teams", "transfers"],
+        summary="Altas y bajas normalizadas de un equipo",
+    )
+    def team_transfers(
+        team_id: int, season: str, request: Request, response: Response
+    ) -> TeamTransfersResponse | Response:
+        if season != "2026-27":
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"code": "season_not_available", "message": "Solo está disponible 2026/27."},
+            )
+        registry: TeamTransfersRegistry = request.app.state.team_transfers_registry
+        if team_id not in registry.known_teams:
+            if registry.unavailable_group_errors:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail={"code": "team_catalog_unavailable", "message": "No se pudieron validar todos los catálogos de equipos."},
+                )
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"code": "team_unknown", "message": "No existe un equipo con ese identificador."},
+            )
+        profile = registry.profiles.get(team_id)
+        if profile is None:
+            if team_id in registry.profile_errors:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail={"code": "transfers_invalid", "message": "La captura seleccionada no superó las validaciones de Traspasos."},
+                )
+            if registry.index_error:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail={"code": "transfers_index_unavailable", "message": "El índice de capturas de equipos no está disponible."},
+                )
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"code": "transfers_not_captured", "message": "Los Traspasos de este equipo aún no tienen una captura publicada."},
+            )
+        etag = (
+            f'"team-transfers-v{profile.metadata.contract_version}-'
+            f'{team_id}-{season}-{profile.metadata.content_sha256[:24]}"'
         )
         response.headers["ETag"] = etag
         if _etag_matches(request.headers.get("if-none-match"), etag):

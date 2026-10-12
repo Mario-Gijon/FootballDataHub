@@ -1,0 +1,51 @@
+{
+  "valid": true,
+  "semantic_version": 2,
+  "summary": {
+    "team_id": 48,
+    "players": 25,
+    "memberships": 25,
+    "coaches": 1,
+    "player_statistics": 25,
+    "player_match_minutes": 150,
+    "player_match_metrics": 17,
+    "follow_states_captured": [
+      "go",
+      "p",
+      "t",
+      "tot"
+    ],
+    "transfers": 30,
+    "transfer_sections": {
+      "incoming": {
+        "status": "verified_with_rows",
+        "rows": 15
+      },
+      "outgoing": {
+        "status": "verified_with_rows",
+        "rows": 15
+      }
+    },
+    "profile_match_references": 6,
+    "catalog_teams_in_profile": 20,
+    "requested_views": [
+      "alignment",
+      "squad",
+      "statistics",
+      "follow",
+      "transfers",
+      "matches"
+    ]
+  },
+  "issues": [],
+  "warnings": [
+    "Los match_id de la ficha se usan como referencias al dataset existente; no se exportan copias de partidos"
+  ],
+  "cross_references": {
+    "team_ids_match_catalog": true,
+    "profile_match_ids_in_group_results": true,
+    "follow_match_ids_in_group_results": true,
+    "follow_metric_match_ids_in_group_results": true,
+    "duplicate_match_records_exported": false
+  }
+}

@@ -19,6 +19,10 @@ PROFILE_RUNS = {
     1: ROOT / "data/exports/bdfutbol/teams/2026-27/48/20261011T123240.190812Z-8f307d1c",
     2: ROOT / "data/exports/bdfutbol/teams/2026-27/49/team01a-group2-49-source-evidence",
 }
+DERIVED_PROFILE_RUNS = {
+    1: ROOT / "data/exports/bdfutbol/teams/2026-27/48/20261012T131518.543469Z-43ff1122",
+    2: ROOT / "data/exports/bdfutbol/teams/2026-27/49/20261012T131457.209360Z-602005d8",
+}
 
 
 def _inspect(capture: Path, group: int, team_id: int):
@@ -35,16 +39,26 @@ def _inspect(capture: Path, group: int, team_id: int):
     )
 
 
-def test_racing_enriched_capture_is_complete_and_jaen_remains_a_valid_seed():
-    racing = _inspect(PROFILE_RUNS[1], 1, 48)
+def test_transfer_reparse_keeps_original_as_seed_and_derived_capture_complete():
+    racing_original = _inspect(PROFILE_RUNS[1], 1, 48)
+    racing_derived = _inspect(DERIVED_PROFILE_RUNS[1], 1, 48)
     jaen = _inspect(PROFILE_RUNS[2], 2, 49)
 
-    assert racing.classification == "complete"
-    assert racing.valid_for_original_scope is True
-    assert racing.complete_for_current_policy is True
-    assert racing.valid_views == DEFAULT_VIEWS
-    assert racing.valid_follow_states == FOLLOW_STATES
-    assert racing.normalized_valid is True
+    # The immutable source snapshot still has the pre-fix transfer direction.
+    assert racing_original.classification == "reusable_seed"
+    assert racing_original.valid_for_original_scope is True
+    assert racing_original.complete_for_current_policy is False
+    assert racing_original.valid_views == DEFAULT_VIEWS
+    assert racing_original.valid_follow_states == FOLLOW_STATES
+    assert racing_original.normalized_valid is False
+    assert any("normalized/transfers.json" in reason for reason in racing_original.reasons)
+
+    assert racing_derived.classification == "complete"
+    assert racing_derived.valid_for_original_scope is True
+    assert racing_derived.complete_for_current_policy is True
+    assert racing_derived.valid_views == DEFAULT_VIEWS
+    assert racing_derived.valid_follow_states == FOLLOW_STATES
+    assert racing_derived.normalized_valid is True
 
     assert jaen.classification == "reusable_seed"
     assert jaen.valid_for_original_scope is True

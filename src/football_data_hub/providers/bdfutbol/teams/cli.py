@@ -235,6 +235,7 @@ def _offline_bundle(
     )
     if not validation["valid"]:
         raise ValueError(f"La captura offline no pasó validación: {validation['issues']}")
+    derived_at_utc = datetime.now(timezone.utc).isoformat() if derived_capture else None
     return TeamAcquisitionBundle(
         capture_id=create_team_capture_id() if derived_capture else str(report.get("capture_id") or create_team_capture_id()),
         captured_at_utc=max(timestamps).astimezone(timezone.utc).isoformat(),
@@ -260,6 +261,15 @@ def _offline_bundle(
             (timestamp_by_view[view] for view in capture.get("acquired_views", requested_views) if view in timestamp_by_view),
             default=min(timestamps),
         ).astimezone(timezone.utc).isoformat(),
+        derivation=(
+            {
+                "method": "offline_reparse_saved_snapshots",
+                "derived_at_utc": derived_at_utc,
+                "source_capture_ids": [str(capture.get("capture_id"))] if capture.get("capture_id") else [],
+            }
+            if derived_capture
+            else {}
+        ),
     )
 
 

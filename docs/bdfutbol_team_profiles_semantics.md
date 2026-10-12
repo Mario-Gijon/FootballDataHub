@@ -47,7 +47,7 @@ Las pestañas principales son enlaces de navegación a documentos distintos:
 | Plantilla / Plantilla | opción del selector de vista, `t=plantilla` | `#c3p1`; incluye fecha y lugar de nacimiento | Adquirida para Jaén y Racing. |
 | Plantilla / Estadísticas | opción del selector de vista, `t=lista` | `#c3p0`, `#taulaentrenadors` | Adquirida para Jaén y Racing de Ferrol; ambas respondieron HTTP 200. |
 | Seguimiento | enlace `t=seg` | `#taula-seguiment`; las celdas y matrices JavaScript enlazan por `player_id`, jornada y `match_id` | Adquirida para ambos pilotos; los cuatro estados se probaron en Racing. |
-| Traspasos | enlace `t=altas` | raíz `#pestaltesbaixes`, con bloques `Altas` y `Bajas` cuando existen | Adquirida para ambos pilotos. Jaén: 34 altas y ningún registro visible bajo Bajas; Racing: 30 movimientos. |
+| Traspasos | enlace `t=altas` | raíz `#pestaltesbaixes`; una tabla compartida con separador `Bajas` y cabeceras de equipo origen/destino | HTML real inspeccionado en ambos pilotos. Jaén: 14 Altas y 20 Bajas; Racing: 15 Altas y 15 Bajas. |
 | Partidos | enlace `tab=partits` | `#taula-resultats-plantilla` | Adquirida para ambos. Los seis partidos disputados de cada piloto enlazan por ID con el dataset existente; los próximos encuentros no exponen ID estable en esas filas. |
 | Clasificación | enlace al URL de la competición del grupo | `#classific` es una lista de escudos/equipos; la pestaña enlaza a la clasificación de grupo | No se normaliza como otra clasificación. Reutilizar clasificación existente. |
 
@@ -200,16 +200,29 @@ esos casos). No se convierte un ausente en cero.
   `t` es tiempo jugado. Los goles se toman de `JSEGG`/el número de `go` y se
   conservan solo cuando la fuente publica un valor numérico. Los marcadores
   `tg2` y `tv` quedan pendientes de validación positiva.
-- Traspasos de Jaén presenta una tabla `Altas` con Apodo y Nombre, Edad, Pos y
-  Equipo origen. Los enlaces permiten identificar el jugador y el club de
-  origen; cada movimiento conserva también los nombres y URL de perfil del
-  jugador asociados al mismo `player_id`, sin crear una segunda identidad.
-  No se observaron importes ni fecha del movimiento. `Bajas` no tenía
-  filas visibles en esta captura; eso no demuestra que el club no tuviera
-  bajas fuera de lo publicado en esa vista. El contenedor raíz
-  `#pestaltesbaixes` distingue una sección válida sin filas de una página
-  incompleta; un encabezado `Bajas` sin tabla produce cero registros, no datos
-  inventados.
+- La inspección de las capturas originales corrigió un error semántico del
+  parser: cada ficha presenta **una tabla compartida**, no dos tablas hermana.
+  `Altas` aparece antes de la tabla; dentro de ella una fila con el encabezado
+  `Bajas` separa la segunda sección. La primera cabecera acaba en `Equipo
+  origen`; después del separador, la nueva cabecera acaba en `Equipo destino`.
+  Los datos de origen confirman Jaén (`team_id=49`): 14 altas y 20 bajas;
+  Racing de Ferrol (`team_id=48`): 15 altas y 15 bajas. Una fila se asigna a
+  una sección solo después de reconocer esa cabecera explícita. El parser
+  rechaza cabeceras, filas o cantidad de tablas desconocidas en vez de
+  asignarlas por defecto a Altas.
+- Cada dirección se exporta con `source_heading`, dirección, cantidad y estado
+  `verified_with_rows` o `verified_empty`. La falta del contenedor, de uno de
+  los encabezados o de su cabecera de equipo es un error de parsing, no una
+  sección vacía. El estado vacío solo se emite cuando el encabezado y la
+  columna `Equipo origen`/`Equipo destino` están presentes y se han comprobado
+  todas las filas del bloque.
+- Los enlaces de jugadores preservan su `player_id`, nombre visible y completo,
+  URL y foto de origen. El enlace del otro club conserva nombre, ID y URL tal
+  como aparecen en la captura; los ejemplos incluyen fichas históricas 2025/26
+  para Altas y URLs 2026/27 para Bajas. No se reinterpretan como fichas
+  actuales del dashboard. Algunas filas de Bajas carecen de club de destino;
+  se mantiene `null` en nombre, ID y URL. No se observaron importes ni fechas,
+  por lo que `fee` y `transfer_date` siguen como `null`.
 - Partidos presenta fecha, competición, jornada/tipo, local, marcador,
   visitante y estadio. Seis filas disputadas enlazaron por `match_id` con los
   datos ya capturados. La tabla incluyó 38 jornadas, pero las filas futuras no
@@ -239,7 +252,7 @@ Racing de Ferrol se eligió desde el catálogo del Grupo I como segundo piloto
 con identidad distinta a Jaén y para comprobar que un único parser sirve en
 ambos grupos. Las seis vistas fueron válidas: 25 jugadores y 25 estadísticas,
 un entrenador, 150 celdas de minutos, 17 métricas positivas del Seguimiento
-(10 amarillas y 7 goles), 30 traspasos y seis referencias a partidos. Las
+(10 amarillas y 7 goles), 30 traspasos (15 altas y 15 bajas) y seis referencias a partidos. Las
 cuatro vistas pendientes se adquirieron mediante la CLI en una sesión Pure
 CDP; se reutilizaron Alineación y Estadísticas del snapshot anterior y el
 manifiesto conserva su captura de origen y las horas por vista.
@@ -260,7 +273,7 @@ ficha.
 | Estadísticas individuales extendidas | Verificada en ambos grupos | Incluida | Encabezados semánticos de origen; checks con partidos |
 | Seguimiento de minutos por partido | Verificado en ambos pilotos | Incluido | `player_id`, `match_id`, minutos; ausencias permanecen `null` |
 | Seguimiento Tarjetas/Goles/Todo | Probado en el mismo documento Racing | Amarillas `tg1` y goles normalizados; Todo es combinación | 10 TA y 7 goles coinciden con Estadísticas; `tg2`/`tv` pendientes |
-| Altas y Bajas | Verificadas en Jaén y Racing | 34 registros Jaén; 30 Racing | Contenedor requerido; encabezado vacío no genera filas inventadas |
+| Altas y Bajas | Verificadas en los HTML originales de ambos equipos | Jaén: 14/20; Racing: 15/15 | Separador y columna origen/destino verificados; ausencias marcadas explícitamente |
 | Partidos y clasificación de equipo | Vistas reales exploradas; IDs cruzados | Solo referencias/validación | No duplican datasets de competición |
 | Parser compartido de las seis vistas en Grupo I y II | Verificado con ambos pilotos | Incluido | Relaciones por ID |
 
@@ -279,7 +292,7 @@ Las capturas reales normalizadas de los pilotos están bajo:
   `data/exports/bdfutbol/teams/2026-27/49/team01a-group2-49-source-evidence/`.
   Se guardaron Alineación, Plantilla, Estadísticas, Seguimiento, Traspasos y
   Partidos; 25 personas, un entrenador, 25 estadísticas, 150 celdas de minutos,
-  34 altas y seis referencias a partidos disputados.
+  14 altas, 20 bajas y seis referencias a partidos disputados.
 - Racing de Ferrol, Grupo I, `team_id=48`:
   - `data/exports/bdfutbol/teams/2026-27/48/team01a-group1-48-source-evidence/`
     conserva la captura previa de Alineación y Estadísticas.
@@ -389,3 +402,39 @@ lectura posterior de JSON. No descarga imágenes, perfiles individuales ni
 temporadas históricas, y no copia partidos a los exports de equipo. La
 adquisición por lotes, sus estados y política de reanudación están en
 [`docs/team_batch_acquisition.md`](team_batch_acquisition.md).
+
+## Corrección TEAM-02D y capturas derivadas
+
+La revisión de los HTML originales confirmó que el parser anterior seguía el
+`h2` Altas hasta la tabla compartida, por lo que absorbía también las filas
+posteriores a la fila separadora `Bajas`. La corrección recorre la tabla como
+una secuencia de secciones y exige, para cada bloque, la cabecera de relación
+correspondiente. La cabecera `Equipo destino` respalda Bajas; una estructura
+desconocida o una fila no interpretable detiene el parseo. `TeamTransferSection`
+conserva el estado `verified_with_rows`/`verified_empty` y el recuento, de modo
+que una sección no inspeccionada nunca se presenta como vacía.
+
+Resultados contrastados directamente con las filas de los snapshots guardados:
+
+| Equipo | Altas / origen | Bajas / destino | Ejemplos contrastados |
+|---|---:|---:|---|
+| Jaén (`49`, Grupo II) | 14 | 20 | Álex Pérez (`304042`) llega desde Atlético Baleares, URL original `t2025-26130.html`; Curro (`307847`) sale hacia Getafe; Rabanillo (`22537`) aparece en Bajas sin equipo publicado. |
+| Racing de Ferrol (`48`, Grupo I) | 15 | 15 | Monjonell (`15141`) llega desde UD Ibiza, URL original `t2025-26414.html`; Parera (`23024`) sale hacia Cultural Leonesa. |
+
+Los datos se regeneraron sin navegación y sin modificar las capturas originales.
+Los nuevos exports versionados son:
+
+- Jaén: `20261012T131457.209360Z-602005d8`; `normalized/transfers.json`
+  SHA-256 `16eff7297249f383bef0b224832af8be50cad1613024e9f4c41b275c31b06547`.
+- Racing: `20261012T131518.543469Z-43ff1122`; `normalized/transfers.json`
+  SHA-256 `060cb05f34b203439a2621fc73f515effb8273b4b390c24670514faf0ea06625`.
+
+En ambos manifests `captured_at_utc` conserva la captura fuente del 11/10/2026;
+`derivation.derived_at_utc` registra la nueva normalización offline del
+12/10/2026. El índice explícito de perfiles fija los dos nuevos `capture_id`,
+las huellas de los snapshots original y normalizado, los grupos, y los estados
+de Altas/Bajas. También se actualizaron las huellas de Plantilla y Seguimiento
+al seleccionar las nuevas capturas. Jaén conserva sus cuatro estados de
+Seguimiento y 22 métricas positivas; Racing conserva los cuatro estados y 17
+métricas. `transfer_date` y `fee` permanecen `null`; los enlaces de clubes se
+conservan como referencias BDFutbol originales, incluso cuando son históricos.

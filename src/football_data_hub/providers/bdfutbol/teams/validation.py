@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 from dataclasses import asdict
+import re
 from typing import Any
 
 from .models import TeamProfileData
 
-SEMANTIC_VALIDATION_VERSION = 1
+SEMANTIC_VALIDATION_VERSION = 2
 
 
 def validate_team_catalogs(
@@ -196,6 +197,56 @@ def validate_team_profile(
             "Los match_id de la ficha se usan como referencias al dataset existente; "
             "no se exportan copias de partidos"
         )
+
+    if "transfers" in requested_views:
+        from urllib.parse import urlsplit
+
+        from .parser import team_id_from_url
+
+        sections_by_direction = {item.direction: item for item in data.transfer_sections}
+        if len(data.transfer_sections) != 2 or set(sections_by_direction) != {"incoming", "outgoing"}:
+            issues.append({"code": "transfer_sections", "message": "No se ha demostrado por separado Altas y Bajas."})
+        transfer_keys = [(item.direction, item.player_id) for item in data.transfers]
+        if len(transfer_keys) != len(set(transfer_keys)):
+            issues.append({"code": "transfer_duplicate", "message": "Hay IDs de jugador duplicados dentro de la misma dirección."})
+        counts = Counter(item.direction for item in data.transfers)
+        expected_headings = {"incoming": "Altas", "outgoing": "Bajas"}
+        expected_columns = {"incoming": "Equipo origen", "outgoing": "Equipo destino"}
+        for direction in ("incoming", "outgoing"):
+            section = sections_by_direction.get(direction)
+            if section is None:
+                continue
+            expected_status = "verified_with_rows" if section.row_count else "verified_empty"
+            if (
+                section.source_heading != expected_headings[direction]
+                or section.source_team_column != expected_columns[direction]
+                or section.status != expected_status
+                or section.row_count != counts[direction]
+            ):
+                issues.append({"code": "transfer_section_mismatch", "message": f"Estado o recuento incoherente para {expected_headings[direction]}."})
+        for item in data.transfers:
+            if (
+                item.team_id != team_id
+                or item.season != data.season.season
+                or item.group != data.season.group
+                or item.competition != data.season.competition
+            ):
+                issues.append({"code": "transfer_scope", "message": f"Movimiento fuera de ámbito para player_id={item.player_id}."})
+            if item.direction not in expected_headings or item.source_heading != expected_headings.get(item.direction):
+                issues.append({"code": "transfer_direction_heading", "message": f"Dirección y encabezado no coinciden para player_id={item.player_id}."})
+            player_match = re.search(r"(?:^|/)j/j(\d+)\.html$", urlsplit(item.player_profile_url).path)
+            if item.player_id <= 0 or not item.player_display_name or not player_match or int(player_match.group(1)) != item.player_id:
+                issues.append({"code": "transfer_player_identity", "message": f"Identidad de jugador incoherente para player_id={item.player_id}."})
+            for field_name, value in (("player_profile_url", item.player_profile_url), ("player_photo_url", item.player_photo_url), ("other_team_url", item.other_team_url)):
+                if value is None:
+                    continue
+                parsed_url = urlsplit(value)
+                if parsed_url.scheme != "https" or parsed_url.hostname not in {"bdfutbol.com", "www.bdfutbol.com"}:
+                    issues.append({"code": "transfer_url", "message": f"{field_name} no es una URL de BDFutbol para player_id={item.player_id}."})
+            if item.other_team_url and team_id_from_url(item.other_team_url) != item.other_team_id:
+                issues.append({"code": "transfer_related_team", "message": f"ID y URL del otro equipo no coinciden para player_id={item.player_id}."})
+            if item.other_team_id is not None and not item.other_team_url:
+                issues.append({"code": "transfer_related_team_url", "message": f"Falta URL para other_team_id={item.other_team_id}."})
     return {
         "valid": not issues,
         "semantic_version": SEMANTIC_VALIDATION_VERSION,
@@ -209,6 +260,7 @@ def validate_team_profile(
             "player_match_metrics": len(data.player_match_metrics),
             "follow_states_captured": list(data.follow_states_captured),
             "transfers": len(data.transfers),
+            "transfer_sections": {item.direction: {"status": item.status, "rows": item.row_count} for item in data.transfer_sections},
             "profile_match_references": len(profile_match_ids),
             "catalog_teams_in_profile": len(profile_team_ids),
             "requested_views": list(requested_views),

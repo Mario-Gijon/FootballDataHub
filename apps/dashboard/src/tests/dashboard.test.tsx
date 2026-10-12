@@ -51,12 +51,16 @@ import racingMemberships from "../../../../data/exports/bdfutbol/teams/2026-27/4
 import racingPlayerStatistics from "../../../../data/exports/bdfutbol/teams/2026-27/48/20261011T123240.190812Z-8f307d1c/normalized/player_statistics.json";
 import racingPlayerMatchMinutes from "../../../../data/exports/bdfutbol/teams/2026-27/48/20261011T123240.190812Z-8f307d1c/normalized/player_match_minutes.json";
 import racingPlayerMatchMetrics from "../../../../data/exports/bdfutbol/teams/2026-27/48/20261011T123240.190812Z-8f307d1c/normalized/player_match_metrics.json";
+import jaenTransfersCapture from "../../../../data/exports/bdfutbol/teams/2026-27/49/20261012T131457.209360Z-602005d8/metadata/capture.json";
+import jaenTransfersDocument from "../../../../data/exports/bdfutbol/teams/2026-27/49/20261012T131457.209360Z-602005d8/normalized/transfers.json";
+import racingTransfersCapture from "../../../../data/exports/bdfutbol/teams/2026-27/48/20261012T131518.543469Z-43ff1122/metadata/capture.json";
+import racingTransfersDocument from "../../../../data/exports/bdfutbol/teams/2026-27/48/20261012T131518.543469Z-43ff1122/normalized/transfers.json";
 import { buildTopProgressData, TopSection } from "../components/TopSection";
 import { TeamRosterSection } from "../components/TeamRoster";
 import { ProfileImage } from "../components/TeamRosterShared";
 import { clearTeamProfileCache } from "../api/client";
-import type { RefereeBootstrap, StatisticsBootstrap, TeamFollow, TeamRoster, TopBootstrap } from "../api/contracts";
-import { RefereeBootstrapSchema, StatisticsBootstrapSchema, TeamFollowSchema, TeamRosterSchema, TopBootstrapSchema } from "../api/contracts";
+import type { RefereeBootstrap, StatisticsBootstrap, TeamFollow, TeamRoster, TeamTransfers, TopBootstrap } from "../api/contracts";
+import { RefereeBootstrapSchema, StatisticsBootstrapSchema, TeamFollowSchema, TeamRosterSchema, TeamTransfersSchema, TopBootstrapSchema } from "../api/contracts";
 import App from "../App";
 
 function toPublicMatches(source: typeof matchesSource) {
@@ -473,6 +477,8 @@ const fetchMock = vi.fn();
 function payloadFor(input: RequestInfo | URL): unknown {
   const url = String(input);
   const group = url.includes("/groups/1/") ? "1" : "2";
+  const transfersPath = url.match(/\/api\/v1\/teams\/(\d+)\/seasons\/2026-27\/transfers$/);
+  if (transfersPath) return teamTransfersPayload(Number(transfersPath[1]));
   const followPath = url.match(/\/api\/v1\/teams\/(\d+)\/seasons\/2026-27\/follow$/);
   if (followPath) return teamFollowPayload(Number(followPath[1]));
   const rosterPath = url.match(/\/api\/v1\/teams\/(\d+)\/seasons\/2026-27\/roster$/);
@@ -685,6 +691,39 @@ function teamFollowPayload(teamId: number): TeamFollow {
       { state: "tot", available: capturedStates.has("tot"), record_count: 0, value_total: null, matchdays: capturedStates.has("tot") ? matchdays : [] },
     ],
     warnings: [],
+  });
+}
+
+function teamTransfersPayload(teamId: number): TeamTransfers {
+  if (teamId !== 48 && teamId !== 49) throw new Error(`No hay una captura de Traspasos de prueba para ${teamId}.`);
+  const isRacing = teamId === 48;
+  const capture = asJsonObject(isRacing ? racingTransfersCapture : jaenTransfersCapture);
+  const document = asJsonObject(isRacing ? racingTransfersDocument : jaenTransfersDocument);
+  const transferSnapshot = asJsonObject(asJsonObject(capture.source_snapshots).transfers);
+  const records = document.records as JsonObject[];
+  return TeamTransfersSchema.parse({
+    status: "available",
+    metadata: {
+      contract_version: 1,
+      validation_status: "valid",
+      source: "BDFutbol",
+      url: transferSnapshot.url,
+      competition: "Primera Federación",
+      competition_scope: "Liga",
+      season: "2026-27",
+      group: isRacing ? "I" : "II",
+      team_id: teamId,
+      capture_id: capture.capture_id,
+      captured_at: capture.captured_at_utc,
+      derived_at: asJsonObject(capture.derivation).derived_at_utc,
+      extractor_version: capture.extractor_version,
+      source_sha256: transferSnapshot.sha256,
+      content_sha256: "e".repeat(64),
+    },
+    sections: document.sections,
+    incoming: records.filter((record) => record.direction === "incoming"),
+    outgoing: records.filter((record) => record.direction === "outgoing"),
+    warnings: ["Los enlaces relacionados pueden ser históricos."],
   });
 }
 
@@ -1555,7 +1594,7 @@ describe("dashboard de clasificación", () => {
     expect(await screen.findByRole("heading", { name: "Jaén" })).toBeInTheDocument();
     expect(await screen.findByText("Entrenadores publicados")).toBeInTheDocument();
     const sectionNavigation = screen.getByRole("navigation", { name: "Secciones de Jaén" });
-    expect(within(sectionNavigation).getAllByRole("link").map((link) => link.textContent)).toEqual(["Resumen", "Plantilla", "Seguimiento"]);
+    expect(within(sectionNavigation).getAllByRole("link").map((link) => link.textContent)).toEqual(["Resumen", "Plantilla", "Seguimiento", "Traspasos"]);
     expect(screen.getByRole("tab", { name: "Alineación" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("tab", { name: "Plantilla" })).toHaveAttribute("aria-selected", "false");
     expect(screen.queryByRole("heading", { name: "Estadísticas de temporada" })).not.toBeInTheDocument();
@@ -1758,7 +1797,7 @@ describe("dashboard de clasificación", () => {
     expect(await screen.findByRole("heading", { name: "Seguimiento" })).toBeInTheDocument();
     const matrix = await screen.findByTestId("team-follow-matrix");
     const sectionNavigation = screen.getByRole("navigation", { name: "Secciones de Jaén" });
-    expect(within(sectionNavigation).getAllByRole("link").map((link) => link.textContent)).toEqual(["Resumen", "Plantilla", "Seguimiento"]);
+    expect(within(sectionNavigation).getAllByRole("link").map((link) => link.textContent)).toEqual(["Resumen", "Plantilla", "Seguimiento", "Traspasos"]);
     expect(screen.getByRole("tab", { name: "Partidos" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByText("6 jornadas capturadas")).toBeInTheDocument();
     expect(within(matrix).getAllByRole("row")).toHaveLength(26);
@@ -1807,6 +1846,65 @@ describe("dashboard de clasificación", () => {
     window.dispatchEvent(new PopStateEvent("popstate"));
     expect(await screen.findByTestId("team-follow-matrix")).toBeInTheDocument();
     expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/teams/49/seasons/2026-27/follow"))).toHaveLength(1);
+  });
+
+  it("muestra Altas y Bajas reales del Jaén con fotos, enlaces y búsqueda local", async () => {
+    window.history.replaceState({}, "", "/teams/49/transfers");
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "Traspasos" })).toBeInTheDocument();
+    const altas = await screen.findByRole("region", { name: "Altas" });
+    const bajas = await screen.findByRole("region", { name: "Bajas" });
+    expect(within(altas).getAllByRole("row")).toHaveLength(15);
+    expect(within(bajas).getAllByRole("row")).toHaveLength(21);
+    expect(within(altas).getByRole("link", { name: "Álex Pérez" })).toHaveAttribute("href", "https://www.bdfutbol.com/es/j/j304042.html");
+    expect(within(bajas).getByRole("link", { name: "Rabanillo" })).toHaveAttribute("href", "https://www.bdfutbol.com/es/j/j22537.html");
+    expect(within(bajas).getAllByText("—").length).toBeGreaterThan(0);
+    expect(within(bajas).getAllByText("Código por · sin equivalencia validada").length).toBeGreaterThan(0);
+    const photo = altas.querySelector('img[src="https://www.bdfutbol.com/i/m/304042.png"]');
+    expect(photo).toHaveAttribute("src", "https://www.bdfutbol.com/i/m/304042.png");
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Buscar futbolista o equipo" }), { target: { value: "rabanillo" } });
+    expect(within(altas).getByText("No hay resultados para la búsqueda.")).toBeInTheDocument();
+    expect(within(bajas).getAllByRole("row")).toHaveLength(2);
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/teams/49/seasons/2026-27/transfers"))).toHaveLength(1);
+    expect(within(screen.getByRole("navigation", { name: "Secciones de Jaén" })).getAllByRole("link").map((link) => link.textContent))
+      .toEqual(["Resumen", "Plantilla", "Seguimiento", "Traspasos"]);
+  });
+
+  it("cambia entre Traspasos directos de equipos sin mezclar sus filas y conserva navegación", async () => {
+    window.history.replaceState({}, "", "/teams/49/transfers");
+    render(<App />);
+    expect(await screen.findByRole("link", { name: "Rabanillo" })).toBeInTheDocument();
+
+    window.history.replaceState({}, "", "/teams/48/transfers");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    expect(await screen.findByRole("link", { name: "Parera" })).toHaveAttribute("href", "https://www.bdfutbol.com/es/j/j23024.html");
+    expect(screen.queryByRole("link", { name: "Rabanillo" })).not.toBeInTheDocument();
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/teams/48/seasons/2026-27/transfers"))).toHaveLength(1);
+
+    window.history.replaceState({}, "", "/teams/48");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    expect(await screen.findByRole("heading", { name: "Resumen deportivo" })).toBeInTheDocument();
+    window.history.replaceState({}, "", "/teams/48/transfers");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    expect(await screen.findByRole("link", { name: "Parera" })).toBeInTheDocument();
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/teams/48/seasons/2026-27/transfers"))).toHaveLength(1);
+  });
+
+  it("muestra el estado sin captura de Traspasos sin bloquear Resumen", async () => {
+    const uncaptured = apiBootstrap.teams.find((team) => team.team_id !== 48 && team.team_id !== 49)!;
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      if (String(input).endsWith(`/api/v1/teams/${uncaptured.team_id}/seasons/2026-27/transfers`)) {
+        return Promise.resolve(response(404, { detail: { code: "transfers_not_captured", message: "not captured" } }));
+      }
+      return Promise.resolve(response(200, payloadFor(input)));
+    });
+    window.history.replaceState({}, "", `/teams/${uncaptured.team_id}/transfers`);
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "Traspasos aún no adquiridos" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("link", { name: "Resumen" }));
+    expect(await screen.findByRole("heading", { name: "Resumen deportivo" })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("muestra los eventos verificados de Racing y mantiene las cuatro vistas locales", async () => {

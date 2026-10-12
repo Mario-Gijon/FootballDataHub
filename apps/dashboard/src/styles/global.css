@@ -1004,6 +1004,33 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .team-roster-content { display: grid; gap: 11px; }
 .team-roster-content .team-profile-panel { margin: 0; }
 .team-follow { display: grid; gap: 12px; min-width: 0; }
+.team-transfers { display: grid; gap: 12px; min-width: 0; }
+.team-transfers-header { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px 16px; margin: 0; }
+.team-transfers-header h2 { margin: 3px 0 0; color: var(--text); font: 700 18px/1.2 "Manrope", sans-serif; }
+.team-transfers-header > time { color: var(--text-subtle); font-size: 10px; }
+.team-transfers-search { grid-column: 1 / -1; display: grid; gap: 5px; width: min(320px, 100%); color: var(--text-subtle); font-size: 10px; }
+.team-transfers-search input { min-height: 34px; padding: 0 10px; border: 1px solid var(--line-soft); border-radius: 6px; color: var(--text); background: rgb(15 17 20 / 55%); }
+.team-transfers-search input:focus-visible { outline: 2px solid rgb(173 134 211 / 75%); outline-offset: 1px; }
+.team-transfers-panel { display: grid; gap: 10px; min-width: 0; margin: 0; }
+.team-transfers-section-heading { display: flex; align-items: center; gap: 8px; }
+.team-transfers-section-heading h3 { margin: 0; color: var(--text); font: 700 15px/1.2 "Manrope", sans-serif; }
+.team-transfers-section-heading > span { min-width: 23px; padding: 3px 6px; border: 1px solid var(--line-soft); border-radius: 999px; color: var(--text-muted); background: rgb(15 17 20 / 45%); font-size: 10px; text-align: center; }
+.team-transfers-table-scroll { width: 100%; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; border: 1px solid var(--line-soft); border-radius: 7px; background: rgb(15 17 20 / 34%); scrollbar-color: #555b63 transparent; }
+.team-transfers-table { width: 100%; min-width: 735px; border-collapse: collapse; font-size: 11px; }
+.team-transfers-table th, .team-transfers-table td { padding: 8px 9px; border-bottom: 1px solid rgb(255 255 255 / 5%); color: var(--text-muted); text-align: left; vertical-align: middle; }
+.team-transfers-table th { color: var(--text-subtle); background: rgb(36 40 45 / 88%); font-size: 10px; font-weight: 650; white-space: nowrap; }
+.team-transfers-table tbody tr:last-child td { border-bottom: 0; }
+.team-transfers-table tbody tr:hover td { background: rgb(255 255 255 / 2%); }
+.team-transfers-table th:first-child, .team-transfers-table td:first-child { width: 52px; text-align: center; }
+.team-transfers-table td:nth-child(2) { min-width: 135px; color: var(--text); white-space: nowrap; }
+.team-transfers-table td:nth-child(4) { width: 50px; color: var(--text); text-align: center; }
+.team-transfers-table td:nth-child(5) { min-width: 155px; font-size: 10px; }
+.team-transfers-table th:nth-child(4) { text-align: center; }
+.team-transfers-table a { color: var(--text); text-decoration: none; }
+.team-transfers-table a:hover { color: var(--purple-light); text-decoration: underline; }
+.team-transfer-photo { width: 32px; height: 32px; flex: 0 0 32px; display: grid; place-items: center; margin: 0 auto; border: 1px solid var(--line-soft); border-radius: 50%; object-fit: cover; }
+.team-transfer-photo.profile-image-fallback { color: var(--text-muted); background: var(--surface-hover); font-size: 10px; font-weight: 650; }
+.team-transfers-empty { margin: 0; padding: 12px; border: 1px dashed var(--line-soft); border-radius: 6px; color: var(--text-subtle); font-size: 11px; }
 .team-follow-header { display: grid; gap: 13px; margin: 0; }
 .team-follow-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .team-follow-heading h2 { margin: 3px 0 0; color: var(--text); font: 700 18px/1.2 "Manrope", sans-serif; }
@@ -1155,6 +1182,10 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 @media (max-width: 720px) {
   .team-section-tabs { width: 100%; }
   .team-section-tab { min-width: 0; flex: 1 1 0; padding: 0 7px; font-size: 10px; }
+  .team-transfers-header { grid-template-columns: 1fr; align-items: flex-start; gap: 8px; }
+  .team-transfers-search { grid-column: auto; width: 100%; }
+  .team-transfers-table { min-width: 690px; font-size: 10px; }
+  .team-transfers-table th, .team-transfers-table td { padding: 7px; }
   .roster-mode-tabs { width: 100%; }
   .roster-mode-tab { min-width: 0; flex: 1 1 0; padding: 0 8px; }
   .roster-coaches, .roster-alignment-group, .roster-indicator-legend, .tactical-panel { padding: 10px; }
