@@ -1,0 +1,218 @@
+{
+  "schema_version": 1,
+  "metadata": {
+    "source": "BDFutbol",
+    "season": "2026-27",
+    "competition": "Primera Federación",
+    "group": "II",
+    "team_id": 39,
+    "capture_id": "20261012T155605.771164Z-271d43f3",
+    "captured_at_utc": "2026-10-12T15:57:11.447765+00:00",
+    "started_at_utc": "2026-10-12T15:56:05.771262+00:00",
+    "extractor_version": "0.1.0",
+    "semantic_validation_version": 2,
+    "capture_policy": {
+      "id": "team-profile-six-views-follow-states-v1",
+      "version": 1,
+      "required_views": [
+        "alignment",
+        "squad",
+        "statistics",
+        "follow",
+        "transfers",
+        "matches"
+      ],
+      "required_follow_states": [
+        "p",
+        "t",
+        "go",
+        "tot"
+      ]
+    },
+    "related_team_catalog": {
+      "path": "data/exports/bdfutbol/group2_classification/derived-res01-20261010T102656Z/normalized/matches.json",
+      "group": "II",
+      "season": "2026-27",
+      "source_capture_id": "20261010T102656.252222Z-72f200ad",
+      "source_captured_at_utc": "2026-10-10T10:26:56.252397+00:00",
+      "sha256": "ac355bf8fff808cea9aa093ebfb274d9313f3137ae89b84132ca11a3e70c7a84"
+    },
+    "source_snapshots": {
+      "alignment": {
+        "path": "raw/alignment.html.gz",
+        "compression": "gzip",
+        "url": "https://www.bdfutbol.com/es/t/t2026-2739.html",
+        "title": "Plantilla del Zaragoza 2026-27 1ª RFEF | BDFutbol",
+        "http_status": 200,
+        "sha256": "b89da6a8979dbdbf6ffb2734fce7fb5e3960a16102fc7d00e73b2c42ca7a97b2",
+        "bytes_utf8": 1556223,
+        "stored_bytes": 119317,
+        "access_status": "VALID",
+        "captured_at_utc": "2026-10-12T15:56:10.750362+00:00",
+        "capture_timestamp_basis": "browser navigation and DOM serialization"
+      },
+      "squad": {
+        "path": "raw/squad.html.gz",
+        "compression": "gzip",
+        "url": "https://www.bdfutbol.com/es/t/t2026-2739.html?t=plantilla",
+        "title": "Plantilla del Zaragoza 2026-27 1ª RFEF | BDFutbol",
+        "http_status": 200,
+        "sha256": "9e1c2e9de2596c4d22c4726618e164557f4217724f4edf3a314692702aeb84ca",
+        "bytes_utf8": 1897200,
+        "stored_bytes": 132354,
+        "access_status": "VALID",
+        "captured_at_utc": "2026-10-12T15:56:20.164785+00:00",
+        "capture_timestamp_basis": "browser navigation and DOM serialization"
+      },
+      "statistics": {
+        "path": "raw/statistics.html.gz",
+        "compression": "gzip",
+        "url": "https://www.bdfutbol.com/es/t/t2026-2739.html?t=lista",
+        "title": "Plantilla del Zaragoza 2026-27 1ª RFEF | BDFutbol",
+        "http_status": 200,
+        "sha256": "063ee5a929dcc5e5db416bf8853fb23fd26abdb9527eb138b8f67ccbe67e2468",
+        "bytes_utf8": 1932404,
+        "stored_bytes": 134153,
+        "access_status": "VALID",
+        "captured_at_utc": "2026-10-12T15:56:29.219944+00:00",
+        "capture_timestamp_basis": "browser navigation and DOM serialization"
+      },
+      "follow": {
+        "path": "raw/follow.html.gz",
+        "compression": "gzip",
+        "url": "https://www.bdfutbol.com/es/t/t2026-2739.html?t=seg",
+        "title": "Plantilla del Zaragoza 2026-27 1ª RFEF | BDFutbol",
+        "http_status": 200,
+        "sha256": "610a99f7f7b4084a677b2785f0bd8475fed5ff5f98138d1ad48bf44bd228e5ce",
+        "bytes_utf8": 1722565,
+        "stored_bytes": 127130,
+        "access_status": "VALID",
+        "captured_at_utc": "2026-10-12T15:56:38.517408+00:00",
+        "capture_timestamp_basis": "browser navigation and DOM serialization"
+      },
+      "transfers": {
+        "path": "raw/transfers.html.gz",
+        "compression": "gzip",
+        "url": "https://www.bdfutbol.com/es/t/t2026-2739.html?t=altas",
+        "title": "Plantilla del Zaragoza 2026-27 1ª RFEF | BDFutbol",
+        "http_status": 200,
+        "sha256": "a149cfe1aee3a8ccb77ab073c594a08c553485e5eead6ea6e16346758d7ad6b4",
+        "bytes_utf8": 1907997,
+        "stored_bytes": 134060,
+        "access_status": "VALID",
+        "captured_at_utc": "2026-10-12T15:56:51.258133+00:00",
+        "capture_timestamp_basis": "browser navigation and DOM serialization"
+      },
+      "matches": {
+        "path": "raw/matches.html.gz",
+        "compression": "gzip",
+        "url": "https://www.bdfutbol.com/es/t/t2026-2739.html?tab=partits",
+        "title": "Plantilla del Zaragoza 2026-27 1ª RFEF | BDFutbol",
+        "http_status": 200,
+        "sha256": "32ba2a75b521701eef98a36bada9580cd0fb56b15e8e26c85987ddb599fe8039",
+        "bytes_utf8": 1916106,
+        "stored_bytes": 133097,
+        "access_status": "VALID",
+        "captured_at_utc": "2026-10-12T15:57:00.180722+00:00",
+        "capture_timestamp_basis": "browser navigation and DOM serialization"
+      }
+    },
+    "follow_states": {
+      "p": {
+        "label": "Partidos",
+        "selected_value": "p",
+        "url": "https://www.bdfutbol.com/es/t/t2026-2739.html?t=seg",
+        "table_rows": 28,
+        "html_sha256": "610a99f7f7b4084a677b2785f0bd8475fed5ff5f98138d1ad48bf44bd228e5ce",
+        "captured_at_utc": "2026-10-12T15:56:39.201531+00:00",
+        "capture_timestamp_basis": "browser state selection and DOM serialization",
+        "source_capture_id": "20261012T155605.771164Z-271d43f3",
+        "reused": false,
+        "resource_urls_added_since_previous_state": [],
+        "status": "VALID",
+        "origin": "source_capture",
+        "sha256": "610a99f7f7b4084a677b2785f0bd8475fed5ff5f98138d1ad48bf44bd228e5ce",
+        "path": "raw/follow_states/p.html.gz",
+        "compression": "gzip",
+        "bytes_utf8": 1722565,
+        "stored_bytes": 127130
+      },
+      "t": {
+        "label": "Tarjetas",
+        "selected_value": "t",
+        "url": "https://www.bdfutbol.com/es/t/t2026-2739.html?t=seg",
+        "table_rows": 28,
+        "html_sha256": "8e3781dc5df8a85c0a348b1112a17bf094a7c1031d9ae5334f78873eab63f01f",
+        "captured_at_utc": "2026-10-12T15:56:40.198841+00:00",
+        "capture_timestamp_basis": "browser state selection and DOM serialization",
+        "source_capture_id": "20261012T155605.771164Z-271d43f3",
+        "reused": false,
+        "resource_urls_added_since_previous_state": [],
+        "status": "VALID",
+        "origin": "source_capture",
+        "sha256": "8e3781dc5df8a85c0a348b1112a17bf094a7c1031d9ae5334f78873eab63f01f",
+        "path": "raw/follow_states/t.html.gz",
+        "compression": "gzip",
+        "bytes_utf8": 1721998,
+        "stored_bytes": 127069
+      },
+      "go": {
+        "label": "Goles",
+        "selected_value": "go",
+        "url": "https://www.bdfutbol.com/es/t/t2026-2739.html?t=seg",
+        "table_rows": 28,
+        "html_sha256": "a5421687bd1682eccc120a3e34a0ba244dd82014974b2f6add78230583db110d",
+        "captured_at_utc": "2026-10-12T15:56:41.116531+00:00",
+        "capture_timestamp_basis": "browser state selection and DOM serialization",
+        "source_capture_id": "20261012T155605.771164Z-271d43f3",
+        "reused": false,
+        "resource_urls_added_since_previous_state": [
+          "https://region1.analytics.google.com/g/collect"
+        ],
+        "status": "VALID",
+        "origin": "source_capture",
+        "sha256": "a5421687bd1682eccc120a3e34a0ba244dd82014974b2f6add78230583db110d",
+        "path": "raw/follow_states/go.html.gz",
+        "compression": "gzip",
+        "bytes_utf8": 1721744,
+        "stored_bytes": 126874
+      },
+      "tot": {
+        "label": "Todo",
+        "selected_value": "tot",
+        "url": "https://www.bdfutbol.com/es/t/t2026-2739.html?t=seg",
+        "table_rows": 28,
+        "html_sha256": "55c6f5671a741515d738e56ee953bb8749f1fe93884ea5bf7596911312dc6ae8",
+        "captured_at_utc": "2026-10-12T15:56:42.088880+00:00",
+        "capture_timestamp_basis": "browser state selection and DOM serialization",
+        "source_capture_id": "20261012T155605.771164Z-271d43f3",
+        "reused": false,
+        "resource_urls_added_since_previous_state": [],
+        "status": "VALID",
+        "origin": "source_capture",
+        "sha256": "55c6f5671a741515d738e56ee953bb8749f1fe93884ea5bf7596911312dc6ae8",
+        "path": "raw/follow_states/tot.html.gz",
+        "compression": "gzip",
+        "bytes_utf8": 1723000,
+        "stored_bytes": 127147
+      }
+    },
+    "acquired_views": [
+      "alignment",
+      "squad",
+      "statistics",
+      "follow",
+      "transfers",
+      "matches"
+    ],
+    "reused_views": [],
+    "reused_source_capture_ids": [],
+    "derivation": null
+  },
+  "record": {
+    "team_id": 39,
+    "name": "Zaragoza",
+    "team_url": "https://www.bdfutbol.com/es/t/t2026-2739.html",
+    "crest_url": "https://www.bdfutbol.com/i/eg/39.png"
+  }
+}

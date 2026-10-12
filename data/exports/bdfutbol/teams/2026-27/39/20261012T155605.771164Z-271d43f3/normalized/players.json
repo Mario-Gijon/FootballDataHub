@@ -1,0 +1,785 @@
+{
+  "schema_version": 1,
+  "metadata": {
+    "source": "BDFutbol",
+    "season": "2026-27",
+    "competition": "Primera Federación",
+    "group": "II",
+    "team_id": 39,
+    "capture_id": "20261012T155605.771164Z-271d43f3",
+    "captured_at_utc": "2026-10-12T15:57:11.447765+00:00",
+    "started_at_utc": "2026-10-12T15:56:05.771262+00:00",
+    "extractor_version": "0.1.0",
+    "semantic_validation_version": 2,
+    "capture_policy": {
+      "id": "team-profile-six-views-follow-states-v1",
+      "version": 1,
+      "required_views": [
+        "alignment",
+        "squad",
+        "statistics",
+        "follow",
+        "transfers",
+        "matches"
+      ],
+      "required_follow_states": [
+        "p",
+        "t",
+        "go",
+        "tot"
+      ]
+    },
+    "related_team_catalog": {
+      "path": "data/exports/bdfutbol/group2_classification/derived-res01-20261010T102656Z/normalized/matches.json",
+      "group": "II",
+      "season": "2026-27",
+      "source_capture_id": "20261010T102656.252222Z-72f200ad",
+      "source_captured_at_utc": "2026-10-10T10:26:56.252397+00:00",
+      "sha256": "ac355bf8fff808cea9aa093ebfb274d9313f3137ae89b84132ca11a3e70c7a84"
+    },
+    "source_snapshots": {
+      "alignment": {
+        "path": "raw/alignment.html.gz",
+        "compression": "gzip",
+        "url": "https://www.bdfutbol.com/es/t/t2026-2739.html",
+        "title": "Plantilla del Zaragoza 2026-27 1ª RFEF | BDFutbol",
+        "http_status": 200,
+        "sha256": "b89da6a8979dbdbf6ffb2734fce7fb5e3960a16102fc7d00e73b2c42ca7a97b2",
+        "bytes_utf8": 1556223,
+        "stored_bytes": 119317,
+        "access_status": "VALID",
+        "captured_at_utc": "2026-10-12T15:56:10.750362+00:00",
+        "capture_timestamp_basis": "browser navigation and DOM serialization"
+      },
+      "squad": {
+        "path": "raw/squad.html.gz",
+        "compression": "gzip",
+        "url": "https://www.bdfutbol.com/es/t/t2026-2739.html?t=plantilla",
+        "title": "Plantilla del Zaragoza 2026-27 1ª RFEF | BDFutbol",
+        "http_status": 200,
+        "sha256": "9e1c2e9de2596c4d22c4726618e164557f4217724f4edf3a314692702aeb84ca",
+        "bytes_utf8": 1897200,
+        "stored_bytes": 132354,
+        "access_status": "VALID",
+        "captured_at_utc": "2026-10-12T15:56:20.164785+00:00",
+        "capture_timestamp_basis": "browser navigation and DOM serialization"
+      },
+      "statistics": {
+        "path": "raw/statistics.html.gz",
+        "compression": "gzip",
+        "url": "https://www.bdfutbol.com/es/t/t2026-2739.html?t=lista",
+        "title": "Plantilla del Zaragoza 2026-27 1ª RFEF | BDFutbol",
+        "http_status": 200,
+        "sha256": "063ee5a929dcc5e5db416bf8853fb23fd26abdb9527eb138b8f67ccbe67e2468",
+        "bytes_utf8": 1932404,
+        "stored_bytes": 134153,
+        "access_status": "VALID",
+        "captured_at_utc": "2026-10-12T15:56:29.219944+00:00",
+        "capture_timestamp_basis": "browser navigation and DOM serialization"
+      },
+      "follow": {
+        "path": "raw/follow.html.gz",
+        "compression": "gzip",
+        "url": "https://www.bdfutbol.com/es/t/t2026-2739.html?t=seg",
+        "title": "Plantilla del Zaragoza 2026-27 1ª RFEF | BDFutbol",
+        "http_status": 200,
+        "sha256": "610a99f7f7b4084a677b2785f0bd8475fed5ff5f98138d1ad48bf44bd228e5ce",
+        "bytes_utf8": 1722565,
+        "stored_bytes": 127130,
+        "access_status": "VALID",
+        "captured_at_utc": "2026-10-12T15:56:38.517408+00:00",
+        "capture_timestamp_basis": "browser navigation and DOM serialization"
+      },
+      "transfers": {
+        "path": "raw/transfers.html.gz",
+        "compression": "gzip",
+        "url": "https://www.bdfutbol.com/es/t/t2026-2739.html?t=altas",
+        "title": "Plantilla del Zaragoza 2026-27 1ª RFEF | BDFutbol",
+        "http_status": 200,
+        "sha256": "a149cfe1aee3a8ccb77ab073c594a08c553485e5eead6ea6e16346758d7ad6b4",
+        "bytes_utf8": 1907997,
+        "stored_bytes": 134060,
+        "access_status": "VALID",
+        "captured_at_utc": "2026-10-12T15:56:51.258133+00:00",
+        "capture_timestamp_basis": "browser navigation and DOM serialization"
+      },
+      "matches": {
+        "path": "raw/matches.html.gz",
+        "compression": "gzip",
+        "url": "https://www.bdfutbol.com/es/t/t2026-2739.html?tab=partits",
+        "title": "Plantilla del Zaragoza 2026-27 1ª RFEF | BDFutbol",
+        "http_status": 200,
+        "sha256": "32ba2a75b521701eef98a36bada9580cd0fb56b15e8e26c85987ddb599fe8039",
+        "bytes_utf8": 1916106,
+        "stored_bytes": 133097,
+        "access_status": "VALID",
+        "captured_at_utc": "2026-10-12T15:57:00.180722+00:00",
+        "capture_timestamp_basis": "browser navigation and DOM serialization"
+      }
+    },
+    "follow_states": {
+      "p": {
+        "label": "Partidos",
+        "selected_value": "p",
+        "url": "https://www.bdfutbol.com/es/t/t2026-2739.html?t=seg",
+        "table_rows": 28,
+        "html_sha256": "610a99f7f7b4084a677b2785f0bd8475fed5ff5f98138d1ad48bf44bd228e5ce",
+        "captured_at_utc": "2026-10-12T15:56:39.201531+00:00",
+        "capture_timestamp_basis": "browser state selection and DOM serialization",
+        "source_capture_id": "20261012T155605.771164Z-271d43f3",
+        "reused": false,
+        "resource_urls_added_since_previous_state": [],
+        "status": "VALID",
+        "origin": "source_capture",
+        "sha256": "610a99f7f7b4084a677b2785f0bd8475fed5ff5f98138d1ad48bf44bd228e5ce",
+        "path": "raw/follow_states/p.html.gz",
+        "compression": "gzip",
+        "bytes_utf8": 1722565,
+        "stored_bytes": 127130
+      },
+      "t": {
+        "label": "Tarjetas",
+        "selected_value": "t",
+        "url": "https://www.bdfutbol.com/es/t/t2026-2739.html?t=seg",
+        "table_rows": 28,
+        "html_sha256": "8e3781dc5df8a85c0a348b1112a17bf094a7c1031d9ae5334f78873eab63f01f",
+        "captured_at_utc": "2026-10-12T15:56:40.198841+00:00",
+        "capture_timestamp_basis": "browser state selection and DOM serialization",
+        "source_capture_id": "20261012T155605.771164Z-271d43f3",
+        "reused": false,
+        "resource_urls_added_since_previous_state": [],
+        "status": "VALID",
+        "origin": "source_capture",
+        "sha256": "8e3781dc5df8a85c0a348b1112a17bf094a7c1031d9ae5334f78873eab63f01f",
+        "path": "raw/follow_states/t.html.gz",
+        "compression": "gzip",
+        "bytes_utf8": 1721998,
+        "stored_bytes": 127069
+      },
+      "go": {
+        "label": "Goles",
+        "selected_value": "go",
+        "url": "https://www.bdfutbol.com/es/t/t2026-2739.html?t=seg",
+        "table_rows": 28,
+        "html_sha256": "a5421687bd1682eccc120a3e34a0ba244dd82014974b2f6add78230583db110d",
+        "captured_at_utc": "2026-10-12T15:56:41.116531+00:00",
+        "capture_timestamp_basis": "browser state selection and DOM serialization",
+        "source_capture_id": "20261012T155605.771164Z-271d43f3",
+        "reused": false,
+        "resource_urls_added_since_previous_state": [
+          "https://region1.analytics.google.com/g/collect"
+        ],
+        "status": "VALID",
+        "origin": "source_capture",
+        "sha256": "a5421687bd1682eccc120a3e34a0ba244dd82014974b2f6add78230583db110d",
+        "path": "raw/follow_states/go.html.gz",
+        "compression": "gzip",
+        "bytes_utf8": 1721744,
+        "stored_bytes": 126874
+      },
+      "tot": {
+        "label": "Todo",
+        "selected_value": "tot",
+        "url": "https://www.bdfutbol.com/es/t/t2026-2739.html?t=seg",
+        "table_rows": 28,
+        "html_sha256": "55c6f5671a741515d738e56ee953bb8749f1fe93884ea5bf7596911312dc6ae8",
+        "captured_at_utc": "2026-10-12T15:56:42.088880+00:00",
+        "capture_timestamp_basis": "browser state selection and DOM serialization",
+        "source_capture_id": "20261012T155605.771164Z-271d43f3",
+        "reused": false,
+        "resource_urls_added_since_previous_state": [],
+        "status": "VALID",
+        "origin": "source_capture",
+        "sha256": "55c6f5671a741515d738e56ee953bb8749f1fe93884ea5bf7596911312dc6ae8",
+        "path": "raw/follow_states/tot.html.gz",
+        "compression": "gzip",
+        "bytes_utf8": 1723000,
+        "stored_bytes": 127147
+      }
+    },
+    "acquired_views": [
+      "alignment",
+      "squad",
+      "statistics",
+      "follow",
+      "transfers",
+      "matches"
+    ],
+    "reused_views": [],
+    "reused_source_capture_ids": [],
+    "derivation": null
+  },
+  "records": [
+    {
+      "player_id": 9392,
+      "display_name": "Escudero",
+      "full_name": "Sergio Escudero Palomo",
+      "profile_url": "https://www.bdfutbol.com/es/j/j9392.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/9392.png",
+      "age_years": 37,
+      "birth_date": "1989-09-02",
+      "birthplace": "Santovenia de Pisuerga",
+      "birthplace_province": "Valladolid",
+      "nationality_flag_url": null,
+      "source_position_code": "3",
+      "verified_indicators": [
+        "new_signing",
+        "played_in_first_division"
+      ],
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 9438,
+      "display_name": "Ander Herrera",
+      "full_name": "Ander Herrera Agüera",
+      "profile_url": "https://www.bdfutbol.com/es/j/j9438.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/9438.png",
+      "age_years": 37,
+      "birth_date": "1989-08-14",
+      "birthplace": "Bilbao",
+      "birthplace_province": "Bizkaia",
+      "nationality_flag_url": null,
+      "source_position_code": "6",
+      "verified_indicators": [
+        "played_in_first_division"
+      ],
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 12962,
+      "display_name": "Ureña",
+      "full_name": "Óscar Ureña García",
+      "profile_url": "https://www.bdfutbol.com/es/j/j12962.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/12962.png",
+      "age_years": 23,
+      "birth_date": "2003-05-31",
+      "birthplace": "Figueres",
+      "birthplace_province": "Girona",
+      "nationality_flag_url": null,
+      "source_position_code": "10",
+      "verified_indicators": [
+        "new_signing",
+        "played_in_first_division"
+      ],
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 24450,
+      "display_name": "Tachi",
+      "full_name": "Alberto Rodríguez Baró",
+      "profile_url": "https://www.bdfutbol.com/es/j/j24450.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/24450.png",
+      "age_years": 29,
+      "birth_date": "1997-09-10",
+      "birthplace": "Fuenlabrada",
+      "birthplace_province": "Madrid",
+      "nationality_flag_url": null,
+      "source_position_code": "4",
+      "verified_indicators": [
+        "played_in_first_division"
+      ],
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 24832,
+      "display_name": "Espiau",
+      "full_name": "Eduardo David Espiau Hernández",
+      "profile_url": "https://www.bdfutbol.com/es/j/j24832.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/24832.png",
+      "age_years": 32,
+      "birth_date": "1994-12-19",
+      "birthplace": "Las Palmas de Gran Canaria",
+      "birthplace_province": "Las Palmas",
+      "nationality_flag_url": null,
+      "source_position_code": "9",
+      "verified_indicators": [
+        "new_signing",
+        "played_in_second_division"
+      ],
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 26473,
+      "display_name": "Diego",
+      "full_name": "Diego González Cabanes",
+      "profile_url": "https://www.bdfutbol.com/es/j/j26473.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/26473.png",
+      "age_years": 27,
+      "birth_date": "1999-05-07",
+      "birthplace": "Vila-real",
+      "birthplace_province": "Castellón",
+      "nationality_flag_url": null,
+      "source_position_code": "4",
+      "verified_indicators": [
+        "new_signing",
+        "played_in_second_division"
+      ],
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 26874,
+      "display_name": "Gabilondo",
+      "full_name": "Jokin Gabilondo Garmendia",
+      "profile_url": "https://www.bdfutbol.com/es/j/j26874.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/26874.png",
+      "age_years": 27,
+      "birth_date": "1999-04-09",
+      "birthplace": "Urretxu",
+      "birthplace_province": "Gipuzkoa",
+      "nationality_flag_url": null,
+      "source_position_code": "2",
+      "verified_indicators": [
+        "new_signing",
+        "played_in_second_division"
+      ],
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 40605,
+      "display_name": "Iranzo",
+      "full_name": "Rubén Iranzo Lendínez",
+      "profile_url": "https://www.bdfutbol.com/es/j/j40605.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/40605.png",
+      "age_years": 23,
+      "birth_date": "2003-03-14",
+      "birthplace": "Picanya",
+      "birthplace_province": "Valencia",
+      "nationality_flag_url": null,
+      "source_position_code": "4",
+      "verified_indicators": [
+        "new_signing",
+        "played_in_first_division",
+        "youth_international"
+      ],
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 40909,
+      "display_name": "Westerveld",
+      "full_name": "Sem Westerveld",
+      "profile_url": "https://www.bdfutbol.com/es/j/j40909.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/40909.png",
+      "age_years": 24,
+      "birth_date": "2002-07-18",
+      "birthplace": "Donostia/San Sebastián",
+      "birthplace_province": "Gipuzkoa",
+      "nationality_flag_url": null,
+      "source_position_code": "1",
+      "verified_indicators": [
+        "new_signing"
+      ],
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 58463,
+      "display_name": "Ademo",
+      "full_name": "Peter Oluwaseun Ademo",
+      "profile_url": "https://www.bdfutbol.com/es/j/j58463.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/58463.png",
+      "age_years": 23,
+      "birth_date": "2003-01-11",
+      "birthplace": "Lagos",
+      "birthplace_province": null,
+      "nationality_flag_url": null,
+      "source_position_code": "6",
+      "verified_indicators": [
+        "new_signing"
+      ],
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 108229,
+      "display_name": "Jardí",
+      "full_name": "Jaume Jardí Puyaltó",
+      "profile_url": "https://www.bdfutbol.com/es/j/j108229.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/108229.png",
+      "age_years": 24,
+      "birth_date": "2002-04-07",
+      "birthplace": "Reus",
+      "birthplace_province": "Tarragona",
+      "nationality_flag_url": null,
+      "source_position_code": "10",
+      "verified_indicators": [
+        "new_signing"
+      ],
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 111200,
+      "display_name": "Pereira",
+      "full_name": "Raúl Pereira Vargas",
+      "profile_url": "https://www.bdfutbol.com/es/j/j111200.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/111200.png",
+      "age_years": 21,
+      "birth_date": "2005-05-10",
+      "birthplace": "Algeciras",
+      "birthplace_province": "Cádiz",
+      "nationality_flag_url": null,
+      "source_position_code": "3",
+      "verified_indicators": [
+        "new_signing",
+        "played_in_second_division"
+      ],
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 201314,
+      "display_name": "Sangalli",
+      "full_name": "Marco Sangalli Fuentes",
+      "profile_url": "https://www.bdfutbol.com/es/j/j201314.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/201314.png",
+      "age_years": 34,
+      "birth_date": "1992-02-07",
+      "birthplace": "Donostia/San Sebastián",
+      "birthplace_province": "Gipuzkoa",
+      "nationality_flag_url": null,
+      "source_position_code": "2",
+      "verified_indicators": [
+        "new_signing",
+        "played_in_first_division"
+      ],
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 202404,
+      "display_name": "Rubén Díez",
+      "full_name": "Rubén Díez Adán",
+      "profile_url": "https://www.bdfutbol.com/es/j/j202404.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/202404.png",
+      "age_years": 33,
+      "birth_date": "1993-08-18",
+      "birthplace": "Zaragoza",
+      "birthplace_province": "Zaragoza",
+      "nationality_flag_url": null,
+      "source_position_code": "6",
+      "verified_indicators": [
+        "new_signing",
+        "played_in_second_division"
+      ],
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 208935,
+      "display_name": "Barrachina",
+      "full_name": "Hugo Barrachina Diloy",
+      "profile_url": "https://www.bdfutbol.com/es/j/j208935.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/208935.png",
+      "age_years": 20,
+      "birth_date": "2006-08-30",
+      "birthplace": "Zaragoza",
+      "birthplace_province": "Zaragoza",
+      "nationality_flag_url": null,
+      "source_position_code": "4",
+      "verified_indicators": [
+        "played_in_second_division"
+      ],
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 209181,
+      "display_name": "Saidu",
+      "full_name": "Yussif Saidu",
+      "profile_url": "https://www.bdfutbol.com/es/j/j209181.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/209181.png",
+      "age_years": 21,
+      "birth_date": "2005-06-14",
+      "birthplace": "Accra",
+      "birthplace_province": null,
+      "nationality_flag_url": null,
+      "source_position_code": "6",
+      "verified_indicators": [
+        "played_in_second_division"
+      ],
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 209826,
+      "display_name": "Tobajas",
+      "full_name": "Jaime Tobajas Cabeza",
+      "profile_url": "https://www.bdfutbol.com/es/j/j209826.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/209826.png",
+      "age_years": 20,
+      "birth_date": "2006-12-15",
+      "birthplace": "Zaragoza",
+      "birthplace_province": "Zaragoza",
+      "nationality_flag_url": null,
+      "source_position_code": "6",
+      "verified_indicators": [
+        "played_in_second_division"
+      ],
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 210150,
+      "display_name": "Laken",
+      "full_name": "Laken Stephan Ayoola Torres",
+      "profile_url": "https://www.bdfutbol.com/es/j/j210150.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/210150.png",
+      "age_years": 21,
+      "birth_date": "2005-01-15",
+      "birthplace": "Dénia",
+      "birthplace_province": "Alicante",
+      "nationality_flag_url": null,
+      "source_position_code": "10",
+      "verified_indicators": [
+        "new_signing"
+      ],
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 210224,
+      "display_name": "Manolache",
+      "full_name": "Marcos Marian Manolache",
+      "profile_url": "https://www.bdfutbol.com/es/j/j210224.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/210224.png",
+      "age_years": 18,
+      "birth_date": "2008-02-12",
+      "birthplace": "Zaragoza",
+      "birthplace_province": "Zaragoza",
+      "nationality_flag_url": null,
+      "source_position_code": "1",
+      "verified_indicators": [],
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 210423,
+      "display_name": "Delgado",
+      "full_name": "Joaquín Delgado Romero",
+      "profile_url": "https://www.bdfutbol.com/es/j/j210423.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/210423.png",
+      "age_years": 24,
+      "birth_date": "2002-01-15",
+      "birthplace": "Utrera",
+      "birthplace_province": "Sevilla",
+      "nationality_flag_url": null,
+      "source_position_code": "10",
+      "verified_indicators": [
+        "new_signing"
+      ],
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 210884,
+      "display_name": "Monzón",
+      "full_name": "Diego Monzón Castillo",
+      "profile_url": "https://www.bdfutbol.com/es/j/j210884.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/210884.png",
+      "age_years": 18,
+      "birth_date": "2008-02-04",
+      "birthplace": "Zaragoza",
+      "birthplace_province": "Zaragoza",
+      "nationality_flag_url": null,
+      "source_position_code": "6",
+      "verified_indicators": [],
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 300953,
+      "display_name": "Cuenca",
+      "full_name": "Marcos Cuenca Aranda",
+      "profile_url": "https://www.bdfutbol.com/es/j/j300953.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/300953.png",
+      "age_years": 24,
+      "birth_date": "2002-11-07",
+      "birthplace": "Zaragoza",
+      "birthplace_province": "Zaragoza",
+      "nationality_flag_url": null,
+      "source_position_code": "10",
+      "verified_indicators": [
+        "played_in_second_division"
+      ],
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 304286,
+      "display_name": "Terrer",
+      "full_name": "Lucas Terrer Casas",
+      "profile_url": "https://www.bdfutbol.com/es/j/j304286.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/304286.png",
+      "age_years": 21,
+      "birth_date": "2005-06-07",
+      "birthplace": "Zaragoza",
+      "birthplace_province": "Zaragoza",
+      "nationality_flag_url": null,
+      "source_position_code": "6",
+      "verified_indicators": [
+        "played_in_second_division"
+      ],
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 307577,
+      "display_name": "Pinilla",
+      "full_name": "Hugo Pinilla Ruiz",
+      "profile_url": "https://www.bdfutbol.com/es/j/j307577.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/307577.png",
+      "age_years": 20,
+      "birth_date": "2006-04-28",
+      "birthplace": "Zaragoza",
+      "birthplace_province": "Zaragoza",
+      "nationality_flag_url": null,
+      "source_position_code": "10",
+      "verified_indicators": [
+        "played_in_second_division"
+      ],
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 307903,
+      "display_name": "Vadillo",
+      "full_name": "Iker Vadillo Nogués",
+      "profile_url": "https://www.bdfutbol.com/es/j/j307903.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/307903.png",
+      "age_years": 21,
+      "birth_date": "2005-09-11",
+      "birthplace": "Utebo",
+      "birthplace_province": "Zaragoza",
+      "nationality_flag_url": null,
+      "source_position_code": "6",
+      "verified_indicators": [],
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 404871,
+      "display_name": "Sans",
+      "full_name": "Pau Sans López",
+      "profile_url": "https://www.bdfutbol.com/es/j/j404871.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/404871.png",
+      "age_years": 22,
+      "birth_date": "2004-11-24",
+      "birthplace": "Zaragoza",
+      "birthplace_province": "Zaragoza",
+      "nationality_flag_url": null,
+      "source_position_code": "6",
+      "verified_indicators": [
+        "played_in_second_division"
+      ],
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    },
+    {
+      "player_id": 1041108,
+      "display_name": "Anartz",
+      "full_name": "Anartz Peña Zulaika",
+      "profile_url": "https://www.bdfutbol.com/es/j/j1041108.html",
+      "photo_url": "https://www.bdfutbol.com/i/m/1041108.png",
+      "age_years": 25,
+      "birth_date": "2001-03-27",
+      "birthplace": "Balmaseda",
+      "birthplace_province": "Bizkaia",
+      "nationality_flag_url": null,
+      "source_position_code": "1",
+      "verified_indicators": [
+        "new_signing"
+      ],
+      "source_views": [
+        "alignment",
+        "squad",
+        "statistics"
+      ]
+    }
+  ]
+}

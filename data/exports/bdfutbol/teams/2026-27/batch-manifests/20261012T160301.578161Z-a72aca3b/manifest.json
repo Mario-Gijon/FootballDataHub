@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "created_at_utc": "2026-10-12T16:03:01.578149+00:00",
+  "run_id": "20261012T160301.578161Z-a72aca3b",
+  "groups": [
+    "I"
+  ],
+  "requested_views": [
+    "alignment",
+    "squad",
+    "statistics",
+    "follow",
+    "transfers",
+    "matches"
+  ],
+  "required_follow_states": [
+    "p",
+    "t",
+    "go",
+    "tot"
+  ],
+  "pause_seconds": 5.0,
+  "execution": "sequential_one_team_at_a_time",
+  "stopped_on_access_denial": false,
+  "stop_reason": null,
+  "summary": {
+    "complete": 1
+  },
+  "teams": [
+    {
+      "group": "I",
+      "team_id": 178,
+      "team_name": "UD Logroñés",
+      "status": "complete",
+      "requested_views": [
+        "alignment",
+        "squad",
+        "statistics",
+        "follow",
+        "transfers",
+        "matches"
+      ],
+      "capture_id": "20261012T160156.898705Z-8b30ebbd",
+      "seed_capture_id": null,
+      "reused_existing_capture": false,
+      "acquired_views": [
+        "alignment",
+        "squad",
+        "statistics",
+        "follow",
+        "transfers",
+        "matches"
+      ],
+      "reused_views": [],
+      "follow_states": [
+        "go",
+        "p",
+        "t",
+        "tot"
+      ],
+      "acquired_follow_states": [
+        "p",
+        "t",
+        "go",
+        "tot"
+      ],
+      "reused_follow_states": [],
+      "coverage": null,
+      "catalog_reference": {
+        "path": "data/exports/bdfutbol/group1_classification/20261010T202500.293648Z-b770724f/normalized/matches.json",
+        "group": "I",
+        "season": "2026-27",
+        "source_capture_id": "20261010T202500.293648Z-b770724f",
+        "source_captured_at_utc": "2026-10-10T20:25:00.293798+00:00",
+        "sha256": "1f9fb43796001c87186d7a8c1f4270d924f32f4dbdba704f39428d6d8201fd0f"
+      },
+      "captured_at_utc": "2026-10-12T16:03:01.180645+00:00",
+      "acquisition_timestamps": {
+        "views": {
+          "alignment": "2026-10-12T16:02:01.745126+00:00",
+          "squad": "2026-10-12T16:02:10.616914+00:00",
+          "statistics": "2026-10-12T16:02:19.565179+00:00",
+          "follow": "2026-10-12T16:02:28.722659+00:00",
+          "transfers": "2026-10-12T16:02:41.220321+00:00",
+          "matches": "2026-10-12T16:02:50.191722+00:00"
+        },
+        "follow_states": {
+          "p": "2026-10-12T16:02:29.391817+00:00",
+          "t": "2026-10-12T16:02:30.358122+00:00",
+          "go": "2026-10-12T16:02:31.212499+00:00",
+          "tot": "2026-10-12T16:02:32.192850+00:00"
+        }
+      },
+      "failure_class": null,
+      "error": null
+    }
+  ],
+  "season": "2026-27",
+  "source": "BDFutbol",
+  "batch_scope": {
+    "groups": [
+      "I"
+    ],
+    "selected_team_count": 1,
+    "catalog_team_count": 20,
+    "full_catalog_scope": false
+  },
+  "batch_complete": false,
+  "capture_policy": {
+    "id": "team-profile-six-views-follow-states-v1",
+    "required_follow_states": [
+      "p",
+      "t",
+      "go",
+      "tot"
+    ]
+  }
+}

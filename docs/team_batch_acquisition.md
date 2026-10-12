@@ -115,6 +115,50 @@ Una clasificación `complete` no exige que haya goles, tarjetas u otros eventos
 positivos. Se valida que los archivos y sus relaciones sean íntegros, no que
 cada categoría contenga registros.
 
+## Preflight y piloto TEAM-03A (12/10/2026)
+
+El preflight offline con ambos catálogos confirmó 20 equipos por grupo, 40 IDs
+únicos y alcance completo. Antes del piloto había 38 equipos pendientes y dos
+capturas completas reutilizables: Racing de Ferrol (`48`) y Jaén (`49`). El
+plan calculó **228 navegaciones**: seis páginas por cada equipo pendiente. Los
+cuatro valores de Seguimiento (`p`, `t`, `go`, `tot`) se seleccionan y
+serializan en la misma visita a la página Seguimiento; no añaden cuatro
+navegaciones HTTP.
+
+Los dos equipos nuevos elegidos del catálogo fueron UD Logroñés, Grupo I,
+`team_id=178`, y Zaragoza, Grupo II, `team_id=39`. La primera ejecución tuvo
+HTTP válido en las seis páginas de ambos equipos. Zaragoza se publicó como
+captura completa. En Logroñés falló la normalización por dos valores de año
+(`2008`, `2007`) en la columna «Fecha de nacimiento» de `#c3p1`; esa ejecución
+no publicó una captura parcial. Tras inspeccionar esa estructura real, el
+parser conserva `birth_date=null` y registra una advertencia con el valor
+original, que sigue disponible en el snapshot comprimido. Se volvió a adquirir
+solo Logroñés y la captura completa pasó la revalidación offline.
+
+| Equipo | `capture_id` completo | Vistas | Seguimiento | Resultado resumido |
+|---|---|---:|---|---|
+| UD Logroñés (I, `178`) | `20261012T160156.898705Z-8b30ebbd` | 6/6 | `p`, `t`, `go`, `tot` | 28 jugadores, 1 entrenador; 17 Altas, 17 Bajas; 6 referencias de partidos. |
+| Zaragoza (II, `39`) | `20261012T155605.771164Z-271d43f3` | 6/6 | `p`, `t`, `go`, `tot` | 27 jugadores, 1 entrenador; 18 Altas, 30 Bajas; 6 referencias de partidos. |
+
+Los manifiestos create-only de las dos ejecuciones son:
+
+- `20261012T155712.762396Z-4cf93b8c`: el primer intento registró Logroñés
+  fallido por parsing y Zaragoza completo; no hubo denegación ni desafío.
+- `20261012T160301.578161Z-a72aca3b`: reanudación dirigida a Logroñés,
+  completa después de corregir la fecha parcial.
+
+El dry-run offline posterior validó las cuatro capturas completas (48, 49, 178
+y 39), las seis vistas, los cuatro estados, las huellas y la normalización. La
+CLI las marca `skip_complete`; quedan 36 equipos y el plan actualizado prevé
+216 navegaciones. Esta verificación demuestra la reanudación desde capturas
+completas; no se inició el lote restante ni se cambió el índice de publicación
+`config/team_profiles_2026-27.json`.
+
+La ejecución se hizo en el Linux local `archlinux` como usuario `mario` con
+Chromium 152, SeleniumBase 4.55.2, Xvfb externo y el perfil persistente Pure CDP
+del usuario. El servidor UJA no fue el destino de este piloto y su preparación
+continúa pendiente de una prueba en ese host.
+
 ## Comandos de preflight y adquisición futura
 
 Primero hacer un piloto seco de un equipo:

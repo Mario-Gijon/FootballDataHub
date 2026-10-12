@@ -258,6 +258,7 @@ def _identity_from_row(
     base_url: str,
     view: str,
     indexes: dict[str, int],
+    issues: list[str],
 ) -> tuple[int, dict[str, Any]] | None:
     anchor = _row_player_anchor(cells)
     linked = _id_from_link(anchor, _PLAYER_URL_ID) if anchor else None
@@ -280,7 +281,15 @@ def _identity_from_row(
     country_index = indexes.get("pais", indexes.get("país", 2))
     country_cell = cells[country_index] if country_index < len(cells) else None
     flag_image = country_cell.select_one("img[src]") if country_cell else None
-    birth_date = _parse_date(birth_cell.get_text(" ", strip=True)) if birth_cell else None
+    birth_date = (
+        _parse_date(
+            birth_cell.get_text(" ", strip=True),
+            issues=issues,
+            context=f"player_id={player_id}",
+        )
+        if birth_cell
+        else None
+    )
     details: dict[str, Any] = {
         "display_name": display_name,
         "full_name": full_name,
@@ -303,9 +312,21 @@ def _clean_nullable(value: str) -> str | None:
     return text if text and text not in {"-", "–", "—"} else None
 
 
-def _parse_date(value: str) -> str | None:
+def _parse_date(
+    value: str,
+    *,
+    issues: list[str] | None = None,
+    context: str = "birth_date",
+) -> str | None:
     text = clean_text(value)
     if not text or text in {"-", "–", "—"}:
+        return None
+    if re.fullmatch(r"\d{4}", text):
+        if issues is not None:
+            issues.append(
+                f"{context}: fecha de nacimiento publicada solo como año {text!r}; "
+                "birth_date se conserva como null"
+            )
         return None
     try:
         return datetime.strptime(text, "%d/%m/%Y").date().isoformat()
@@ -375,7 +396,13 @@ def _parse_players_from_table(
     memberships: dict[int, tuple[int | None, str | None]] = {}
     rows = _table_rows(table)
     for row in rows[1:]:
-        parsed = _identity_from_row(row, base_url=base_url, view=view, indexes=indexes)
+        parsed = _identity_from_row(
+            row,
+            base_url=base_url,
+            view=view,
+            indexes=indexes,
+            issues=issues,
+        )
         if parsed is None:
             continue
         player_id, details = parsed
@@ -443,7 +470,15 @@ def _parse_coaches(
             profile_url=_absolute(base_url, href) or href,
             photo_url=_absolute(base_url, str(photo["src"])) if photo else None,
             age_years=_int_cell(age_cell, field_name="coach_age"),
-            birth_date=_parse_date(birth_date_cell.get_text(" ", strip=True)) if birth_date_cell else None,
+            birth_date=(
+                _parse_date(
+                    birth_date_cell.get_text(" ", strip=True),
+                    issues=issues,
+                    context=f"coach_id={coach_id}",
+                )
+                if birth_date_cell
+                else None
+            ),
             birthplace=_clean_nullable(birthplace_cell.get_text(" ", strip=True)) if birthplace_cell else None,
             birthplace_province=_clean_nullable(province_cell.get_text(" ", strip=True)) if province_cell else None,
             coached_matchdays_source=_clean_nullable(matchday_cell.get_text(" ", strip=True)) if matchday_cell else None,
@@ -519,6 +554,7 @@ def _parse_statistics(
                 "nom": 3,
                 "pos": 4,
             },
+            issues=issues,
         )
         if parsed_identity is None:
             continue

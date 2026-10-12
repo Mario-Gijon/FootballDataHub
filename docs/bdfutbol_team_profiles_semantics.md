@@ -438,3 +438,28 @@ al seleccionar las nuevas capturas. Jaén conserva sus cuatro estados de
 Seguimiento y 22 métricas positivas; Racing conserva los cuatro estados y 17
 métricas. `transfer_date` y `fee` permanecen `null`; los enlaces de clubes se
 conservan como referencias BDFutbol originales, incluso cuando son históricos.
+
+## Adquisición piloto TEAM-03A (12/10/2026)
+
+Las capturas reales de dos equipos nuevos confirmaron las seis vistas y los
+cuatro estados de Seguimiento bajo Pure CDP. El resumen normalizado es:
+
+| Grupo / equipo | `team_id` | `capture_id` | Jugadores | Entrenadores | Minutos jugador/partido | Métricas de eventos | Altas / Bajas | Referencias de partidos |
+|---|---:|---|---:|---:|---:|---:|---:|---:|
+| I / UD Logroñés | 178 | `20261012T160156.898705Z-8b30ebbd` | 28 | 1 | 168 | 28 | 17 / 17 | 6 |
+| II / Zaragoza | 39 | `20261012T155605.771164Z-271d43f3` | 27 | 1 | 162 | 32 | 18 / 30 | 6 |
+
+Las seis vistas devolvieron HTTP 200 y título `Plantilla del <equipo>
+2026-27 1ª RFEF | BDFutbol`; la identidad del equipo y la temporada se
+validaron contra el catálogo del mismo grupo. Los IDs de partidos se enlazan
+por `match_id`; no se exportan copias de Resultados. Cada snapshot y JSON
+normalizado conserva SHA-256 y metadatos de procedencia. Las capturas quedaron
+completas y reutilizables tras una segunda inspección offline.
+
+La vista Plantilla de UD Logroñés (`#c3p1`) publicó `2008` y `2007` en la
+columna con `title="Fecha de nacimiento"`. Son años sin día ni mes: el parser
+no los transforma en fechas. `birth_date` queda `null`, y la validación agrega
+una advertencia con el valor fuente; el HTML original comprimido preserva la
+evidencia. Una cadena no reconocible que no sea un año aislado sigue siendo un
+error de parsing. Esta diferencia se cubre con una regresión offline en
+`tests/test_bdfutbol_team_profiles.py`.

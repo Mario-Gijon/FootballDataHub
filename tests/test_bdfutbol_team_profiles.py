@@ -450,6 +450,54 @@ def test_optional_coach_and_jersey_fields_do_not_invalidate_a_roster(jaen):
     assert len(parsed.players) == 25
 
 
+def test_year_only_birth_date_is_preserved_as_null_with_warning(jaen):
+    context, _, record, _, _, views, _, _ = jaen
+    soup = BeautifulSoup(views["squad"], "html.parser")
+    table = soup.select_one("#c3p1")
+    assert table is not None
+    headers = table.select_one("tr")
+    assert headers is not None
+    cells = headers.select("th, td")
+    birth_index = next(
+        index
+        for index, cell in enumerate(cells)
+        if cell.get("title") == "Fecha de nacimiento"
+    )
+    player_row = next(
+        row
+        for row in table.select("tr")[1:]
+        if row.select_one('a[href*="/j/j"]')
+    )
+    player_link = player_row.select_one('a[href*="/j/j"]')
+    assert player_link is not None
+    player_id = int(player_link["href"].rsplit("j", 1)[-1].removesuffix(".html"))
+    player_cells = player_row.select("th, td")
+    player_cells[birth_index].clear()
+    player_cells[birth_index].string = "2008"
+    modified_views = {**views, "squad": str(soup)}
+
+    parsed = parse_team_profile_pages(
+        modified_views,
+        team_catalog_record=record,
+        competition_context=context,
+    )
+
+    player = next(item for item in parsed.players if item.player_id == player_id)
+    assert player.birth_date is None
+    assert any(
+        f"player_id={player_id}" in warning and "'2008'" in warning and "null" in warning
+        for warning in parsed.warnings
+    )
+
+    player_cells[birth_index].string = "not-a-date"
+    with pytest.raises(TeamProfileParseError, match="Fecha no interpretable"):
+        parse_team_profile_pages(
+            {**views, "squad": str(soup)},
+            team_catalog_record=record,
+            competition_context=context,
+        )
+
+
 class _FakeDocument:
     def __init__(self, url: str, html: str, status: int = 200):
         self.url = url
