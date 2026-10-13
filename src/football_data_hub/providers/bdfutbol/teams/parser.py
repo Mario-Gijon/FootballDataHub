@@ -986,16 +986,55 @@ def parse_team_transfers_snapshot(
     )
 
 
-def _parse_match_ids(soup: BeautifulSoup) -> tuple[str, ...]:
+def _parse_match_ids_by_competition(
+    soup: BeautifulSoup,
+) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
     table = soup.find(id="taula-resultats-plantilla")
     if not isinstance(table, Tag):
-        return ()
-    found: list[str] = []
-    for anchor in table.select('a[href*="p.php?id="]'):
-        match = _MATCH_URL_ID.search(str(anchor["href"]))
-        if match:
-            found.append(match.group(1))
-    return tuple(dict.fromkeys(found))
+        return (), (), ()
+    all_ids: list[str] = []
+    league_ids: list[str] = []
+    other_competition_ids: list[str] = []
+    seen_competitions: dict[str, str] = {}
+    for row in table.select("tr"):
+        row_ids = tuple(dict.fromkeys(
+            match.group(1)
+            for anchor in row.select('a[href*="p.php?id="]')
+            if (match := _MATCH_URL_ID.search(str(anchor["href"])))
+        ))
+        if not row_ids:
+            continue
+        cells = row.find_all(["th", "td"], recursive=False)
+        if len(cells) < 2:
+            raise TeamProfileParseError(
+                "Una fila con referencia a partido no identifica la competición de origen"
+            )
+        source_competition = clean_text(cells[1].get_text(" ", strip=True))
+        if not source_competition:
+            raise TeamProfileParseError(
+                "Una fila con referencia a partido tiene vacía la competición de origen"
+            )
+        row_classes = set(row.get("class", ()))
+        if "COM_LIG" in row_classes and source_competition != "Liga":
+            raise TeamProfileParseError(
+                "La clase COM_LIG contradice la competición visible de la fila"
+            )
+        if "COM_FED" in row_classes and source_competition == "Liga":
+            raise TeamProfileParseError(
+                "La clase COM_FED contradice la competición visible de la fila"
+            )
+        scope = "league" if source_competition == "Liga" else "other"
+        for match_id in row_ids:
+            previous_scope = seen_competitions.get(match_id)
+            if previous_scope is not None and previous_scope != scope:
+                raise TeamProfileParseError(
+                    f"El partido {match_id} aparece bajo competiciones distintas"
+                )
+            if previous_scope is None:
+                seen_competitions[match_id] = scope
+                all_ids.append(match_id)
+                (league_ids if scope == "league" else other_competition_ids).append(match_id)
+    return tuple(all_ids), tuple(league_ids), tuple(other_competition_ids)
 
 
 def _parse_group_team_ids(soup: BeautifulSoup) -> tuple[int, ...]:
@@ -1267,7 +1306,9 @@ def parse_team_profile_pages(
         else None
     )
     group_team_ids = _parse_group_team_ids(alignment)
-    match_ids = _parse_match_ids(match_soup) if match_soup else ()
+    match_ids, league_match_ids, other_competition_match_ids = (
+        _parse_match_ids_by_competition(match_soup) if match_soup else ((), (), ())
+    )
     tactic_note = "Se genera automáticamente a partir de las posiciones del once titular"
     if tactic_note not in clean_text(alignment.get_text(" ", strip=True)):
         issues.append("La nota de representación táctica aproximada no está presente")
@@ -1324,6 +1365,8 @@ def parse_team_profile_pages(
         transfer_sections=transfer_sections,
         group_team_ids_from_profile=group_team_ids,
         team_match_ids_from_profile=match_ids,
+        team_league_match_ids_from_profile=league_match_ids,
+        team_other_competition_match_ids_from_profile=other_competition_match_ids,
         warnings=tuple(warnings),
     )
 

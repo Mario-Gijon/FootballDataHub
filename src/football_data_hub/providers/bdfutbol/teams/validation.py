@@ -105,9 +105,24 @@ def validate_team_profile(
     profile_match_ids = set(data.team_match_ids_from_profile)
     if len(profile_match_ids) != len(data.team_match_ids_from_profile):
         issues.append({"code": "duplicate_profile_match", "message": "La vista Partidos repite un match_id."})
-    unknown_match_ids = sorted(profile_match_ids - match_ids)
+    league_profile_match_ids = set(data.team_league_match_ids_from_profile)
+    other_competition_match_ids = set(data.team_other_competition_match_ids_from_profile)
+    if (
+        league_profile_match_ids & other_competition_match_ids
+        or league_profile_match_ids | other_competition_match_ids != profile_match_ids
+    ):
+        issues.append({
+            "code": "profile_match_scope_partition",
+            "message": "Las referencias de la ficha no se separan completamente entre Liga y otras competiciones.",
+        })
+    unknown_match_ids = sorted(league_profile_match_ids - match_ids)
     if unknown_match_ids:
         issues.append({"code": "unknown_profile_match", "message": f"La vista Partidos refiere encuentros no presentes en el catálogo: {unknown_match_ids[:10]}."})
+    if other_competition_match_ids:
+        warnings.append(
+            "La vista Partidos contiene referencias de otras competiciones, conservadas aparte del catálogo de Liga: "
+            f"{sorted(other_competition_match_ids)}."
+        )
     follow_ids = {item.match_id for item in data.player_match_minutes}
     unknown_follow_ids = sorted(follow_ids - match_ids)
     if unknown_follow_ids:
@@ -270,6 +285,9 @@ def validate_team_profile(
         "cross_references": {
             "team_ids_match_catalog": expected_team_ids == profile_team_ids if "alignment" in requested_views else None,
             "profile_match_ids_in_group_results": not unknown_match_ids if "matches" in requested_views else None,
+            "league_match_references": len(league_profile_match_ids),
+            "other_competition_match_references": len(other_competition_match_ids),
+            "other_competition_match_ids": sorted(other_competition_match_ids),
             "follow_match_ids_in_group_results": not unknown_follow_ids if "follow" in requested_views else None,
             "follow_metric_match_ids_in_group_results": not (metric_match_ids - match_ids) if data.player_match_metrics else None,
             "duplicate_match_records_exported": False,

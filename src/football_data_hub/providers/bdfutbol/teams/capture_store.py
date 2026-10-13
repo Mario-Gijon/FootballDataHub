@@ -38,6 +38,8 @@ class CaptureInspection:
     path: Path
     classification: str
     valid_for_original_scope: bool
+    active_catalog_compatible: bool
+    catalog_compatibility: dict[str, Any]
     complete_for_current_policy: bool
     reusable_as_seed: bool
     valid_views: tuple[str, ...]
@@ -67,6 +69,8 @@ class CaptureInspection:
             "capture_path": str(self.path),
             "classification": self.classification,
             "valid_for_original_scope": self.valid_for_original_scope,
+            "active_catalog_compatible": self.active_catalog_compatible,
+            "catalog_compatibility": self.catalog_compatibility,
             "complete_for_current_policy": self.complete_for_current_policy,
             "reusable_as_seed": self.reusable_as_seed,
             "valid_views": list(self.valid_views),
@@ -127,7 +131,169 @@ def _catalog_compatible(actual: Any, expected: dict[str, Any] | None, group: str
     expected_capture_id = expected.get("source_capture_id")
     if expected_capture_id and actual.get("source_capture_id") != expected_capture_id:
         return False
+    expected_captured_at = expected.get("source_captured_at_utc")
+    if expected_captured_at and actual.get("source_captured_at_utc") != expected_captured_at:
+        return False
     return actual.get("group") == group and actual.get("season") == season
+
+
+def compare_catalog_versions(
+    *,
+    source_reference: dict[str, Any],
+    source_teams: list[dict[str, Any]],
+    source_matches: list[dict[str, Any]],
+    active_reference: dict[str, Any],
+    active_teams: list[dict[str, Any]],
+    active_matches: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Compare catalog identity separately from legitimate result updates.
+
+    Existing match IDs must remain attached to the same matchday and home/away
+    team IDs. Scores and status may advance as a season is played; missing IDs
+    and identity changes are conflicts and are never reconciled by names.
+    """
+    source_team_ids = {int(item["team_id"]) for item in source_teams}
+    active_team_ids = {int(item["team_id"]) for item in active_teams}
+    source_by_id: dict[str, dict[str, Any]] = {}
+    active_by_id: dict[str, dict[str, Any]] = {}
+    duplicate_source_ids: list[str] = []
+    duplicate_active_ids: list[str] = []
+    for records, index, duplicates in (
+        (source_matches, source_by_id, duplicate_source_ids),
+        (active_matches, active_by_id, duplicate_active_ids),
+    ):
+        for item in records:
+            match_id = str(item.get("match_id"))
+            if match_id in index:
+                duplicates.append(match_id)
+            else:
+                index[match_id] = item
+
+    source_ids = set(source_by_id)
+    active_ids = set(active_by_id)
+    missing_ids = sorted(source_ids - active_ids)
+    added_ids = sorted(active_ids - source_ids)
+    identity_conflicts: list[dict[str, Any]] = []
+    status_changes: list[dict[str, Any]] = []
+    score_changes: list[dict[str, Any]] = []
+    schedule_changes: list[dict[str, Any]] = []
+    identity_fields = ("matchday", "home_team_id", "away_team_id")
+    for match_id in sorted(source_ids & active_ids):
+        previous = source_by_id[match_id]
+        current = active_by_id[match_id]
+        differences = {
+            field: {"source": previous.get(field), "active": current.get(field)}
+            for field in identity_fields
+            if previous.get(field) != current.get(field)
+        }
+        if differences:
+            identity_conflicts.append({"match_id": match_id, "fields": differences})
+            continue
+        if (
+            previous.get("matchday_date") != current.get("matchday_date")
+            or previous.get("source_match_date") != current.get("source_match_date")
+        ):
+            schedule_changes.append({
+                "match_id": match_id,
+                "source_matchday_date": previous.get("matchday_date"),
+                "active_matchday_date": current.get("matchday_date"),
+                "source_match_date": previous.get("source_match_date"),
+                "active_source_match_date": current.get("source_match_date"),
+            })
+        if previous.get("status") != current.get("status"):
+            status_changes.append({
+                "match_id": match_id,
+                "source_status": previous.get("status"),
+                "active_status": current.get("status"),
+            })
+        old_score = (previous.get("home_goals"), previous.get("away_goals"))
+        new_score = (current.get("home_goals"), current.get("away_goals"))
+        if old_score != new_score:
+            score_changes.append({
+                "match_id": match_id,
+                "source_score": list(old_score),
+                "active_score": list(new_score),
+                "score_added": old_score == (None, None) and new_score != (None, None),
+            })
+
+    team_sets_match = source_team_ids == active_team_ids
+    identity_compatible = not (
+        missing_ids
+        or identity_conflicts
+        or duplicate_source_ids
+        or duplicate_active_ids
+        or not team_sets_match
+    )
+    return {
+        "status": "compatible" if identity_compatible else "incompatible",
+        "compatible": identity_compatible,
+        "source_catalog": {
+            "capture_id": source_reference.get("source_capture_id"),
+            "captured_at_utc": source_reference.get("source_captured_at_utc"),
+            "sha256": source_reference.get("sha256"),
+        },
+        "active_catalog": {
+            "capture_id": active_reference.get("source_capture_id"),
+            "captured_at_utc": active_reference.get("source_captured_at_utc"),
+            "sha256": active_reference.get("sha256"),
+        },
+        "source_team_count": len(source_team_ids),
+        "active_team_count": len(active_team_ids),
+        "team_ids_conserved": team_sets_match,
+        "source_match_count": len(source_matches),
+        "active_match_count": len(active_matches),
+        "match_ids_conserved": not missing_ids,
+        "match_ids_added": added_ids,
+        "match_ids_missing": missing_ids,
+        "duplicate_source_match_ids": sorted(set(duplicate_source_ids)),
+        "duplicate_active_match_ids": sorted(set(duplicate_active_ids)),
+        "identity_conflicts": identity_conflicts,
+        "status_changes": status_changes,
+        "score_changes": score_changes,
+        "schedule_changes": schedule_changes,
+    }
+
+
+def _load_source_catalog(
+    *,
+    source_reference: dict[str, Any],
+    active_reference: dict[str, Any],
+    active_teams: list[dict[str, Any]],
+    active_matches: list[dict[str, Any]],
+    competition: CompetitionContext,
+    history_root: Path | None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
+    """Load the exact historical catalog referenced by a capture's immutable metadata."""
+    if not isinstance(source_reference, dict):
+        raise ValueError("La captura no conserva una referencia de catálogo verificable")
+    if source_reference.get("sha256") == active_reference.get("sha256"):
+        if not _catalog_compatible(source_reference, active_reference, competition.group_roman, competition.season):
+            raise ValueError("La referencia del catálogo fuente contradice el catálogo activo con el mismo hash")
+        return active_teams, active_matches, active_reference
+
+    path_value = source_reference.get("path")
+    if not isinstance(path_value, str) or not path_value:
+        raise ValueError("La captura no conserva la ruta de su catálogo histórico")
+    path = Path(path_value).expanduser()
+    if not path.is_absolute():
+        base = history_root or Path(__file__).resolve().parents[5]
+        path = base / path
+    if not path.is_file():
+        raise ValueError(f"No existe el catálogo histórico original: {path}")
+    from .catalog import load_team_catalog
+
+    source_teams, source_matches, loaded_reference = load_team_catalog(
+        path,
+        competition=competition,
+    )
+    if not _catalog_compatible(
+        source_reference,
+        loaded_reference,
+        competition.group_roman,
+        competition.season,
+    ):
+        raise ValueError("El hash o la procedencia del catálogo histórico no coincide con la captura")
+    return source_teams, source_matches, loaded_reference
 
 
 def _normalized_payloads_match(
@@ -184,6 +350,7 @@ def inspect_team_capture(
     required_views: tuple[str, ...] = DEFAULT_VIEWS,
     required_follow_states: tuple[str, ...] | None = None,
     include_seed_payloads: bool = False,
+    catalog_history_root: Path | None = None,
 ) -> CaptureInspection:
     """Revalidate source and normalized files without opening a browser or network."""
     capture_dir = capture_dir.expanduser()
@@ -201,9 +368,15 @@ def inspect_team_capture(
     capture_id = capture_dir.name
     identity_ok = False
     catalog_ok = False
+    active_catalog_compatible = False
+    catalog_compatibility: dict[str, Any] = {"status": "not_checked", "compatible": False}
+    source_catalog_reference: dict[str, Any] = {}
+    source_group_team_catalog: list[dict[str, Any]] = []
+    source_known_matches: list[dict[str, Any]] = []
     stored_validation_ok = False
     normalized_valid = False
     current_validation_ok = False
+    original_validation_ok = False
     valid_views: list[str] = []
     valid_states: list[str] = []
 
@@ -226,14 +399,50 @@ def inspect_team_capture(
         identity_ok = all(metadata.get(key) == value for key, value in expected_identity.items())
         if not identity_ok:
             reasons.append("Identidad de fuente/equipo/grupo/temporada incompatible")
-        catalog_ok = _catalog_compatible(
-            metadata.get("related_team_catalog"),
-            team_catalog_reference,
-            competition.group_roman,
-            competition.season,
-        )
+        stored_catalog_reference = metadata.get("related_team_catalog")
+        try:
+            (
+                source_group_team_catalog,
+                source_known_matches,
+                source_catalog_reference,
+            ) = _load_source_catalog(
+                source_reference=stored_catalog_reference,
+                active_reference=team_catalog_reference,
+                active_teams=group_team_catalog,
+                active_matches=known_matches,
+                competition=competition,
+                history_root=catalog_history_root,
+            )
+            catalog_ok = _catalog_compatible(
+                stored_catalog_reference,
+                source_catalog_reference,
+                competition.group_roman,
+                competition.season,
+            )
+        except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
+            catalog_ok = False
+            reasons.append(f"No se pudo verificar el catálogo histórico original: {exc}")
+        if catalog_ok:
+            catalog_compatibility = compare_catalog_versions(
+                source_reference=source_catalog_reference,
+                source_teams=source_group_team_catalog,
+                source_matches=source_known_matches,
+                active_reference=team_catalog_reference,
+                active_teams=group_team_catalog,
+                active_matches=known_matches,
+            )
+            active_catalog_compatible = bool(catalog_compatibility["compatible"])
+            if not active_catalog_compatible:
+                reasons.append("La captura no es compatible con el catálogo activo: " + json.dumps(
+                    {
+                        "match_ids_missing": catalog_compatibility["match_ids_missing"],
+                        "identity_conflicts": catalog_compatibility["identity_conflicts"],
+                        "team_ids_conserved": catalog_compatibility["team_ids_conserved"],
+                    },
+                    ensure_ascii=False,
+                ))
         if not catalog_ok:
-            reasons.append("La procedencia del catálogo de partidos falta o no coincide")
+            reasons.append("La procedencia íntegra del catálogo de partidos original no pudo verificarse")
         stored_validation_ok = stored_validation.get("valid") is True
         if not stored_validation_ok:
             reasons.append("La validación guardada no está marcada como válida")
@@ -387,6 +596,16 @@ def inspect_team_capture(
                     competition_context=competition,
                     follow_state_html=follow_state_html,
                 )
+                original_validation = validate_team_profile(
+                    parsed,
+                    catalog_record=team_catalog_record,
+                    group_team_catalog=source_group_team_catalog,
+                    known_matches=source_known_matches,
+                    requested_views=requested_valid_views,
+                )
+                original_validation_ok = bool(original_validation.get("valid"))
+                if not original_validation_ok:
+                    reasons.append("La revalidación semántica offline detectó incoherencias")
                 validation = validate_team_profile(
                     parsed,
                     catalog_record=team_catalog_record,
@@ -394,18 +613,22 @@ def inspect_team_capture(
                     known_matches=known_matches,
                     requested_views=requested_valid_views,
                 )
-                current_validation_ok = bool(validation.get("valid"))
-                if not current_validation_ok:
-                    reasons.append("La revalidación semántica offline detectó incoherencias")
+                if not validation.get("valid"):
+                    reasons.append("La revalidación contra el catálogo activo detectó incoherencias")
+                current_validation_ok = bool(
+                    original_validation_ok
+                    and validation.get("valid")
+                    and active_catalog_compatible
+                )
             except (ValueError, TypeError, KeyError) as exc:
                 reasons.append(f"La revalidación semántica offline falló: {type(exc).__name__}: {exc}")
 
-        if parsed is not None and current_validation_ok:
+        if parsed is not None and original_validation_ok:
             normalized_valid, normalized_reasons = _normalized_payloads_match(
                 capture_dir,
                 metadata,
                 parsed,
-                catalog_reference=team_catalog_reference,
+                catalog_reference=source_catalog_reference,
             )
             reasons.extend(normalized_reasons)
 
@@ -419,7 +642,7 @@ def inspect_team_capture(
     original_views = tuple(metadata.get("requested_views") or ())
     original_valid = bool(
         stored_validation_ok
-        and current_validation_ok
+        and original_validation_ok
         and original_views
         and all(view in valid_views for view in original_views)
     )
@@ -436,7 +659,7 @@ def inspect_team_capture(
         classification = "complete"
     elif seed_ok:
         classification = "reusable_seed"
-    elif identity_ok and catalog_ok:
+    elif identity_ok and catalog_ok and active_catalog_compatible:
         classification = "incomplete"
     else:
         classification = "invalid"
@@ -471,6 +694,8 @@ def inspect_team_capture(
         path=capture_dir,
         classification=classification,
         valid_for_original_scope=original_valid,
+        active_catalog_compatible=active_catalog_compatible,
+        catalog_compatibility=catalog_compatibility,
         complete_for_current_policy=complete,
         reusable_as_seed=seed_ok,
         valid_views=tuple(view for view in DEFAULT_VIEWS if view in valid_views),

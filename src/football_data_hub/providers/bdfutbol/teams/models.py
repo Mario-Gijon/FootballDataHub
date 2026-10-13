@@ -180,4 +180,6 @@ class TeamProfileData:
     transfer_sections: tuple[TeamTransferSection, ...]
     group_team_ids_from_profile: tuple[int, ...]
     team_match_ids_from_profile: tuple[str, ...]
+    team_league_match_ids_from_profile: tuple[str, ...]
+    team_other_competition_match_ids_from_profile: tuple[str, ...]
     warnings: tuple[str, ...]

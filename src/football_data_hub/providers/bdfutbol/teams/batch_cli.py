@@ -7,6 +7,8 @@ import json
 import math
 import os
 import shutil
+from dataclasses import replace
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -32,7 +34,7 @@ from .batch import (
     run_team_batch,
     write_batch_manifest,
 )
-from .capture_store import CaptureInspection
+from .capture_store import CaptureInspection, inspect_team_capture
 from .catalog import load_team_catalog
 from .export import CAPTURE_POLICY_ID, export_team_capture
 from .cli import _DEFAULT_MATCH_CATALOGS, _reuse_capture_seed
@@ -488,6 +490,16 @@ def main(argv: Sequence[str] | None = None) -> int:
                 capture_id=checkpoint.capture_id,
             ) from exc
 
+        if pending is not None and not bundle.acquired_views:
+            bundle = replace(bundle, derivation={
+                "mode": "offline_checkpoint_recovery",
+                "recovered_at_utc": datetime.now(timezone.utc).isoformat(),
+                "source_checkpoint_id": pending.capture_id,
+                "source_catalog_reference": pending.manifest.get("related_team_catalog"),
+                "active_catalog_reference": references[group],
+                "network_navigations": 0,
+            })
+
         try:
             paths = export_team_capture(
                 output_root,
@@ -502,6 +514,26 @@ def main(argv: Sequence[str] | None = None) -> int:
         except OSError as exc:
             record_failure(kind="storage_error", message=f"{type(exc).__name__}: {exc}")
             raise BatchStop(f"{type(exc).__name__}: {exc}", kind="storage_error", capture_id=checkpoint.capture_id) from exc
+
+        try:
+            published = inspect_team_capture(
+                paths["run_directory"],
+                team_catalog_record=record,
+                competition=context,
+                team_catalog_reference=references[group],
+                group_team_catalog=catalog_teams_by_group[group],
+                known_matches=matches_by_group[group],
+            )
+            if not published.complete_for_current_policy:
+                raise ValueError(
+                    "La captura exportada no pasó la inspección posterior a publicación: "
+                    + "; ".join(published.reasons)
+                )
+        except Exception as exc:
+            message = f"{type(exc).__name__}: {exc}"
+            record_failure(kind="published_capture_verification_failed", message=message)
+            raise BatchLocalFailure(message, capture_id=checkpoint.capture_id) from exc
+
         checkpoint.mark_complete_and_remove_checkpoint(paths["run_directory"])
 
         metadata = json.loads(paths["metadata"].read_text(encoding="utf-8"))

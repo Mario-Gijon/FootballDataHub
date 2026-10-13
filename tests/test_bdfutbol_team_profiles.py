@@ -35,6 +35,7 @@ from football_data_hub.providers.bdfutbol.teams.evidence_store import (
 )
 from football_data_hub.providers.bdfutbol.teams.parser import (
     TeamProfileParseError,
+    _parse_match_ids_by_competition,
     parse_team_profile_pages,
     resolve_team_view_urls,
 )
@@ -260,6 +261,62 @@ def test_player_and_match_relationships_use_ids_not_names(jaen):
     top_ids = {item["player_id"] for item in top["records"]}
     assert player_ids.intersection(top_ids)
     assert player_ids - top_ids  # Destacados is a partial list, not a roster authority.
+
+
+def test_team_match_references_are_partitioned_by_source_competition():
+    html = """
+    <table id="taula-resultats-plantilla">
+      <tr class="COM COM_LIG"><td>10/10/2026</td><td>Liga</td><td>Jornada 7</td>
+        <td><a href="../p/p.php?id=900001">Local</a></td></tr>
+      <tr class="COM COM_FED"><td>12/10/2026</td><td>Copa Federación</td><td>Ronda</td>
+        <td><a href="../p/p.php?id=900002">Local</a></td></tr>
+    </table>
+    """
+    all_ids, league_ids, other_ids = _parse_match_ids_by_competition(
+        BeautifulSoup(html, "html.parser")
+    )
+
+    assert all_ids == ("900001", "900002")
+    assert league_ids == ("900001",)
+    assert other_ids == ("900002",)
+
+
+def test_team_match_reference_without_competition_is_rejected():
+    html = """
+    <table id="taula-resultats-plantilla">
+      <tr><td>10/10/2026</td><td></td><td>Jornada 7</td>
+        <td><a href="../p/p.php?id=900001">Local</a></td></tr>
+    </table>
+    """
+    with pytest.raises(TeamProfileParseError, match="competición de origen"):
+        _parse_match_ids_by_competition(BeautifulSoup(html, "html.parser"))
+
+
+def test_validation_joins_only_league_references_to_group_catalog(jaen):
+    from dataclasses import replace
+
+    context, payload, record, _, capture, _, parsed, _ = jaen
+    league_ids = parsed.team_league_match_ids_from_profile
+    other_id = "other-competition-id"
+    scoped = replace(
+        parsed,
+        team_match_ids_from_profile=(*parsed.team_match_ids_from_profile, other_id),
+        team_league_match_ids_from_profile=league_ids,
+        team_other_competition_match_ids_from_profile=(other_id,),
+    )
+    known_matches = payload["matches"]
+    report = validate_team_profile(
+        scoped,
+        catalog_record=record,
+        group_team_catalog=payload["teams"],
+        known_matches=known_matches,
+        requested_views=tuple(capture["requested_views"]),
+    )
+
+    assert report["valid"] is True
+    assert report["cross_references"]["league_match_references"] == len(league_ids)
+    assert report["cross_references"]["other_competition_match_ids"] == ["other-competition-id"]
+    assert "unknown_profile_match" not in {item["code"] for item in report["issues"]}
 
 
 def test_snapshot_metadata_and_sha256_are_reproducible(jaen, racing):

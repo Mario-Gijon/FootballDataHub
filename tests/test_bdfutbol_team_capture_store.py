@@ -7,7 +7,10 @@ from pathlib import Path
 from football_data_hub.providers.bdfutbol.context import get_competition_context
 from football_data_hub.providers.bdfutbol.teams import batch_cli
 from football_data_hub.providers.bdfutbol.teams.acquisition import DEFAULT_VIEWS, FOLLOW_STATES
-from football_data_hub.providers.bdfutbol.teams.capture_store import inspect_team_capture
+from football_data_hub.providers.bdfutbol.teams.capture_store import (
+    compare_catalog_versions,
+    inspect_team_capture,
+)
 from football_data_hub.providers.bdfutbol.teams.catalog import load_team_catalog
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -144,6 +147,93 @@ def test_normalized_files_are_required_for_current_completeness(tmp_path: Path):
     assert result.complete_for_current_policy is False
     assert result.normalized_valid is False
     assert any("player_match_metrics.json" in reason for reason in result.reasons)
+
+
+def test_old_capture_remains_complete_with_compatible_updated_catalog(tmp_path: Path):
+    source = DERIVED_PROFILE_RUNS[1]
+    context = get_competition_context(group=1)
+    source_teams, source_matches, _ = load_team_catalog(GROUP_CATALOGS[1], competition=context)
+    record = next(item for item in source_teams if int(item["team_id"]) == 48)
+    before = json.loads((source / "metadata/capture.json").read_text(encoding="utf-8"))
+    updated = json.loads(GROUP_CATALOGS[1].read_text(encoding="utf-8"))
+    updated["metadata"]["source_capture_id"] = "catalog-update-fixture"
+    updated["metadata"]["source_captured_at_utc"] = "2026-10-13T10:00:00+00:00"
+    scheduled = next(item for item in updated["matches"] if item["matchday"] == 7 and item["status"] == "unplayed")
+    scheduled.update({"status": "played", "unplayed_state": None, "home_goals": 1, "away_goals": 0})
+    active_path = tmp_path / "updated-matches.json"
+    active_path.write_text(json.dumps(updated, ensure_ascii=False), encoding="utf-8")
+    active_teams, active_matches, active_reference = load_team_catalog(active_path, competition=context)
+
+    result = inspect_team_capture(
+        source,
+        team_catalog_record=record,
+        competition=context,
+        team_catalog_reference=active_reference,
+        group_team_catalog=active_teams,
+        known_matches=active_matches,
+        catalog_history_root=ROOT,
+    )
+
+    after = json.loads((source / "metadata/capture.json").read_text(encoding="utf-8"))
+    assert result.valid_for_original_scope is True
+    assert result.active_catalog_compatible is True
+    assert result.catalog_compatibility["match_ids_conserved"] is True
+    assert result.catalog_compatibility["status_changes"]
+    assert result.complete_for_current_policy is True
+    assert result.reusable_as_seed is True
+    assert after == before
+
+
+def test_compatible_catalog_additions_are_allowed_but_missing_or_changed_ids_block_reuse():
+    teams = [{"team_id": 1}, {"team_id": 2}]
+    reference = {"group": "I", "season": "2026-27", "source_capture_id": "old", "sha256": "a" * 64}
+    active_reference = {"group": "I", "season": "2026-27", "source_capture_id": "new", "sha256": "b" * 64}
+    old_matches = [
+        {"match_id": "10", "matchday": 1, "home_team_id": 1, "away_team_id": 2, "status": "unplayed", "home_goals": None, "away_goals": None},
+    ]
+    compatible_matches = [
+        {"match_id": "10", "matchday": 1, "home_team_id": 1, "away_team_id": 2, "status": "played", "home_goals": 1, "away_goals": 0},
+        {"match_id": "11", "matchday": 2, "home_team_id": 2, "away_team_id": 1, "status": "unplayed", "home_goals": None, "away_goals": None},
+    ]
+
+    compatible = compare_catalog_versions(
+        source_reference=reference,
+        source_teams=teams,
+        source_matches=old_matches,
+        active_reference=active_reference,
+        active_teams=teams,
+        active_matches=compatible_matches,
+    )
+    assert compatible["compatible"] is True
+    assert compatible["match_ids_added"] == ["11"]
+    assert compatible["status_changes"] == [{"match_id": "10", "source_status": "unplayed", "active_status": "played"}]
+    assert compatible["score_changes"][0]["score_added"] is True
+
+    changed_identity = [
+        {**compatible_matches[0], "home_team_id": 2},
+        compatible_matches[1],
+    ]
+    incompatible = compare_catalog_versions(
+        source_reference=reference,
+        source_teams=teams,
+        source_matches=old_matches,
+        active_reference=active_reference,
+        active_teams=teams,
+        active_matches=changed_identity,
+    )
+    assert incompatible["compatible"] is False
+    assert incompatible["identity_conflicts"][0]["match_id"] == "10"
+
+    missing_id = compare_catalog_versions(
+        source_reference=reference,
+        source_teams=teams,
+        source_matches=old_matches,
+        active_reference=active_reference,
+        active_teams=teams,
+        active_matches=[],
+    )
+    assert missing_id["compatible"] is False
+    assert missing_id["match_ids_missing"] == ["10"]
 
 
 def test_batch_team_selection_is_catalog_scoped_and_limit_is_global():
