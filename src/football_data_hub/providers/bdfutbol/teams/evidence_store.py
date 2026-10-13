@@ -14,8 +14,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from bs4 import BeautifulSoup
+
 from .acquisition import FOLLOW_STATES, TEAM_VIEW_SELECTORS, _view_markers, create_team_capture_id
-from .capture_store import selected_follow_state
 from .parser import resolve_team_view_urls
 
 _RECOVERABLE_STATUSES = {"acquiring", "parse_failed", "local_error", "incomplete"}
@@ -289,8 +290,16 @@ def read_pending_evidence(
             if state not in FOLLOW_STATES or evidence.get("status") != "VALID" or evidence.get("selected_value") != state:
                 raise ValueError("estado no válido")
             html = _read_snapshot(directory, evidence)
-            if selected_follow_state(html) != state:
-                raise ValueError("el HTML no confirma el estado seleccionado")
+            select = BeautifulSoup(html, "html.parser").select_one("#vista_jornades")
+            if select is None or not any(
+                option.get("value") == state for option in select.select("option")
+            ):
+                raise ValueError("el HTML no contiene la opción de Seguimiento capturada")
+            # `selected_value` comes from the live DOM property read by
+            # Playwright/Pure CDP. `document.html()` serializes markup and may
+            # retain the original `selected` attribute even after JavaScript
+            # changed the control's live value, so that attribute is not a
+            # reliable source for a captured state.
             follow_state_html[state] = html
             follow_state_diagnostics[state] = {**evidence, "reused": True}
         except (OSError, ValueError, KeyError, TypeError, gzip.BadGzipFile) as exc:

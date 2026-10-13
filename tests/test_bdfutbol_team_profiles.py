@@ -858,6 +858,49 @@ def test_valid_html_is_durable_before_parse_and_recovers_offline(tmp_path):
     assert validation["valid"] is True
 
 
+def test_pending_checkpoint_trusts_captured_follow_value_when_html_attribute_is_stale(tmp_path):
+    checkpoint, context, payload, record, _, _, follow_states = _checkpoint_from_complete_jaen(
+        tmp_path / "captures",
+        capture_id="diag-follow-live-value",
+    )
+    for state, html in follow_states.items():
+        soup = BeautifulSoup(html, "html.parser")
+        select = soup.select_one("#vista_jornades")
+        assert select is not None
+        for option in select.select("option"):
+            option.attrs.pop("selected", None)
+        # Browser DOM serialization can retain the initial markup selection,
+        # while the separately recorded live `selected_value` is authoritative.
+        initial_option = select.select_one('option[value="p"]')
+        assert initial_option is not None
+        initial_option["selected"] = "selected"
+        checkpoint.record_follow_state(state, str(soup), {"selected_value": state})
+
+    pending = read_pending_evidence(
+        checkpoint.path,
+        season=context.season,
+        group=context.group_roman,
+        team_record=record,
+    )
+    assert set(pending.valid_follow_states) == {"p", "t", "go", "tot"}
+    assert not any("Estado Seguimiento" in warning for warning in pending.warnings)
+
+    parsed = parse_team_profile_pages(
+        pending.seed["raw_views"],
+        team_catalog_record=record,
+        competition_context=context,
+        follow_state_html=pending.seed["follow_state_html"],
+    )
+    validation = validate_team_profile(
+        parsed,
+        catalog_record=record,
+        group_team_catalog=payload["teams"],
+        known_matches=payload["matches"],
+        requested_views=DEFAULT_VIEWS,
+    )
+    assert validation["valid"] is True
+
+
 def test_acquisition_checkpoints_valid_html_before_parser_exception(jaen, monkeypatch, tmp_path):
     context, payload, record, _, _, views, _, _ = jaen
     soup = BeautifulSoup(views["squad"], "html.parser")

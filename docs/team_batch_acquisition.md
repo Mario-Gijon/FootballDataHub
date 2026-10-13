@@ -311,3 +311,130 @@ servidor UJA.
 La verificación automática final del código TEAM-03B1 terminó con 253 tests
 pasando en 462.85 s, Ruff, compilación Python y `git diff --check` correctos.
 No se modificó el índice `config/team_profiles_2026-27.json`.
+
+## Recopilación local TEAM-03B2 (13/10/2026)
+
+Por decisión del usuario, el almacén de desarrollo local es ahora
+`$HOME/FootballDataHub-data/team-captures`; no se utilizó el servidor UJA. La
+carpeta está fuera del checkout. Se copiaron allí, sin mover los originales,
+las cuatro capturas completas (48, 178, 49 y 39). Cada copia conserva 22
+archivos y todos sus SHA-256 coinciden con la fuente. El preflight completo
+validó 40 equipos, cuatro capturas reutilizables, 36 pendientes y 216
+navegaciones. El directorio estaba legible/escribible y tenía unos 9.3 GiB
+libres.
+
+El primer bloque autorizado fue Lugo (I, 76), Bilbao Athletic (I, 72),
+Cacereño (I, 149), Villarreal B (II, 94) y Alcorcón (II, 107). Se planearon 30
+navegaciones, seis por equipo. La sesión hizo 18 navegaciones: seis vistas para
+Lugo, seis para Bilbao Athletic y seis para Cacereño. No se lanzaron visitas
+para los equipos II después de aparecer el conflicto de catálogo.
+
+| Equipo | Captura / checkpoint | Resultado validado |
+|---|---|---|
+| Lugo, I, `76` | `20261013T094201.171555Z-70ef7a79` | Completo: 29 jugadores, 1 entrenador, 29 estadísticas, 174 registros de minutos, 21 métricas de partido, 19 altas, 27 bajas y 6 referencias a partidos. |
+| Bilbao Athletic, I, `72` | `20261013T094313.981963Z-7ff252ef` | Completo: 28 jugadores, 1 entrenador, 28 estadísticas, 196 registros de minutos, 22 métricas de partido, 11 altas, 10 bajas y 7 referencias a partidos. |
+| Cacereño, I, `149` | Checkpoint `20261013T094427.054639Z-94bb716e` | Sin export publicado. Las seis vistas y los cuatro estados de Seguimiento están guardados, con HTTP 200, estructura, identidad y hashes comprobados. La validación encontró `match_id` `427720` y `427726`, ausentes del catálogo del Grupo I. |
+| Villarreal B, II, `94` | — | Pendiente; no visitado. |
+| Alcorcón, II, `107` | — | Pendiente; no visitado. |
+
+El manifiesto del bloque es
+`$HOME/FootballDataHub-data/team-captures/2026-27/batch-manifests/20261013T094534.185848Z-004ad2d1/manifest.json`.
+Resume 2 completos, 1 fallo local por `stale_match_catalog` y 2 pendientes.
+No hubo desafío, CAPTCHA ni denegación de acceso. El fallo ocurrió al validar
+referencias deportivas contra los catálogos capturados el 10/10/2026; el
+catálogo del Grupo I contiene 380 partidos y su captura declara seis jornadas
+disputadas. Antes de continuar hay que adquirir y validar una versión vigente
+del dataset de partidos del Grupo I, con resolución exacta por ID. No se debe
+resolver por nombres; se debe refrescar y validar primero el dataset de la
+competición antes de reanudar el bloque. El catálogo del Grupo II también es
+del 10/10 y no se contrastó con una ficha nueva en este piloto; su vigencia
+debe confirmarse antes de visitar equipos de ese grupo.
+
+Una vez reemplazada explícitamente la ruta de catálogo por un export vigente y
+validado, el preflight del bloque exacto puede repetirse así:
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/acquire_bdfutbol_team_batch.py \
+  --season 2026-27 --groups both \
+  --team-id 76 --team-id 72 --team-id 149 --team-id 94 --team-id 107 \
+  --limit 5 --pause-seconds 5 --dry-run \
+  --group1-catalog "$FDH_GROUP1_MATCHES" \
+  --group2-catalog data/exports/bdfutbol/group2_classification/derived-res01-20261010T102656Z/normalized/matches.json \
+  --output-root "$HOME/FootballDataHub-data/team-captures"
+```
+
+Tras confirmar `recover_offline` para Cacereño y las referencias exactas en el
+catálogo actualizado, se puede repetir el mismo comando sin `--dry-run`, usando
+el mismo root y perfil. La evidencia de Cacereño ya puede leerse offline: las
+opciones `p`, `t`, `go` y `tot` se reconocen mediante el valor vivo registrado
+en la adquisición y sus hashes, porque la serialización HTML puede conservar
+un atributo `selected` obsoleto. Este ajuste no modifica los HTML guardados.
+Los IDs 94 y 107 se visitarán solo después de superar ese preflight.
+
+Para cada bloque posterior, consultar primero el dry-run sin límite para
+identificar equipos pendientes y pasar hasta cinco `--team-id` explícitos. La
+CLI aplica `--limit` antes de omitir capturas completas; por eso no se debe
+usar `--limit 5` como selector automático de los cinco siguientes. Repetir el
+dry-run con esos mismos IDs, ejecutar secuencialmente con pausa de cinco
+segundos y no continuar si el manifiesto registra denegación, catálogo obsoleto
+o error de almacenamiento. Los datos nuevos permanecen fuera de Git y no se
+publican en `config/team_profiles_2026-27.json`.
+
+El dry-run global posterior al bloque, tras validar los datos guardados,
+informó 6 `skip_complete`, 1 `recover_offline` (Cacereño) y 33
+`acquire_or_rebuild`, con 198 navegaciones. Esas 33 cuentas incluyen Villarreal
+B y Alcorcón más otros 31 equipos sin visitar. El estado no autoriza a
+continuar mientras el catálogo de Grupo I siga en su captura del 10/10.
+
+Para continuar con el siguiente bloque —primero recuperar Cacereño offline con
+el catálogo actualizado y después adquirir cuatro fichas— definir la ruta del
+`matches.json` de Grupo I ya actualizado y validado. El Grupo II conserva su
+catálogo actual para este bloque, que selecciona solo equipos del Grupo I; su
+vigencia se debe confirmar antes de adquirir Villarreal B o Alcorcón:
+
+```bash
+export FDH_GROUP1_MATCHES="/ruta/validada/group1/normalized/matches.json"
+
+# Inspeccionar antes de navegar: Cacereño debe poder recuperarse offline.
+PYTHONPATH=src .venv/bin/python scripts/acquire_bdfutbol_team_batch.py \
+  --season 2026-27 --groups both \
+  --team-id 149 --team-id 62 --team-id 145 --team-id 95 --team-id 88 \
+  --limit 5 --pause-seconds 5 --dry-run \
+  --group1-catalog "$FDH_GROUP1_MATCHES" \
+  --group2-catalog data/exports/bdfutbol/group2_classification/derived-res01-20261010T102656Z/normalized/matches.json \
+  --output-root "$HOME/FootballDataHub-data/team-captures"
+
+# Solo después de revisar el dry-run, repetir sin --dry-run:
+PYTHONPATH=src .venv/bin/python scripts/acquire_bdfutbol_team_batch.py \
+  --season 2026-27 --groups both \
+  --team-id 149 --team-id 62 --team-id 145 --team-id 95 --team-id 88 \
+  --limit 5 --pause-seconds 5 \
+  --group1-catalog "$FDH_GROUP1_MATCHES" \
+  --group2-catalog data/exports/bdfutbol/group2_classification/derived-res01-20261010T102656Z/normalized/matches.json \
+  --output-root "$HOME/FootballDataHub-data/team-captures" \
+  --profile "$HOME/.football-data-hub-chromium-pure-cdp" \
+  --browser-executable /usr/bin/chromium
+```
+
+Si el nuevo preflight no identifica Cacereño como `recover_offline`, o su
+normalización descubre IDs aún ausentes, no se debe ejecutar el bloque. Para
+cada lote posterior, hacer el dry-run global, elegir hasta cinco IDs que estén
+`acquire_or_rebuild` y pasarlos explícitamente a la CLI; comprobar el
+manifiesto antes de escoger el lote siguiente. No envolver este comando en
+otro `xvfb-run`: `BrowserRuntime` ya inicia Xvfb por medio de `xvfb-run`.
+
+La inspección de los dos exports también confirmó que se conservan ceros y
+nulos de manera distinta: `player_statistics` contiene ceros numéricos reales;
+`player_match_minutes.value` conserva 44 nulos y 35 ceros para Lugo, y 54
+nulos y 30 ceros para Bilbao Athletic. `transfer_date` y `fee` siguen `null`
+en todas las filas; los equipos relacionados sin referencia también permanecen
+`null`. No se completaron datos ausentes. Los lectores actuales de la API
+aceptan un directorio de captura absoluto en el índice y una ruta de índice
+configurable mediante `FDH_TEAM_PROFILES_INDEX`; no se publicó ninguna de estas
+capturas ni se cambió el índice actual.
+
+La suite completa terminó con **254 tests pasando en 530.93 s**; Ruff y
+`git diff --check` también pasaron. El nuevo test de regresión cubre la
+reutilización de los cuatro estados de Seguimiento cuando el HTML serializado
+conserva un atributo `selected` inicial que no representa el valor vivo que se
+registró durante la captura.
