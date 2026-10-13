@@ -608,7 +608,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         "summary": manifest["summary"],
         "stopped_on_access_denial": manifest["stopped_on_access_denial"],
     }, ensure_ascii=False, indent=2))
-    return 0
+    selected_complete = bool(manifest["teams"]) and all(
+        entry.get("status") == "complete" for entry in manifest["teams"]
+    )
+    return 0 if selected_complete else 1
 
 
 if __name__ == "__main__":

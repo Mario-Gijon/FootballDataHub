@@ -10,9 +10,13 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import select
 import signal
+import shutil
 import subprocess
+import threading
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
@@ -80,6 +84,240 @@ class BrowserInfo:
     display: str | None
     uses_xvfb: bool
     xvfb_external: bool
+    browser_pid: int | None = None
+    xvfb_pid: int | None = None
+    process_display: str | None = None
+    screen_size: tuple[int, int] | None = None
+
+
+@dataclass(slots=True)
+class _ManagedXvfb:
+    process: subprocess.Popen[bytes]
+    display: str
+    shutdown_timeout_seconds: float
+    _closed: bool = False
+
+    @property
+    def pid(self) -> int:
+        return self.process.pid
+
+    def close(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        from .browser_runtime import stop_process_group
+
+        stop_process_group(self.process, self.shutdown_timeout_seconds)
+
+
+_BROWSER_ENV_LOCK = threading.RLock()
+_RAW_CHROMIUM_BINARIES = (
+    Path("/usr/lib/chromium/chromium"),
+    Path("/usr/lib64/chromium/chromium"),
+    Path("/usr/lib/chromium-browser/chromium-browser"),
+    Path("/opt/chromium/chrome"),
+)
+_DISPLAY_ENV_KEYS = (
+    "DISPLAY",
+    "WAYLAND_DISPLAY",
+    "WAYLAND_SOCKET",
+    "XDG_SESSION_TYPE",
+    "GDK_BACKEND",
+    "OZONE_PLATFORM",
+    "XAUTHORITY",
+)
+
+
+@contextmanager
+def _browser_display_environment(display: str):
+    """Give the browser launch only the selected X11 display environment."""
+
+    updates = {
+        "DISPLAY": display,
+        "XDG_SESSION_TYPE": "x11",
+        "GDK_BACKEND": "x11",
+        "OZONE_PLATFORM": "x11",
+    }
+    with _BROWSER_ENV_LOCK:
+        previous = {key: os.environ.get(key) for key in _DISPLAY_ENV_KEYS}
+        for key in _DISPLAY_ENV_KEYS:
+            os.environ.pop(key, None)
+        os.environ.update(updates)
+        try:
+            yield
+        finally:
+            for key in _DISPLAY_ENV_KEYS:
+                os.environ.pop(key, None)
+            for key, value in previous.items():
+                if value is not None:
+                    os.environ[key] = value
+
+
+def _start_xvfb(screen: str, timeout_seconds: float) -> _ManagedXvfb:
+    """Start an owned, TCP-disabled Xvfb and receive its allocated display."""
+
+    executable = shutil.which("Xvfb")
+    if not executable:
+        raise BrowserSessionError(
+            "Pure CDP necesita Xvfb para mantener Chromium fuera del escritorio; "
+            "no se encontró el ejecutable Xvfb."
+        )
+    read_fd, write_fd = os.pipe()
+    process: subprocess.Popen[bytes] | None = None
+    try:
+        env = os.environ.copy()
+        for key in ("DISPLAY", "WAYLAND_DISPLAY", "WAYLAND_SOCKET", "XAUTHORITY"):
+            env.pop(key, None)
+        env.update({"XDG_SESSION_TYPE": "x11", "GDK_BACKEND": "x11"})
+        process = subprocess.Popen(
+            [
+                executable,
+                "-displayfd",
+                str(write_fd),
+                "-screen",
+                "0",
+                screen,
+                "-nolisten",
+                "tcp",
+            ],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            env=env,
+            pass_fds=(write_fd,),
+            start_new_session=True,
+        )
+        os.close(write_fd)
+        write_fd = -1
+        ready, _, _ = select.select([read_fd], [], [], timeout_seconds)
+        if not ready:
+            raise BrowserSessionError(
+                f"Xvfb no asignó DISPLAY dentro de {timeout_seconds:.1f}s."
+            )
+        display_number = os.read(read_fd, 64).decode("ascii", errors="strict").strip()
+        if process.poll() is not None:
+            raise BrowserSessionError(
+                f"Xvfb terminó durante el arranque (código {process.returncode})."
+            )
+        if not display_number.isdigit():
+            raise BrowserSessionError(
+                f"Xvfb devolvió un identificador DISPLAY inválido: {display_number!r}."
+            )
+        return _ManagedXvfb(
+            process=process,
+            display=f":{display_number}",
+            shutdown_timeout_seconds=min(timeout_seconds, 8.0),
+        )
+    except BaseException:
+        if process is not None:
+            from .browser_runtime import stop_process_group
+
+            stop_process_group(process, min(timeout_seconds, 8.0))
+        raise
+    finally:
+        os.close(read_fd)
+        if write_fd >= 0:
+            os.close(write_fd)
+
+
+def _process_display(pid: int) -> str | None:
+    """Read the DISPLAY inherited by a real process from procfs."""
+
+    try:
+        entries = Path(f"/proc/{pid}/environ").read_bytes().split(b"\0")
+    except (FileNotFoundError, PermissionError, ProcessLookupError):
+        return None
+    for entry in entries:
+        if entry.startswith(b"DISPLAY="):
+            return entry.partition(b"=")[2].decode("utf-8", errors="replace")
+    return None
+
+
+def _process_command_line(pid: int) -> list[str]:
+    try:
+        values = Path(f"/proc/{pid}/cmdline").read_bytes().split(b"\0")
+    except (FileNotFoundError, PermissionError, ProcessLookupError):
+        return []
+    return [value.decode("utf-8", errors="replace") for value in values if value]
+
+
+def _process_start_identity(pid: int) -> str | None:
+    """Stable kernel start tick used to distinguish an owned PID from reuse."""
+
+    try:
+        fields = Path(f"/proc/{pid}/stat").read_text(encoding="ascii").rsplit(")", 1)[1].split()
+        return fields[19]
+    except (FileNotFoundError, PermissionError, IndexError):
+        return None
+
+
+@contextmanager
+def _capture_browser_process_launch(executable: str):
+    """Record the exact inherited display environment at Chromium exec time."""
+
+    launches: list[dict[str, Any]] = []
+    original = asyncio.create_subprocess_exec
+    expected_executable = str(Path(executable).resolve())
+
+    async def monitored_create_subprocess_exec(program, *args, **kwargs):
+        try:
+            actual_executable = str(Path(os.fspath(program)).resolve())
+        except (TypeError, ValueError, OSError):
+            actual_executable = ""
+        if actual_executable == expected_executable:
+            launch = {
+                "display": os.environ.get("DISPLAY"),
+                "wayland_display": os.environ.get("WAYLAND_DISPLAY"),
+                "wayland_socket": os.environ.get("WAYLAND_SOCKET"),
+                "ozone_platform": os.environ.get("OZONE_PLATFORM"),
+                "argv": [str(program), *(str(arg) for arg in args)],
+            }
+            process = await original(program, *args, **kwargs)
+            launch["pid"] = process.pid
+            launch["start_identity"] = _process_start_identity(process.pid)
+            launches.append(launch)
+            return process
+        return await original(program, *args, **kwargs)
+
+    with _BROWSER_ENV_LOCK:
+        asyncio.create_subprocess_exec = monitored_create_subprocess_exec
+        try:
+            yield launches
+        finally:
+            asyncio.create_subprocess_exec = original
+
+
+def _resolve_chromium_executable(configured: Path | None) -> str:
+    requested = configured.expanduser().resolve() if configured else Path(find_browser("chromium")).resolve()
+    # Arch's /usr/bin/chromium launcher reads ~/.config/chromium-flags.conf,
+    # which can force Wayland even when Xvfb was selected. Use the packaged
+    # browser binary directly when available so desktop-only flags stay out.
+    if requested.name in {"chromium", "chromium-browser"}:
+        for candidate in _RAW_CHROMIUM_BINARIES:
+            if candidate.is_file() and os.access(candidate, os.X_OK):
+                return str(candidate.resolve())
+    return str(requested)
+
+
+def _profile_process_pids(profile: Path) -> list[int]:
+    """Find Chromium processes already using this exact profile, without touching them."""
+
+    expected = f"--user-data-dir={profile.resolve()}".encode()
+    matches: list[int] = []
+    for entry in Path("/proc").iterdir():
+        if not entry.name.isdigit():
+            continue
+        pid = int(entry.name)
+        if pid == os.getpid():
+            continue
+        try:
+            state = (entry / "stat").read_text(encoding="ascii").rsplit(")", 1)[1].split()[0]
+            args = (entry / "cmdline").read_bytes().split(b"\0")
+        except (FileNotFoundError, PermissionError, IndexError):
+            continue
+        if state != "Z" and expected in b"\0".join(args):
+            matches.append(pid)
+    return matches
 
 
 @dataclass(slots=True)
@@ -316,17 +554,15 @@ class _PureCDPBackend:
         self._lock_fd: int | None = None
         self._profile: Path | None = None
         self._browser_pid: int | None = None
+        self._browser_start_identity: str | None = None
+        self._xvfb: _ManagedXvfb | None = None
+        self._browser_display: str | None = None
 
     def start(self) -> None:
-        if not os.environ.get("DISPLAY"):
-            if self.config.use_xvfb:
-                raise BrowserSessionError(
-                    "Pure CDP requiere un DISPLAY. En Linux sin escritorio, "
-                    "inicia el comando con `xvfb-run -a -s '-screen 0 "
-                    f"{self.config.screen}' ...`."
-                )
+        if not self.config.use_xvfb and not os.environ.get("DISPLAY"):
             raise BrowserSessionError(
-                "Pure CDP necesita un DISPLAY o Xvfb externo; no se inicia una pantalla oculta automáticamente."
+                "Pure CDP sin Xvfb necesita un DISPLAY existente. "
+                "La ejecución segura predeterminada inicia una pantalla Xvfb propia."
             )
         if self.config.browser != "chromium":
             raise BrowserSessionError(
@@ -339,27 +575,120 @@ class _PureCDPBackend:
         self._profile = profile
         self._lock_fd = _acquire_profile_lock(profile)
         try:
-            executable = (
-                str(self.config.browser_executable_path.expanduser().resolve())
-                if self.config.browser_executable_path
-                else find_browser(self.config.browser)
+            existing = _profile_process_pids(profile)
+            if existing:
+                raise BrowserSessionError(
+                    "No se iniciará otra instancia ni se conectará a Chromium existente "
+                    f"que usa el perfil autorizado {profile} (PID: {existing})."
+                )
+            executable = _resolve_chromium_executable(
+                self.config.browser_executable_path
             )
             if not Path(executable).is_file():
                 raise BrowserSessionError(f"No existe Chromium en {executable}")
+            if self.config.use_xvfb:
+                self._xvfb = _start_xvfb(
+                    self.config.screen,
+                    self.config.startup_timeout_seconds,
+                )
+                self._browser_display = self._xvfb.display
+            else:
+                self._browser_display = os.environ.get("DISPLAY")
+            if not self._browser_display:
+                raise BrowserSessionError(
+                    "No se pudo seleccionar un DISPLAY para Chromium; no se abrirán páginas."
+                )
             started = time.monotonic()
-            self.browser = _seleniumbase_browser(
-                url="about:blank",
-                user_data_dir=str(profile),
-                headless=False,
-                browser_executable_path=executable,
-                browser_args=["--window-size=1440,1000"],
-                xvfb=False,
-                headed=True,
-            )
+            with (
+                _browser_display_environment(self._browser_display),
+                _capture_browser_process_launch(executable) as browser_launches,
+            ):
+                self.browser = _seleniumbase_browser(
+                    url="about:blank",
+                    user_data_dir=str(profile),
+                    headless=False,
+                    browser_executable_path=executable,
+                    browser_args=[
+                        "--window-size=1440,1000",
+                        "--ozone-platform=x11",
+                    ],
+                    xvfb=False,
+                    headed=True,
+                )
             driver = self.browser.driver
             if hasattr(driver, "cdp_base"):
                 driver = driver.cdp_base
             self._browser_pid = getattr(driver, "_process_pid", None)
+            process_display = self._browser_display
+            screen_size: tuple[int, int] | None = None
+            if self.config.use_xvfb:
+                if self._browser_pid is None:
+                    raise BrowserSessionError(
+                        "SeleniumBase no expuso el PID de Chromium; no es posible "
+                        "verificar el DISPLAY efectivo, así que la sesión se cerrará."
+                    )
+                if not browser_launches:
+                    raise BrowserSessionError(
+                        "No se pudo observar la creación del proceso Chromium; "
+                        "no se permitirá navegar sin verificar su entorno."
+                    )
+                for launch in browser_launches:
+                    if (
+                        launch["display"] != self._browser_display
+                        or launch["wayland_display"] is not None
+                        or launch["wayland_socket"] is not None
+                        or launch["ozone_platform"] != "x11"
+                        or "--ozone-platform=x11" not in launch["argv"]
+                        or any(
+                            argument.startswith("--ozone-platform=wayland")
+                            for argument in launch["argv"]
+                        )
+                    ):
+                        raise BrowserSessionError(
+                            "Aislamiento gráfico no verificado: el entorno o los "
+                            "argumentos del Chromium no fuerzan X11 en el DISPLAY Xvfb."
+                        )
+                matching_launch = next(
+                    (
+                        launch
+                        for launch in browser_launches
+                        if launch.get("pid") == self._browser_pid
+                    ),
+                    None,
+                )
+                expected_profile_arg = f"--user-data-dir={profile}"
+                if (
+                    matching_launch is None
+                    or matching_launch.get("start_identity") is None
+                    or "--ozone-platform=x11" not in matching_launch["argv"]
+                    or expected_profile_arg not in matching_launch["argv"]
+                ):
+                    raise BrowserSessionError(
+                        "Aislamiento gráfico no verificado: no se pudo vincular el PID "
+                        "de Chromium con la ejecución en Xvfb, el perfil solicitado y X11."
+                    )
+                self._browser_start_identity = matching_launch["start_identity"]
+                process_display = matching_launch["display"]
+                if not _pid_running(self._browser_pid):
+                    raise BrowserSessionError(
+                        "El proceso Chromium terminó antes de poder verificar su aislamiento."
+                    )
+                screen = self.browser.evaluate(
+                    "({width: window.screen.width, height: window.screen.height})"
+                )
+                expected_screen = tuple(
+                    int(value) for value in self.config.screen.split("x")[:2]
+                )
+                if (
+                    not isinstance(screen, dict)
+                    or screen.get("width") != expected_screen[0]
+                    or screen.get("height") != expected_screen[1]
+                ):
+                    raise BrowserSessionError(
+                        "Aislamiento gráfico no verificado: Chromium no informa el "
+                        f"tamaño de pantalla Xvfb esperado {expected_screen!r} (recibido {screen!r})."
+                    )
+                screen_size = expected_screen
             elapsed = time.monotonic() - started
             if elapsed > self.config.startup_timeout_seconds:
                 raise BrowserSessionError(
@@ -372,9 +701,13 @@ class _PureCDPBackend:
                 browser_executable=executable,
                 browser_version=_browser_version(executable),
                 automation_version=_seleniumbase_version(),
-                display=os.environ.get("DISPLAY"),
+                display=self._browser_display,
                 uses_xvfb=bool(self.config.use_xvfb),
-                xvfb_external=True,
+                xvfb_external=False,
+                browser_pid=self._browser_pid,
+                xvfb_pid=self._xvfb.pid if self._xvfb else None,
+                process_display=process_display,
+                screen_size=screen_size,
             )
         except BaseException:
             self.close()
@@ -424,12 +757,18 @@ class _PureCDPBackend:
             except Exception as exc:
                 close_error = exc
         if pid is not None and _pid_running(pid):
-            if self._profile is not None and _owned_profile_process(pid, self._profile):
+            if (
+                self._browser_start_identity is not None
+                and _process_start_identity(pid) == self._browser_start_identity
+            ):
                 _terminate_pid(pid, self.config.shutdown_timeout_seconds)
             if _pid_running(pid) and close_error is None:
                 close_error = BrowserSessionError(
                     f"Chromium (PID {pid}) sigue activo tras cerrar Pure CDP."
                 )
+        xvfb, self._xvfb = self._xvfb, None
+        if xvfb is not None:
+            xvfb.close()
         if self._lock_fd is not None:
             _release_profile_lock(self._lock_fd)
             self._lock_fd = None

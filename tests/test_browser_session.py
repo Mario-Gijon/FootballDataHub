@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import os
+from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -226,6 +228,8 @@ class FakePureCDPBrowser:
     def evaluate(self, expression):
         if expression == "window.location.href":
             return self.page.url
+        if "window.screen" in expression:
+            return {"width": 1920, "height": 1080}
         if "performance.getEntriesByType" in expression:
             return self.response_status
         if ".length" in expression:
@@ -262,6 +266,7 @@ def test_pure_cdp_backend_uses_generic_document_and_preserves_profile(monkeypatc
         profile,
         backend="seleniumbase-pure-cdp",
         browser_executable_path=executable,
+        use_xvfb=False,
     )
 
     with session_mod.BrowserSessionManager(config) as session:
@@ -288,9 +293,13 @@ def test_pure_cdp_requires_external_display(monkeypatch, tmp_path):
 
     monkeypatch.delenv("DISPLAY", raising=False)
     session = session_mod.BrowserSessionManager(
-        BrowserRuntimeConfig(tmp_path / "profile", backend="seleniumbase-pure-cdp")
+        BrowserRuntimeConfig(
+            tmp_path / "profile",
+            backend="seleniumbase-pure-cdp",
+            use_xvfb=False,
+        )
     )
-    with pytest.raises(session_mod.BrowserSessionError, match="xvfb-run"):
+    with pytest.raises(session_mod.BrowserSessionError, match="DISPLAY existente"):
         session.start()
     assert not (tmp_path / "profile").exists()
 
@@ -307,6 +316,7 @@ def test_pure_cdp_profile_lock_prevents_concurrent_sessions(monkeypatch, tmp_pat
         tmp_path / "profile",
         backend="seleniumbase-pure-cdp",
         browser_executable_path=executable,
+        use_xvfb=False,
     )
     first = session_mod.BrowserSessionManager(config).start()
     try:
@@ -331,7 +341,171 @@ def test_pure_cdp_preserves_unknown_http_status(monkeypatch, tmp_path):
         tmp_path / "profile",
         backend="seleniumbase-pure-cdp",
         browser_executable_path=executable,
+        use_xvfb=False,
     )
     with session_mod.BrowserSessionManager(config) as session:
         with session.open_page("https://example.test/") as visit:
             assert visit.response_status is None
+
+
+class FakeManagedXvfb:
+    display = ":99"
+    pid = 9199
+
+    def __init__(self):
+        self.closed = False
+
+    def close(self):
+        self.closed = True
+
+
+def test_pure_cdp_launches_in_verified_isolated_display(monkeypatch, tmp_path):
+    from football_data_hub.core import browser_session as session_mod
+
+    executable = tmp_path / "chromium"
+    executable.write_text("binary placeholder", encoding="utf-8")
+    profile = tmp_path / "profile"
+    browser = FakePureCDPBrowser()
+    browser.driver._process_pid = 4242
+    xvfb = FakeManagedXvfb()
+    launch_env = {}
+
+    def launch_browser(**kwargs):
+        launch_env.update(os.environ)
+        launch_env["browser_args"] = kwargs["browser_args"]
+        return browser
+
+    @contextmanager
+    def capture_launch(_executable):
+        yield [{
+            "display": ":99",
+            "wayland_display": None,
+            "wayland_socket": None,
+            "ozone_platform": "x11",
+            "argv": [
+                "chromium",
+                "--ozone-platform=x11",
+                "--user-data-dir=" + str(profile),
+            ],
+            "pid": 4242,
+            "start_identity": "42",
+        }]
+
+    monkeypatch.setenv("DISPLAY", ":0")
+    monkeypatch.setenv("WAYLAND_DISPLAY", "wayland-1")
+    monkeypatch.setenv("WAYLAND_SOCKET", "9")
+    monkeypatch.setenv("XAUTHORITY", "/tmp/desktop.Xauthority")
+    monkeypatch.setattr(session_mod, "_start_xvfb", lambda *_: xvfb)
+    monkeypatch.setattr(session_mod, "_capture_browser_process_launch", capture_launch)
+    monkeypatch.setattr(session_mod, "_profile_process_pids", lambda _profile: [])
+    monkeypatch.setattr(session_mod, "_process_start_identity", lambda _pid: "42")
+    running_states = iter((True, False))
+    monkeypatch.setattr(session_mod, "_pid_running", lambda _pid: next(running_states))
+    monkeypatch.setattr(session_mod, "_terminate_pid", lambda *_: None)
+    monkeypatch.setattr(session_mod, "_seleniumbase_browser", launch_browser)
+    monkeypatch.setattr(session_mod, "_browser_version", lambda _path: "Chromium test")
+
+    config = BrowserRuntimeConfig(
+        profile,
+        backend="seleniumbase-pure-cdp",
+        browser_executable_path=executable,
+        use_xvfb=True,
+    )
+    with session_mod.BrowserSessionManager(config) as session:
+        assert session.info.display == ":99"
+        assert session.info.process_display == ":99"
+        assert session.info.screen_size == (1920, 1080)
+        assert session.info.xvfb_pid == 9199
+        assert session.info.browser_pid == 4242
+        assert session.info.uses_xvfb is True
+        assert session.info.xvfb_external is False
+        assert launch_env["DISPLAY"] == ":99"
+        assert "WAYLAND_DISPLAY" not in launch_env
+        assert "WAYLAND_SOCKET" not in launch_env
+        assert "XAUTHORITY" not in launch_env
+        assert launch_env["GDK_BACKEND"] == "x11"
+        assert launch_env["OZONE_PLATFORM"] == "x11"
+        assert "--ozone-platform=x11" in launch_env["browser_args"]
+    assert xvfb.closed
+    assert os.environ["DISPLAY"] == ":0"
+    assert os.environ["WAYLAND_DISPLAY"] == "wayland-1"
+
+
+def test_pure_cdp_refuses_to_navigate_when_chromium_display_mismatches(monkeypatch, tmp_path):
+    from football_data_hub.core import browser_session as session_mod
+
+    executable = tmp_path / "chromium"
+    executable.write_text("binary placeholder", encoding="utf-8")
+    browser = FakePureCDPBrowser()
+    browser.driver._process_pid = 4242
+    xvfb = FakeManagedXvfb()
+
+    @contextmanager
+    def capture_launch(_executable):
+        yield [{
+            "display": ":0",
+            "wayland_display": None,
+            "wayland_socket": None,
+            "ozone_platform": "x11",
+            "argv": ["chromium", "--ozone-platform=x11"],
+            "pid": 4242,
+            "start_identity": "42",
+        }]
+
+    monkeypatch.setenv("DISPLAY", ":0")
+    monkeypatch.setattr(session_mod, "_start_xvfb", lambda *_: xvfb)
+    monkeypatch.setattr(session_mod, "_capture_browser_process_launch", capture_launch)
+    monkeypatch.setattr(session_mod, "_profile_process_pids", lambda _profile: [])
+    monkeypatch.setattr(session_mod, "_seleniumbase_browser", lambda **_kwargs: browser)
+    monkeypatch.setattr(session_mod, "_browser_version", lambda _path: "Chromium test")
+
+    session = session_mod.BrowserSessionManager(BrowserRuntimeConfig(
+        tmp_path / "profile",
+        backend="seleniumbase-pure-cdp",
+        browser_executable_path=executable,
+        use_xvfb=True,
+    ))
+    with pytest.raises(session_mod.BrowserSessionError, match="Aislamiento gráfico no verificado"):
+        session.start()
+    assert browser.closed
+    assert xvfb.closed
+    assert not session.ready
+
+
+def test_pure_cdp_refuses_existing_chromium_profile_without_connecting(monkeypatch, tmp_path):
+    from football_data_hub.core import browser_session as session_mod
+
+    executable = tmp_path / "chromium"
+    executable.write_text("binary placeholder", encoding="utf-8")
+    monkeypatch.setenv("DISPLAY", ":99")
+    monkeypatch.setattr(session_mod, "_profile_process_pids", lambda _profile: [9876])
+    monkeypatch.setattr(
+        session_mod,
+        "_seleniumbase_browser",
+        lambda **_kwargs: pytest.fail("No debe conectarse a una sesión Chromium existente"),
+    )
+    session = session_mod.BrowserSessionManager(BrowserRuntimeConfig(
+        tmp_path / "profile",
+        backend="seleniumbase-pure-cdp",
+        browser_executable_path=executable,
+        use_xvfb=False,
+    ))
+    with pytest.raises(session_mod.BrowserSessionError, match="Chromium existente"):
+        session.start()
+
+
+def test_chromium_launcher_resolves_to_raw_binary_to_avoid_desktop_flags(monkeypatch, tmp_path):
+    from football_data_hub.core import browser_session as session_mod
+
+    launcher = tmp_path / "chromium"
+    raw_binary = tmp_path / "raw-chromium"
+    launcher.write_text("launcher", encoding="utf-8")
+    raw_binary.write_text("binary", encoding="utf-8")
+    raw_binary.chmod(0o755)
+    monkeypatch.setattr(session_mod, "_RAW_CHROMIUM_BINARIES", (raw_binary,))
+
+    assert session_mod._resolve_chromium_executable(launcher) == str(raw_binary.resolve())
+
+    custom = tmp_path / "custom-browser"
+    custom.write_text("binary", encoding="utf-8")
+    assert session_mod._resolve_chromium_executable(custom) == str(custom.resolve())

@@ -296,6 +296,15 @@ def acquire_team_profile(
                 "browser_version": info.browser_version if info else None,
                 "automation_version": info.automation_version if info else None,
                 "display": info.display if info else None,
+                "process_display": info.process_display if info else None,
+                "screen_size": (
+                    {
+                        "width": info.screen_size[0],
+                        "height": info.screen_size[1],
+                    }
+                    if info and info.screen_size
+                    else None
+                ),
                 "uses_xvfb": info.uses_xvfb if info else use_xvfb,
                 "xvfb_external": info.xvfb_external if info else use_xvfb,
             }
