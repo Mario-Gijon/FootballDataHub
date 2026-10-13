@@ -26,6 +26,10 @@ from football_data_hub_api.schemas import (
     TeamResponse,
 )
 from football_data_hub_api.team_roster_dataset import TeamRosterRegistry
+from football_data_hub_api.team_catalog_compatibility import (
+    TeamCatalogCompatibilityError,
+    verify_team_catalog_compatibility,
+)
 
 logger = logging.getLogger("football_data_hub_api.team_follow")
 FOLLOW_SEASON = "2026-27"
@@ -168,15 +172,18 @@ def _load_selected_follow(
     if "follow" not in (capture.get("requested_views") or []):
         raise TeamFollowLoadError("La captura no declara la vista Seguimiento.")
 
-    related = capture.get("related_team_catalog") or {}
     active_match_hash = _sha256(matches_path.read_bytes())
     active_group_capture = dataset.bootstrap.metadata.capture_id
-    if (
-        related.get("group") != group_label or related.get("season") != FOLLOW_SEASON
-        or related.get("source_capture_id") != active_group_capture
-        or related.get("sha256") != active_match_hash
-    ):
-        raise TeamFollowLoadError("La referencia de la captura no coincide con el catálogo activo de partidos.")
+    try:
+        verify_team_catalog_compatibility(
+            capture,
+            matches_path=matches_path,
+            group=group_label,
+            season=FOLLOW_SEASON,
+            active_capture_id=active_group_capture,
+        )
+    except TeamCatalogCompatibilityError as exc:
+        raise TeamFollowLoadError(str(exc)) from exc
 
     snapshots = capture.get("source_snapshots") or {}
     access_views = capture.get("access_by_view") or {}
@@ -205,7 +212,11 @@ def _load_selected_follow(
     if _sha256(raw_follow) != follow_sha[follow_path]:
         raise TeamFollowLoadError("El snapshot original de Seguimiento no supera SHA-256 del archivo.")
     follow_html = _decompress(raw_follow, follow_evidence.get("compression"), follow_path)
-    if _sha256(follow_html) != follow_evidence.get("sha256") or follow_access.get("source_snapshot_sha256") != follow_evidence.get("sha256"):
+    access_snapshot_hash = follow_access.get("source_snapshot_sha256")
+    if (
+        _sha256(follow_html) != follow_evidence.get("sha256")
+        or access_snapshot_hash not in {None, follow_evidence.get("sha256")}
+    ):
         raise TeamFollowLoadError("El snapshot y el diagnóstico de acceso no comparten la misma huella.")
 
     state_manifest = capture.get("follow_states") or {}
@@ -294,6 +305,11 @@ def _load_selected_follow(
             raise TeamFollowLoadError("Los minutos repiten jugador-partido o refieren un jugador desconocido.")
         minute_keys.add(key)
         match = _require_team_match(record, match_by_id, team_id)
+        if match.status != "played":
+            raise TeamFollowLoadError(
+                f"El catálogo activo marca match_id={match.match_id} como {match.status}, "
+                "pero la captura de Seguimiento documenta participación; actualiza el corte de Resultados."
+            )
         value = record.get("value")
         if value is not None and (type(value) is not int or value < 0):
             raise TeamFollowLoadError("Los minutos deben ser un entero no negativo o null.")
@@ -346,6 +362,11 @@ def _load_selected_follow(
             raise TeamFollowLoadError("Las métricas duplican jugador-partido-tipo o refieren un jugador desconocido.")
         metric_keys.add(key)
         match = _require_team_match(record, match_by_id, team_id)
+        if match.status != "played":
+            raise TeamFollowLoadError(
+                f"El catálogo activo marca match_id={match.match_id} como {match.status}, "
+                "pero la captura de Seguimiento documenta eventos; actualiza el corte de Resultados."
+            )
         value = record.get("value")
         if type(value) is not int or value <= 0 or record.get("matchday") != match.matchday:
             raise TeamFollowLoadError("Una métrica requiere un valor positivo y una jornada coherente.")

@@ -30,6 +30,10 @@ from football_data_hub.providers.bdfutbol.teams.tactics import (
     TacticalLayoutError,
     extract_tactical_positions,
 )
+from football_data_hub_api.team_catalog_compatibility import (
+    TeamCatalogCompatibilityError,
+    verify_team_catalog_compatibility,
+)
 
 logger = logging.getLogger("football_data_hub_api.team_roster")
 ROSTER_CONTRACT_VERSION = 2
@@ -134,6 +138,11 @@ def load_team_roster_registry(
                 group_label=known[team_id][0],
                 catalog_team=known[team_id][1],
                 catalog_reference=catalog_references.get(known[team_id][0]),
+                matches_path=matches_paths["1" if known[team_id][0] == "I" else "2"],
+                active_capture_id=(
+                    datasets["1" if known[team_id][0] == "I" else "2"]
+                    .bootstrap.metadata.capture_id
+                ),
             )
         except (OSError, ValueError, TypeError, KeyError, ValidationError, gzip.BadGzipFile) as exc:
             profile_errors[team_id] = str(exc)
@@ -156,6 +165,8 @@ def _load_selected_profile(
     group_label: str,
     catalog_team: TeamResponse,
     catalog_reference: dict[str, Any] | None,
+    matches_path: Path,
+    active_capture_id: str,
 ) -> TeamRosterResponse:
     capture_id = entry.get("capture_id")
     directory_value = entry.get("directory")
@@ -211,14 +222,18 @@ def _load_selected_profile(
         raise TeamRosterLoadError("La captura no tiene validación para las tres vistas de Plantilla.")
 
     related_catalog = capture_metadata.get("related_team_catalog") or {}
-    if (
-        catalog_reference is None
-        or related_catalog.get("group") != group_label
-        or related_catalog.get("season") != ROSTER_SEASON
-        or related_catalog.get("source_capture_id") != catalog_reference["capture_id"]
-        or related_catalog.get("sha256") != catalog_reference["sha256"]
-    ):
-        raise TeamRosterLoadError("La referencia al catálogo activo del grupo no coincide.")
+    if catalog_reference is None:
+        raise TeamRosterLoadError("No se pudo identificar el catálogo activo del grupo.")
+    try:
+        verify_team_catalog_compatibility(
+            capture_metadata,
+            matches_path=matches_path,
+            group=group_label,
+            season=ROSTER_SEASON,
+            active_capture_id=active_capture_id,
+        )
+    except TeamCatalogCompatibilityError as exc:
+        raise TeamRosterLoadError(str(exc)) from exc
 
     access_by_view = capture_metadata.get("access_by_view") or {}
     if raw_access.get("capture_id") != capture_id or raw_access.get("views") != access_by_view:

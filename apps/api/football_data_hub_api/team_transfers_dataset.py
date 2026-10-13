@@ -81,6 +81,11 @@ def load_team_transfers_registry(
                 raise TeamTransfersLoadError("La entrada del perfil no es un objeto.")
             if "transfers_files_sha256" not in entry:
                 continue
+            selected_roster = roster_registry.profiles.get(team_id)
+            if selected_roster is None or selected_roster.metadata.capture_id != entry.get("capture_id"):
+                raise TeamTransfersLoadError(
+                    "Traspasos no pertenece a la captura de Plantilla validada para este equipo."
+                )
             group, team = known[team_id]
             profiles[team_id] = _load_selected_transfers(
                 team_id,
@@ -184,7 +189,8 @@ def _load_selected_transfers(
         raise TeamTransfersLoadError("El título del snapshot no confirma el equipo y la temporada seleccionados.")
     source_html = gzip.decompress(file_bytes["raw/transfers.html.gz"])
     source_sha = _sha256(source_html)
-    if source_sha != evidence.get("sha256") or source_sha != access_view.get("source_snapshot_sha256"):
+    access_snapshot_hash = access_view.get("source_snapshot_sha256")
+    if source_sha != evidence.get("sha256") or access_snapshot_hash not in {None, source_sha}:
         raise TeamTransfersLoadError("El HTML de origen no supera la huella SHA-256 publicada.")
     expected_url = _transfer_url(catalog_team.team_url)
     if evidence.get("url") != expected_url or access_view.get("requested_url") != expected_url:
