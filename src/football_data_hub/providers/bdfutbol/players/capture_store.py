@@ -64,6 +64,7 @@ class PlayerCaptureStore:
             if self.manifest.get("capture_id") != self.capture_id:
                 raise PlayerCaptureError("El manifiesto no coincide con capture_id")
             self.manifest.setdefault("navigation_events", [])
+            self.manifest.setdefault("reused_snapshots", [])
             if self.manifest.get("status") != "complete":
                 self.manifest["resumed_at_utc"] = utc_now()
                 self.manifest["status"] = "in_progress"
@@ -75,6 +76,7 @@ class PlayerCaptureStore:
                 "created_at_utc": utc_now(),
                 "status": "in_progress",
                 "snapshots": [],
+                "reused_snapshots": [],
                 "diagnostics": [],
                 "navigation_events": [],
             }
@@ -108,6 +110,23 @@ class PlayerCaptureStore:
             raise PlayerCaptureError("El inventario de origen cambió durante la captura")
         self.manifest["inventory_source"] = source
         self._checkpoint()
+
+    def record_reused_snapshot(self, reference: dict[str, Any]) -> None:
+        """Checkpoint a verified snapshot reused from another immutable run."""
+        required = ("capture_id", "snapshot_id", "player_id", "view", "html_sha256")
+        if any(not reference.get(key) for key in required):
+            raise PlayerCaptureError("La referencia reutilizada está incompleta")
+        refs = self.manifest.setdefault("reused_snapshots", [])
+        identity = (
+            reference["capture_id"], reference["snapshot_id"],
+            reference["player_id"], reference["view"],
+        )
+        if not any((
+            item.get("capture_id"), item.get("snapshot_id"),
+            item.get("player_id"), item.get("view"),
+        ) == identity for item in refs):
+            refs.append(reference)
+            self._checkpoint()
 
     def reconcile_navigation_ledger(self, *, notes: list[str] | None = None) -> None:
         """Rebuild missing ledger entries from immutable raw snapshots/diagnostics."""
@@ -189,11 +208,27 @@ class PlayerCaptureStore:
         requested_url: str,
     ) -> bool:
         """Reuse only a raw snapshot whose metadata, route and hash still verify."""
+        return self.has_valid_snapshot(
+            player_id=player_id,
+            view=view,
+            requested_url=requested_url,
+            snapshot_kind="BASE_VIEW",
+        )
+
+    def has_valid_snapshot(
+        self,
+        *,
+        player_id: int,
+        view: str,
+        requested_url: str,
+        snapshot_kind: str,
+    ) -> bool:
+        """Reuse an exact URL variant only when its original bytes still verify."""
         for item in self.manifest.get("snapshots", []):
             if (
                 item.get("player_id") != player_id
                 or item.get("view") != view
-                or item.get("snapshot_kind") != "BASE_VIEW"
+                or item.get("snapshot_kind") != snapshot_kind
                 or item.get("requested_url") != requested_url
             ):
                 continue
@@ -207,6 +242,7 @@ class PlayerCaptureStore:
             if (
                 metadata.get("player_id") == player_id
                 and metadata.get("view") == view
+                and metadata.get("snapshot_kind") == snapshot_kind
                 and metadata.get("requested_url") == requested_url
                 and metadata.get("final_url") == requested_url
                 and metadata.get("access_status") == "VALID"
@@ -228,11 +264,17 @@ class PlayerCaptureStore:
         html: str,
         browser: dict[str, Any],
         filter_parameters: dict[str, str] | None = None,
+        snapshot_kind: str | None = None,
         controls: list[dict[str, Any]] | None = None,
         observations: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         raw = html.encode("utf-8")
         digest = hashlib.sha256(raw).hexdigest()
+        resolved_kind = snapshot_kind or (
+            "SELECTOR_VARIANT" if filter_parameters else "BASE_VIEW"
+        )
+        if resolved_kind not in {"BASE_VIEW", "URL_VARIANT", "SELECTOR_VARIANT"}:
+            raise PlayerCaptureError(f"snapshot_kind no reconocido: {resolved_kind}")
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
         snapshot_id = f"{stamp}-{digest[:12]}"
         relative_dir = Path(f"j{player_id}") / view / snapshot_id
@@ -248,8 +290,8 @@ class PlayerCaptureStore:
             "captured_at_utc": utc_now(),
             "player_id": player_id,
             "view": view,
-            "snapshot_kind": "FILTERED_VARIANT" if filter_parameters else "BASE_VIEW",
-            "is_base_view_snapshot": not bool(filter_parameters),
+            "snapshot_kind": resolved_kind,
+            "is_base_view_snapshot": resolved_kind == "BASE_VIEW",
             "requested_url": requested_url,
             "final_url": final_url,
             "http_status": http_status,

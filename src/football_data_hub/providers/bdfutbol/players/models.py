@@ -39,6 +39,9 @@ class PlayerStatisticsPage(PlayerPageBase):
 class PlayerMatchesPage(PlayerPageBase):
     summary_rows: list[dict[str, Any]]
     individual_matches: list[dict[str, Any]]
+    individual_matches_source: str | None
+    window_p_parse_status: str
+    window_p_record_count: int | None
     detail_coverage: str
     filter_parameters: dict[str, str]
     filtered_view: bool
@@ -48,4 +51,3 @@ class PlayerMatchesPage(PlayerPageBase):
 @dataclass(frozen=True, slots=True)
 class PlayerRivalsPage(PlayerPageBase):
     rival_records: list[dict[str, Any]]
-

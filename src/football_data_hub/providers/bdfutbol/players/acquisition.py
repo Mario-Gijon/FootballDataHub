@@ -9,8 +9,7 @@ import re
 import time
 from pathlib import Path
 from typing import Any
-
-from bs4 import BeautifulSoup
+from urllib.parse import urlencode
 
 from football_data_hub.core.browser_runtime import BrowserRuntimeConfig
 from football_data_hub.core.browser_session import BrowserSessionManager
@@ -19,6 +18,8 @@ from football_data_hub.providers.bdfutbol.access import (
     BDFutbolAccess,
     is_bdfutbol_https_url,
 )
+from football_data_hub.providers.bdfutbol.players.catalog import build_player_acquisition_progress
+from football_data_hub.providers.bdfutbol.players.html_parser import soup_from_html
 from .capture_store import PlayerCaptureStore, utc_now
 
 PLAYER_VIEWS = ("profile", "statistics", "matches", "rivals")
@@ -65,6 +66,16 @@ def player_view_url(player_id: int | str, view: str) -> str:
     return f"https://www.bdfutbol.com{path}"
 
 
+def player_match_variant_url(player_id: int | str, filters: dict[str, str]) -> str:
+    """Build an explicitly filtered match URL without changing its view identity."""
+    if not filters or any(key != "cat" for key in filters):
+        raise ValueError("Solo se admite el filtro de URL cat para una vista de Partidos")
+    if any(not re.fullmatch(r"[A-Za-z0-9_-]{1,16}", value) for value in filters.values()):
+        raise ValueError("Valor del filtro de competición no válido")
+    base = player_view_url(player_id, "matches")
+    return f"{base}?{urlencode(filters)}"
+
+
 def load_inventory_players(path: Path, player_ids: list[int]) -> dict[int, dict[str, Any]]:
     """Resolve explicit IDs from PLAYER-01A's verified, offline inventory."""
     document = json.loads(path.expanduser().read_text(encoding="utf-8"))
@@ -92,7 +103,7 @@ def _identity_evidence(
     display_name: str,
     full_name: str = "",
 ) -> tuple[str, ...]:
-    soup = BeautifulSoup(html, "html.parser")
+    soup = soup_from_html(html)
     title = soup.title.get_text(" ", strip=True) if soup.title else ""
     h1 = soup.find("h1")
     h1_text = h1.get_text(" ", strip=True) if h1 else ""
@@ -181,7 +192,7 @@ def _has_filter_variant(
         if (
             item.get("player_id") != player_id
             or item.get("view") != view
-            or item.get("snapshot_kind") != "FILTERED_VARIANT"
+            or item.get("snapshot_kind") not in {"SELECTOR_VARIANT", "FILTERED_VARIANT"}
             or (item.get("filter_parameters") or {}).get(control_key) != selected_value
         ):
             continue
@@ -197,6 +208,207 @@ def _has_filter_variant(
         ):
             return True
     return False
+
+
+def acquire_player_match_variant(
+    *,
+    player_id: int,
+    inventory_path: Path,
+    capture_root: Path,
+    profile_dir: Path,
+    filters: dict[str, str],
+    browser_executable: Path | None = None,
+    capture_id: str | None = None,
+    settle_ms: int = 900,
+    pause_seconds: float = 5.0,
+) -> dict[str, Any]:
+    """Acquire one allowlisted URL-filtered matches snapshot, stopping on denial."""
+    if settle_ms < 0 or pause_seconds < 0:
+        raise ValueError("Los tiempos no pueden ser negativos")
+    url = player_match_variant_url(player_id, filters)
+    inventory_path = inventory_path.expanduser().resolve()
+    inventory_raw = inventory_path.read_bytes()
+    inventory_document = json.loads(inventory_raw)
+    inventory = load_inventory_players(inventory_path, [player_id])
+    candidate = inventory[player_id]
+    display_name = str(candidate.get("display_name") or "").strip()
+    full_name = str(candidate.get("full_name") or "").strip()
+    names = tuple(name for name in (display_name, full_name) if name)
+    if not names:
+        raise ValueError(f"El inventario no tiene nombres para {player_id}")
+    store = PlayerCaptureStore(capture_root, capture_id=capture_id)
+    store.record_inventory_source({
+        "path": str(inventory_path),
+        "sha256": hashlib.sha256(inventory_raw).hexdigest(),
+        "schema_version": inventory_document.get("schema_version"),
+        "season": inventory_document.get("metadata", {}).get("season", "2026-27"),
+        "source": "PLAYER-01A published offline player inventory",
+    })
+    if store.has_valid_snapshot(
+        player_id=player_id,
+        view="matches",
+        requested_url=url,
+        snapshot_kind="URL_VARIANT",
+    ):
+        return {
+            "capture_id": store.capture_id,
+            "capture_dir": str(store.run_dir),
+            "player_id": player_id,
+            "view": "matches",
+            "requested_url": url,
+            "snapshot_reused": True,
+            "navigation_count": 0,
+        }
+
+    config = BrowserRuntimeConfig(
+        profile_dir=profile_dir,
+        backend="seleniumbase-pure-cdp",
+        browser="chromium",
+        browser_executable_path=browser_executable,
+        use_xvfb=True,
+        start_url="about:blank",
+    )
+    if pause_seconds:
+        time.sleep(pause_seconds)
+    try:
+        with BrowserSessionManager(config) as session:
+            browser = {
+                "backend": session.info.backend if session.info else None,
+                "browser_name": session.info.browser_name if session.info else None,
+                "browser_executable": session.info.browser_executable if session.info else None,
+                "browser_version": session.info.browser_version if session.info else None,
+                "automation_version": session.info.automation_version if session.info else None,
+                "display": session.info.display if session.info else None,
+                "process_display": session.info.process_display if session.info else None,
+                "uses_xvfb": session.info.uses_xvfb if session.info else False,
+                "xvfb_external": session.info.xvfb_external if session.info else None,
+                "screen_size": session.info.screen_size if session.info else None,
+            }
+            opened = BDFutbolAccess(session).open(
+                url,
+                required_markers=(display_name,),
+                required_selectors=("#tpartits", "#t2", "#pest1", "#pest2"),
+                document_validator=lambda html: _identity_evidence(
+                    html, player_id, display_name, full_name,
+                ),
+                settle_ms=settle_ms,
+                max_wait_seconds=8.0,
+            )
+            assessment = opened.assessment
+            event = {
+                "player_id": player_id,
+                "view": "matches",
+                "snapshot_kind": "URL_VARIANT",
+                "requested_url": url,
+                "final_url": assessment.final_url,
+                "http_status": assessment.http_status,
+                "access_status": assessment.status.value,
+                "page_title": assessment.page_title,
+                "filter_parameters": filters,
+                "missing_markers": list(assessment.missing_markers),
+                "missing_title_markers": list(assessment.missing_title_markers),
+                "missing_selectors": list(assessment.missing_selectors),
+                "reason": assessment.reason,
+                "captured_at_utc": utc_now(),
+                "navigation_purpose": "url_filter_variant_capture",
+            }
+            store.record_navigation(event)
+            if assessment.status is not AccessStatus.VALID or opened.visit is None:
+                store.record_diagnostic({**event, "stop_acquisition": True})
+                opened.close()
+                raise PlayerAcquisitionStopped(
+                    player_id, "matches", assessment.status.value, assessment.reason,
+                )
+
+            visit = opened.visit
+            page = visit.document
+            browser_snapshot = page.evaluate(
+                """(() => {
+                    const table = document.querySelector('#tpartits');
+                    const rows = Array.from(table?.querySelectorAll('tbody tr') || []);
+                    const matchRows = rows.map((row, index) => {
+                        const link = row.querySelector('a[href*="p.php?id="]');
+                        const href = link?.getAttribute('href') || null;
+                        const id = href ? new URL(href, location.href).searchParams.get('id') : null;
+                        return id ? {row_index:index, match_id:id, href, text:row.innerText.trim()} : null;
+                    }).filter(Boolean);
+                    const rawP = Array.isArray(window.P) ? window.P : null;
+                    const scripts = Array.from(document.scripts)
+                        .map(script => script.src).filter(src => /scripts_partits\\.js/.test(src));
+                    const visible = selector => {
+                        const element = document.querySelector(selector);
+                        return element ? getComputedStyle(element).display !== 'none' : null;
+                    };
+                    return {
+                        table_row_count: table?.querySelectorAll('tr').length || 0,
+                        table_body_row_count: rows.length,
+                        rendered_match_rows: matchRows,
+                        rendered_match_id_count: matchRows.length,
+                        rendered_unique_match_ids: new Set(matchRows.map(row => row.match_id)).size,
+                        table_headers: Array.from(table?.querySelectorAll('thead th') || []).map(cell => ({
+                            text:cell.innerText.trim(), title:cell.title || null,
+                            data_colid:cell.dataset.colid || null
+                        })),
+                        window_p_present: rawP !== null,
+                        window_p_record_count: rawP?.length ?? null,
+                        window_p_tuple_widths: rawP ? [...new Set(rawP.map(row => Array.isArray(row) ? row.length : null))] : [],
+                        window_p_unique_match_ids: rawP ? new Set(rawP.map(row => Array.isArray(row) ? String(row[8]) : '')).size : null,
+                        panel_pest1_visible: visible('#pest1'),
+                        panel_pest2_visible: visible('#pest2'),
+                        scripts_partits_urls: scripts,
+                        selected_controls: Array.from(document.querySelectorAll('select')).map(select => ({
+                            id:select.id || null, name:select.name || null,
+                            value:select.value, text:select.selectedOptions?.[0]?.textContent?.trim() || null
+                        }))
+                    };
+                })()"""
+            )
+            html = page.html()
+            metadata = store.save_snapshot(
+                player_id=player_id,
+                view="matches",
+                requested_url=url,
+                final_url=visit.final_url,
+                http_status=visit.response_status,
+                page_title=page.title(),
+                html=html,
+                browser=browser,
+                filter_parameters=filters,
+                snapshot_kind="URL_VARIANT",
+                controls=_controls(page, "matches"),
+                observations={
+                    "variant_type": "url",
+                    "interaction": "navigation_query_parameters",
+                    "url_unchanged_after_load": page.url == url,
+                    **(browser_snapshot if isinstance(browser_snapshot, dict) else {}),
+                },
+            )
+            opened.close()
+        store.mark_complete()
+    except BaseException as exc:
+        if not isinstance(exc, PlayerAcquisitionStopped):
+            store.record_diagnostic({
+                "player_id": player_id,
+                "view": "matches",
+                "requested_url": url,
+                "snapshot_kind": "URL_VARIANT",
+                "error_type": type(exc).__name__,
+                "error": str(exc),
+                "stop_acquisition": True,
+            })
+        raise
+    return {
+        "capture_id": store.capture_id,
+        "capture_dir": str(store.run_dir),
+        "player_id": player_id,
+        "view": "matches",
+        "requested_url": url,
+        "snapshot_id": metadata["snapshot_id"],
+        "raw_sha256": metadata["html_sha256"],
+        "observations": metadata["interaction_observations"],
+        "snapshot_reused": False,
+        "navigation_count": 1,
+    }
 
 
 def acquire_player_views(
@@ -227,6 +439,56 @@ def acquire_player_views(
         raise ValueError("Los tiempos no pueden ser negativos")
     inventory = load_inventory_players(inventory_path, player_ids)
     store = PlayerCaptureStore(capture_root, capture_id=capture_id)
+    inventory_path = inventory_path.expanduser().resolve()
+    inventory_raw = inventory_path.read_bytes()
+    inventory_document = json.loads(inventory_raw)
+    store.record_inventory_source({
+        "path": str(inventory_path),
+        "sha256": hashlib.sha256(inventory_raw).hexdigest(),
+        "schema_version": inventory_document.get("schema_version"),
+        "season": inventory_document.get("metadata", {}).get("season", "2026-27"),
+        "source": "PLAYER-01A published offline player inventory",
+    })
+    progress = build_player_acquisition_progress(
+        inventory_path=inventory_path,
+        capture_root=capture_root,
+    )
+    indexed_players = {item["player_id"]: item for item in progress["players"]}
+    navigation_queue: set[tuple[int, str]] = set()
+    for player_id in player_ids:
+        for view in views:
+            url = player_view_url(player_id, view)
+            current_base_exists = store.has_valid_base_snapshot(
+                player_id=player_id,
+                view=view,
+                requested_url=url,
+            )
+            reused = indexed_players[player_id]["view_snapshots"].get(view)
+            if revisit_existing:
+                if not current_base_exists:
+                    raise ValueError(
+                        f"No se encontró una vista base válida para revalidar: {player_id}/{view}"
+                    )
+                navigation_queue.add((player_id, view))
+                continue
+            if reused:
+                if reused["capture_id"] != store.capture_id:
+                    store.record_reused_snapshot(reused)
+                continue
+            navigation_queue.add((player_id, view))
+
+    if not navigation_queue:
+        store.mark_complete()
+        return {
+            "capture_id": store.capture_id,
+            "capture_dir": str(store.run_dir),
+            "snapshot_count": len(store.manifest["snapshots"]),
+            "navigation_count": 0,
+            "reused_snapshot_count": len(store.manifest.get("reused_snapshots", [])),
+            "status": store.manifest["status"],
+            "access_assessments": [],
+            "filter_variants": 0,
+        }
     config = BrowserRuntimeConfig(
         profile_dir=profile_dir,
         backend="seleniumbase-pure-cdp",
@@ -259,6 +521,8 @@ def acquire_player_views(
                 if not display_name:
                     raise ValueError(f"El inventario no tiene display_name para {player_id}")
                 for view in views:
+                    if (player_id, view) not in navigation_queue:
+                        continue
                     url = player_view_url(player_id, view)
                     existing_base = store.has_valid_base_snapshot(
                         player_id=player_id,
@@ -469,5 +733,9 @@ def acquire_player_views(
         "verified_navigation_count_total": len(store.manifest.get("navigation_events", [])),
         "status": store.manifest["status"],
         "access_assessments": assessments,
-        "filter_variants": sum(item["snapshot_kind"] == "FILTERED_VARIANT" for item in store.manifest["snapshots"]),
+        "filter_variants": sum(
+            item["snapshot_kind"] in {"SELECTOR_VARIANT", "FILTERED_VARIANT"}
+            for item in store.manifest["snapshots"]
+        ),
+        "reused_snapshot_count": len(store.manifest.get("reused_snapshots", [])),
     }

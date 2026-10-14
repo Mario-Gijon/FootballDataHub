@@ -10,14 +10,13 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
-from bs4 import BeautifulSoup
-
 from .html_parser import (
     PLAYER_PARSER_VERSION,
     PLAYER_SCHEMA_VERSION,
     PlayerSnapshotError,
     classify_player_view,
     parse_player_html as parse_source_html,
+    soup_from_html,
 )
 from .models import (
     PlayerMatchesPage,
@@ -35,7 +34,7 @@ PlayerPage = PlayerTrajectoryPage | PlayerStatisticsPage | PlayerMatchesPage | P
 
 
 def _identity_matches(html: str, names: tuple[str, ...]) -> bool:
-    soup = BeautifulSoup(html, "html.parser")
+    soup = soup_from_html(html)
     title = soup.title.get_text(" ", strip=True) if soup.title else ""
     heading = soup.find("h1")
     visible = f"{title} {heading.get_text(' ', strip=True) if heading else ''}".casefold()
@@ -140,6 +139,9 @@ def parse_player_html(
             **base,
             summary_rows=data.get("match_summary_rows", []),
             individual_matches=data.get("individual_match_rows", []),
+            individual_matches_source=data.get("individual_match_rows_source"),
+            window_p_parse_status=data.get("window_p_parse_status", "NOT_PRESENT"),
+            window_p_record_count=data.get("window_p_record_count"),
             detail_coverage=data.get("match_detail_coverage", "UNKNOWN"),
             filter_parameters=data.get("filter_parameters", {}),
             filtered_view=bool(data.get("filtered_view", False)),

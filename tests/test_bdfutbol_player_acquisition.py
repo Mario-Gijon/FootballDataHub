@@ -12,6 +12,7 @@ from football_data_hub.providers.bdfutbol.players.acquisition import (
     _non_default_option,
     _identity_evidence,
     load_inventory_players,
+    player_match_variant_url,
     player_view_url,
 )
 from football_data_hub.providers.bdfutbol.players.capture_store import PlayerCaptureStore
@@ -25,6 +26,16 @@ def test_player_view_urls_are_explicit_and_semantic() -> None:
     assert player_view_url(23751, "rivals") == "https://www.bdfutbol.com/es/p/jr23751.html"
     with pytest.raises(ValueError):
         player_view_url("../23751", "profile")
+
+
+def test_player_match_filter_is_an_explicit_url_variant() -> None:
+    assert player_match_variant_url(23751, {"cat": "1rf"}) == (
+        "https://www.bdfutbol.com/es/p/j23751.html?cat=1rf"
+    )
+    with pytest.raises(ValueError, match="Solo se admite"):
+        player_match_variant_url(23751, {"unknown": "1rf"})
+    with pytest.raises(ValueError, match="Valor"):
+        player_match_variant_url(23751, {"cat": "1rf&other=bad"})
 
 
 def test_inventory_resolution_checks_all_requested_player_ids(tmp_path: Path) -> None:

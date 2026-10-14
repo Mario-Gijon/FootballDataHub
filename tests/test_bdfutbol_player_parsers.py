@@ -211,6 +211,7 @@ def test_export_is_versioned_round_trippable_and_partial_failures_keep_raw(tmp_p
     source = json.loads((store.run_dir / "manifest.json").read_text(encoding="utf-8"))["inventory_source"]
     assert source["sha256"] == hashlib.sha256(inventory.read_bytes()).hexdigest()
     assert source["season"] == "2026-27"
+    assert json.loads((store.run_dir / "manifest.json").read_text(encoding="utf-8")).get("review_notes") is None
     normalized_path = base / report["snapshots"][0]["normalized_path"]
     assert json.loads(normalized_path.read_text(encoding="utf-8"))["player_id"] == 12345
     assert all((store.run_dir / item["raw_path"]).is_file() for item in store.manifest["snapshots"])
