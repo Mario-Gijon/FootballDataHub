@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from dataclasses import replace
 from datetime import date
 from pathlib import Path
@@ -16,7 +17,7 @@ from football_data_hub.providers.bdfutbol.statistics.parser import (
     parse_statistics_page,
     validate_statistics_page_html,
 )
-from scrape_bdfutbol_group2_statistics import main
+from scrape_bdfutbol_group2_statistics import _resolve_source_snapshot, main
 
 ROOT = Path(__file__).resolve().parents[1]
 CAPTURE = ROOT / "data/exports/bdfutbol/group2_statistics/20261010T182210.859321Z-28543363"
@@ -235,3 +236,19 @@ def test_offline_cli_exports_readable_capture_without_network(tmp_path: Path, so
                 str(CAPTURE / "raw/access.json"),
             ]
         )
+
+
+def test_external_match_dataset_resolves_its_adjacent_raw_snapshot(tmp_path: Path) -> None:
+    capture = tmp_path / "external-capture"
+    raw_snapshot = capture / "raw" / "source.html"
+    raw_snapshot.parent.mkdir(parents=True)
+    raw_snapshot.write_text("<html>external capture</html>", encoding="utf-8")
+    matches_path = capture / "normalized" / "matches.json"
+    matches_path.parent.mkdir()
+    matches_path.write_text("{}", encoding="utf-8")
+    metadata = {
+        "source_snapshot": "source.html",
+        "source_snapshot_sha256": hashlib.sha256(raw_snapshot.read_bytes()).hexdigest(),
+    }
+
+    assert _resolve_source_snapshot(metadata, matches_path) == raw_snapshot

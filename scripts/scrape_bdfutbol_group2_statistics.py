@@ -99,10 +99,9 @@ def _align_current_source_matches(
     source_url: str,
     captured_at: datetime,
     match_metadata: dict[str, Any],
+    matches_path: Path,
 ) -> tuple[tuple[Any, ...], dict[str, Any]]:
-    source_snapshot = Path(str(match_metadata.get("source_snapshot", "")))
-    if not source_snapshot.is_absolute():
-        source_snapshot = REPOSITORY_ROOT / source_snapshot
+    source_snapshot = _resolve_source_snapshot(match_metadata, matches_path)
     if not source_snapshot.is_file():
         return (), {
             "status": "unavailable",
@@ -131,6 +130,36 @@ def _align_current_source_matches(
             "reason": f"No se pudieron comparar los fixtures embebidos: {exc}",
         }
     return source_matches, {"status": "ready"}
+
+
+def _resolve_source_snapshot(match_metadata: dict[str, Any], matches_path: Path) -> Path:
+    """Resolve source HTML for both repository and external capture roots.
+
+    External exports may store only ``source.html`` in the JSON metadata. In
+    that layout the raw file lives beside ``normalized/matches.json`` at
+    ``../raw/source.html`` rather than under the repository root.
+    """
+    source_reference = Path(str(match_metadata.get("source_snapshot", "")))
+    if source_reference.is_absolute():
+        return source_reference
+
+    capture_root = matches_path.expanduser().resolve().parent.parent
+    candidates = [REPOSITORY_ROOT / source_reference]
+    if source_reference.parts and source_reference.parts[0] == "raw":
+        candidates.append(capture_root / source_reference)
+    else:
+        candidates.append(capture_root / "raw" / source_reference)
+    candidates.append(capture_root / source_reference)
+
+    expected_hash = match_metadata.get("source_snapshot_sha256")
+    existing = [candidate for candidate in candidates if candidate.is_file()]
+    if expected_hash:
+        for candidate in existing:
+            if _sha256(candidate) == expected_hash:
+                return candidate
+    if existing:
+        return existing[0]
+    return candidates[0]
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -295,7 +324,7 @@ def main(argv: list[str] | None = None) -> int:
 
     captured_datetime = datetime.fromisoformat(captured_at)
     current_matches, source_parse_status = _align_current_source_matches(
-        raw_html, parsed.source_url, captured_datetime, dataset_metadata
+        raw_html, parsed.source_url, captured_datetime, dataset_metadata, matches_path
     )
     alignment = (
         build_match_alignment_report(current_matches, matches)
