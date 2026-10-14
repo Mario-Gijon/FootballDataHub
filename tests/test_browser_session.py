@@ -431,6 +431,34 @@ def test_pure_cdp_launches_in_verified_isolated_display(monkeypatch, tmp_path):
     assert os.environ["WAYLAND_DISPLAY"] == "wayland-1"
 
 
+def test_pure_cdp_rejects_xvfb_on_the_desktop_display(monkeypatch, tmp_path):
+    from football_data_hub.core import browser_session as session_mod
+
+    class DesktopDisplayXvfb(FakeManagedXvfb):
+        display = ":0.0"
+
+    executable = tmp_path / "chromium"
+    executable.write_text("binary placeholder", encoding="utf-8")
+    xvfb = DesktopDisplayXvfb()
+    monkeypatch.setenv("DISPLAY", ":0")
+    monkeypatch.setattr(session_mod, "_start_xvfb", lambda *_: xvfb)
+    monkeypatch.setattr(session_mod, "_profile_process_pids", lambda _profile: [])
+    monkeypatch.setattr(
+        session_mod, "_seleniumbase_browser",
+        lambda **_: pytest.fail("Chromium no debe iniciarse en el DISPLAY del escritorio"),
+    )
+    config = BrowserRuntimeConfig(
+        tmp_path / "profile",
+        backend="seleniumbase-pure-cdp",
+        browser_executable_path=executable,
+        use_xvfb=True,
+    )
+
+    with pytest.raises(session_mod.BrowserSessionError, match="mismo DISPLAY que el escritorio"):
+        session_mod.BrowserSessionManager(config).start()
+    assert xvfb.closed
+
+
 def test_pure_cdp_refuses_to_navigate_when_chromium_display_mismatches(monkeypatch, tmp_path):
     from football_data_hub.core import browser_session as session_mod
 

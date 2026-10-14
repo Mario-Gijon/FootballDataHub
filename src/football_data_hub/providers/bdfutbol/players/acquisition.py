@@ -8,7 +8,7 @@ import json
 import re
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import urlencode
 
 from football_data_hub.core.browser_runtime import BrowserRuntimeConfig
@@ -19,8 +19,12 @@ from football_data_hub.providers.bdfutbol.access import (
     is_bdfutbol_https_url,
 )
 from football_data_hub.providers.bdfutbol.players.catalog import build_player_acquisition_progress
-from football_data_hub.providers.bdfutbol.players.html_parser import soup_from_html
+from football_data_hub.providers.bdfutbol.players.html_parser import (
+    PLAYER_PARSER_VERSION,
+    soup_from_html,
+)
 from .capture_store import PlayerCaptureStore, utc_now
+from .parsers import PlayerCaptureParseError, parse_snapshot
 
 PLAYER_VIEWS = ("profile", "statistics", "matches", "rivals")
 _PLAYER_ID = re.compile(r"^\d{1,9}$")
@@ -424,6 +428,8 @@ def acquire_player_views(
     explore_filters: bool = True,
     views: tuple[str, ...] = PLAYER_VIEWS,
     revisit_existing: bool = False,
+    progress_index: dict[str, Any] | None = None,
+    on_snapshot_saved: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
     """Capture explicit player pages sequentially and stop on first denial.
 
@@ -449,10 +455,17 @@ def acquire_player_views(
         "season": inventory_document.get("metadata", {}).get("season", "2026-27"),
         "source": "PLAYER-01A published offline player inventory",
     })
-    progress = build_player_acquisition_progress(
-        inventory_path=inventory_path,
-        capture_root=capture_root,
-    )
+    if progress_index is None:
+        progress = build_player_acquisition_progress(
+            inventory_path=inventory_path,
+            capture_root=capture_root,
+        )
+    else:
+        if progress_index.get("inventory", {}).get("sha256") != hashlib.sha256(inventory_raw).hexdigest():
+            raise ValueError("El índice de progreso corresponde a otro inventario")
+        if Path(str(progress_index.get("capture_root", ""))).expanduser().resolve() != capture_root.expanduser().resolve():
+            raise ValueError("El índice de progreso corresponde a otra raíz de capturas")
+        progress = progress_index
     indexed_players = {item["player_id"]: item for item in progress["players"]}
     navigation_queue: set[tuple[int, str]] = set()
     for player_id in player_ids:
@@ -603,6 +616,46 @@ def acquire_player_views(
                             "purpose": "filter_exploration_revisit" if existing_base else "base_view_capture",
                         },
                     )
+                    saved_record = store.manifest["snapshots"][-1]
+                    try:
+                        parse_snapshot(
+                            store.run_dir,
+                            saved_record,
+                            expected_player_id=player_id,
+                            expected_names=tuple(
+                                value for value in (display_name, full_name) if value
+                            ),
+                        )
+                    except (PlayerCaptureParseError, OSError, ValueError, TypeError) as exc:
+                        store.record_snapshot_validation(
+                            str(saved_record["snapshot_id"]),
+                            status="INVALID",
+                            parser_version=PLAYER_PARSER_VERSION,
+                            error=f"{type(exc).__name__}: {exc}",
+                        )
+                        store.record_diagnostic({
+                            "player_id": player_id,
+                            "view": view,
+                            "requested_url": url,
+                            "access_status": "STRUCTURE_ERROR",
+                            "reason": f"Snapshot HTML no supera el parser: {exc}",
+                            "stop_acquisition": True,
+                        })
+                        opened.close()
+                        raise PlayerAcquisitionStopped(
+                            player_id, view, "STRUCTURE_ERROR", str(exc)
+                        ) from exc
+                    store.record_snapshot_validation(
+                        str(saved_record["snapshot_id"]),
+                        status="VALID",
+                        parser_version=PLAYER_PARSER_VERSION,
+                    )
+                    if on_snapshot_saved is not None:
+                        on_snapshot_saved({
+                            **saved_record,
+                            "capture_id": store.capture_id,
+                            "captured_at_utc": base_metadata.get("captured_at_utc"),
+                        })
                     if explore_filters and player_index == 0:
                         for control in controls:
                             control_id = str(control.get("id") or "")

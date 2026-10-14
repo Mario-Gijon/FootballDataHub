@@ -128,6 +128,30 @@ class PlayerCaptureStore:
             refs.append(reference)
             self._checkpoint()
 
+    def record_snapshot_validation(
+        self,
+        snapshot_id: str,
+        *,
+        status: str,
+        parser_version: str,
+        error: str | None = None,
+    ) -> None:
+        if status not in {"VALID", "INVALID"}:
+            raise PlayerCaptureError(f"Estado de validación no admitido: {status}")
+        snapshot = next(
+            (item for item in self.manifest.get("snapshots", []) if item.get("snapshot_id") == snapshot_id),
+            None,
+        )
+        if snapshot is None:
+            raise PlayerCaptureError(f"No se encontró snapshot para validar: {snapshot_id}")
+        snapshot["parse_validation"] = {
+            "status": status,
+            "parser_version": parser_version,
+            "validated_at_utc": utc_now(),
+            "error": error,
+        }
+        self._checkpoint()
+
     def reconcile_navigation_ledger(self, *, notes: list[str] | None = None) -> None:
         """Rebuild missing ledger entries from immutable raw snapshots/diagnostics."""
         events = list(self.manifest.get("navigation_events", []))
@@ -160,6 +184,8 @@ class PlayerCaptureStore:
 
         for item in self.manifest.get("snapshots", []):
             if item.get("snapshot_kind") != "BASE_VIEW":
+                continue
+            if item.get("parse_validation", {}).get("status") == "INVALID":
                 continue
             key = (item.get("player_id"), item.get("view"), item.get("requested_url"))
             if remaining_valid_events.get(key, 0):

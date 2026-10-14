@@ -39,6 +39,8 @@ def _verified_base_snapshot(
         return None
     if item.get("snapshot_kind") != "BASE_VIEW":
         return None
+    if item.get("parse_validation", {}).get("status") == "INVALID":
+        return None
     expected_url = "https://www.bdfutbol.com" + _VIEW_PATHS[view].format(player_id=player_id)
     if item.get("requested_url") != expected_url or item.get("final_url") != expected_url:
         return None
@@ -48,11 +50,19 @@ def _verified_base_snapshot(
         run_dir = (capture_root / capture_id).resolve()
         if run_dir not in metadata_path.parents or run_dir not in raw_path.parents:
             return None
-        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        metadata_raw = metadata_path.read_bytes()
+        metadata = json.loads(metadata_raw)
         html = gzip.decompress(raw_path.read_bytes())
     except (KeyError, OSError, ValueError, json.JSONDecodeError):
         return None
     digest = hashlib.sha256(html).hexdigest()
+    captured_at = metadata.get("captured_at_utc")
+    try:
+        parsed_capture_time = datetime.fromisoformat(str(captured_at).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed_capture_time.tzinfo is None:
+        return None
     page = soup_from_html(html.decode("utf-8", errors="replace"))
     title = page.title.get_text(" ", strip=True) if page.title else ""
     heading = page.find("h1")
@@ -62,6 +72,7 @@ def _verified_base_snapshot(
     )
     if (
         metadata.get("capture_id") != capture_id
+        or metadata.get("snapshot_id") != item.get("snapshot_id")
         or metadata.get("player_id") != player_id
         or metadata.get("view") != view
         or metadata.get("snapshot_kind") != "BASE_VIEW"
@@ -70,6 +81,7 @@ def _verified_base_snapshot(
         or metadata.get("access_status") != "VALID"
         or metadata.get("http_status") != 200
         or metadata.get("html_sha256") != digest
+        or metadata.get("html_uncompressed_bytes") != len(html)
         or item.get("html_sha256") != digest
         or not identity_valid
     ):
@@ -80,11 +92,16 @@ def _verified_base_snapshot(
         "player_id": player_id,
         "view": view,
         "snapshot_kind": "BASE_VIEW",
+        "parse_validation": item.get("parse_validation"),
         "requested_url": expected_url,
         "captured_at_utc": metadata.get("captured_at_utc"),
+        "final_url": metadata.get("final_url"),
         "html_sha256": digest,
+        "metadata_sha256": hashlib.sha256(metadata_raw).hexdigest(),
         "metadata_path": f"{capture_id}/{item['metadata_path']}",
         "raw_path": f"{capture_id}/{item['raw_path']}",
+        "html_uncompressed_bytes": len(html),
+        "metadata_bytes": metadata_path.stat().st_size,
         "raw_bytes": len(html),
         "compressed_bytes": raw_path.stat().st_size,
     }

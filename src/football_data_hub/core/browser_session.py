@@ -10,7 +10,6 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-import select
 import signal
 import shutil
 import subprocess
@@ -154,7 +153,7 @@ def _browser_display_environment(display: str):
 
 
 def _start_xvfb(screen: str, timeout_seconds: float) -> _ManagedXvfb:
-    """Start an owned, TCP-disabled Xvfb and receive its allocated display."""
+    """Start an owned Xvfb on a display distinct from the inherited desktop."""
 
     executable = shutil.which("Xvfb")
     if not executable:
@@ -162,18 +161,22 @@ def _start_xvfb(screen: str, timeout_seconds: float) -> _ManagedXvfb:
             "Pure CDP necesita Xvfb para mantener Chromium fuera del escritorio; "
             "no se encontró el ejecutable Xvfb."
         )
-    read_fd, write_fd = os.pipe()
-    process: subprocess.Popen[bytes] | None = None
-    try:
-        env = os.environ.copy()
-        for key in ("DISPLAY", "WAYLAND_DISPLAY", "WAYLAND_SOCKET", "XAUTHORITY"):
-            env.pop(key, None)
-        env.update({"XDG_SESSION_TYPE": "x11", "GDK_BACKEND": "x11"})
+    inherited_number = _display_number(os.environ.get("DISPLAY"))
+    env = os.environ.copy()
+    for key in ("DISPLAY", "WAYLAND_DISPLAY", "WAYLAND_SOCKET", "XAUTHORITY"):
+        env.pop(key, None)
+    env.update({"XDG_SESSION_TYPE": "x11", "GDK_BACKEND": "x11"})
+
+    errors: list[str] = []
+    # -displayfd may reuse the desktop's number when its lock is stale inside
+    # a private PID namespace. Explicit high-numbered displays avoid that path.
+    for display_number in range(90, 200):
+        if display_number == inherited_number:
+            continue
         process = subprocess.Popen(
             [
                 executable,
-                "-displayfd",
-                str(write_fd),
+                f":{display_number}",
                 "-screen",
                 "0",
                 screen,
@@ -184,40 +187,29 @@ def _start_xvfb(screen: str, timeout_seconds: float) -> _ManagedXvfb:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             env=env,
-            pass_fds=(write_fd,),
             start_new_session=True,
         )
-        os.close(write_fd)
-        write_fd = -1
-        ready, _, _ = select.select([read_fd], [], [], timeout_seconds)
-        if not ready:
-            raise BrowserSessionError(
-                f"Xvfb no asignó DISPLAY dentro de {timeout_seconds:.1f}s."
+        deadline = time.monotonic() + min(timeout_seconds, 0.5)
+        while process.poll() is None and time.monotonic() < deadline:
+            time.sleep(0.025)
+        if process.poll() is None:
+            return _ManagedXvfb(
+                process=process,
+                display=f":{display_number}",
+                shutdown_timeout_seconds=min(timeout_seconds, 8.0),
             )
-        display_number = os.read(read_fd, 64).decode("ascii", errors="strict").strip()
-        if process.poll() is not None:
-            raise BrowserSessionError(
-                f"Xvfb terminó durante el arranque (código {process.returncode})."
-            )
-        if not display_number.isdigit():
-            raise BrowserSessionError(
-                f"Xvfb devolvió un identificador DISPLAY inválido: {display_number!r}."
-            )
-        return _ManagedXvfb(
-            process=process,
-            display=f":{display_number}",
-            shutdown_timeout_seconds=min(timeout_seconds, 8.0),
-        )
-    except BaseException:
-        if process is not None:
-            from .browser_runtime import stop_process_group
+        errors.append(f":{display_number} salió con código {process.returncode}")
+    raise BrowserSessionError(
+        "No se encontró un DISPLAY Xvfb aislado entre :90 y :199; "
+        + "; ".join(errors[-5:])
+    )
 
-            stop_process_group(process, min(timeout_seconds, 8.0))
-        raise
-    finally:
-        os.close(read_fd)
-        if write_fd >= 0:
-            os.close(write_fd)
+
+def _display_number(display: str | None) -> int | None:
+    if not display or ":" not in display:
+        return None
+    value = display.rsplit(":", 1)[-1].split(".", 1)[0]
+    return int(value) if value.isdigit() else None
 
 
 def _process_display(pid: int) -> str | None:
@@ -592,6 +584,13 @@ class _PureCDPBackend:
                     self.config.startup_timeout_seconds,
                 )
                 self._browser_display = self._xvfb.display
+                if _display_number(self._browser_display) == _display_number(
+                    os.environ.get("DISPLAY")
+                ):
+                    raise BrowserSessionError(
+                        "Xvfb seleccionó el mismo DISPLAY que el escritorio; "
+                        "no se abrirán páginas."
+                    )
             else:
                 self._browser_display = os.environ.get("DISPLAY")
             if not self._browser_display:
