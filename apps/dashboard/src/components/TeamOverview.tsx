@@ -8,15 +8,17 @@ import { TeamRosterSection } from "./TeamRoster";
 import { TeamFollow } from "./TeamFollow";
 import { TeamTransfers } from "./TeamTransfers";
 import { TeamMatches } from "./TeamMatches";
+import { InternalTeamLink } from "./InternalTeamLink";
 
 interface Props {
   team: CatalogTeam;
   data: Bootstrap;
+  teamCatalog: readonly CatalogTeam[];
   activeSection: "summary" | "roster" | "follow" | "transfers" | "matches";
   onNavigate: (path: string) => void;
 }
 
-export function TeamOverview({ team, data, activeSection, onNavigate }: Props) {
+export function TeamOverview({ team, data, teamCatalog, activeSection, onNavigate }: Props) {
   const [rosterResult, setRosterResult] = useState<TeamRosterLoadResult | null>(null);
   const [rosterError, setRosterError] = useState("");
   const [rosterLoading, setRosterLoading] = useState(false);
@@ -165,8 +167,10 @@ export function TeamOverview({ team, data, activeSection, onNavigate }: Props) {
                 <li key={match.match_id}>
                   <span className="team-recent-matchday">J{match.matchday}</span>
                   <span className="team-recent-venue">{isHome ? "Local" : "Visitante"}</span>
-                  <TeamCrest name={opponent.name} crestUrl={opponent.crest_url} className="team-recent-crest" />
-                  <span className="team-recent-opponent">{opponent.name}</span>
+                  <InternalTeamLink className="team-recent-opponent-link" teamId={opponent.team_id} onNavigate={onNavigate}>
+                    <TeamCrest name={opponent.name} crestUrl={opponent.crest_url} className="team-recent-crest" />
+                    <span className="team-recent-opponent">{opponent.name}</span>
+                  </InternalTeamLink>
                   <strong className="team-recent-score">{ownGoals}–{opponentGoals}</strong>
                   <span className="team-recent-date">{match.source_match_date ? formatDate(match.source_match_date) : "Fecha no disponible"}</span>
                 </li>
@@ -202,7 +206,7 @@ export function TeamOverview({ team, data, activeSection, onNavigate }: Props) {
         <TeamRosterSection key={`${team.team_id}:${rosterResult.roster.metadata.capture_id}`} roster={rosterResult.roster} />
       )}
       {activeSection === "follow" && <TeamFollow key={`${team.team_id}:${team.season}`} teamId={team.team_id} season={team.season} />}
-      {activeSection === "transfers" && <TeamTransfers key={`${team.team_id}:${team.season}`} teamId={team.team_id} season={team.season} />}
+      {activeSection === "transfers" && <TeamTransfers key={`${team.team_id}:${team.season}`} teamId={team.team_id} season={team.season} teams={teamCatalog} onNavigate={onNavigate} />}
       {activeSection === "matches" && <TeamMatches key={`${team.team_id}:${data.metadata.capture_id}`} team={team} data={data} onNavigate={onNavigate} />}
     </main>
   );

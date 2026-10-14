@@ -833,6 +833,100 @@ describe("dashboard de clasificación", () => {
     expect(await screen.findByText(/No hay un equipo con el identificador 99999/)).toBeInTheDocument();
   });
 
+  it("abre el club de Clasificación dentro de la aplicación y conserva el enlace de fuente", async () => {
+    render(<App />);
+    await screen.findByRole("heading", { name: "General" });
+    const row = screen.getByRole("row", { name: /Jaén/ });
+    const link = row.querySelector<HTMLAnchorElement>(".club-team-link");
+    expect(link).toHaveAttribute("href", "/teams/49");
+    expect(link?.querySelector("img.team-crest, .team-crest-fallback")).toBeInTheDocument();
+
+    fireEvent.click(link!);
+    expect(window.location.pathname).toBe("/teams/49");
+    expect(await screen.findByRole("heading", { name: "Resumen deportivo" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "BDFutbol ↗" })).toHaveAttribute("target", "_blank");
+  });
+
+  it("enlaza local, visitante y matriz a fichas internas sin convertir marcadores en enlaces de equipo", async () => {
+    const { container } = render(<App />);
+    await screen.findByRole("heading", { name: "General" });
+    fireEvent.click(screen.getByRole("tab", { name: "Resultados" }));
+    const matchRow = container.querySelector<HTMLElement>(".results-match-row")!;
+    const match = apiBootstrap.matches.find((item) => String(item.match_id) === matchRow.dataset.matchId);
+    const teamLinks = matchRow.querySelectorAll<HTMLAnchorElement>(".result-team-link");
+    expect(teamLinks).toHaveLength(2);
+    expect(teamLinks[0]).toHaveAttribute("href", `/teams/${match?.home_team_id}`);
+    expect(teamLinks[1]).toHaveAttribute("href", `/teams/${match?.away_team_id}`);
+    expect(matchRow.querySelector(".result-score")?.getAttribute("href")).toMatch(/^https:\/\/www\.bdfutbol\.com\//);
+
+    fireEvent.click(teamLinks[0]!);
+    expect(window.location.pathname).toBe(`/teams/${match?.home_team_id}`);
+    expect(await screen.findByRole("heading", { name: "Resumen deportivo" })).toBeInTheDocument();
+
+    cleanup();
+    window.history.replaceState({}, "", "/");
+    render(<App />);
+    await screen.findByRole("heading", { name: "General" });
+    fireEvent.click(screen.getByRole("tab", { name: "Resultados" }));
+    const awayLink = document.querySelectorAll<HTMLAnchorElement>(".results-match-row .result-team-link")[1]!;
+    fireEvent.click(awayLink);
+    expect(window.location.pathname).toBe(awayLink.getAttribute("href"));
+    expect(await screen.findByRole("heading", { name: "Resumen deportivo" })).toBeInTheDocument();
+
+    cleanup();
+    window.history.replaceState({}, "", "/");
+    const matrixView = render(<App />);
+    await screen.findByRole("heading", { name: "General" });
+    fireEvent.click(screen.getByRole("tab", { name: "Resultados" }));
+    const matrixRowLink = matrixView.container.querySelector<HTMLAnchorElement>(".matrix-row-team a[href='/teams/49']");
+    const matrixColumnLink = matrixView.container.querySelector<HTMLAnchorElement>(".matrix-column-team a[href='/teams/49']");
+    expect(matrixRowLink).toBeInTheDocument();
+    expect(matrixColumnLink).toBeInTheDocument();
+    fireEvent.click(matrixRowLink!);
+    expect(window.location.pathname).toBe("/teams/49");
+  });
+
+  it("usa solo afiliaciones verificadas para enlazar equipos en Destacados", async () => {
+    render(<App />);
+    await screen.findByRole("heading", { name: "General" });
+    fireEvent.click(screen.getByRole("tab", { name: "Destacados" }));
+    await screen.findByRole("heading", { name: "Destacados" });
+    const teamLink = document.querySelector<HTMLAnchorElement>(".top-team-link[href^='/teams/']");
+    expect(teamLink).toBeInTheDocument();
+    expect(teamLink?.getAttribute("href")).toMatch(/^\/teams\/\d+$/);
+    expect(document.querySelector(".top-player-link[target='_blank']")).toBeInTheDocument();
+    fireEvent.click(teamLink!);
+    expect(window.location.pathname).toBe(teamLink?.getAttribute("href"));
+    expect(await screen.findByRole("heading", { name: "Resumen deportivo" })).toBeInTheDocument();
+  });
+
+  it("enlaza clubes de Récords y Rachas a perfiles internos, manteniendo externo el marcador", async () => {
+    render(<App />);
+    await screen.findByRole("heading", { name: "General" });
+    fireEvent.click(screen.getByRole("tab", { name: "Estadísticas" }));
+    await screen.findByRole("heading", { name: "Estadísticas" });
+    const recordTeam = document.querySelector<HTMLAnchorElement>(".record-match .statistics-team[href^='/teams/']");
+    const streakTeam = document.querySelector<HTMLAnchorElement>(".streak-leader .statistics-team[href^='/teams/']");
+    expect(recordTeam).toBeInTheDocument();
+    expect(streakTeam).toBeInTheDocument();
+    expect(document.querySelector(".record-score[target='_blank']")).toBeInTheDocument();
+    fireEvent.click(recordTeam!);
+    expect(window.location.pathname).toBe(recordTeam?.getAttribute("href"));
+    expect(await screen.findByRole("heading", { name: "Resumen deportivo" })).toBeInTheDocument();
+  });
+
+  it("enlaza rivales de Últimos partidos al equipo correcto", async () => {
+    window.history.replaceState({}, "", "/teams/49");
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "Últimos partidos" })).toBeInTheDocument();
+    const opponent = document.querySelector<HTMLAnchorElement>(".team-recent-opponent-link");
+    expect(opponent?.getAttribute("href")).toMatch(/^\/teams\/\d+$/);
+    expect(opponent?.querySelector("img.team-recent-crest, .team-card-crest-fallback")).toBeInTheDocument();
+    fireEvent.click(opponent!);
+    expect(window.location.pathname).toBe(opponent?.getAttribute("href"));
+    expect(await screen.findByRole("heading", { name: "Resumen deportivo" })).toBeInTheDocument();
+  });
+
   it("muestra catálogo parcial y permite reintentar solo el grupo que falló", async () => {
     let group1Failed = false;
     fetchMock.mockImplementation((input: RequestInfo | URL) => {
@@ -1204,7 +1298,10 @@ describe("dashboard de clasificación", () => {
     const foreignersTable = screen.getByRole("region", { name: "Estadísticas de jugadores extranjeros" });
     const ambiguousPlayer = within(foreignersTable).getByRole("row", { name: /Luisao/ });
     expect(ambiguousPlayer.lastElementChild).toHaveTextContent("—");
-    expect(ambiguousPlayer.lastElementChild?.querySelector("[aria-label='Equipo no determinado']")).toBeInTheDocument();
+    const unknownAffiliation = ambiguousPlayer.lastElementChild?.querySelector("[aria-label='Equipo no determinado']");
+    expect(unknownAffiliation).toBeInTheDocument();
+    expect(unknownAffiliation).toHaveAttribute("title", expect.stringContaining("Afiliación de equipo ambigua"));
+    expect(ambiguousPlayer.lastElementChild?.querySelector("a[href^='/teams/']")).toBeNull();
 
     fireEvent.click(within(group1View).getByRole("tab", { name: "Árbitros" }));
     expect(await screen.findByText("43 árbitros · Grupo I")).toBeInTheDocument();
@@ -1465,7 +1562,7 @@ describe("dashboard de clasificación", () => {
 } as TopBootstrap;
 
     const { rerender } = render(
-      <TopSection data={unknownPercentage} loadState="ready" errorMessage="" onRetry={() => undefined} />,
+      <TopSection data={unknownPercentage} loadState="ready" errorMessage="" onRetry={() => undefined} teams={apiBootstrap.teams} onNavigate={() => undefined} />,
     );
     expect(screen.getByRole("heading", { name: "Extranjeros — 101 (—)" })).toBeInTheDocument();
 
@@ -1473,7 +1570,7 @@ describe("dashboard de clasificación", () => {
       ...topBootstrap,
       foreigners_summary: { ...topBootstrap.foreigners_summary, source_percentage: 0 },
     } as TopBootstrap;
-    rerender(<TopSection data={zeroPercentage} loadState="ready" errorMessage="" onRetry={() => undefined} />);
+    rerender(<TopSection data={zeroPercentage} loadState="ready" errorMessage="" onRetry={() => undefined} teams={apiBootstrap.teams} onNavigate={() => undefined} />);
     expect(screen.getByRole("heading", { name: "Extranjeros — 101 (0,00 %)" })).toBeInTheDocument();
   });
 
@@ -1488,7 +1585,7 @@ describe("dashboard de clasificación", () => {
       })),
     } as TopBootstrap;
     const { container } = render(
-      <TopSection data={sortableFixture} loadState="ready" errorMessage="" onRetry={() => undefined} />,
+      <TopSection data={sortableFixture} loadState="ready" errorMessage="" onRetry={() => undefined} teams={apiBootstrap.teams} onNavigate={() => undefined} />,
     );
     const table = container.querySelector(".foreigners-table") as HTMLElement;
     const goalsButton = within(table).getByRole("button", { name: /Goles/ });
@@ -1869,6 +1966,12 @@ describe("dashboard de clasificación", () => {
     expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/teams/49/seasons/2026-27/transfers"))).toHaveLength(1);
     expect(within(screen.getByRole("navigation", { name: "Secciones de Jaén" })).getAllByRole("link").map((link) => link.textContent))
       .toEqual(["Resumen", "Plantilla", "Seguimiento", "Traspasos", "Partidos"]);
+    fireEvent.change(screen.getByRole("textbox", { name: "Buscar futbolista o equipo" }), { target: { value: "" } });
+    const verifiedRelatedTeam = altas.querySelector<HTMLAnchorElement>("a[href='/teams/488']");
+    expect(verifiedRelatedTeam).toHaveTextContent("Juventud de Torremolinos");
+    fireEvent.click(verifiedRelatedTeam!);
+    expect(window.location.pathname).toBe("/teams/488");
+    expect(await screen.findByRole("heading", { name: "Juventud de Torremolinos" })).toBeInTheDocument();
   });
 
   it("cambia entre Traspasos directos de equipos sin mezclar sus filas y conserva navegación", async () => {

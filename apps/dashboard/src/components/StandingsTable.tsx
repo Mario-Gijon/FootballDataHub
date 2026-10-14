@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { PublishedStanding, Team } from "../api/contracts";
 import type { CalculatedTable, StandingRow, StandingsFilters } from "../domain/classification/engine";
+import { InternalTeamLink } from "./InternalTeamLink";
 
 type SortKey =
   | "position"
@@ -27,6 +28,7 @@ interface Props {
     };
     rows: PublishedStanding[];
   } | null;
+  onNavigate: (path: string) => void;
 }
 
 const columns: { key: SortKey; label: string; className?: string }[] = [
@@ -43,7 +45,7 @@ const columns: { key: SortKey; label: string; className?: string }[] = [
   { key: "redCards", label: "TR", className: "discipline-column" },
 ];
 
-export function StandingsTable({ table, filters, published }: Props) {
+export function StandingsTable({ table, filters, published, onNavigate }: Props) {
   const [sort, setSort] = useState<{ key: SortKey; direction: "asc" | "desc" } | null>(null);
   const publishedById = useMemo(
     () => new Map(published?.rows.map((row) => [row.team_id, row]) ?? []),
@@ -160,15 +162,11 @@ export function StandingsTable({ table, filters, published }: Props) {
                   </td>
                   <td className="position-cell">{row.position}</td>
                   <td className="club-cell">
-                    <TeamCrest team={row.team} />
-                    {row.team.team_url ? (
-                      <a href={row.team.team_url} target="_blank" rel="noreferrer">
-                        <span className="club-name">{row.team.name}</span>
-                        {isJaen && <span className="jaen-tag">JAÉN</span>}
-                      </a>
-                    ) : (
+                    <InternalTeamLink className="club-team-link" teamId={row.team.team_id} onNavigate={onNavigate}>
+                      <TeamCrest team={row.team} />
                       <span className="club-name">{row.team.name}</span>
-                    )}
+                      {isJaen && <span className="jaen-tag">JAÉN</span>}
+                    </InternalTeamLink>
                   </td>
                   <td className="points-cell">{row.points}</td>
                   <td>{row.matchesPlayed}</td>

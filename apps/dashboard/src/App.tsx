@@ -245,6 +245,8 @@ export default function App() {
               <GroupDashboard
                 group={group}
                 data={data}
+                teamCatalog={directory.teams}
+                onNavigate={navigate}
                 activeSection={activeSection}
                 onSectionChange={setActiveSection}
                 topData={topData[group]}
@@ -292,6 +294,7 @@ export default function App() {
           key={route.teamId}
           team={selectedTeam!}
           data={baseData[teamGroup]!}
+          teamCatalog={directory.teams}
           activeSection={route.section}
           onNavigate={navigate}
         />
@@ -377,6 +380,8 @@ function TeamRouteState({
 interface GroupDashboardProps {
   group: CompetitionGroup;
   data: Bootstrap;
+  teamCatalog: readonly CatalogTeam[];
+  onNavigate: (path: string) => void;
   activeSection: Section;
   onSectionChange: (section: Section) => void;
   topData: TopBootstrap | null;
@@ -396,6 +401,8 @@ interface GroupDashboardProps {
 function GroupDashboard({
   group,
   data,
+  teamCatalog,
+  onNavigate,
   activeSection,
   onSectionChange,
   topData,
@@ -462,7 +469,7 @@ function GroupDashboard({
             </span>
           </div>
         </div>
-        <StandingsTable filters={filters} published={data.published_standings} table={table} />
+        <StandingsTable filters={filters} published={data.published_standings} table={table} onNavigate={onNavigate} />
         <Suspense fallback={<div className="chart-loading" role="status">Cargando gráfico…</div>}>
           <ProgressChart teams={data.teams} records={data.progress} />
         </Suspense>
@@ -473,12 +480,13 @@ function GroupDashboard({
           data={data}
           matchday={resultsMatchday}
           onMatchdayChange={setResultsMatchday}
+          onNavigate={onNavigate}
           idSuffix={suffix}
         />
       </div>
       <div hidden={activeSection !== "top"}>
         <Suspense fallback={<div className="chart-loading" role="status">Cargando Destacados…</div>}>
-          <TopSection data={topData} loadState={topState} errorMessage={topError} onRetry={onTopRetry} idSuffix={suffix} />
+          <TopSection data={topData} loadState={topState} errorMessage={topError} onRetry={onTopRetry} teams={teamCatalog} onNavigate={onNavigate} idSuffix={suffix} />
         </Suspense>
       </div>
       <div hidden={activeSection !== "referees"}>
@@ -500,6 +508,7 @@ function GroupDashboard({
             loadState={statisticsState}
             errorMessage={statisticsError}
             onRetry={onStatisticsRetry}
+            onNavigate={onNavigate}
             idSuffix={suffix}
           />
         </Suspense>

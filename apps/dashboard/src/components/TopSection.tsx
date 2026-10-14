@@ -9,18 +9,22 @@ import {
   YAxis,
 } from "recharts";
 import type {
+  Team,
   TopBootstrap,
   TopCategory,
   TopForeignPlayer,
   TopPlayer,
   TopProgressSeries,
 } from "../api/contracts";
+import { InternalTeamLink } from "./InternalTeamLink";
 
 interface TopSectionProps {
   data: TopBootstrap | null;
   loadState: "idle" | "loading" | "error" | "ready";
   errorMessage: string;
   onRetry: () => void;
+  teams: readonly Team[];
+  onNavigate: (path: string) => void;
   idSuffix?: string;
 }
 
@@ -47,7 +51,7 @@ export function buildTopProgressData(
   });
 }
 
-export function TopSection({ data, loadState, errorMessage, onRetry, idSuffix = "" }: TopSectionProps) {
+export function TopSection({ data, loadState, errorMessage, onRetry, teams, onNavigate, idSuffix = "" }: TopSectionProps) {
   if (loadState === "idle" || loadState === "loading") {
     return (
       <section className="top-load-state" role="tabpanel" id={`top-panel${idSuffix}`} aria-labelledby={`top-tab${idSuffix}`} aria-busy="true">
@@ -69,10 +73,10 @@ export function TopSection({ data, loadState, errorMessage, onRetry, idSuffix = 
       </section>
     );
   }
-  return <TopDashboard data={data} idSuffix={idSuffix} />;
+  return <TopDashboard data={data} teams={teams} onNavigate={onNavigate} idSuffix={idSuffix} />;
 }
 
-function TopDashboard({ data, idSuffix }: { data: TopBootstrap; idSuffix: string }) {
+function TopDashboard({ data, teams, onNavigate, idSuffix }: { data: TopBootstrap; teams: readonly Team[]; onNavigate: (path: string) => void; idSuffix: string }) {
   const [category, setCategory] = useState<TopCategory>("goals");
   const [showAllGoals, setShowAllGoals] = useState(false);
   const [selectedByCategory, setSelectedByCategory] = useState<Record<TopCategory, number[]>>(
@@ -85,6 +89,7 @@ function TopDashboard({ data, idSuffix }: { data: TopBootstrap; idSuffix: string
     [data.rankings, category],
   );
   const playersById = useMemo(() => new Map(data.players.map((player) => [player.player_id, player])), [data.players]);
+  const teamsById = useMemo(() => new Map(teams.map((team) => [team.team_id, team])), [teams]);
   const series = useMemo(() => data.progress.filter((item) => item.category === category), [data.progress, category]);
   const chartData = useMemo(
     () => buildTopProgressData(data.availability.matchdays, series, selected),
@@ -164,7 +169,7 @@ function TopDashboard({ data, idSuffix }: { data: TopBootstrap; idSuffix: string
                       <td>{player.nationality ?? <span className="muted-dash">—</span>}</td>
                       <td>{player.position_name ?? <span className="muted-dash">—</span>}</td>
                       {!categoriesWithoutProgress.has(category) && <td>{formatNullable(player.age_years)}</td>}
-                      <td><TopTeamLink player={player} /></td>
+                      <td><TopTeamLink player={player} teamsById={teamsById} warnings={data.warnings} onNavigate={onNavigate} /></td>
                       <td className="top-metric-value">{ranking.metric_value}<span>{metricSuffix(category)}</span></td>
                       {!categoriesWithoutProgress.has(category) && <td className="top-graph-toggle-cell">{hasSeries ? <input aria-label={`Incluir a ${player.display_name} en el gráfico`} type="checkbox" checked={selected.includes(player.player_id)} onChange={() => togglePlayer(player.player_id)} /> : <span className="muted-dash" aria-label="Sin serie de evolución">—</span>}</td>}
                     </tr>
@@ -214,12 +219,12 @@ function TopDashboard({ data, idSuffix }: { data: TopBootstrap; idSuffix: string
         </div>
       </section>
 
-      <ForeignersTable data={data} percentageLabel={foreignCountLabel} />
+      <ForeignersTable data={data} percentageLabel={foreignCountLabel} teamsById={teamsById} onNavigate={onNavigate} />
     </section>
   );
 }
 
-function ForeignersTable({ data, percentageLabel }: { data: TopBootstrap; percentageLabel: string }) {
+function ForeignersTable({ data, percentageLabel, teamsById, onNavigate }: { data: TopBootstrap; percentageLabel: string; teamsById: ReadonlyMap<number, Team>; onNavigate: (path: string) => void }) {
   const [country, setCountry] = useState("");
   const [sort, setSort] = useState<{ field: ForeignSortField; direction: SortDirection }>({ field: "player", direction: "asc" });
   const playersById = useMemo(() => new Map(data.players.map((player) => [player.player_id, player])), [data.players]);
@@ -297,7 +302,7 @@ function ForeignersTable({ data, percentageLabel }: { data: TopBootstrap; percen
               <td className="foreign-number">{formatNullable(foreign.statistics.goals)}</td>
               <td className="foreign-number">{formatNullable(foreign.statistics.yellow_cards)}</td>
               <td className="foreign-number">{formatNullable(foreign.statistics.red_cards)}</td>
-              <td><TopTeamLink player={player} /></td>
+              <td><TopTeamLink player={player} teamsById={teamsById} warnings={data.warnings} onNavigate={onNavigate} /></td>
             </tr>
           ))}</tbody>
         </table>
@@ -321,10 +326,22 @@ function PlayerLink({ player }: { player: TopPlayer }) {
   </a>;
 }
 
-function TopTeamLink({ player }: { player: TopPlayer }) {
-  if (!player.team_name) return <span className="muted-dash" aria-label="Equipo no determinado">—</span>;
-  const content = <>{player.crest_url ? <img className="top-team-crest" src={player.crest_url} alt="" loading="lazy" /> : <span className="top-team-crest-fallback" aria-hidden="true">{player.team_name.slice(0, 1)}</span>}<span>{player.team_name}</span></>;
-  return player.team_url ? <a className="top-team-link" href={player.team_url} target="_blank" rel="noreferrer">{content}</a> : <span className="top-team-link">{content}</span>;
+function TopTeamLink({ player, teamsById, warnings, onNavigate }: {
+  player: TopPlayer;
+  teamsById: ReadonlyMap<number, Team>;
+  warnings: string[];
+  onNavigate: (path: string) => void;
+}) {
+  const team = player.team_id === null ? undefined : teamsById.get(player.team_id);
+  const name = team?.name ?? player.team_name;
+  const warning = warnings.find((item) => item.includes(`player_id=${player.player_id}`))
+    ?? (player.team_id !== null && !team ? `La afiliación ${player.team_id} no está verificada en el catálogo activo.` : undefined);
+  if (!name) return <span className="top-team-link muted-dash" aria-label="Equipo no determinado" title={warning}>—</span>;
+  const crestUrl = team?.crest_url ?? player.crest_url;
+  const content = <>{crestUrl ? <img className="top-team-crest" src={crestUrl} alt="" loading="lazy" /> : <span className="top-team-crest-fallback" aria-hidden="true">{name.slice(0, 1)}</span>}<span>{name}</span></>;
+  return team
+    ? <InternalTeamLink className="top-team-link" teamId={team.team_id} onNavigate={onNavigate} title={warning}>{content}</InternalTeamLink>
+    : <span className="top-team-link" title={warning} aria-label={warning ? `${name}. ${warning}` : name}>{content}</span>;
 }
 
 function metricHeading(category: TopCategory): string {

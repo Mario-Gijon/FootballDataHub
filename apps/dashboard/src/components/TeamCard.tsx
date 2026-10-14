@@ -1,5 +1,6 @@
-import { useState, type MouseEvent } from "react";
-import { teamPath, type CatalogTeam } from "../domain/teams";
+import { useState } from "react";
+import type { CatalogTeam } from "../domain/teams";
+import { InternalTeamLink } from "./InternalTeamLink";
 
 interface Props {
   team: CatalogTeam;
@@ -7,16 +8,11 @@ interface Props {
 }
 
 export function TeamCard({ team, onNavigate }: Props) {
-  const path = teamPath(team.team_id);
   return (
-    <a
+    <InternalTeamLink
       className={`team-card ${team.team_id === 49 ? "is-jaen-team" : ""}`.trim()}
-      href={path}
-      onClick={(event: MouseEvent<HTMLAnchorElement>) => {
-        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-        event.preventDefault();
-        onNavigate(path);
-      }}
+      teamId={team.team_id}
+      onNavigate={onNavigate}
       aria-label={`Abrir ficha de ${team.name}, Grupo ${team.group === "1" ? "I" : "II"}`}
     >
       <TeamCrest name={team.name} crestUrl={team.crest_url} />
@@ -25,7 +21,7 @@ export function TeamCard({ team, onNavigate }: Props) {
         <small>Grupo {team.group === "1" ? "I" : "II"}</small>
       </span>
       <span className="team-card-arrow" aria-hidden="true">↗</span>
-    </a>
+    </InternalTeamLink>
   );
 }
 

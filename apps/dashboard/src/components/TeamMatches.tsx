@@ -1,4 +1,4 @@
-import { useMemo, useState, type MouseEvent } from "react";
+import { useMemo, useState } from "react";
 import type { Bootstrap } from "../api/contracts";
 import {
   buildTeamMatchCalendar,
@@ -6,9 +6,10 @@ import {
   type TeamMatchEntry,
   type TeamRecord,
 } from "../domain/team-matches";
-import { teamPath, type CatalogTeam } from "../domain/teams";
+import type { CatalogTeam } from "../domain/teams";
 import { TeamCrest } from "./TeamCard";
 import { TeamProgressChart } from "./TeamProgressChart";
+import { InternalTeamLink } from "./InternalTeamLink";
 
 type StatusFilter = "all" | "played" | "unplayed" | "incomplete";
 type VenueFilter = "all" | "home" | "away";
@@ -149,15 +150,10 @@ function MatchRow({ entry, onNavigate }: { entry: TeamMatchEntry; onNavigate: (p
 }
 
 function TeamLink({ team, onNavigate }: { team: TeamMatchEntry["homeTeam"]; onNavigate: (path: string) => void }) {
-  const path = teamPath(team.team_id);
-  return <a className="team-match-team" href={path} onClick={(event) => {
-    if (!isPlainNavigation(event)) return;
-    event.preventDefault();
-    onNavigate(path);
-  }}>
+  return <InternalTeamLink className="team-match-team" teamId={team.team_id} onNavigate={onNavigate}>
     <TeamCrest name={team.name} crestUrl={team.crest_url} className="team-match-crest" />
     <span>{team.name}</span>
-  </a>;
+  </InternalTeamLink>;
 }
 
 function RecordCard({ record }: { record: TeamRecord }) {
@@ -198,10 +194,6 @@ function RecordMatchLink({ entry }: { entry: TeamMatchEntry }) {
 
 function streakResultLabel(entry: TeamMatchEntry): string {
   return entry.result === "win" ? "V" : entry.result === "draw" ? "E" : "D";
-}
-
-function isPlainNavigation(event: MouseEvent<HTMLAnchorElement>): boolean {
-  return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
 }
 
 function formatDate(value: string): string {

@@ -9,6 +9,7 @@ import {
   YAxis,
 } from "recharts";
 import type { Bootstrap, StatisticsBootstrap, Team } from "../api/contracts";
+import { InternalTeamLink } from "./InternalTeamLink";
 
 interface StatisticsSectionProps {
   data: StatisticsBootstrap | null;
@@ -17,6 +18,7 @@ interface StatisticsSectionProps {
   loadState: "idle" | "loading" | "error" | "ready";
   errorMessage: string;
   onRetry: () => void;
+  onNavigate: (path: string) => void;
   idSuffix?: string;
 }
 
@@ -49,6 +51,7 @@ export function StatisticsSection({
   loadState,
   errorMessage,
   onRetry,
+  onNavigate,
   idSuffix = "",
 }: StatisticsSectionProps) {
   if (loadState === "idle" || loadState === "loading") {
@@ -69,18 +72,20 @@ export function StatisticsSection({
       </section>
     );
   }
-  return <StatisticsDashboard data={data} teams={teams} matches={matches} idSuffix={idSuffix} />;
+  return <StatisticsDashboard data={data} teams={teams} matches={matches} onNavigate={onNavigate} idSuffix={idSuffix} />;
 }
 
 function StatisticsDashboard({
   data,
   teams,
   matches,
+  onNavigate,
   idSuffix,
 }: {
   data: StatisticsBootstrap;
   teams: Bootstrap["teams"];
   matches: Bootstrap["matches"];
+  onNavigate: (path: string) => void;
   idSuffix: string;
 }) {
   const [visibleMetrics, setVisibleMetrics] = useState<RoundMetric[]>(["goals", "yellow_cards", "red_cards"]);
@@ -151,13 +156,15 @@ function StatisticsDashboard({
                 if (!home || !away) return null;
                 return (
                   <div className="record-match" key={recordMatch.match_id}>
-                    <TeamName team={home} />
+                    <TeamName team={home} onNavigate={onNavigate} />
                     <a className="record-score" href={match?.source_match_url ?? undefined} target={match?.source_match_url ? "_blank" : undefined} rel={match?.source_match_url ? "noreferrer" : undefined} aria-label={`${home.name} ${recordMatch.home_goals} a ${recordMatch.away_goals} ${away.name}`}>
                       <strong>{recordMatch.home_goals} – {recordMatch.away_goals}</strong><small>J{recordMatch.matchday}</small>
                     </a>
-                    <TeamName team={away} />
+                    <TeamName team={away} onNavigate={onNavigate} />
                     {recordMatch.home_goals !== recordMatch.away_goals && (
-                      <span className="record-winner">Ganador: {recordMatch.home_goals > recordMatch.away_goals ? home.name : away.name}</span>
+                      <span className="record-winner">Ganador: <InternalTeamLink teamId={recordMatch.home_goals > recordMatch.away_goals ? home.team_id : away.team_id} onNavigate={onNavigate}>
+                        {recordMatch.home_goals > recordMatch.away_goals ? home.name : away.name}
+                      </InternalTeamLink></span>
                     )}
                   </div>
                 );
@@ -181,7 +188,7 @@ function StatisticsDashboard({
                   const team = teamsById.get(streak.team_id);
                   return team ? (
                     <div className="streak-leader" key={`${streak.team_id}-${streak.matchday_start}-${streak.matchday_end}`}>
-                      <TeamName team={team} />
+                      <TeamName team={team} onNavigate={onNavigate} />
                       <strong>{streak.match_count} {streak.match_count === 1 ? "partido" : "partidos"}</strong>
                       <span>J{streak.matchday_start}–J{streak.matchday_end}</span>
                     </div>
@@ -249,12 +256,12 @@ function SummaryCard({ label, value, secondary }: { label: string; value: number
   return <article className="statistics-summary-card"><span>{label}</span><strong>{formatValue(value)}</strong>{secondary && <small>Media {secondary}</small>}</article>;
 }
 
-function TeamName({ team }: { team: Team }) {
+function TeamName({ team, onNavigate }: { team: Team; onNavigate: (path: string) => void }) {
   return (
-    <span className="statistics-team">
+    <InternalTeamLink className="statistics-team" teamId={team.team_id} onNavigate={onNavigate}>
       {team.crest_url ? <img src={team.crest_url} alt="" loading="lazy" /> : <i aria-hidden="true" />}
       <span>{team.name}</span>
-    </span>
+    </InternalTeamLink>
   );
 }
 

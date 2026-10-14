@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { Bootstrap, Team } from "../api/contracts";
 import { buildResultsMatrix, listResults, type ListedMatch, type MatchOutcome } from "../domain/results";
+import { InternalTeamLink } from "./InternalTeamLink";
 
 export type ResultsMatchday = number | "all";
 
@@ -8,10 +9,11 @@ interface ResultsSectionProps {
   data: Bootstrap;
   matchday: ResultsMatchday;
   onMatchdayChange: (value: ResultsMatchday) => void;
+  onNavigate: (path: string) => void;
   idSuffix?: string;
 }
 
-export function ResultsSection({ data, matchday, onMatchdayChange, idSuffix = "" }: ResultsSectionProps) {
+export function ResultsSection({ data, matchday, onMatchdayChange, onNavigate, idSuffix = "" }: ResultsSectionProps) {
   const entries = useMemo(
     () => listResults(data.teams, data.matches, matchday === "all" ? null : matchday),
     [data.matches, data.teams, matchday],
@@ -96,7 +98,7 @@ export function ResultsSection({ data, matchday, onMatchdayChange, idSuffix = ""
                     <span>{matches.length} partidos</span>
                   </th>
                 </tr>
-                {matches.map((entry) => <MatchRow key={entry.match.match_id} entry={entry} />)}
+                {matches.map((entry) => <MatchRow key={entry.match.match_id} entry={entry} onNavigate={onNavigate} />)}
               </tbody>
             ))}
             {groups.length === 0 && (
@@ -125,15 +127,17 @@ export function ResultsSection({ data, matchday, onMatchdayChange, idSuffix = ""
             <thead>
               <tr>
                 <th className="matrix-corner" scope="col">Local ↓<br />Visitante →</th>
-                {matrix.map(({ team }) => <MatrixTeamHeader key={team.team_id} team={team} />)}
+                {matrix.map(({ team }) => <MatrixTeamHeader key={team.team_id} team={team} onNavigate={onNavigate} />)}
               </tr>
             </thead>
             <tbody>
               {matrix.map((row) => (
                 <tr key={row.team.team_id} className={row.team.team_id === 49 ? "is-jaen-match" : undefined}>
                   <th className="matrix-row-team" scope="row" title={row.team.name}>
-                    <TeamCrest team={row.team} />
-                    <span>{row.team.name}</span>
+                    <InternalTeamLink className="matrix-row-team-link" teamId={row.team.team_id} onNavigate={onNavigate}>
+                      <TeamCrest team={row.team} />
+                      <span>{row.team.name}</span>
+                    </InternalTeamLink>
                   </th>
                   {row.cells.map((cell) => (
                     <MatrixCell
@@ -153,13 +157,18 @@ export function ResultsSection({ data, matchday, onMatchdayChange, idSuffix = ""
   );
 }
 
-function MatchRow({ entry }: { entry: ListedMatch }) {
+function MatchRow({ entry, onNavigate }: { entry: ListedMatch; onNavigate: (path: string) => void }) {
   const { match, homeTeam, awayTeam } = entry;
   const involvesJaen = homeTeam.team_id === 49 || awayTeam.team_id === 49;
   return (
-    <tr className={involvesJaen ? "results-match-row is-jaen-match" : "results-match-row"}>
+    <tr
+      className={involvesJaen ? "results-match-row is-jaen-match" : "results-match-row"}
+      data-match-id={match.match_id}
+      data-home-team-id={homeTeam.team_id}
+      data-away-team-id={awayTeam.team_id}
+    >
       <td className="result-date">{match.source_match_date ? formatMatchDate(match.source_match_date) : <span aria-label="Fecha no disponible">—</span>}</td>
-      <td><TeamLink team={homeTeam} /></td>
+      <td><TeamLink team={homeTeam} onNavigate={onNavigate} /></td>
       <td className="result-score-cell">
         {match.status === "played" && match.home_goals !== null && match.away_goals !== null
           ? match.source_match_url
@@ -171,17 +180,19 @@ function MatchRow({ entry }: { entry: ListedMatch }) {
             ? <span className="result-pending" aria-label="Partido pendiente">Pendiente</span>
             : <span className="result-pending" aria-label="Datos incompletos">Incompleto</span>}
       </td>
-      <td><TeamLink team={awayTeam} /></td>
+      <td><TeamLink team={awayTeam} onNavigate={onNavigate} /></td>
       <td>{match.stadium_name ? <SourceLink href={match.stadium_url} label={match.stadium_name} /> : <span className="result-unavailable">—</span>}</td>
       <td>{match.referee_name ? <SourceLink href={match.referee_url} label={match.referee_name} /> : <span className="result-unavailable">—</span>}</td>
     </tr>
   );
 }
 
-function MatrixTeamHeader({ team }: { team: Team }) {
+function MatrixTeamHeader({ team, onNavigate }: { team: Team; onNavigate: (path: string) => void }) {
   return (
     <th className={team.team_id === 49 ? "matrix-column-team is-jaen-column" : "matrix-column-team"} scope="col" title={team.name}>
-      <span>{team.name}</span>
+      <InternalTeamLink className="matrix-column-team-link" teamId={team.team_id} onNavigate={onNavigate}>
+        <span>{team.name}</span>
+      </InternalTeamLink>
     </th>
   );
 }
@@ -216,11 +227,9 @@ function MatrixCell({
   );
 }
 
-function TeamLink({ team }: { team: Team }) {
+function TeamLink({ team, onNavigate }: { team: Team; onNavigate: (path: string) => void }) {
   const content = <><TeamCrest team={team} /><span>{team.name}</span>{team.team_id === 49 && <small>RJ</small>}</>;
-  return team.team_url
-    ? <a className="result-team-link" href={team.team_url} target="_blank" rel="noreferrer">{content}</a>
-    : <span className="result-team-link">{content}</span>;
+  return <InternalTeamLink className="result-team-link" teamId={team.team_id} onNavigate={onNavigate}>{content}</InternalTeamLink>;
 }
 
 function TeamCrest({ team }: { team: Team }) {

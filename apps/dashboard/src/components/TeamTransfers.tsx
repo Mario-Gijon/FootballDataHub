@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { loadTeamTransfers, TeamTransfersApiError, type TeamTransfersLoadResult } from "../api/client";
-import type { TeamTransferRecord, TeamTransfers as TeamTransfersData } from "../api/contracts";
+import type { Team, TeamTransferRecord, TeamTransfers as TeamTransfersData } from "../api/contracts";
 import { ProfileImage } from "./TeamRosterShared";
+import { InternalTeamLink } from "./InternalTeamLink";
 
-export function TeamTransfers({ teamId, season }: { teamId: number; season: string }) {
+export function TeamTransfers({ teamId, season, teams, onNavigate }: { teamId: number; season: string; teams: readonly Team[]; onNavigate: (path: string) => void }) {
   const [result, setResult] = useState<TeamTransfersLoadResult | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -58,8 +59,8 @@ export function TeamTransfers({ teamId, season }: { teamId: number; season: stri
       <h2>Traspasos aún no adquiridos</h2>
     </section>}
     {!loading && !error && transfers && <>
-      <TransferTable title="Altas" columnLabel="Equipo de origen" rows={incoming} section={section(transfers, "incoming")} />
-      <TransferTable title="Bajas" columnLabel="Equipo de destino" rows={outgoing} section={section(transfers, "outgoing")} />
+      <TransferTable title="Altas" columnLabel="Equipo de origen" rows={incoming} section={section(transfers, "incoming")} teams={teams} onNavigate={onNavigate} />
+      <TransferTable title="Bajas" columnLabel="Equipo de destino" rows={outgoing} section={section(transfers, "outgoing")} teams={teams} onNavigate={onNavigate} />
     </>}
   </section>;
 }
@@ -69,11 +70,15 @@ function TransferTable({
   columnLabel,
   rows,
   section,
+  teams,
+  onNavigate,
 }: {
   title: "Altas" | "Bajas";
   columnLabel: "Equipo de origen" | "Equipo de destino";
   rows: TeamTransferRecord[];
   section: TeamTransfersData["sections"][number];
+  teams: readonly Team[];
+  onNavigate: (path: string) => void;
 }) {
   return <section className="team-profile-panel team-transfers-panel" aria-labelledby={`transfers-${section.direction}`}>
     <div className="team-transfers-section-heading">
@@ -95,14 +100,15 @@ function TransferTable({
             <th scope="col">Demarcación</th>
             <th scope="col">{columnLabel}</th>
           </tr></thead>
-          <tbody>{rows.map((row) => <TransferRow key={`${row.direction}:${row.player_id}`} row={row} />)}</tbody>
+          <tbody>{rows.map((row) => <TransferRow key={`${row.direction}:${row.player_id}`} row={row} teams={teams} onNavigate={onNavigate} />)}</tbody>
         </table>
       </div>
     )}
   </section>;
 }
 
-function TransferRow({ row }: { row: TeamTransferRecord }) {
+function TransferRow({ row, teams, onNavigate }: { row: TeamTransferRecord; teams: readonly Team[]; onNavigate: (path: string) => void }) {
+  const relatedTeam = row.other_team_id === null ? undefined : teams.find((team) => team.team_id === row.other_team_id);
   return <tr>
     <td><ProfileImage src={row.player_photo_url} name={row.player_display_name} className="team-transfer-photo" /></td>
     <td><a href={row.player_profile_url} target="_blank" rel="noreferrer">{row.player_display_name}</a></td>
@@ -110,9 +116,13 @@ function TransferRow({ row }: { row: TeamTransferRecord }) {
     <td>{row.age_years ?? "—"}</td>
     <td>{row.source_position_code ? `Código ${row.source_position_code} · sin equivalencia validada` : "—"}</td>
     <td>{row.other_team_name
-      ? row.other_team_url
-        ? <a href={row.other_team_url} target="_blank" rel="noreferrer">{row.other_team_name}</a>
-        : row.other_team_name
+      ? relatedTeam
+        ? <InternalTeamLink teamId={relatedTeam.team_id} onNavigate={onNavigate}>{relatedTeam.name}</InternalTeamLink>
+        : row.other_team_url
+          ? <a href={row.other_team_url} target="_blank" rel="noreferrer" title="Referencia histórica de BDFutbol" aria-label={`${row.other_team_name} · referencia histórica de BDFutbol`}>
+            {row.other_team_name} <span aria-hidden="true">↗</span>
+          </a>
+          : row.other_team_name
       : "—"}</td>
   </tr>;
 }
