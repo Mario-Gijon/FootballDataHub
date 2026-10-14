@@ -193,10 +193,13 @@ def test_catalog_reconciles_reusable_views_and_cohorts_atomically(tmp_path: Path
     store = PlayerCaptureStore(root, capture_id="catalog-run")
     url = "https://www.bdfutbol.com/es/j/j12345.html"
     html = '<html><title>Test Player | BDFutbol</title><h1>Test Player</h1></html>'
-    store.save_snapshot(
+    saved = store.save_snapshot(
         player_id=12345, view="profile", requested_url=url, final_url=url,
         http_status=200, page_title="Test Player", html=html,
         browser={"backend": "test"},
+    )
+    store.record_snapshot_validation(
+        saved["snapshot_id"], status="VALID", parser_version="test-parser",
     )
     store.mark_complete()
     inventory = tmp_path / "inventory.json"
@@ -235,6 +238,39 @@ def test_catalog_reconciles_reusable_views_and_cohorts_atomically(tmp_path: Path
     assert saved["inventory"]["sha256"] == hashlib.sha256(inventory.read_bytes()).hexdigest()
 
 
+def test_progress_allows_disk_pause_resume_but_keeps_http_404_unresolved(tmp_path: Path) -> None:
+    root = tmp_path / "captures"
+    inventory = tmp_path / "inventory.json"
+    inventory.write_text(json.dumps({"records": [
+        {"player_id": 501, "display_name": "Player 501", "membership_count": 1},
+    ]}), encoding="utf-8")
+    disk_run = PlayerCaptureStore(root, capture_id="disk-low")
+    disk_run.record_diagnostic({
+        "error_code": "DISK_SPACE_LOW",
+        "player_id": 501,
+        "view": "profile",
+        "requested_url": "https://www.bdfutbol.com/es/j/j501.html",
+        "stop_acquisition": True,
+    })
+    progress = build_player_acquisition_progress(inventory_path=inventory, capture_root=root)
+    assert progress["summary"]["players_with_access_errors"] == 0
+    assert progress["summary"]["players_pending"] == 1
+
+    http_run = PlayerCaptureStore(root, capture_id="http-404")
+    http_run.record_diagnostic({
+        "error_code": "HTTP_404_STOPPED",
+        "access_status": "HTTP_ERROR",
+        "http_status": 404,
+        "player_id": 501,
+        "view": "profile",
+        "requested_url": "https://www.bdfutbol.com/es/j/j501.html",
+        "stop_acquisition": True,
+    })
+    progress = build_player_acquisition_progress(inventory_path=inventory, capture_root=root)
+    assert progress["summary"]["players_with_access_errors"] == 1
+    assert progress["summary"]["blocked_base_views"] == 1
+
+
 def test_acquisition_reuses_verified_snapshot_from_another_run_without_browser(
     tmp_path: Path,
     monkeypatch: object,
@@ -251,10 +287,13 @@ def test_acquisition_reuses_verified_snapshot_from_another_run_without_browser(
     source_store = PlayerCaptureStore(root, capture_id="existing-run")
     url = "https://www.bdfutbol.com/es/j/j12345.html"
     html = '<html><title>Test Player | BDFutbol</title><h1>Test Player</h1></html>'
-    source_store.save_snapshot(
+    source_snapshot = source_store.save_snapshot(
         player_id=12345, view="profile", requested_url=url, final_url=url,
         http_status=200, page_title="Test Player", html=html,
         browser={"backend": "test"},
+    )
+    source_store.record_snapshot_validation(
+        source_snapshot["snapshot_id"], status="VALID", parser_version="test-parser",
     )
     source_store.mark_complete()
 

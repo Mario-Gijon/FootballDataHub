@@ -11,9 +11,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from .parsers import PLAYER_PARSER_VERSION, PlayerCaptureParseError, parse_snapshot
 from .html_parser import soup_from_html
 
 PLAYER_VIEWS = ("profile", "statistics", "matches", "rivals")
+_NON_ACCESS_STOP_CODES = {"DISK_SPACE_LOW"}
 _VIEW_PATHS = {
     "profile": "/es/j/j{player_id}.html",
     "statistics": "/es/j/j{player_id}.html?p=stats",
@@ -86,16 +88,36 @@ def _verified_base_snapshot(
         or not identity_valid
     ):
         return None
+    parse_validation = item.get("parse_validation")
+    if not parse_validation or parse_validation.get("status") != "VALID":
+        try:
+            parse_snapshot(
+                capture_root / capture_id,
+                item,
+                expected_player_id=player_id,
+                expected_names=expected_names,
+            )
+        except (PlayerCaptureParseError, OSError, ValueError, TypeError, KeyError):
+            return None
+        parse_validation = {
+            "status": "VALID",
+            "parser_version": PLAYER_PARSER_VERSION,
+            "validation_source": "offline_reparse_during_progress_reconciliation",
+        }
+    if parse_validation.get("status") != "VALID":
+        return None
     return {
         "capture_id": capture_id,
         "snapshot_id": str(item.get("snapshot_id") or metadata.get("snapshot_id")),
         "player_id": player_id,
         "view": view,
         "snapshot_kind": "BASE_VIEW",
-        "parse_validation": item.get("parse_validation"),
+        "parse_validation": parse_validation,
         "requested_url": expected_url,
         "captured_at_utc": metadata.get("captured_at_utc"),
         "final_url": metadata.get("final_url"),
+        "http_status": metadata.get("http_status"),
+        "access_status": metadata.get("access_status"),
         "html_sha256": digest,
         "metadata_sha256": hashlib.sha256(metadata_raw).hexdigest(),
         "metadata_path": f"{capture_id}/{item['metadata_path']}",
@@ -182,6 +204,10 @@ def build_player_acquisition_progress(
             *manifest.get("diagnostics", []),
         ]:
             if not isinstance(event, dict):
+                continue
+            if event.get("error_code") in _NON_ACCESS_STOP_CODES:
+                # A storage pause is resumable and must not be reported as an
+                # unresolved HTTP/content error on the next preflight.
                 continue
             player_id, view = event.get("player_id"), event.get("view")
             if player_id not in player_records or view not in PLAYER_VIEWS:

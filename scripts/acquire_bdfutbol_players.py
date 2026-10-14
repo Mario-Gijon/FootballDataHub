@@ -13,43 +13,64 @@ from typing import Any
 
 from football_data_hub.providers.bdfutbol.players.acquisition import (
     PLAYER_VIEWS,
+    STOP_ON_UNVERIFIED_HTTP_ERROR,
+    access_policy_is_complete,
     acquire_player_views,
 )
 from football_data_hub.providers.bdfutbol.players.batch import (
     PlayerBatchAlreadyRunning,
     PlayerBatchLock,
+    PlayerDiskSpaceGuard,
     atomic_status,
     estimate_acquisition_storage,
     load_verified_compact_sample,
     ordered_player_ids,
+    validate_player_batch_completion,
 )
 from football_data_hub.providers.bdfutbol.players.capture_store import PlayerCaptureStore
 from football_data_hub.providers.bdfutbol.players.catalog import build_player_acquisition_progress
 
-# A missing profile must be distinguishable from a transient HTTP failure by
-# evidence captured from BDFutbol before a long unattended run can continue past it.
-MISSING_PROFILE_POLICY_VERIFIED = False
+EXPECTED_INVENTORY_PLAYERS = 1709
 
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
-def _matching_profile_processes(profile: Path) -> list[int]:
-    expected = str(profile.expanduser().resolve()).encode()
+def _matching_profile_processes(profile: Path, proc_root: Path = Path("/proc")) -> list[int]:
+    expected = profile.expanduser().resolve()
+    browser_names = {
+        "brave", "brave-browser", "chrome", "google-chrome",
+        "google-chrome-stable", "chromium", "chromium-browser",
+    }
     matches: list[int] = []
-    proc_root = Path("/proc")
     if not proc_root.is_dir():
         return matches
     for entry in proc_root.iterdir():
         if not entry.name.isdigit():
             continue
         try:
-            command = (entry / "cmdline").read_bytes()
+            arguments = [
+                os.fsdecode(value) for value in (entry / "cmdline").read_bytes().split(b"\0") if value
+            ]
         except OSError:
             continue
-        if expected in command and b"chrom" in command.lower():
-            matches.append(int(entry.name))
+        if not arguments or Path(arguments[0]).name.casefold() not in browser_names:
+            continue
+        profile_value = None
+        for index, argument in enumerate(arguments[1:], start=1):
+            if argument.startswith("--user-data-dir="):
+                profile_value = argument.partition("=")[2]
+                break
+            if argument == "--user-data-dir" and index + 1 < len(arguments):
+                profile_value = arguments[index + 1]
+                break
+        if profile_value:
+            try:
+                if Path(profile_value).expanduser().resolve() == expected:
+                    matches.append(int(entry.name))
+            except OSError:
+                continue
     return sorted(matches)
 
 
@@ -106,7 +127,7 @@ def _make_plan(
     matching_processes = _matching_profile_processes(profile)
     summary = progress["summary"]
     checks = {
-        "inventory_matches_expected_1709": len(ordered_ids) == 1709,
+        "inventory_matches_expected_1709": len(ordered_ids) == EXPECTED_INVENTORY_PLAYERS,
         "cohort_sizes_match_expected": len(roster_ids) == 1065 and len(transfer_ids) == 644,
         "no_corrupt_manifests": not progress["corrupt_manifests"],
         "no_previous_access_or_structure_errors": summary["players_with_access_errors"] == 0,
@@ -115,7 +136,7 @@ def _make_plan(
         "profile_not_in_use": not matching_processes,
         "compact_sample_valid": bool(compact_entries) and compact_manifest is not None,
         "storage_margin_sufficient": bool(storage.get("sufficient_margin")),
-        "missing_profile_policy_verified": MISSING_PROFILE_POLICY_VERIFIED,
+        "stop_on_unverified_http_error_policy": access_policy_is_complete(),
     }
     ready = all(checks.values())
     plan = {
@@ -152,11 +173,14 @@ def _make_plan(
             "filter_variants": False,
         },
         "storage": storage,
+        "access_policy": {
+            "name": STOP_ON_UNVERIFIED_HTTP_ERROR,
+            "behavior": "Solo VALID con HTTP 200 continúa; toda respuesta no verificada detiene el lote.",
+            "http_404_means_missing_player": False,
+            "http_404_action": "record_and_stop",
+        },
         "checks": checks,
-        "block_reasons": [
-            "Falta validar con evidencia de BDFutbol cómo distinguir un perfil inexistente "
-            "de un HTTP 404 transitorio; el lote no debe saltar ese caso automáticamente."
-        ] if not MISSING_PROFILE_POLICY_VERIFIED else [],
+        "block_reasons": [],
         "progress_sha256": progress.get("output_sha256"),
     }
     return plan, progress, cohorts
@@ -292,11 +316,73 @@ def main(argv: list[str] | None = None) -> int:
                 "current_view": None,
                 "last_snapshot": None,
                 "last_error": None,
+                "last_disk_check": None,
+                "final_validation": None,
                 "status_file": str(status_path.expanduser().resolve()),
                 "progress_file": str(progress_output.expanduser().resolve()),
                 "log_outside_git": "Usar la redirección del comando tmux indicada en docs/player_01c0_mass_acquisition.md",
             }
             atomic_status(status_path, status)
+
+            compact_manifest, compact_entries, compact_error = _load_compact_sample(args.compact_root)
+            if not compact_entries or compact_manifest is None:
+                raise ValueError(
+                    "No se pudo verificar la muestra compacta para el control dinámico: "
+                    f"{compact_error}"
+                )
+            disk_guard = PlayerDiskSpaceGuard(
+                capture_root=capture_root,
+                inventory_player_count=summary["inventory_players"],
+                compact_entries=compact_entries,
+                reserved_free_bytes=int(args.reserve_gib * 1024**3),
+            )
+
+            def remaining_progress() -> dict[str, Any]:
+                records = []
+                for record in progress.get("players", []):
+                    player_id = int(record["player_id"])
+                    records.append({
+                        **record,
+                        "views_pending": [
+                            view for view in record.get("views_pending", [])
+                            if (player_id, view) in pending
+                        ],
+                    })
+                return {**progress, "players": records}
+
+            def before_navigation(player_id: int, view: str, url: str) -> None:
+                live_progress = remaining_progress()
+                estimate = disk_guard.check_before_navigation(
+                    progress=live_progress,
+                    player_id=player_id,
+                    view=view,
+                    requested_url=url,
+                )
+                status["last_disk_check"] = {
+                    "stage": "before_navigation",
+                    "at_utc": _utc_now(),
+                    "available_bytes": estimate["available_bytes"],
+                    "projected_free_bytes": estimate["projected_free_bytes"],
+                    "reserved_free_bytes": estimate["reserved_free_bytes"],
+                    "remaining_pending_views": sum(
+                        len(item["views_pending"]) for item in live_progress["players"]
+                    ),
+                }
+                atomic_status(status_path, status)
+
+            def before_snapshot_save(player_id: int, view: str, url: str, html: str) -> None:
+                estimate = disk_guard.check_before_snapshot(
+                    html=html,
+                    player_id=player_id,
+                    view=view,
+                    requested_url=url,
+                )
+                status["last_disk_check"] = {
+                    "stage": "before_snapshot_write",
+                    "at_utc": _utc_now(),
+                    **estimate,
+                }
+                atomic_status(status_path, status)
 
             def on_snapshot_saved(snapshot: dict[str, Any]) -> None:
                 player_id = int(snapshot["player_id"])
@@ -308,6 +394,15 @@ def main(argv: list[str] | None = None) -> int:
                     status["base_views_pending"] -= 1
                     if not any(item[0] == player_id for item in pending):
                         complete_ids.add(player_id)
+                raw_path = (capture_root / run_id / str(snapshot.get("raw_path") or "")).resolve()
+                metadata_path = (capture_root / run_id / str(snapshot.get("metadata_path") or "")).resolve()
+                if player_id in players:
+                    players[player_id].setdefault("view_snapshots", {})[view] = {
+                        "http_status": snapshot.get("http_status"),
+                        "access_status": "VALID",
+                        "compressed_bytes": raw_path.stat().st_size if raw_path.is_file() else 0,
+                        "metadata_bytes": metadata_path.stat().st_size if metadata_path.is_file() else 0,
+                    }
                 status.update({
                     "updated_at_utc": _utc_now(),
                     "new_navigations_this_run": status["new_navigations_this_run"] + 1,
@@ -325,6 +420,18 @@ def main(argv: list[str] | None = None) -> int:
                         "parse_validation": snapshot.get("parse_validation"),
                     },
                 })
+                atomic_status(status_path, status)
+                free_bytes = disk_guard.check_after_snapshot(
+                    player_id=player_id,
+                    view=view,
+                    requested_url=str(snapshot.get("requested_url") or ""),
+                )
+                status["last_disk_check"] = {
+                    "stage": "after_snapshot_write",
+                    "at_utc": _utc_now(),
+                    "available_bytes": free_bytes,
+                    "reserved_free_bytes": int(args.reserve_gib * 1024**3),
+                }
                 atomic_status(status_path, status)
 
             ordered_ids = sorted(
@@ -344,12 +451,32 @@ def main(argv: list[str] | None = None) -> int:
                 views=PLAYER_VIEWS,
                 progress_index=progress,
                 on_snapshot_saved=on_snapshot_saved,
+                before_navigation=before_navigation,
+                before_snapshot_save=before_snapshot_save,
             )
             refreshed = build_player_acquisition_progress(
                 inventory_path=args.inventory,
                 capture_root=capture_root,
                 output_path=progress_output,
             )
+            final_validation = validate_player_batch_completion(
+                refreshed,
+                expected_player_count=EXPECTED_INVENTORY_PLAYERS,
+            )
+            if not final_validation["valid"]:
+                status.update({
+                    "status": "stopped",
+                    "updated_at_utc": _utc_now(),
+                    "last_error": {
+                        "error_code": "GLOBAL_COMPLETENESS_VALIDATION_FAILED",
+                        "message": "No se certifica cobertura global completa de las cuatro vistas base.",
+                    },
+                    "final_summary": refreshed["summary"],
+                    "final_validation": final_validation,
+                })
+                atomic_status(status_path, status)
+                print(json.dumps(status, ensure_ascii=False, indent=2), file=sys.stderr)
+                return 1
             status.update({
                 "status": "complete",
                 "updated_at_utc": _utc_now(),
@@ -363,6 +490,7 @@ def main(argv: list[str] | None = None) -> int:
                     )
                 },
                 "final_summary": refreshed["summary"],
+                "final_validation": final_validation,
                 "last_error": None,
             })
             atomic_status(status_path, status)
@@ -395,6 +523,8 @@ def main(argv: list[str] | None = None) -> int:
                 "player_id": getattr(exc, "player_id", None),
                 "view": getattr(exc, "view", None),
                 "access_status": getattr(exc, "status", None),
+                "error_code": getattr(exc, "error_code", None),
+                "diagnostic": getattr(exc, "diagnostic", {}),
             },
             "final_summary": summary,
         }

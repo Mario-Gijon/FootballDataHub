@@ -9,12 +9,189 @@ import json
 import math
 import os
 import tempfile
+import shutil
 from pathlib import Path
 from typing import Any
+from datetime import datetime, timezone
 
 
 class PlayerBatchAlreadyRunning(RuntimeError):
     """Another FootballDataHub player batch owns the acquisition lock."""
+
+
+class PlayerDiskSpaceLow(RuntimeError):
+    """The next acquisition step would violate the configured free-space reserve."""
+
+    def __init__(self, diagnostic: dict[str, Any]) -> None:
+        self.diagnostic = diagnostic
+        self.player_id = diagnostic.get("player_id")
+        self.view = diagnostic.get("view")
+        self.error_code = "DISK_SPACE_LOW"
+        super().__init__(
+            "Espacio insuficiente para continuar sin comprometer la reserva mínima "
+            f"({diagnostic.get('projected_free_bytes')} bytes proyectados; "
+            f"{diagnostic.get('required_reserved_bytes')} requeridos)"
+        )
+
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+class PlayerDiskSpaceGuard:
+    """Recheck the remaining-work forecast and each pending snapshot before writing."""
+
+    def __init__(
+        self,
+        *,
+        capture_root: Path,
+        inventory_player_count: int,
+        compact_entries: list[dict[str, Any]],
+        reserved_free_bytes: int,
+        usage_provider: Any = shutil.disk_usage,
+    ) -> None:
+        self.capture_root = capture_root.expanduser().resolve()
+        self.inventory_player_count = inventory_player_count
+        self.compact_entries = compact_entries
+        self.reserved_free_bytes = reserved_free_bytes
+        self.usage_provider = usage_provider
+
+    def _low_space(self, *, available: int, estimate: int, player_id: int, view: str,
+                   requested_url: str, stage: str, pending_write_bytes: int = 0) -> PlayerDiskSpaceLow:
+        diagnostic = {
+            "error_code": "DISK_SPACE_LOW",
+            "player_id": player_id,
+            "view": view,
+            "requested_url": requested_url,
+            "recorded_at_utc": _utc_now(),
+            "stage": stage,
+            "available_bytes": available,
+            "required_reserved_bytes": self.reserved_free_bytes,
+            "estimated_remaining_bytes": estimate,
+            "pending_write_bytes": pending_write_bytes,
+            "projected_free_bytes": available - estimate - pending_write_bytes,
+            "stop_acquisition": True,
+        }
+        return PlayerDiskSpaceLow(diagnostic)
+
+    def check_before_navigation(
+        self, *, progress: dict[str, Any], player_id: int, view: str, requested_url: str
+    ) -> dict[str, Any]:
+        available = int(self.usage_provider(self.capture_root).free)
+        estimate = estimate_acquisition_storage(
+            progress=progress,
+            inventory_player_count=self.inventory_player_count,
+            compact_entries=self.compact_entries,
+            available_bytes=available,
+            reserved_free_bytes=self.reserved_free_bytes,
+        )
+        if not estimate["sufficient_margin"]:
+            raise self._low_space(
+                available=available,
+                estimate=(available - int(estimate["projected_free_bytes"])),
+                player_id=player_id,
+                view=view,
+                requested_url=requested_url,
+                stage="before_navigation",
+            )
+        return estimate
+
+    def check_before_snapshot(
+        self, *, html: str, player_id: int, view: str, requested_url: str
+    ) -> dict[str, int]:
+        available = int(self.usage_provider(self.capture_root).free)
+        # Uncompressed HTML bounds the eventual gzip payload; extra allowance
+        # covers metadata and gzip headers without touching the reserve.
+        pending_write = len(html.encode("utf-8")) + 64 * 1024
+        projected = available - pending_write
+        if projected < self.reserved_free_bytes:
+            raise self._low_space(
+                available=available,
+                estimate=0,
+                player_id=player_id,
+                view=view,
+                requested_url=requested_url,
+                stage="before_snapshot_write",
+                pending_write_bytes=pending_write,
+            )
+        return {
+            "available_bytes": available,
+            "reserved_free_bytes": self.reserved_free_bytes,
+            "pending_write_bytes": pending_write,
+            "projected_free_bytes": projected,
+        }
+
+    def check_after_snapshot(self, *, player_id: int, view: str, requested_url: str) -> int:
+        available = int(self.usage_provider(self.capture_root).free)
+        if available < self.reserved_free_bytes:
+            raise self._low_space(
+                available=available,
+                estimate=0,
+                player_id=player_id,
+                view=view,
+                requested_url=requested_url,
+                stage="after_snapshot_write",
+            )
+        return available
+
+
+def validate_player_batch_completion(
+    progress: dict[str, Any], *, expected_player_count: int = 1709
+) -> dict[str, Any]:
+    """Certify global base-view coverage; a completed capture run alone is insufficient."""
+    summary = progress.get("summary", {})
+    players = progress.get("players", [])
+    player_ids = [item.get("player_id") for item in players if isinstance(item, dict)]
+    valid_pairs = 0
+    missing_pairs: list[dict[str, Any]] = []
+    for item in players:
+        if not isinstance(item, dict):
+            continue
+        player_id = item.get("player_id")
+        snapshots = item.get("view_snapshots", {})
+        pending = set(item.get("views_pending", []))
+        for view in ("profile", "statistics", "matches", "rivals"):
+            reference = snapshots.get(view) if isinstance(snapshots, dict) else None
+            if (
+                isinstance(reference, dict)
+                and reference.get("http_status") == 200
+                and reference.get("access_status") == "VALID"
+                and reference.get("parse_validation", {}).get("status") == "VALID"
+                and len(str(reference.get("html_sha256") or "")) == 64
+            ):
+                valid_pairs += 1
+            else:
+                missing_pairs.append({"player_id": player_id, "view": view})
+            if view in pending and not any(
+                pair["player_id"] == player_id and pair["view"] == view
+                for pair in missing_pairs
+            ):
+                missing_pairs.append({"player_id": player_id, "view": view})
+    checks = {
+        "inventory_player_count": len(player_ids) == expected_player_count,
+        "summary_inventory_player_count": summary.get("inventory_players") == expected_player_count,
+        "unique_player_ids": len(set(player_ids)) == expected_player_count,
+        "all_players_have_four_verified_views": valid_pairs == expected_player_count * 4
+        and not missing_pairs,
+        "summary_all_players_complete": summary.get("players_with_all_base_views") == expected_player_count,
+        "summary_zero_pending_players": summary.get("players_pending") == 0,
+        "summary_zero_pending_views": summary.get("base_view_navigations_pending") == 0,
+        "summary_verified_view_count": summary.get("captured_valid_base_views") == expected_player_count * 4,
+        "summary_zero_unresolved_access_errors": summary.get("players_with_access_errors") == 0
+        and summary.get("blocked_base_views") == 0,
+        "no_corrupt_manifests": not progress.get("corrupt_manifests"),
+    }
+    return {
+        "valid": all(checks.values()),
+        "expected_players": expected_player_count,
+        "observed_players": len(player_ids),
+        "expected_player_view_pairs": expected_player_count * 4,
+        "verified_player_view_pairs": valid_pairs,
+        "missing_player_view_pairs": missing_pairs,
+        "unresolved_access_errors": summary.get("blocked_base_views"),
+        "corrupt_manifests": progress.get("corrupt_manifests", []),
+        "checks": checks,
+    }
 
 
 class PlayerBatchLock:

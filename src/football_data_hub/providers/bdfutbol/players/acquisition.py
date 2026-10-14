@@ -14,6 +14,7 @@ from urllib.parse import urlencode
 from football_data_hub.core.browser_runtime import BrowserRuntimeConfig
 from football_data_hub.core.browser_session import BrowserSessionManager
 from football_data_hub.providers.bdfutbol.access import (
+    AccessAssessment,
     AccessStatus,
     BDFutbolAccess,
     is_bdfutbol_https_url,
@@ -27,6 +28,7 @@ from .capture_store import PlayerCaptureStore, utc_now
 from .parsers import PlayerCaptureParseError, parse_snapshot
 
 PLAYER_VIEWS = ("profile", "statistics", "matches", "rivals")
+STOP_ON_UNVERIFIED_HTTP_ERROR = "STOP_ON_UNVERIFIED_HTTP_ERROR"
 _PLAYER_ID = re.compile(r"^\d{1,9}$")
 _VIEW_MARKERS = {
     "profile": (".traject",),
@@ -45,12 +47,82 @@ _FILTER_IDS = {
 class PlayerAcquisitionStopped(RuntimeError):
     """The first invalid page or acquisition error stopped this run."""
 
-    def __init__(self, player_id: int, view: str, status: str, reason: str | None = None) -> None:
+    def __init__(
+        self,
+        player_id: int,
+        view: str,
+        status: str,
+        reason: str | None = None,
+        *,
+        diagnostic: dict[str, Any] | None = None,
+    ) -> None:
         self.player_id = player_id
         self.view = view
         self.status = status
         self.reason = reason
+        self.diagnostic = diagnostic or {}
+        self.error_code = self.diagnostic.get("error_code")
         super().__init__(f"Adquisición detenida en {player_id}/{view}: {status}: {reason or ''}")
+
+
+def access_policy_matrix() -> dict[str, str]:
+    """Only a semantically valid HTTP 200 may advance; every other outcome stops."""
+    return {
+        status.value: "CONTINUE_ONLY_WITH_HTTP_200" if status is AccessStatus.VALID else "STOP"
+        for status in AccessStatus
+    }
+
+
+def access_policy_is_complete() -> bool:
+    matrix = access_policy_matrix()
+    return (
+        set(matrix) == {status.value for status in AccessStatus}
+        and matrix.get(AccessStatus.VALID.value) == "CONTINUE_ONLY_WITH_HTTP_200"
+        and all(action == "STOP" for name, action in matrix.items() if name != AccessStatus.VALID.value)
+    )
+
+
+def enforce_access_policy(
+    assessment: AccessAssessment,
+    *,
+    player_id: int,
+    view: str,
+    requested_url: str,
+    visit_available: bool,
+) -> None:
+    """Fail closed for 404 and every other unverified access/content outcome."""
+    if assessment.status is AccessStatus.VALID and assessment.http_status == 200 and visit_available:
+        return
+    status = assessment.status.value
+    error_code = (
+        f"HTTP_{assessment.http_status}_STOPPED"
+        if assessment.http_status is not None and assessment.status is AccessStatus.HTTP_ERROR
+        else assessment.status.value
+    )
+    diagnostic = {
+        "error_code": error_code,
+        "policy": STOP_ON_UNVERIFIED_HTTP_ERROR,
+        "classification": "unverified_http_or_content_error",
+        "player_id": player_id,
+        "view": view,
+        "requested_url": requested_url,
+        "final_url": assessment.final_url,
+        "http_status": assessment.http_status,
+        "access_status": assessment.status.value,
+        "page_title": assessment.page_title,
+        "reason": assessment.reason or "La respuesta no superó la política de acceso",
+        "missing_markers": list(assessment.missing_markers),
+        "missing_title_markers": list(assessment.missing_title_markers),
+        "missing_selectors": list(assessment.missing_selectors),
+        "missing_dom_markers": list(assessment.missing_dom_markers),
+        "missing_dom_evidence": list(assessment.missing_dom_evidence),
+        "recorded_at_utc": utc_now(),
+        "stop_acquisition": True,
+    }
+    raise PlayerAcquisitionStopped(
+        player_id, view, f"{status} ({assessment.http_status})", diagnostic["reason"],
+        diagnostic=diagnostic,
+    )
 
 
 def player_view_url(player_id: int | str, view: str) -> str:
@@ -430,6 +502,8 @@ def acquire_player_views(
     revisit_existing: bool = False,
     progress_index: dict[str, Any] | None = None,
     on_snapshot_saved: Callable[[dict[str, Any]], None] | None = None,
+    before_navigation: Callable[[int, str, str], None] | None = None,
+    before_snapshot_save: Callable[[int, str, str, str], None] | None = None,
 ) -> dict[str, Any]:
     """Capture explicit player pages sequentially and stop on first denial.
 
@@ -552,6 +626,8 @@ def acquire_player_views(
                         time.sleep(pause_seconds)
                     if not is_bdfutbol_https_url(url):
                         raise ValueError(f"URL fuera del dominio permitido: {url}")
+                    if before_navigation is not None:
+                        before_navigation(player_id, view, url)
                     required = _VIEW_MARKERS[view]
                     selectors = ("h1", *required)
 
@@ -586,20 +662,28 @@ def acquire_player_views(
                     })
                     pages_seen += 1
                     store.record_navigation(assessments[-1])
-                    if assessment.status is not AccessStatus.VALID or opened.visit is None:
+                    try:
+                        enforce_access_policy(
+                            assessment,
+                            player_id=player_id,
+                            view=view,
+                            requested_url=url,
+                            visit_available=opened.visit is not None,
+                        )
+                    except PlayerAcquisitionStopped as exc:
                         store.record_diagnostic({
                             **assessments[-1],
-                            "stop_acquisition": True,
+                            **exc.diagnostic,
                         })
                         opened.close()
-                        raise PlayerAcquisitionStopped(
-                            player_id, view, assessment.status.value, assessment.reason
-                        )
+                        raise
                     visit = opened.visit
                     page = visit.document
                     controls = _controls(page, view)
                     base_rows = _row_counts(page)
                     base_html = page.html()
+                    if before_snapshot_save is not None:
+                        before_snapshot_save(player_id, view, url, base_html)
                     base_metadata = store.save_snapshot(
                         player_id=player_id,
                         view=view,
@@ -772,9 +856,16 @@ def acquire_player_views(
     except PlayerAcquisitionStopped:
         raise
     except BaseException as exc:
+        diagnostic = getattr(exc, "diagnostic", {})
         store.record_diagnostic({
+            **diagnostic,
             "error_type": type(exc).__name__,
             "error": str(exc),
+            "player_id": getattr(exc, "player_id", diagnostic.get("player_id")),
+            "view": getattr(exc, "view", diagnostic.get("view")),
+            "requested_url": diagnostic.get("requested_url"),
+            "http_status": diagnostic.get("http_status"),
+            "error_code": getattr(exc, "error_code", diagnostic.get("error_code")),
             "stop_acquisition": True,
         })
         raise
