@@ -3,8 +3,8 @@
 ## 1. Estado y aislamiento
 
 - Checkout principal: `rebuild/browser-foundation-v1`, HEAD `5aa574171eab234e0c364b02204456f50b1a2c91`, limpio al empezar.
-- Worktree de esta tarea: `/tmp/FootballDataHub-match-00-offline`.
-- Rama: `feature/match-00-offline`, creada desde el HEAD indicado.
+- Worktree permanente actual: `~/Documents/Trabalo/Proyectos/RealJaen/FootballDataHub-match-00-offline`.
+- La auditoría original comenzó en `/tmp/FootballDataHub-match-00-offline`; el trabajo está ahora en el worktree permanente de la misma rama `feature/match-00-offline` (HEAD inicial `0a4d330`).
 - Toda modificación de código y documentación de MATCH-00 está en este worktree.
 - No se inició navegador, SeleniumBase, Playwright, Chromium o CDP; no se hizo HTTP. PLAYER-01C2 no se inspeccionó, detuvo ni modificó.
 - Las capturas de origen se leyeron solamente. No se cambiaron HTML, JSON, manifiestos ni índices originales.
@@ -152,15 +152,64 @@ Plan recomendado:
 6. Relacionar jugadores únicamente por ID verificado. Una entidad desconocida se conserva sin vínculo interno; no usar coincidencia aproximada de nombres.
 7. No abrir una sesión concurrente ni compartir el perfil mientras PLAYER-01C2 siga activo. La parte offline de MATCH-01 puede prepararse antes; la adquisición real debe esperar a que esa ejecución libere el recurso.
 
-## 11. Pruebas y limitaciones
+## 11. Diagnóstico de pruebas, verificación reciente y limitaciones
 
-- Pytest focalizado para parser de clasificación, motor de resultados, exportador nuevo y gestión de sesión: **52 passed** (`7.18s`). Los tests de sesión usan dobles; no abrieron navegador.
-- Pytest completo recogió 342 tests, pero no se completó: llegó al 63%, mostró un fallo y después dejó de emitir progreso durante varios minutos. Se interrumpió la ejecución propia con código 130 para no dejar un proceso bloqueado. Pytest no alcanzó a imprimir el nombre ni el traceback de ese fallo, por lo que no se afirma que la suite completa pase.
-- Una ejecución aislada de `tests/test_group2_api.py` mostró dos tests y se atascó sin nuevo progreso; también se interrumpió. No se arrancó servidor. Esa suite queda pendiente de ejecutar en un entorno de tests sin la restricción observada.
-- Ruff en todo el worktree: **All checks passed**.
-- `git diff --check` no encontró errores en cambios rastreados; las cuatro incorporaciones sin seguimiento se comprobaron además con `git diff --no-index --check` y no mostraron errores de whitespace.
-- El parser se ejecutó manualmente contra los HTML locales del 14/10, sin red, para ambos grupos y reprodujo exactamente los dos exports guardados. La generación completa pasó validación.
+### Diagnóstico de pytest y TestClient
 
-Limitaciones semánticas: no hay hora, zona horaria ni estados oficiales detallados; la URL de partido solo aparece explícitamente para 140 disputados; no hay HTML de detalle ni eventos/alineaciones; `postponed_by_source_rule` es heurístico. Las series son capturas con fecha, no un feed actualizado automáticamente.
+- La ejecución anterior recogió 342 tests, informó una `F` cerca del 63% y después dejó de avanzar. El proceso/traceback de esa ejecución no quedó guardado, así que no es posible atribuir ese primer fallo retrospectivamente.
+- En esta revisión se desactivó `pytest-rerunfailures` con `-p no:rerunfailures`. La colección inicial de MATCH-00 tenía 342 tests; la colección actual contiene 346 tras añadir tres pruebas de procedencia y una integración opt-in (esta última se omite por defecto).
+- Una ejecución diagnóstica `pytest -vv -x` limitada a los primeros 215 casos llegó a 146 pasados y alcanzó el límite externo de 240 segundos mientras ejecutaba `test_offline_cli_reparses_compressed_real_snapshots_without_browser`. El volcado muestra BeautifulSoup/`html.parser` interpretando los snapshots comprimidos y grandes; no produjo una aserción fallida antes del timeout. Otros volcados de esta ruta siguieron ejecutándose y el test terminó pasando, por lo que el tiempo de parseo en este entorno no demuestra un bloqueo permanente.
+- `tests/test_browser_session.py` completó 20/20 en aislamiento. No se visitó ninguna URL ni se inició un navegador.
+- `tests/test_group2_api.py` pasa sus dos pruebas de configuración y se detiene al entrar en `TestClient`, antes de evaluar endpoints. El traceback de faulthandler apunta a `starlette.testclient.TestClient.__enter__` / `portal.start_task_soon` de AnyIO, no a una ruta ni a la inicialización de datasets.
+- Se reprodujo el mismo bloqueo con una aplicación FastAPI mínima sin lifespan ni endpoints de datos, con `anyio.from_thread.start_blocking_portal()` directamente y con `asyncio.run_coroutine_threadsafe()`. Una prueba mínima de `socket.socketpair()` falla al enviar con `PermissionError: [Errno 1] Operation not permitted`. El bucle asyncio espera en el selector mientras el hilo llamante espera la notificación: la evidencia apunta a la restricción local del sandbox sobre la escritura en el socketpair de notificación, no a la aplicación ni a la suite de pytest.
+- Versiones observadas: Python 3.14.7, FastAPI 0.143.0, Starlette 1.7.0, AnyIO 4.15.1, httpx 0.28.1 y pytest 9.1.1. `httpx2` no está instalado y Starlette usa su fallback `httpx` obsoleto; esto conviene corregir en el entorno de desarrollo, pero no explica por sí solo el bloqueo porque el portal queda detenido antes de una petición y la reproducción genérica de asyncio falla igual.
+- `pytest-rerunfailures` estaba deshabilitado en los diagnósticos controlados. Cuando se dejó activo en una comprobación, su hook `pytest_configure` lanzó `PermissionError: [Errno 1] Operation not permitted` al construir `ServerStatusDB` con `socket.socket(AF_INET, SOCK_STREAM)`. En este sandbox debe deshabilitarse. La lista de plugins sin él mostró AnyIO, xdist, ordering, metadata, html y SeleniumBase. La reproducción mínima fuera de pytest también bloquea dentro del sandbox, por lo que pytest plugins no explican el bloqueo de TestClient.
 
-Limitaciones semánticas: no hay hora, zona horaria ni estados oficiales detallados; la URL de partido solo aparece explícitamente para 140 disputados; no hay HTML de detalle ni eventos/alineaciones; `postponed_by_source_rule` es heurístico. Las series son capturas con fecha, no un feed actualizado automáticamente.
+Reproducción mínima para ejecutar en un terminal Linux sin la restricción del sandbox, desde este worktree y con dependencias instaladas:
+
+```bash
+python - <<'PY'
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+app = FastAPI()
+with TestClient(app) as client:
+    print(client.get('/').status_code)
+PY
+```
+
+Después, repetir la prueba de aplicación afectada con un límite externo:
+
+```bash
+timeout --signal=INT --kill-after=5s 120s env PYTHONPATH=src:apps/api python -m pytest -p no:rerunfailures -vv -x tests/test_group2_api.py::test_health_readiness_metadata_and_bootstrap_contract
+```
+
+Ambas pruebas se ejecutaron fuera del sandbox: la reproducción mínima completó y el módulo `tests/test_group2_api.py` pasó 12/12 en 7,35 s. En el sandbox, el test HTTP se bloquea antes de iniciar el lifespan; no es un fallo de endpoint. La primera `F` histórica sigue sin traceback recuperable y no se reprodujo.
+
+### Validación de las capturas del 14/10
+
+- Se añadió `tests/integration/test_match_generation_latest.py`, opt-in mediante `FDH_MATCH_00_LATEST_INTEGRATION=1`. Por defecto se salta y no incorpora HTML al repositorio. Lee solo los snapshots locales del 14/10 bajo `FDH_MATCH_00_DATA_ROOT` (por defecto `~/FootballDataHub-data`) y escribe su generación temporal bajo `tmp_path`.
+- La prueba vuelve a construir la generación con el parser existente; `build_match_generation()` exige paridad exacta, registro por registro, entre HTML y JSON normalizado, valida los SHA y la procedencia, y rehúsa una generación existente con contenido distinto. La prueba verifica 760 fixtures/IDs internos únicos, 40 equipos/IDs únicos, 140 marcadores, 620 marcadores pendientes como `null`, 140 URLs únicas y explícitas, metadatos/capturas, hashes de archivos y artefactos, y que repetir la construcción no cambie bytes.
+- Comando opt-in:
+
+```bash
+FDH_MATCH_00_LATEST_INTEGRATION=1 \
+FDH_MATCH_00_DATA_ROOT="$HOME/FootballDataHub-data" \
+timeout --signal=INT --kill-after=5s 240s env PYTHONPATH=src:apps/api python -m pytest -p no:rerunfailures -vv -x tests/integration/test_match_generation_latest.py
+```
+
+- La suite offline habitual conserva la prueba histórica del 10/10 (760 fixtures, 119 disputados). El test de integración separado cubre la generación actual del 14/10 y sus 140 disputados, sin convertir los snapshots externos en fixtures permanentes del repositorio.
+- La generación ya publicada fuera de Git sigue en `$HOME/FootballDataHub-data/matches/generations/match-00-4ad1d610507e425d`. Sus SHA-256 comprobados en esta revisión son `matches.json` `ca8eb351177ed22b4a6e72892d1a8baa2289e6c44c77cc1ceabc9fb0bd64bc50`, `validation.json` `2d1a981c5a8df515f0b3c5dded1adc83db40d64831904dc5b06123ec707c300e` y `manifest.json` `00166887b13413e3e6a5344fa1c64d52db8d38800f3ef9f282237584b3e65fbf`. El manifiesto declara 40 equipos, 760 partidos, 140 disputados, 620 pendientes, cero incompletos y 140 URLs explícitas.
+
+### Procedencia e inmutabilidad
+
+- `_relative_path()` ya no reduce una ruta exterior a su nombre base. Resuelve ambos caminos y lanza `MatchGenerationError` si el archivo no está bajo `data_root`; los symlinks que escapan de la raíz también se rechazan. Las rutas internas siguen serializándose como rutas relativas inequívocas.
+- Se añadieron pruebas de regresión para ruta exterior rechazada, ruta interna conservada y symlink que escapa de la raíz. Las pruebas ya existentes comprueban que repetir no muta la generación y que un artefacto alterado produce `FileExistsError` sin sobrescribir el contenido alterado.
+- La regeneración y la prueba opt-in usan un directorio nuevo temporal; no escriben sobre las capturas ni sobre la generación externa publicada.
+
+### Resultados y límites de esta revisión
+
+- Antes de esta revisión: test de generación offline histórico, Ruff y las pruebas focalizadas de MATCH-00 estaban informados como satisfactorios en el registro anterior.
+- En esta revisión: `tests/test_match_generation.py` 6/6 pasó; la integración opt-in del 14/10 pasó 1/1 en 1,93 s y, sin activar la variable, se omitió 1/1 como previsto. `tests/test_browser_session.py` 20/20 pasó sin abrir navegador. `tests/test_group2_api.py` 12/12 pasó fuera del sandbox. Ruff pasó y `git diff --check` no reportó errores.
+- La ejecución de diagnóstico en sandbox limitada a los primeros 215 casos terminó a los 240 s con 146 pasados, sin aserción fallida. Después, una única pasada global fuera del sandbox (antes de añadir la prueba final de symlink) recogió 345 casos y alcanzó el límite de 600 s con 164 pasados y 1 omitido; no mostró un fallo de test. Se interrumpió durante `test_dry_run_plan_counts_only_missing_pages_in_pending_evidence`, que pasó 1/1 en aislamiento en 16,78 s. La suite completa sigue sin completarse; los reparseos de capturas grandes hacen que el recorrido global tarde más que el límite.
+- La `F` de la ejecución antigua sigue sin nombre ni traceback recuperables. Los tests ejecutados alrededor del 63% en el diagnóstico limitado pasaron; no se puede atribuir retrospectivamente el primer fallo antiguo a un test concreto.
+- Limitaciones semánticas: no hay hora, zona horaria ni estados oficiales detallados; la URL de partido solo aparece explícitamente para 140 disputados; no hay HTML de detalle ni eventos/alineaciones; `postponed_by_source_rule` es heurístico. Las series son capturas con fecha, no un feed actualizado automáticamente.

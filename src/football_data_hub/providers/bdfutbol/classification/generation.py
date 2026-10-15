@@ -45,10 +45,15 @@ def _json_bytes(value: Any) -> bytes:
 
 
 def _relative_path(path: Path, data_root: Path) -> str:
+    resolved_path = path.resolve()
+    resolved_root = data_root.resolve()
     try:
-        return path.resolve().relative_to(data_root.resolve()).as_posix()
-    except ValueError:
-        return path.name
+        return resolved_path.relative_to(resolved_root).as_posix()
+    except ValueError as exc:
+        raise MatchGenerationError(
+            f"El archivo de procedencia queda fuera de data_root: {resolved_path} "
+            f"(raíz configurada: {resolved_root})"
+        ) from exc
 
 
 def _load_group(

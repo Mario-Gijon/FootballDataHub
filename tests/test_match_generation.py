@@ -7,6 +7,8 @@ from pathlib import Path
 import pytest
 
 from football_data_hub.providers.bdfutbol.classification.generation import (
+    MatchGenerationError,
+    _relative_path,
     build_match_generation,
 )
 
@@ -113,3 +115,34 @@ def test_existing_generation_is_never_overwritten_when_its_contents_change(tmp_p
         _build(tmp_path / "matches")
 
     assert matches_path.read_bytes() == before
+
+
+def test_source_provenance_rejects_paths_outside_data_root(tmp_path):
+    data_root = tmp_path / "data"
+    source_file = tmp_path / "outside" / "source.html"
+    source_file.parent.mkdir()
+    source_file.write_text("source", encoding="utf-8")
+
+    with pytest.raises(MatchGenerationError, match="fuera de data_root"):
+        _relative_path(source_file, data_root)
+
+
+def test_source_provenance_keeps_unambiguous_path_relative_to_data_root(tmp_path):
+    data_root = tmp_path / "data"
+    source_file = data_root / "captures" / "group-i" / "source.html"
+    source_file.parent.mkdir(parents=True)
+    source_file.write_text("source", encoding="utf-8")
+
+    assert _relative_path(source_file, data_root) == "captures/group-i/source.html"
+
+
+def test_source_provenance_rejects_symlinks_escaping_data_root(tmp_path):
+    data_root = tmp_path / "data"
+    data_root.mkdir()
+    outside_file = tmp_path / "outside.html"
+    outside_file.write_text("source", encoding="utf-8")
+    symlink = data_root / "alias.html"
+    symlink.symlink_to(outside_file)
+
+    with pytest.raises(MatchGenerationError, match="fuera de data_root"):
+        _relative_path(symlink, data_root)
