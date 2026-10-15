@@ -314,6 +314,7 @@ def main(argv: list[str] | None = None) -> int:
                 "current_player_id": None,
                 "current_cohort": None,
                 "current_view": None,
+                "current_requested_url": None,
                 "last_snapshot": None,
                 "last_error": None,
                 "last_disk_check": None,
@@ -351,6 +352,14 @@ def main(argv: list[str] | None = None) -> int:
                 return {**progress, "players": records}
 
             def before_navigation(player_id: int, view: str, url: str) -> None:
+                status.update({
+                    "updated_at_utc": _utc_now(),
+                    "current_player_id": player_id,
+                    "current_cohort": cohorts[player_id],
+                    "current_view": view,
+                    "current_requested_url": url,
+                })
+                atomic_status(status_path, status)
                 live_progress = remaining_progress()
                 estimate = disk_guard.check_before_navigation(
                     progress=live_progress,
@@ -514,6 +523,10 @@ def main(argv: list[str] | None = None) -> int:
             summary = refreshed["summary"]
         except (OSError, ValueError, KeyError, json.JSONDecodeError):
             summary = None
+        diagnostic = getattr(exc, "diagnostic", {})
+        requested_url = diagnostic.get("requested_url")
+        if not requested_url and "status" in locals():
+            requested_url = status.get("current_requested_url")
         error = {
             "status": "stopped",
             "updated_at_utc": _utc_now(),
@@ -524,7 +537,8 @@ def main(argv: list[str] | None = None) -> int:
                 "view": getattr(exc, "view", None),
                 "access_status": getattr(exc, "status", None),
                 "error_code": getattr(exc, "error_code", None),
-                "diagnostic": getattr(exc, "diagnostic", {}),
+                "requested_url": requested_url,
+                "diagnostic": diagnostic,
             },
             "final_summary": summary,
         }

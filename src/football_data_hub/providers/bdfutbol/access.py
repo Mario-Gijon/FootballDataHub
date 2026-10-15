@@ -26,6 +26,7 @@ class AccessStatus(StrEnum):
     INVALID_URL = "INVALID_URL"
     INVALID_CONTENT = "INVALID_CONTENT"
     NAVIGATION_ERROR = "NAVIGATION_ERROR"
+    DOCUMENT_ERROR = "DOCUMENT_ERROR"
 
 
 @dataclass(frozen=True, slots=True)
@@ -208,15 +209,17 @@ class BDFutbolAccess:
             ))
 
         page = visit.document
-        if settle_ms:
-            page.wait(settle_ms)
-        deadline = time.monotonic() + max_wait_seconds
-        while True:
-            try:
+        title = ""
+        selectors_to_verify = tuple(dict.fromkeys(("body", *required_selectors)))
+        try:
+            if settle_ms:
+                page.wait(settle_ms)
+            deadline = time.monotonic() + max_wait_seconds
+            while True:
                 title = page.title()
                 body_text = page.text("body")
                 present_selectors = tuple(
-                    selector for selector in required_selectors if page.exists(selector)
+                    selector for selector in selectors_to_verify if page.exists(selector)
                 )
                 dom_text = ""
                 if required_dom_text_selector:
@@ -229,7 +232,7 @@ class BDFutbolAccess:
                     body_text=body_text,
                     required_markers=required_markers,
                     required_title_markers=required_title_markers,
-                    required_selectors=required_selectors,
+                    required_selectors=selectors_to_verify,
                     present_selectors=present_selectors,
                     required_dom_text_selector=required_dom_text_selector,
                     required_dom_text_markers=required_dom_text_markers,
@@ -246,20 +249,28 @@ class BDFutbolAccess:
                             body_text=body_text,
                             required_markers=required_markers,
                             required_title_markers=required_title_markers,
-                            required_selectors=required_selectors,
+                            required_selectors=selectors_to_verify,
                             present_selectors=present_selectors,
                             required_dom_text_selector=required_dom_text_selector,
                             required_dom_text_markers=required_dom_text_markers,
                             dom_text=dom_text,
                             missing_dom_evidence=missing_evidence,
                         )
-            except Exception:
-                visit.close()
-                raise
-            # A security challenge or denial ends this acquisition immediately.
-            # The bounded wait is only for ordinary page content that has not
-            # finished rendering; it never waits for a challenge to clear.
-            waiting = assessment.status is AccessStatus.INVALID_CONTENT
-            if not waiting or time.monotonic() >= deadline:
-                return BDFutbolVisit(assessment=assessment, visit=visit)
-            page.wait(400)
+                # A security challenge or denial ends this acquisition
+                # immediately. The bounded wait only allows ordinary page
+                # content to finish rendering; it never waits for a challenge
+                # to clear or retries the network navigation.
+                waiting = assessment.status is AccessStatus.INVALID_CONTENT
+                if not waiting or time.monotonic() >= deadline:
+                    return BDFutbolVisit(assessment=assessment, visit=visit)
+                page.wait(400)
+        except Exception as exc:
+            visit.close()
+            return BDFutbolVisit(AccessAssessment(
+                AccessStatus.DOCUMENT_ERROR,
+                url,
+                visit.final_url,
+                visit.response_status,
+                title,
+                reason=f"No se pudo inspeccionar el DOM: {type(exc).__name__}: {exc}",
+            ))

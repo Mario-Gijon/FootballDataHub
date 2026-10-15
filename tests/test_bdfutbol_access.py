@@ -97,7 +97,7 @@ class FakePage:
         return []
 
     def exists(self, selector):
-        return False
+        return selector == "body" and bool(self._body)
 
     def html(self):
         return self._body
@@ -147,7 +147,7 @@ def test_access_open_checks_page_title_and_dom_markers():
             raise AssertionError(f"Selector inesperado: {selector}")
 
         def exists(self, selector):
-            return selector == "#content"
+            return selector in {"body", "#content"}
 
         def texts(self, selector):
             if selector == "#content":
@@ -215,3 +215,72 @@ def test_access_still_reports_persistent_challenge_without_retrying():
     ) as result:
         assert result.assessment.status is mod.AccessStatus.CHALLENGE_REQUIRED
         assert session.calls == [URL]
+
+
+def test_access_waits_boundedly_for_body_to_render_on_same_navigation():
+    class DelayedBodyPage(FakePage):
+        def __init__(self):
+            super().__init__(body="")
+            self.reads = 0
+
+        def text(self, selector):
+            assert selector == "body"
+            self.reads += 1
+            return VALID_BODY if self.reads >= 4 else ""
+
+        def exists(self, selector):
+            return selector == "body"
+
+    page = DelayedBodyPage()
+    session = FakeSession(page)
+    with mod.BDFutbolAccess(session).open(
+        URL,
+        required_markers=MARKERS,
+        settle_ms=0,
+        max_wait_seconds=2,
+    ) as result:
+        assert result.assessment.status is mod.AccessStatus.VALID
+        assert result.assessment.http_status == 200
+        assert result.visit is not None
+    assert session.calls == [URL]
+    assert page.reads == 4
+    assert page.waits == [400, 400, 400]
+
+
+def test_access_exhausts_body_readiness_wait_and_stops_as_invalid_content():
+    page = FakePage(body="")
+    session = FakeSession(page)
+    with mod.BDFutbolAccess(session).open(
+        URL,
+        required_markers=MARKERS,
+        settle_ms=0,
+        max_wait_seconds=0,
+    ) as result:
+        assert result.assessment.status is mod.AccessStatus.INVALID_CONTENT
+        assert result.assessment.http_status == 200
+        assert result.assessment.missing_markers == MARKERS
+        assert result.assessment.missing_selectors == ("body",)
+        assert result.visit is not None
+    assert session.calls == [URL]
+
+
+def test_dom_read_exception_is_a_contextual_nonretryable_document_error():
+    class BrokenBodyPage(FakePage):
+        def text(self, selector):
+            raise Exception("Element {body} was not found after 7 seconds!")
+
+    page = BrokenBodyPage()
+    session = FakeSession(page, response_status=200)
+    result = mod.BDFutbolAccess(session).open(
+        URL,
+        required_markers=MARKERS,
+        settle_ms=0,
+    )
+
+    assert result.assessment.status is mod.AccessStatus.DOCUMENT_ERROR
+    assert result.assessment.http_status == 200
+    assert result.assessment.final_url == URL
+    assert "Element {body}" in result.assessment.reason
+    assert result.visit is None
+    assert session.calls == [URL]
+    assert page.closed

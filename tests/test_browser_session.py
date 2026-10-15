@@ -228,6 +228,8 @@ class FakePureCDPBrowser:
     def evaluate(self, expression):
         if expression == "window.location.href":
             return self.page.url
+        if "innerText" in expression:
+            return "body text"
         if "window.screen" in expression:
             return {"width": 1920, "height": 1080}
         if "performance.getEntriesByType" in expression:
@@ -537,3 +539,29 @@ def test_chromium_launcher_resolves_to_raw_binary_to_avoid_desktop_flags(monkeyp
     custom = tmp_path / "custom-browser"
     custom.write_text("binary", encoding="utf-8")
     assert session_mod._resolve_chromium_executable(custom) == str(custom.resolve())
+
+
+def test_pure_cdp_text_reads_current_dom_without_seleniumbase_wait():
+    from football_data_hub.core import browser_session as session_mod
+
+    class Backend:
+        def __init__(self, result):
+            self.result = result
+            self.expressions = []
+            self.browser = SimpleNamespace(
+                evaluate=lambda expression: self.expressions.append(expression) or self.result,
+                get_text=lambda _selector: pytest.fail("No debe usarse el wait implícito"),
+            )
+
+        def run_on_tab(self, _tab, operation):
+            return operation()
+
+    backend = Backend("")
+    document = session_mod._PureCDPDocument(backend, object())
+
+    assert document.text("body") == ""
+    assert "document.querySelector(\"body\")" in backend.expressions[0]
+    assert "innerText" in backend.expressions[0]
+
+    backend.result = "contenido listo"
+    assert document.text("#content") == "contenido listo"

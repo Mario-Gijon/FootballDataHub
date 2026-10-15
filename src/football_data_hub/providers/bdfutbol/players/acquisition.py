@@ -102,7 +102,16 @@ def enforce_access_policy(
     diagnostic = {
         "error_code": error_code,
         "policy": STOP_ON_UNVERIFIED_HTTP_ERROR,
-        "classification": "unverified_http_or_content_error",
+        "classification": (
+            "document_inspection_error"
+            if assessment.status is AccessStatus.DOCUMENT_ERROR
+            else "unverified_http_or_content_error"
+        ),
+        "failure_stage": (
+            "document_inspection"
+            if assessment.status is AccessStatus.DOCUMENT_ERROR
+            else "access_assessment"
+        ),
         "player_id": player_id,
         "view": view,
         "requested_url": requested_url,

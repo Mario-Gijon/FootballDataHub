@@ -156,7 +156,8 @@ def test_mass_cli_http_404_persists_diagnostic_and_resumable_capture_state(
         "stop_acquisition": True,
     }
 
-    def stop_on_404(**_kwargs):
+    def stop_on_404(**kwargs):
+        kwargs["before_navigation"](501, "profile", diagnostic["requested_url"])
         raise PlayerAcquisitionStopped(
             501, "profile", "HTTP_ERROR (404)", "HTTP 404", diagnostic=diagnostic,
         )
@@ -177,10 +178,53 @@ def test_mass_cli_http_404_persists_diagnostic_and_resumable_capture_state(
     assert status["last_error"]["diagnostic"]["http_status"] == 404
     assert status["last_error"]["diagnostic"]["player_id"] == 501
     assert status["last_error"]["diagnostic"]["view"] == "profile"
+    assert status["current_player_id"] == 501
+    assert status["current_view"] == "profile"
+    assert status["current_requested_url"] == diagnostic["requested_url"]
+    assert status["last_error"]["requested_url"] == diagnostic["requested_url"]
     capture_id = status["capture_id"]
     manifest = json.loads((capture_root / capture_id / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["status"] == "in_progress"
     assert capture_id
+    capsys.readouterr()
+
+
+def test_mass_cli_attributes_unexpected_failure_to_current_navigation(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    capture_root = tmp_path / "captures"
+    status_path = tmp_path / "status.json"
+    progress_path = tmp_path / "progress.json"
+    requested_url = "https://www.bdfutbol.com/es/j/j501.html?p=stats"
+    monkeypatch.setattr(batch_cli, "_make_plan", lambda **_: _plan_and_progress())
+    monkeypatch.setattr(
+        batch_cli,
+        "_load_compact_sample",
+        lambda _root: ({"generation_id": "test"}, [{"bytes": 1000}], None),
+    )
+
+    def fail_during_navigation(**kwargs):
+        kwargs["before_navigation"](501, "statistics", requested_url)
+        raise RuntimeError("DOM read failed")
+
+    monkeypatch.setattr(batch_cli, "acquire_player_views", fail_during_navigation)
+    monkeypatch.setattr(
+        batch_cli,
+        "build_player_acquisition_progress",
+        lambda **_: _plan_and_progress()[1],
+    )
+    code = batch_cli.main([
+        "--execute", "--capture-root", str(capture_root),
+        "--progress-output", str(progress_path), "--status-file", str(status_path),
+    ])
+
+    status = json.loads(status_path.read_text(encoding="utf-8"))
+    assert code == 1
+    assert status["status"] == "stopped"
+    assert status["current_player_id"] == 501
+    assert status["current_view"] == "statistics"
+    assert status["current_requested_url"] == requested_url
+    assert status["last_error"]["requested_url"] == requested_url
     capsys.readouterr()
 
 

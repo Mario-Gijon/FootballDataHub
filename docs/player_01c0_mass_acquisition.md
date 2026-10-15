@@ -161,6 +161,25 @@ BDFutbol. La ejecución en el sandbox no pudo iniciar Xvfb por restricciones del
 entorno; la comprobación se realizó fuera del sandbox y permaneció solo en
 `about:blank`.
 
+## Pure CDP DOM readiness and safe resume
+
+SeleniumBase Pure CDP's `get_text("body")` performs an internal element wait
+and raises after seven seconds when the selector is not available. That
+prevents the access layer from recording the navigation's HTTP status and
+URL. The provider-neutral document adapter now reads the current DOM without
+that implicit wait. `BDFutbolAccess` performs only its configured bounded DOM
+readiness checks on the same navigation (four seconds for player base views).
+Content that appears during that window can still be assessed; an unavailable
+or incomplete document at the deadline remains `INVALID_CONTENT` and stops the
+batch. Other DOM inspection exceptions are recorded as `DOCUMENT_ERROR` with
+player, view, URL, HTTP status and final URL, then stop. Neither case reloads a
+page or restarts a browser session. HTTP denials, challenges, identity
+mismatches and structural failures continue to stop.
+
+Before each navigation, the runtime status checkpoints the pending player,
+view and requested URL. On resume, snapshots that already pass integrity and
+parsing checks are reused without another visit.
+
 ## Pruebas y limitación pendiente
 
 Los tests de PLAYER-01C1 cubren política HTTP offline, stop ante 404 sin visitar

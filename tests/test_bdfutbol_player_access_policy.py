@@ -179,3 +179,93 @@ def test_http_404_records_checkpoint_and_does_not_visit_next_player_or_mutate_ol
     assert diagnostic["classification"] == "unverified_http_or_content_error"
     assert manifest["snapshots"] == []
     assert hashlib.sha256(old_raw.read_bytes()).hexdigest() == old_hash
+
+
+def test_document_read_failure_is_attributed_and_preserves_existing_snapshots(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    capture_root = tmp_path / "captures"
+    old_raw = capture_root / "old-capture" / "raw" / "verified.html.gz"
+    old_raw.parent.mkdir(parents=True)
+    old_raw.write_bytes(b"previous verified capture")
+    old_hash = hashlib.sha256(old_raw.read_bytes()).hexdigest()
+    inventory_path = tmp_path / "inventory.json"
+    inventory_raw = json.dumps({
+        "metadata": {"season": "2026-27"},
+        "records": [
+            {"player_id": player_id, "display_name": f"Jugador {player_id}", "full_name": None}
+            for player_id in (501, 502)
+        ],
+    }).encode()
+    inventory_path.write_bytes(inventory_raw)
+    progress = {
+        "inventory": {"sha256": hashlib.sha256(inventory_raw).hexdigest()},
+        "capture_root": str(capture_root.resolve()),
+        "players": [
+            {"player_id": player_id, "view_snapshots": {view: None for view in PLAYER_VIEWS}}
+            for player_id in (501, 502)
+        ],
+        "pending_views": [
+            {"player_id": player_id, "view": "profile"} for player_id in (501, 502)
+        ],
+    }
+
+    class FakeSessionManager:
+        def __init__(self, _config):
+            self.info = None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+    calls: list[str] = []
+
+    class FakeAccess:
+        def __init__(self, _session):
+            pass
+
+        def open(self, url, **_kwargs):
+            calls.append(url)
+            assessment = AccessAssessment(
+                status=AccessStatus.DOCUMENT_ERROR,
+                requested_url=url,
+                final_url=url,
+                http_status=200,
+                page_title="Jugador de prueba",
+                reason="No se pudo inspeccionar el DOM: Element {body} timeout",
+            )
+            return BDFutbolVisit(assessment, None)
+
+    monkeypatch.setattr(acquisition, "BrowserSessionManager", FakeSessionManager)
+    monkeypatch.setattr(acquisition, "BDFutbolAccess", FakeAccess)
+
+    with pytest.raises(PlayerAcquisitionStopped) as exc_info:
+        acquire_player_views(
+            player_ids=[501, 502],
+            inventory_path=inventory_path,
+            capture_root=capture_root,
+            profile_dir=tmp_path / "profile",
+            capture_id="document-read-stop",
+            settle_ms=0,
+            pause_seconds=0,
+            explore_filters=False,
+            views=("profile",),
+            progress_index=progress,
+        )
+
+    assert calls == [player_view_url(501, "profile")]
+    assert exc_info.value.status == f"{AccessStatus.DOCUMENT_ERROR.value} (200)"
+    manifest = json.loads((capture_root / "document-read-stop" / "manifest.json").read_text())
+    diagnostic = manifest["diagnostics"][-1]
+    assert manifest["status"] == "stopped"
+    assert diagnostic["player_id"] == 501
+    assert diagnostic["view"] == "profile"
+    assert diagnostic["requested_url"] == player_view_url(501, "profile")
+    assert diagnostic["http_status"] == 200
+    assert diagnostic["access_status"] == AccessStatus.DOCUMENT_ERROR.value
+    assert diagnostic["classification"] == "document_inspection_error"
+    assert diagnostic["failure_stage"] == "document_inspection"
+    assert manifest["snapshots"] == []
+    assert hashlib.sha256(old_raw.read_bytes()).hexdigest() == old_hash

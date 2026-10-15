@@ -426,7 +426,19 @@ class _PureCDPDocument:
         ))
 
     def text(self, selector: str) -> str:
-        return str(self._run(lambda: self._backend.browser.get_text(selector)))
+        """Read current DOM text without SeleniumBase's implicit element wait.
+
+        Provider code owns its bounded readiness policy. SeleniumBase's
+        ``get_text`` waits for a missing selector internally (seven seconds in
+        the current Pure CDP release), which can raise before callers can
+        inspect the HTTP response or apply their own timeout.
+        """
+        result = self.evaluate(
+            "(() => { const element = document.querySelector("
+            f"{json.dumps(selector)}); return element "
+            "? (element.innerText ?? element.textContent ?? '') : ''; })()"
+        )
+        return result if isinstance(result, str) else ""
 
     def texts(self, selector: str) -> list[str]:
         expression = (
