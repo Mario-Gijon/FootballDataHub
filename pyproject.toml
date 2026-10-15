@@ -26,6 +26,7 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src", "scripts", "apps/api"]
+markers = ["integration: opt-in tests that use external local capture stores"]
 
 [tool.ruff]
 target-version = "py312"
