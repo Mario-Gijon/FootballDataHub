@@ -57,6 +57,7 @@ class MatchDiscoveryPilotResult:
     diagnostic: dict[str, Any]
     capture_promoted: bool = False
     navigation_count: int = 1
+    attempt_id: str | None = None
 
 
 class MatchDiscoveryPilotBlocked(RuntimeError):
@@ -147,9 +148,20 @@ def run_match_discovery_pilot(
     with store.exclusive_lock():
         reconciliation = store.reconcile(inventory)
         if reconciliation["blocked"] or reconciliation["active_stop"]:
+            if reconciliation.get("interrupted_navigation_attempt") is not None:
+                raise MatchDiscoveryPilotBlocked(
+                    "Existe un intento de navegación iniciado y sin resolver; "
+                    "requiere revisión manual y no se navegará de nuevo"
+                )
             raise MatchDiscoveryPilotBlocked(
                 "El almacén tiene integridad bloqueada o una parada activa; no se navega"
             )
+        attempt_id = store.begin_navigation_attempt(
+            inventory,
+            record,
+            requested_url=requested_url,
+        )
+        attempt_key = attempt_id.attempt_id
         started = time.monotonic()
         opened = None
         http_status: int | None = None
@@ -213,6 +225,7 @@ def run_match_discovery_pilot(
                             access_status=assessment.status.value,
                             page_title=title,
                             duration_ms=elapsed_ms,
+                            navigation_attempt=attempt_id,
                         )
                     except MatchDetailStoreError as exc:
                         access_status = "DISCOVERY_STORAGE_ERROR"
@@ -237,6 +250,12 @@ def run_match_discovery_pilot(
                 diagnostic=diagnostic_text,
                 access_status=access_status,
                 duration_ms=elapsed_ms,
+                navigation_attempt=attempt_id,
+            )
+            store.resolve_navigation_attempt(
+                inventory,
+                attempt=attempt_id,
+                outcome_code=code,
             )
             return MatchDiscoveryPilotResult(
                 status="DISCOVERY_REVIEW_REQUIRED" if artifact else "STOPPED",
@@ -249,6 +268,7 @@ def run_match_discovery_pilot(
                 duration_ms=elapsed_ms,
                 discovery_artifact=artifact,
                 diagnostic=diagnostic,
+                attempt_id=attempt_key,
             )
         except MatchDiscoveryPilotBlocked:
             raise
@@ -269,6 +289,12 @@ def run_match_discovery_pilot(
                 if access_status != "NOT_STARTED"
                 else "ADAPTER_ERROR",
                 duration_ms=elapsed_ms,
+                navigation_attempt=attempt_id,
+            )
+            store.resolve_navigation_attempt(
+                inventory,
+                attempt=attempt_id,
+                outcome_code="PILOT_ADAPTER_ERROR",
             )
             return MatchDiscoveryPilotResult(
                 status="STOPPED",
@@ -283,6 +309,7 @@ def run_match_discovery_pilot(
                 duration_ms=elapsed_ms,
                 discovery_artifact=None,
                 diagnostic=diagnostic,
+                attempt_id=attempt_key,
             )
         finally:
             if opened is not None:

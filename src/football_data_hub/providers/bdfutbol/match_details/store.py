@@ -11,7 +11,7 @@ import shutil
 import tempfile
 import threading
 from contextlib import contextmanager
-from dataclasses import asdict, replace
+from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
@@ -45,6 +45,14 @@ class MatchDetailStoreError(RuntimeError):
 
 class MatchDetailStoreLocked(MatchDetailStoreError):
     """Otra adquisición ya posee el bloqueo exclusivo del almacén."""
+
+
+@dataclass(frozen=True, slots=True)
+class NavigationAttemptLease:
+    """Unforgeable in-process authority for the one attempt that created it."""
+
+    attempt_id: str
+    _owner_key: object = field(repr=False, compare=False)
 
 
 def _sha256(content: bytes) -> str:
@@ -183,6 +191,7 @@ class MatchDetailStore:
         self._lock_guard = threading.RLock()
         self._lock_file = None
         self._lock_depth = 0
+        self._navigation_attempt_owners: dict[str, object] = {}
 
     @contextmanager
     def exclusive_lock(self) -> Iterator[None]:
@@ -301,6 +310,8 @@ class MatchDetailStore:
                     "verified_snapshots": [],
                     "discovery_artifacts": [],
                     "diagnostics": [],
+                    "navigation_attempts": [],
+                    "active_navigation_attempt_id": None,
                     "updated_at_utc": _utc_now(),
                 },
             )
@@ -323,6 +334,8 @@ class MatchDetailStore:
                 "verified_snapshots": [],
                 "discovery_artifacts": [],
                 "diagnostics": [],
+                "navigation_attempts": [],
+                "active_navigation_attempt_id": None,
             }
         state = _read_object(path)
         if (
@@ -331,6 +344,172 @@ class MatchDetailStore:
         ):
             raise MatchDetailStoreError("El checkpoint no corresponde al inventario")
         return state
+
+    @staticmethod
+    def _active_navigation_attempt(state: dict[str, Any]) -> dict[str, Any] | None:
+        """Return and validate the single unresolved navigation reservation.
+
+        Older MATCH-01A checkpoints omit these optional fields and remain valid.
+        A malformed or ambiguous reservation is an integrity error, never a
+        reason to admit another navigation.
+        """
+
+        attempts = state.get("navigation_attempts", [])
+        active_id = state.get("active_navigation_attempt_id")
+        if not isinstance(attempts, list) or any(
+            not isinstance(item, dict) for item in attempts
+        ):
+            raise MatchDetailStoreError("Registro de intentos de navegación inválido")
+        ids = [item.get("attempt_id") for item in attempts]
+        if any(
+            not isinstance(attempt_id, str) or not attempt_id for attempt_id in ids
+        ) or len(ids) != len(set(ids)):
+            raise MatchDetailStoreError("IDs de intentos de navegación inválidos")
+        started = [item for item in attempts if item.get("status") == "started"]
+        if any(item.get("status") not in {"started", "resolved"} for item in attempts):
+            raise MatchDetailStoreError("Estado de intento de navegación inválido")
+        if active_id is None:
+            if started:
+                raise MatchDetailStoreError(
+                    "Hay un intento iniciado sin referencia activa en el checkpoint"
+                )
+            return None
+        if (
+            not isinstance(active_id, str)
+            or len(started) != 1
+            or started[0].get("attempt_id") != active_id
+        ):
+            raise MatchDetailStoreError(
+                "La referencia al intento de navegación activo no es coherente"
+            )
+        attempt = started[0]
+        required = (
+            "inventory_id",
+            "internal_id",
+            "source_match_id",
+            "requested_url",
+            "started_at_utc",
+        )
+        if any(not isinstance(attempt.get(field), str) for field in required):
+            raise MatchDetailStoreError(
+                "El intento de navegación activo no conserva su procedencia"
+            )
+        if attempt.get("inventory_id") != state.get("inventory_id"):
+            raise MatchDetailStoreError(
+                "El intento de navegación activo pertenece a otro inventario"
+            )
+        return attempt
+
+    def begin_navigation_attempt(
+        self,
+        inventory: dict[str, Any],
+        calendar_record: dict[str, Any],
+        *,
+        requested_url: str,
+    ) -> NavigationAttemptLease:
+        """Atomically reserve the sole navigation before calling the adapter."""
+
+        records = _inventory_records(inventory)
+        internal_id = calendar_record.get("internal_id")
+        if internal_id not in records or records[internal_id] != calendar_record:
+            raise MatchDetailStoreError("El intento no corresponde al inventario")
+        if requested_url != calendar_record.get("source_match_url"):
+            raise MatchDetailStoreError(
+                "La URL del intento no coincide con el inventario"
+            )
+        with self.exclusive_lock():
+            self._prepare_inventory_locked(inventory)
+            reconciliation = self.reconcile(inventory)
+            if reconciliation["blocked"]:
+                raise MatchDetailStoreError(
+                    "Integridad bloqueada; no se puede reservar navegación"
+                )
+            if reconciliation.get("active_navigation_attempt") is not None:
+                raise MatchDetailStoreError(
+                    "Existe un intento de navegación sin resolver; requiere revisión manual"
+                )
+            if reconciliation["active_stop"]:
+                raise MatchDetailStoreError(
+                    "Existe una parada activa; requiere resolución explícita"
+                )
+            attempt_id = uuid4().hex
+            owner_key = object()
+            state = self._load_state_locked(inventory["inventory_id"])
+            attempts = state.setdefault("navigation_attempts", [])
+            if not isinstance(attempts, list):
+                raise MatchDetailStoreError(
+                    "Registro de intentos de navegación inválido"
+                )
+            attempt = {
+                "attempt_id": attempt_id,
+                "status": "started",
+                "inventory_id": inventory["inventory_id"],
+                "internal_id": internal_id,
+                "source_match_id": calendar_record["source_match_id"],
+                "requested_url": requested_url,
+                "started_at_utc": _utc_now(),
+            }
+            attempts.append(attempt)
+            state["active_navigation_attempt_id"] = attempt_id
+            state["revision"] = int(state.get("revision", 0)) + 1
+            state["updated_at_utc"] = _utc_now()
+            # _atomic_json fsyncs the file and parent directory before returning.
+            # The adapter is invoked only after this durable commit succeeds.
+            _atomic_json(self._state_path(inventory["inventory_id"]), state)
+            self._navigation_attempt_owners[attempt_id] = owner_key
+            return NavigationAttemptLease(attempt_id, owner_key)
+
+    def resolve_navigation_attempt(
+        self,
+        inventory: dict[str, Any],
+        *,
+        attempt: NavigationAttemptLease,
+        outcome_code: str,
+    ) -> None:
+        """Resolve only the current owner's reservation after durable evidence."""
+
+        if not isinstance(attempt, NavigationAttemptLease):
+            raise MatchDetailStoreError("La resolución necesita el permiso del intento")
+        if not isinstance(outcome_code, str) or not outcome_code:
+            raise MatchDetailStoreError("La resolución necesita un código de resultado")
+        with self.exclusive_lock():
+            state = self._load_state_locked(inventory["inventory_id"])
+            active = self._active_navigation_attempt(state)
+            if (
+                active is None
+                or active.get("attempt_id") != attempt.attempt_id
+                or self._navigation_attempt_owners.get(attempt.attempt_id)
+                is not attempt._owner_key
+            ):
+                raise MatchDetailStoreError(
+                    "Solo el intento activo puede resolver su propia reserva"
+                )
+            has_diagnostic = any(
+                isinstance(item, dict)
+                and item.get("navigation_attempt_id") == attempt.attempt_id
+                for item in state.get("diagnostics", [])
+            )
+            has_artifact = any(
+                isinstance(item, dict)
+                and item.get("navigation_attempt_id") == attempt.attempt_id
+                for item in state.get("discovery_artifacts", [])
+            )
+            if not (has_diagnostic or has_artifact):
+                raise MatchDetailStoreError(
+                    "No se resuelve un intento sin diagnóstico o artefacto duradero"
+                )
+            now = _utc_now()
+            active["status"] = "resolved"
+            active["resolved_at_utc"] = now
+            active["outcome_code"] = outcome_code
+            active["resolution_evidence"] = (
+                "diagnostic" if has_diagnostic else "discovery_artifact"
+            )
+            state["active_navigation_attempt_id"] = None
+            state["revision"] = int(state.get("revision", 0)) + 1
+            state["updated_at_utc"] = now
+            _atomic_json(self._state_path(inventory["inventory_id"]), state)
+            self._navigation_attempt_owners.pop(attempt.attempt_id, None)
 
     def record_diagnostic(
         self,
@@ -345,7 +524,12 @@ class MatchDetailStore:
         final_url: str | None = None,
         access_status: str | None = None,
         duration_ms: int | None = None,
+        navigation_attempt: NavigationAttemptLease | None = None,
     ) -> dict[str, Any]:
+        if navigation_attempt is not None and not isinstance(
+            navigation_attempt, NavigationAttemptLease
+        ):
+            raise MatchDetailStoreError("Permiso de intento de navegación inválido")
         records = _inventory_records(inventory)
         if internal_id not in records:
             raise MatchDetailStoreError("El diagnóstico no corresponde al inventario")
@@ -369,6 +553,8 @@ class MatchDetailStore:
         }
         if access_status is not None:
             event["access_status"] = access_status
+        if navigation_attempt is not None:
+            event["navigation_attempt_id"] = navigation_attempt.attempt_id
         if duration_ms is not None:
             if (
                 not isinstance(duration_ms, int)
@@ -382,6 +568,28 @@ class MatchDetailStore:
         with self.exclusive_lock():
             self._prepare_inventory_locked(inventory)
             state = self._load_state_locked(inventory["inventory_id"])
+            active_attempt = self._active_navigation_attempt(state)
+            owns_active = (
+                active_attempt is not None
+                and navigation_attempt is not None
+                and active_attempt.get("attempt_id") == navigation_attempt.attempt_id
+                and self._navigation_attempt_owners.get(navigation_attempt.attempt_id)
+                is navigation_attempt._owner_key
+            )
+            if active_attempt is not None and not owns_active:
+                raise MatchDetailStoreError(
+                    "El intento activo solo admite diagnósticos de su propietario"
+                )
+            if navigation_attempt is not None and (
+                not owns_active
+                or active_attempt.get("internal_id") != internal_id
+                or active_attempt.get("source_match_id")
+                != records[internal_id].get("source_match_id")
+                or active_attempt.get("requested_url") != requested_value
+            ):
+                raise MatchDetailStoreError(
+                    "El diagnóstico no pertenece al intento de navegación activo"
+                )
             state.setdefault("diagnostics", []).append(event)
             state["status"] = "stopped"
             state["revision"] = int(state.get("revision", 0)) + 1
@@ -402,6 +610,7 @@ class MatchDetailStore:
         access_status: str,
         page_title: str,
         duration_ms: int | None,
+        navigation_attempt: NavigationAttemptLease | None = None,
     ) -> dict[str, str]:
         """Persist an unverified 200 page outside captures; never promotes it.
 
@@ -410,6 +619,10 @@ class MatchDetailStore:
         explicitly marked as having no confirmed semantic mapping.
         """
 
+        if navigation_attempt is not None and not isinstance(
+            navigation_attempt, NavigationAttemptLease
+        ):
+            raise MatchDetailStoreError("Permiso de intento de navegación inválido")
         records = _inventory_records(inventory)
         internal_id = calendar_record.get("internal_id")
         if internal_id not in records or records[internal_id] != calendar_record:
@@ -450,10 +663,35 @@ class MatchDetailStore:
         with self.exclusive_lock():
             self._prepare_inventory_locked(inventory)
             reconciliation = self.reconcile(inventory)
-            if reconciliation["blocked"] or reconciliation["active_stop"]:
+            if reconciliation["blocked"]:
                 raise MatchDetailStoreError(
-                    "No se puede añadir evidencia con integridad bloqueada o parada activa"
+                    "No se puede añadir evidencia con integridad bloqueada"
                 )
+            active_attempt = reconciliation.get("active_navigation_attempt")
+            owns_active = (
+                active_attempt is not None
+                and navigation_attempt is not None
+                and active_attempt.get("attempt_id") == navigation_attempt.attempt_id
+                and self._navigation_attempt_owners.get(navigation_attempt.attempt_id)
+                is navigation_attempt._owner_key
+            )
+            if active_attempt is not None and (
+                not owns_active
+                or active_attempt.get("internal_id") != internal_id
+                or active_attempt.get("source_match_id")
+                != calendar_record.get("source_match_id")
+                or active_attempt.get("requested_url") != requested_url
+            ):
+                raise MatchDetailStoreError(
+                    "El intento activo solo admite artefactos de su propietario"
+                )
+            if navigation_attempt is not None and not owns_active:
+                raise MatchDetailStoreError(
+                    "No existe una reserva activa para este intento"
+                )
+            non_attempt_stop = reconciliation["active_stop"] and active_attempt is None
+            if non_attempt_stop:
+                raise MatchDetailStoreError("Existe una parada previa activa")
             discovery_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
             discovery_id += f"-{uuid4().hex[:8]}"
             report_content = _canonical_json(discovery_report)
@@ -474,6 +712,9 @@ class MatchDetailStore:
                 "final_url": final_url,
                 "http_status": http_status,
                 "access_status": access_status,
+                "navigation_attempt_id": navigation_attempt.attempt_id
+                if navigation_attempt is not None
+                else None,
                 "page_title": page_title,
                 "source_representation": (
                     "BrowserDocument.html() DOM serialization; transport response bytes unavailable"
@@ -513,6 +754,9 @@ class MatchDetailStore:
                     "internal_id": internal_id,
                     "source_html_sha256": html_hash,
                     "manifest_sha256": _sha256((target / "manifest.json").read_bytes()),
+                    "navigation_attempt_id": navigation_attempt.attempt_id
+                    if navigation_attempt is not None
+                    else None,
                 }
             )
             state["revision"] = int(state.get("revision", 0)) + 1
@@ -1039,6 +1283,7 @@ class MatchDetailStore:
                     }
                 )
         state: dict[str, Any] = {}
+        active_navigation_attempt: dict[str, Any] | None = None
         state_path = self._state_path(inventory_id)
         if states_root.is_symlink() or state_path.is_symlink():
             invalid.append(
@@ -1064,6 +1309,7 @@ class MatchDetailStore:
                     or state.get("status") not in {"in_progress", "stopped", "complete"}
                     or not isinstance(state.get("verified_snapshots", []), list)
                     or not isinstance(state.get("diagnostics", []), list)
+                    or not isinstance(state.get("discovery_artifacts", []), list)
                     or any(
                         not isinstance(item, dict)
                         for item in state.get("verified_snapshots", [])
@@ -1074,6 +1320,7 @@ class MatchDetailStore:
                     )
                 ):
                     raise MatchDetailStoreError("Checkpoint de otro inventario")
+                active_navigation_attempt = self._active_navigation_attempt(state)
                 for reference in state.get("verified_snapshots", []):
                     capture_id = reference.get("capture_id")
                     internal_id = reference.get("internal_id")
@@ -1124,6 +1371,7 @@ class MatchDetailStore:
                     )
             except MatchDetailStoreError as exc:
                 invalid.append({"capture_id": "checkpoint", "reason": str(exc)})
+                active_navigation_attempt = None
         diagnostics_root = self.root / "diagnostics"
         discovery_root = diagnostics_root / inventory_id
         if diagnostics_root.is_symlink() or discovery_root.is_symlink():
@@ -1161,10 +1409,16 @@ class MatchDetailStore:
             "invalid_snapshots": invalid,
             "invalid_discovery_artifacts": invalid_discovery,
             "diagnostics": list(state.get("diagnostics", [])),
+            "navigation_attempts": list(state.get("navigation_attempts", []))
+            if isinstance(state.get("navigation_attempts", []), list)
+            else [],
+            "active_navigation_attempt": active_navigation_attempt,
+            "interrupted_navigation_attempt": active_navigation_attempt,
             "revision": state.get("revision", 0),
             "integrity_blocked": bool(invalid or invalid_discovery),
             "active_stop": state.get("status") == "stopped"
             or bool(state.get("discovery_artifacts", []))
+            or active_navigation_attempt is not None
             or any(
                 item.get("stop_acquisition", True)
                 for item in state.get("diagnostics", [])
@@ -1270,6 +1524,8 @@ class MatchDetailStore:
             or metadata.get("access_status") not in {"VALID", "INVALID_CONTENT"}
             or metadata.get("source_html_sha256") != _sha256(raw)
             or metadata.get("source_html_sha256") != reference.get("source_html_sha256")
+            or metadata.get("navigation_attempt_id")
+            != reference.get("navigation_attempt_id")
             or metadata.get("source_html_bytes") != len(raw)
             or metadata.get("discovery_sha256") != _sha256(files["discovery.json"])
             or report.get("schema_version")

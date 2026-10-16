@@ -12,7 +12,15 @@ No se ejecutó Chromium, SeleniumBase, Playwright ni HTTP durante MATCH-01B. El 
 - `pilot_cli.py` vuelve a construir el inventario desde la generación, compara el resultado con `inventory.json` y `manifest.json` persistidos, selecciona exclusivamente el ID piloto y revisa el almacén.
 - `acquisition.py` conecta el inventario con `BDFutbolAccess` y `MatchDetailStore`. Tiene una sola llamada a `open`, sin reintentos, y nunca llama a `store_valid_capture`.
 - `discovery.py` describe el DOM genéricamente: título, conteos de etiquetas, atributos observados, tablas/celdas, controles, scripts, claves y forma/tipos de JSON parseable, enlaces y términos que pueden orientar una revisión. No copia los valores JSON embebidos a ese resumen.
-- `store.py` almacena posibles páginas de descubrimiento bajo `diagnostics/<inventory_id>/<discovery_id>/`, separadas de `captures/`, con manifiesto y SHA-256. Un artefacto de descubrimiento queda pendiente de revisión y activa una parada para impedir otra navegación accidental.
+- `store.py` almacena posibles páginas de descubrimiento bajo `diagnostics/<inventory_id>/<discovery_id>/`, separadas de `captures/`, con manifiesto y SHA-256. Antes de llamar a `access.open()`, el checkpoint registra atómicamente un intento `started` con ID, inventario, partido, URL y timestamp. El ID queda persistido; la autoridad para completar ese intento es una capacidad en memoria del mismo objeto de almacén y no se recupera tras reiniciar.
+
+## Reserva duradera de navegación
+
+El bloqueo exclusivo del almacén cubre la comprobación del checkpoint, la escritura durable de la reserva y la llamada única a `access.open()`. La escritura usa el reemplazo atómico existente, con `fsync` del archivo y del directorio antes de que `begin_navigation_attempt()` devuelva el permiso al llamador. Por tanto, el adaptador no se invoca si esa escritura no termina.
+
+Una excepción normal del adaptador se conserva como diagnóstico del intento y puede resolver la reserva tras guardar ese diagnóstico. Una terminación abrupta (por ejemplo, SIGKILL) no ejecuta resolución: el estado conserva `status: started` y el preflight informa `interrupted_navigation_attempt_requires_manual_review`. No se reintenta, no se borra la reserva y no existe desbloqueo automático. Hace falta revisar manualmente la evidencia antes de cualquier cambio operativo.
+
+Los intentos, diagnósticos y capturas son registros separados: una reserva `started` solo prueba que la navegación iba a comenzar; un diagnóstico describe su resultado; un snapshot verificado requeriría el flujo de promoción de MATCH-01A y evidencia de identidad y estructura. La reserva permite a su propietario en el proceso actual añadir el artefacto de descubrimiento y el diagnóstico de cierre. Un proceso nuevo, aunque conozca el ID persistido, no puede reutilizar esa autoridad en memoria. Los checkpoints de MATCH-01A sin campos de intentos se leen como un historial vacío.
 
 ## Evidencia observada frente a hipótesis
 
@@ -41,7 +49,7 @@ PYTHONPATH=src "$HOME/Documents/Trabalo/Proyectos/RealJaen/FootballDataHub/.venv
 
 El preflight compara la generación local, el inventario persistido y el checkpoint, informa dependencias de Pure CDP/Xvfb/Chromium y espacio escribible. No prueba ni abre el perfil. En el futuro, `BrowserSessionManager` adquirirá su lock del perfil antes de crear Chromium. El CLI no inspecciona procesos PLAYER-01C2; para el modo real exige una confirmación explícita de que el navegador de PLAYER está inactivo.
 
-Un estado `PREFLIGHT_READY_PROFILE_UNCHECKED` solo indica que inventario, dependencias y almacén están preparados offline. No autoriza la navegación: faltan la ruta existente del perfil, el lock/proceso comprobado al iniciar la sesión y las dos confirmaciones explícitas.
+Un estado `PREFLIGHT_READY_PROFILE_UNCHECKED` solo indica que inventario, dependencias y almacén están preparados offline. No autoriza la navegación: faltan la ruta existente del perfil, el lock/proceso comprobado al iniciar la sesión y las dos confirmaciones explícitas. Si se encuentra una reserva `started` sin resolver, el informe incluye `pending_navigation_attempt` y bloquea el modo real para revisión manual.
 
 El comando futuro, **no ejecutado en MATCH-01B**, será:
 
@@ -77,7 +85,7 @@ El preflight offline real verificó:
 - Cero capturas verificadas, cero snapshots inválidos y ninguna parada activa al preflight.
 - SeleniumBase, Xvfb y Chromium disponibles en el entorno de ejecución consultado. No se inspeccionó el perfil.
 
-Los tests sintéticos verifican el flujo de una navegación como máximo, respuestas HTTP, timeout sin estado, desafío, redirección, artefactos separados, hash/corrupción, checkpoint detenido, rechazo de identidad incorrecta y que el modo por defecto no abre sockets ni instancia un navegador.
+Los tests sintéticos verifican el flujo de una navegación como máximo, la reserva durable antes del adaptador, interrupción abrupta y bloqueo tras reinicio, autoridad del propietario, resolución con diagnóstico/artefacto, respuestas HTTP, timeout sin estado, desafío, redirección, artefactos separados, hash/corrupción, checkpoint detenido, rechazo de identidad incorrecta y que el dry-run no modifica el almacén ni abre sockets o instancia un navegador.
 
 ## Pendiente para MATCH-01B real / MATCH-01C
 

@@ -114,6 +114,10 @@ def build_pilot_preflight(
     if reconciliation["active_stop"]:
         status = "BLOCKED"
         reasons.append("active_stop_requires_explicit_resolution")
+    pending_attempt = reconciliation.get("interrupted_navigation_attempt")
+    if pending_attempt is not None:
+        status = "BLOCKED"
+        reasons.append("interrupted_navigation_attempt_requires_manual_review")
     if not storage["sufficient"]:
         status = "BLOCKED"
         reasons.append("store_not_writable")
@@ -153,6 +157,8 @@ def build_pilot_preflight(
         "store": {
             "verified_captures": len(reconciliation["verified_by_internal_id"]),
             "active_stop": reconciliation["active_stop"],
+            "pending_navigation_attempt": pending_attempt,
+            "navigation_attempts": reconciliation.get("navigation_attempts", []),
             "integrity_blocked": reconciliation["integrity_blocked"],
             "invalid_snapshots": reconciliation["invalid_snapshots"],
             "invalid_discovery_artifacts": reconciliation.get(
