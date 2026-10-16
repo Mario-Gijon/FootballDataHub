@@ -95,6 +95,20 @@ def same_resource(requested_url: str, final_url: str) -> bool:
     )
 
 
+def contains_bdfutbol_access_challenge(
+    *, page_title: str, body_text: str, http_status: int | None = None
+) -> bool:
+    """Expose the existing conservative challenge-marker check to storage code."""
+
+    body = body_text.casefold()
+    title = page_title.casefold().strip()
+    return (
+        any(marker in title for marker in _CHALLENGE_TITLES)
+        or any(marker in body for marker in _CHALLENGE_MARKERS)
+        or (http_status in {403, 429, 503} and "cloudflare" in body)
+    )
+
+
 def assess_bdfutbol_access(
     *,
     requested_url: str,
@@ -122,43 +136,76 @@ def assess_bdfutbol_access(
         raise ValueError("Los marcadores DOM requieren un selector de contenido")
     if not is_bdfutbol_https_url(requested_url):
         return AccessAssessment(
-            AccessStatus.INVALID_URL, requested_url, final_url, http_status,
-            page_title, reason="Solo se permiten URLs HTTPS de BDFutbol",
+            AccessStatus.INVALID_URL,
+            requested_url,
+            final_url,
+            http_status,
+            page_title,
+            reason="Solo se permiten URLs HTTPS de BDFutbol",
         )
 
+    if contains_bdfutbol_access_challenge(
+        page_title=page_title, body_text=body_text, http_status=http_status
+    ):
+        return AccessAssessment(
+            AccessStatus.CHALLENGE_REQUIRED,
+            requested_url,
+            final_url,
+            http_status,
+            page_title,
+            reason="Desafío de acceso detectado; no se intenta resolver",
+        )
     body = body_text.casefold()
     title = page_title.casefold().strip()
-    is_challenge = (
-        any(x in title for x in _CHALLENGE_TITLES)
-        or any(x in body for x in _CHALLENGE_MARKERS)
-        or (http_status in {403, 429, 503} and "cloudflare" in body)
-    )
-    if is_challenge:
-        return AccessAssessment(
-            AccessStatus.CHALLENGE_REQUIRED, requested_url, final_url,
-            http_status, page_title, reason="Desafío de acceso detectado; no se intenta resolver",
-        )
     if not same_resource(requested_url, final_url):
         return AccessAssessment(
-            AccessStatus.INVALID_URL, requested_url, final_url,
-            http_status, page_title, reason="La URL final no coincide con la solicitada",
+            AccessStatus.INVALID_URL,
+            requested_url,
+            final_url,
+            http_status,
+            page_title,
+            reason="La URL final no coincide con la solicitada",
         )
     if http_status is None or not (200 <= http_status < 300):
-        reason = "No se recibió un estado HTTP" if http_status is None else f"HTTP {http_status}"
+        reason = (
+            "No se recibió un estado HTTP"
+            if http_status is None
+            else f"HTTP {http_status}"
+        )
         return AccessAssessment(
-            AccessStatus.HTTP_ERROR, requested_url, final_url,
-            http_status, page_title, reason=reason,
+            AccessStatus.HTTP_ERROR,
+            requested_url,
+            final_url,
+            http_status,
+            page_title,
+            reason=reason,
         )
     missing = tuple(m for m in required_markers if m.casefold() not in body)
-    missing_title = tuple(m for m in required_title_markers if m.casefold() not in title)
+    missing_title = tuple(
+        m for m in required_title_markers if m.casefold() not in title
+    )
     scoped_dom_text = dom_text.casefold()
-    missing_dom = tuple(m for m in required_dom_text_markers if m.casefold() not in scoped_dom_text)
+    missing_dom = tuple(
+        m for m in required_dom_text_markers if m.casefold() not in scoped_dom_text
+    )
     present = set(present_selectors)
-    missing_selectors = tuple(selector for selector in required_selectors if selector not in present)
-    if missing or missing_title or missing_selectors or missing_dom or missing_dom_evidence:
+    missing_selectors = tuple(
+        selector for selector in required_selectors if selector not in present
+    )
+    if (
+        missing
+        or missing_title
+        or missing_selectors
+        or missing_dom
+        or missing_dom_evidence
+    ):
         return AccessAssessment(
-            AccessStatus.INVALID_CONTENT, requested_url, final_url,
-            http_status, page_title, missing,
+            AccessStatus.INVALID_CONTENT,
+            requested_url,
+            final_url,
+            http_status,
+            page_title,
+            missing,
             "Faltan marcadores semánticos o estructura del recurso",
             missing_title_markers=missing_title,
             missing_selectors=missing_selectors,
@@ -166,7 +213,11 @@ def assess_bdfutbol_access(
             missing_dom_evidence=missing_dom_evidence,
         )
     return AccessAssessment(
-        AccessStatus.VALID, requested_url, final_url, http_status, page_title,
+        AccessStatus.VALID,
+        requested_url,
+        final_url,
+        http_status,
+        page_title,
     )
 
 
@@ -204,9 +255,16 @@ class BDFutbolAccess:
         try:
             visit = self.session.open_page(url)
         except BrowserNavigationError as exc:
-            return BDFutbolVisit(AccessAssessment(
-                AccessStatus.NAVIGATION_ERROR, url, None, None, "", reason=str(exc),
-            ))
+            return BDFutbolVisit(
+                AccessAssessment(
+                    AccessStatus.NAVIGATION_ERROR,
+                    url,
+                    None,
+                    None,
+                    "",
+                    reason=str(exc),
+                )
+            )
 
         page = visit.document
         title = ""
@@ -219,7 +277,9 @@ class BDFutbolAccess:
                 title = page.title()
                 body_text = page.text("body")
                 present_selectors = tuple(
-                    selector for selector in selectors_to_verify if page.exists(selector)
+                    selector
+                    for selector in selectors_to_verify
+                    if page.exists(selector)
                 )
                 dom_text = ""
                 if required_dom_text_selector:
@@ -266,11 +326,13 @@ class BDFutbolAccess:
                 page.wait(400)
         except Exception as exc:
             visit.close()
-            return BDFutbolVisit(AccessAssessment(
-                AccessStatus.DOCUMENT_ERROR,
-                url,
-                visit.final_url,
-                visit.response_status,
-                title,
-                reason=f"No se pudo inspeccionar el DOM: {type(exc).__name__}: {exc}",
-            ))
+            return BDFutbolVisit(
+                AccessAssessment(
+                    AccessStatus.DOCUMENT_ERROR,
+                    url,
+                    visit.final_url,
+                    visit.response_status,
+                    title,
+                    reason=f"No se pudo inspeccionar el DOM: {type(exc).__name__}: {exc}",
+                )
+            )
