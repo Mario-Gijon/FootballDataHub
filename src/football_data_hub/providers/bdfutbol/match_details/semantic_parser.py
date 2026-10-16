@@ -35,9 +35,6 @@ from football_data_hub.domain.matches.semantic_detail import (
 )
 
 PARSER_VERSION = "match-detail-semantic-0.1.0"
-ARTIFACT_ROOT = Path(
-    "/home/mario/FootballDataHub-data/matches/details/diagnostics"
-)
 _TEAM_HREF = re.compile(r"(?:^|/)e/e(\d+)\.html$")
 _PERSON_HREF = re.compile(r"(?:^|/)j/j(\d+)\.html$")
 _COACH_HREF = re.compile(r"(?:^|/)l/l(\d+)\.html$")
@@ -559,12 +556,18 @@ def _parse_appearance_table(
                 row_events.append(event)
                 if kind == "unknown":
                     errors.append(f"unknown_event_icon:{side}:{player_id}:{icon_class}:{icon_title}")
+                elif minute_literal is None:
+                    errors.append(
+                        f"recognized_event_missing_minute:{kind}:{side}:{player_id}"
+                    )
                 evidence.add(
                     f"events.{kind}[{side}.{player_id}]",
-                    "observed" if kind != "unknown" else "unresolved",
+                    "observed"
+                    if kind != "unknown" and minute_literal is not None
+                    else "unresolved",
                     reference,
                     raw_event_text,
-                    kind,
+                    kind if minute_literal is not None else None,
                 )
         incoming = any(item.kind == "substitution_in" for item in row_events)
         outgoing = any(item.kind == "substitution_out" for item in row_events)
@@ -715,6 +718,13 @@ def _parse_goal_summary(
             literal, base, added = _minute(after_scorer)
             if literal is None:
                 errors.append(f"goal_minute_unverified:{side}:{row_index}")
+                evidence.add(
+                    f"events.goal[{side}.{player_id}].minute",
+                    "unresolved",
+                    f"css:.hero-partit .text-blanc; side={side}; row={row_index}",
+                    raw,
+                    None,
+                )
                 continue
             is_penalty = "(pen)" in raw.casefold()
             event = MatchEvent(
@@ -764,6 +774,68 @@ def _event_signature(event: MatchEvent | _RawRosterEvent) -> tuple[Any, ...]:
         event.kind == "penalty_goal",
         event.kind in {"goal", "penalty_goal"},
     )
+
+
+def _goal_progression_is_consistent(
+    goals: list[MatchEvent], final_home: int, final_away: int
+) -> tuple[bool, str]:
+    """Check score-after-goal values without inventing order for equal minutes."""
+
+    if any(
+        goal.minute_base is None
+        or goal.score_after_home is None
+        or goal.score_after_away is None
+        for goal in goals
+    ):
+        return False, "a goal is missing an interpretable minute or partial score"
+
+    groups: dict[tuple[int, int], list[MatchEvent]] = {}
+    for goal in goals:
+        assert goal.minute_base is not None
+        minute_key = (goal.minute_base, goal.minute_added or 0)
+        groups.setdefault(minute_key, []).append(goal)
+
+    possible_scores: set[tuple[int, int]] = {(0, 0)}
+    for minute_key in sorted(groups):
+        minute_goals = groups[minute_key]
+        group_results: set[tuple[int, int]] = set()
+        initial_mask = (1 << len(minute_goals)) - 1
+        memo: dict[tuple[int, int, int], frozenset[tuple[int, int]]] = {}
+
+        def consume(score_home: int, score_away: int, remaining: int) -> frozenset[tuple[int, int]]:
+            memo_key = (score_home, score_away, remaining)
+            if memo_key in memo:
+                return memo[memo_key]
+            if remaining == 0:
+                return frozenset({(score_home, score_away)})
+            reachable: set[tuple[int, int]] = set()
+            for index, goal in enumerate(minute_goals):
+                bit = 1 << index
+                if not remaining & bit:
+                    continue
+                expected_after = (
+                    (score_home + 1, score_away)
+                    if goal.side == "home"
+                    else (score_home, score_away + 1)
+                )
+                observed_after = (goal.score_after_home, goal.score_after_away)
+                if observed_after != expected_after:
+                    continue
+                reachable.update(
+                    consume(*expected_after, remaining ^ bit)
+                )
+            memo[memo_key] = frozenset(reachable)
+            return memo[memo_key]
+
+        for prior_score in possible_scores:
+            group_results.update(consume(*prior_score, initial_mask))
+        if not group_results:
+            return False, f"impossible partial-score progression at minute {minute_key}"
+        possible_scores = group_results
+
+    if (final_home, final_away) not in possible_scores:
+        return False, "ordered goal progression does not finish at the match result"
+    return True, "goal partial scores admit a valid chronological ordering"
 
 
 def _semantic_events(
@@ -825,6 +897,32 @@ def _semantic_events(
             )
         )
     return tuple(result_events), errors
+
+
+def _roster_identity_errors(
+    starters: Mapping[str, tuple[PlayerAppearance, ...] | None],
+    substitutes: Mapping[str, tuple[PlayerAppearance, ...] | None],
+) -> list[str]:
+    errors: list[str] = []
+    all_sides_by_player: dict[int, set[str]] = {}
+    for side in ("home", "away"):
+        role_ids: dict[str, set[int]] = {}
+        for role, roster in (("starters", starters), ("substitutes", substitutes)):
+            appearances = roster[side] or ()
+            ids = [item.player_id for item in appearances]
+            seen: set[int] = set()
+            for player_id in ids:
+                if player_id in seen:
+                    errors.append(f"duplicate_player_id:{role}:{side}:{player_id}")
+                seen.add(player_id)
+                all_sides_by_player.setdefault(player_id, set()).add(side)
+            role_ids[role] = seen
+        for player_id in sorted(role_ids["starters"] & role_ids["substitutes"]):
+            errors.append(f"player_id_in_starters_and_substitutes:{side}:{player_id}")
+    for player_id, sides in sorted(all_sides_by_player.items()):
+        if len(sides) > 1:
+            errors.append(f"player_id_appears_for_both_teams:{player_id}")
+    return errors
 
 
 def _ephemerides(soup: BeautifulSoup, base_url: str) -> tuple[AdditionalSourceNote, ...]:
@@ -993,7 +1091,20 @@ def parse_match_detail_html(
     stadium_raw, stadium_href, _ = _field_value(hero, "Estadio")
     date_raw, _, _ = _field_value(hero, "Fecha")
     comp_href_path = urlsplit(urljoin(source_url, competition_href)).path
-    competition_label_ok = competition_raw.casefold() in {"1ª rfef", "primera rfef"}
+    competition_label_ok = competition_raw.casefold() in {
+        "1ª rfef",
+        "primera rfef",
+        "primera federación",
+    }
+    if not competition_label_ok:
+        errors.append("competition_label_mismatch")
+    checks.append(
+        ValidationCheck(
+            "competition_label_is_primera_federacion",
+            competition_label_ok,
+            competition_raw,
+        )
+    )
     season_href_match = re.search(r"/t/t(\d{4})-(\d{2})[^/]*\.html$", comp_href_path)
     season_href = (
         f"{season_href_match.group(1)}-{season_href_match.group(2)}"
@@ -1005,14 +1116,14 @@ def parse_match_detail_html(
         errors.append("season_competition_link_mismatch")
     checks.append(ValidationCheck("competition_link_matches_catalog_season", season_ok, comp_href_path))
     season_context = _provenanced(
-        str(expected_match.get("season")),
+        str(expected_match.get("season")) if season_ok else None,
         state="observed" if season_ok else "unresolved",
         origin="match_catalog",
         raw=comp_href_path,
         reference="inventory.season; competition href corroborates 2026-27",
     )
     comp_context = _provenanced(
-        "Primera Federación",
+        "Primera Federación" if competition_label_ok else None,
         state="observed" if competition_label_ok else "unresolved",
         origin="match_detail_dom",
         raw=competition_raw,
@@ -1036,16 +1147,22 @@ def parse_match_detail_html(
         errors.append("matchday_catalog_mismatch")
     checks.append(ValidationCheck("matchday_text_and_link_match_catalog", jornada_ok, matchday_raw))
     matchday_context = _provenanced(
-        jornada_value,
-        state="observed" if jornada_value is not None else "unresolved",
+        jornada_value if jornada_ok else None,
+        state="observed" if jornada_ok else "unresolved",
         origin="match_detail_dom",
         raw=matchday_raw,
         reference="div.hero.hero-partit .f14 label='Jornada' + href query jornada",
     )
     evidence.add("context.competition", "observed" if competition_label_ok else "unresolved", "div.hero.hero-partit .f14 label='Competición'", competition_raw, "Primera Federación" if competition_label_ok else None)
-    evidence.add("context.season", "observed", "inventory.season + competition href", competition_href, str(expected_match.get("season")))
+    evidence.add(
+        "context.season",
+        "observed" if season_ok else "unresolved",
+        "inventory.season + competition href",
+        competition_href,
+        str(expected_match.get("season")) if season_ok else None,
+    )
     evidence.add("context.group", "not_observed", "inventory.group", None, str(expected_match.get("group")))
-    evidence.add("context.matchday", "observed" if jornada_ok else "unresolved", "div.hero.hero-partit .f14 label='Jornada'", matchday_raw, jornada_value)
+    evidence.add("context.matchday", "observed" if jornada_ok else "unresolved", "div.hero.hero-partit .f14 label='Jornada'", matchday_raw, jornada_value if jornada_ok else None)
 
     date_match = _DATE_TIME.search(date_raw)
     if date_match is None:
@@ -1139,6 +1256,8 @@ def parse_match_detail_html(
                     errors.append(f"starter_count_not_11:{side}:{len(appearances)}")
             else:
                 subs_by_side[side] = tuple(appearances)
+    roster_identity_errors = _roster_identity_errors(starters_by_side, subs_by_side)
+    errors.extend(roster_identity_errors)
 
     coach_by_side: dict[str, Coach | None] = {"home": None, "away": None}
     if sections["coaches"]:
@@ -1181,6 +1300,41 @@ def parse_match_detail_html(
     if not goals_count_ok:
         errors.append("goal_event_count_does_not_match_score")
     checks.append(ValidationCheck("goal_summary_count_matches_score", goals_count_ok, f"{len(summary_goals)} goals for {home_goals}-{away_goals}"))
+    goal_progression_ok, goal_progression_detail = _goal_progression_is_consistent(
+        summary_goals, home_goals, away_goals
+    )
+    if not goal_progression_ok:
+        errors.append("goal_score_progression_invalid")
+    checks.append(
+        ValidationCheck(
+            "goal_score_progression_is_chronologically_consistent",
+            goal_progression_ok,
+            goal_progression_detail,
+        )
+    )
+
+    for side in ("home", "away"):
+        if subs_by_side[side] is None:
+            continue
+        entries = sum(
+            event.side == side and event.event_type == "substitution_in"
+            for event in events
+        )
+        exits = sum(
+            event.side == side and event.event_type == "substitution_out"
+            for event in events
+        )
+        evidence.add(
+            f"events.substitution_balance.{side}",
+            "observed",
+            f"all lineup/substitute event cells; side={side}",
+            f"entries={entries}; exits={exits}",
+            f"entries={entries}; exits={exits}",
+        )
+        if entries != exits:
+            warnings.append(
+                f"substitution_event_balance_mismatch:{side}:in={entries}:out={exits}"
+            )
 
     red_cards = [event for event in events if event.event_type == "red_card"]
     if not red_cards:
@@ -1226,10 +1380,46 @@ def parse_match_detail_html(
     if metadata.get("promotion_eligible") is not False:
         errors.append("artifact_promotion_flag_not_false")
 
+    critical_evidence_paths = {
+        "identity.canonical_url",
+        "identity.hidden_codi",
+        "home_team.team_id",
+        "away_team.team_id",
+        "score.home_goals",
+        "score.away_goals",
+        "context.competition",
+        "context.season",
+        "context.matchday",
+        "match.match_date",
+        "match.kickoff_time_local",
+        "match.referee",
+    }
+    unresolved_critical = sorted(
+        {
+            item.field_path
+            for item in evidence.items
+            if item.state == "unresolved"
+            and (
+                item.field_path in critical_evidence_paths
+                or item.field_path.startswith("events.")
+            )
+        }
+    )
+    for field_path in unresolved_critical:
+        errors.append(f"critical_evidence_unresolved:{field_path}")
+    checks.append(
+        ValidationCheck(
+            "critical_evidence_is_resolved",
+            not unresolved_critical,
+            ", ".join(unresolved_critical) or "all critical evidence resolved",
+        )
+    )
+
     checks.extend(
         (
             ValidationCheck("two_distinct_team_ids_match_catalog", home.team_id != away.team_id, f"{home.team_id},{away.team_id}"),
             ValidationCheck("eleven_starters_each", len(starters_by_side["home"] or ()) == 11 and len(starters_by_side["away"] or ()) == 11, f"{len(starters_by_side['home'] or ())},{len(starters_by_side['away'] or ())}"),
+            ValidationCheck("roster_player_ids_are_unique", not roster_identity_errors, "; ".join(roster_identity_errors) or "unique within and across teams/roles"),
             ValidationCheck("unknown_event_icons_rejected", not unknown_events, f"unknown={len(unknown_events)}"),
             ValidationCheck("source_not_promotable", source.promotion_eligible is False and metadata.get("artifact_type") == "discovery_only_unverified", str(metadata.get("artifact_type"))),
         )

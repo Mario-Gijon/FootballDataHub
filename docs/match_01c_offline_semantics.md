@@ -149,3 +149,29 @@ MATCH-01B.
   identidad completa, política de acceso, variantes estructurales y reglas de
   conteo, seguida de pruebas sobre capturas nuevas autorizadas. Esta fase no
   cambia `INVALID_CONTENT` ni resuelve el bloqueo del piloto.
+
+## Endurecimiento A1
+
+La revisión MATCH-01C-A1 añade estas condiciones semánticas:
+
+- El rótulo de competición debe ser `1ª RFEF`, `Primera RFEF` o
+  `Primera Federación`; el enlace de temporada correcto por sí solo no basta.
+- Cada gol, tarjeta y entrada/salida reconocida necesita un minuto interpretable.
+  Si falta, el texto/evento original queda en `evidence`, su campo queda
+  `unresolved` y la validación falla. Los literales `45+N` y `90+N` se conservan.
+- No se aceptan IDs de jugador duplicados dentro de titulares o suplentes, entre
+  ambas listas del mismo equipo, ni entre los dos equipos.
+- Los marcadores parciales de los goles se validan cronológicamente. Los goles
+  del mismo minuto se prueban en las ordenaciones posibles hasta encontrar una
+  progresión que incremente únicamente al equipo goleador y alcance el resultado
+  final. El parser no reordena la colección emitida ni publica una secuencia
+  inferida.
+- Se cuentan entradas y salidas por equipo. Un desequilibrio genera una
+  advertencia verificable, sin emparejar futbolistas ni invalidar por sí solo la
+  observación.
+- Ninguna evidencia crítica de identidad, competición, temporada, jornada,
+  resultado, fecha/hora o eventos puede quedar `unresolved` con
+  `semantic_valid=true`.
+
+La ruta personal absoluta `ARTIFACT_ROOT` se eliminó; las funciones del parser
+reciben el directorio del artefacto explícitamente.

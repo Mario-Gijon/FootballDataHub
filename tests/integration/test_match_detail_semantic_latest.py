@@ -83,6 +83,14 @@ def test_saved_272582_artifact_is_semantically_readable_without_mutation(monkeyp
         if record["source_match_id"] == MATCH_ID
     )
     assert inventory["inventory_id"] == INVENTORY_ID
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    assert state["status"] == "stopped"
+    assert any(
+        item.get("source_match_id") == MATCH_ID
+        and item.get("access_status") == "INVALID_CONTENT"
+        and item.get("stop_acquisition") is True
+        for item in state["diagnostics"]
+    )
 
     observation = parse_saved_artifact(artifact, expected_match=expected)
 
@@ -119,6 +127,15 @@ def test_saved_272582_artifact_is_semantically_readable_without_mutation(monkeyp
     assert sum(event.event_type == "red_card" for event in observation.events) == 0
     assert sum(event.event_type == "substitution_in" for event in observation.events) == 10
     assert sum(event.event_type == "substitution_out" for event in observation.events) == 10
+    assert not any(
+        warning.startswith("substitution_event_balance_mismatch:")
+        for warning in observation.validation.warnings
+    )
+    assert any(
+        check.check == "goal_score_progression_is_chronologically_consistent"
+        and check.passed
+        for check in observation.validation.checks
+    )
     assert observation.aggregate_statistics_state == "explicitly_absent"
     assert any(note.note_type == "ephemeris" for note in observation.additional_notes)
     assert before == _existing_files(source_paths)
