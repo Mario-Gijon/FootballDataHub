@@ -551,26 +551,32 @@ def acquire_player_views(
         progress = progress_index
     indexed_players = {item["player_id"]: item for item in progress["players"]}
     navigation_queue: set[tuple[int, str]] = set()
+    revisit_validated: set[tuple[int, str]] = set()
     for player_id in player_ids:
         for view in views:
             url = player_view_url(player_id, view)
-            current_base_exists = store.has_valid_base_snapshot(
-                player_id=player_id,
-                view=view,
-                requested_url=url,
-            )
             reused = indexed_players[player_id]["view_snapshots"].get(view)
             if revisit_existing:
+                current_base_exists = store.has_valid_base_snapshot(
+                    player_id=player_id,
+                    view=view,
+                    requested_url=url,
+                )
                 if not current_base_exists:
                     raise ValueError(
                         f"No se encontró una vista base válida para revalidar: {player_id}/{view}"
                     )
+                revisit_validated.add((player_id, view))
                 navigation_queue.add((player_id, view))
                 continue
             if reused:
                 if reused["capture_id"] != store.capture_id:
                     store.record_reused_snapshot(reused)
                 continue
+            # The global progress index has already integrity-checked every
+            # source manifest and snapshot. Missing entries are the only views
+            # that should be navigated; rescanning this run manifest for every
+            # inventory row made resume quadratic in snapshot count.
             navigation_queue.add((player_id, view))
 
     if not navigation_queue:
@@ -620,11 +626,7 @@ def acquire_player_views(
                     if (player_id, view) not in navigation_queue:
                         continue
                     url = player_view_url(player_id, view)
-                    existing_base = store.has_valid_base_snapshot(
-                        player_id=player_id,
-                        view=view,
-                        requested_url=url,
-                    )
+                    existing_base = (player_id, view) in revisit_validated
                     if existing_base and not revisit_existing:
                         continue
                     if revisit_existing and not existing_base:

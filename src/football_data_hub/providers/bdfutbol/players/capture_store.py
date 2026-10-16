@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import tempfile
+import zlib
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -82,6 +83,37 @@ class PlayerCaptureStore:
             }
             self._checkpoint()
 
+        self._snapshot_lookup: dict[tuple[Any, ...], list[dict[str, Any]]] = {}
+        self._snapshot_by_id: dict[str, dict[str, Any]] = {}
+        self._reused_snapshot_ids: set[tuple[Any, ...]] = set()
+        self._rebuild_manifest_indexes()
+
+    @staticmethod
+    def _snapshot_key(item: dict[str, Any]) -> tuple[Any, ...]:
+        return (
+            item.get("player_id"), item.get("view"), item.get("snapshot_kind"),
+            item.get("requested_url"),
+        )
+
+    def _rebuild_manifest_indexes(self) -> None:
+        """Build in-memory lookup tables once instead of rescanning manifests."""
+        self._snapshot_lookup = {}
+        self._snapshot_by_id = {}
+        for item in self.manifest.get("snapshots", []):
+            if not isinstance(item, dict):
+                continue
+            self._snapshot_lookup.setdefault(self._snapshot_key(item), []).append(item)
+            if item.get("snapshot_id"):
+                self._snapshot_by_id[str(item["snapshot_id"])] = item
+        self._reused_snapshot_ids = {
+            (
+                item.get("capture_id"), item.get("snapshot_id"),
+                item.get("player_id"), item.get("view"),
+            )
+            for item in self.manifest.get("reused_snapshots", [])
+            if isinstance(item, dict)
+        }
+
     def _checkpoint(self) -> None:
         self.manifest["updated_at_utc"] = utc_now()
         _atomic_json(self.manifest_path, self.manifest)
@@ -116,17 +148,15 @@ class PlayerCaptureStore:
         required = ("capture_id", "snapshot_id", "player_id", "view", "html_sha256")
         if any(not reference.get(key) for key in required):
             raise PlayerCaptureError("La referencia reutilizada está incompleta")
-        refs = self.manifest.setdefault("reused_snapshots", [])
         identity = (
             reference["capture_id"], reference["snapshot_id"],
             reference["player_id"], reference["view"],
         )
-        if not any((
-            item.get("capture_id"), item.get("snapshot_id"),
-            item.get("player_id"), item.get("view"),
-        ) == identity for item in refs):
-            refs.append(reference)
-            self._checkpoint()
+        if identity in self._reused_snapshot_ids:
+            return
+        self.manifest.setdefault("reused_snapshots", []).append(reference)
+        self._reused_snapshot_ids.add(identity)
+        self._checkpoint()
 
     def record_snapshot_validation(
         self,
@@ -138,15 +168,13 @@ class PlayerCaptureStore:
     ) -> None:
         if status not in {"VALID", "INVALID"}:
             raise PlayerCaptureError(f"Estado de validación no admitido: {status}")
-        snapshot = next(
-            (item for item in self.manifest.get("snapshots", []) if item.get("snapshot_id") == snapshot_id),
-            None,
-        )
+        snapshot = self._snapshot_by_id.get(snapshot_id)
         if snapshot is None:
             raise PlayerCaptureError(f"No se encontró snapshot para validar: {snapshot_id}")
         snapshot["parse_validation"] = {
             "status": status,
             "parser_version": parser_version,
+            "html_sha256": snapshot.get("html_sha256"),
             "validated_at_utc": utc_now(),
             "error": error,
         }
@@ -250,20 +278,16 @@ class PlayerCaptureStore:
         snapshot_kind: str,
     ) -> bool:
         """Reuse an exact URL variant only when its original bytes still verify."""
-        for item in self.manifest.get("snapshots", []):
-            if (
-                item.get("player_id") != player_id
-                or item.get("view") != view
-                or item.get("snapshot_kind") != snapshot_kind
-                or item.get("requested_url") != requested_url
-            ):
-                continue
+        key = (player_id, view, snapshot_kind, requested_url)
+        for item in self._snapshot_lookup.get(key, []):
             try:
-                metadata_path = self.run_dir / item["metadata_path"]
-                raw_path = self.run_dir / item["raw_path"]
+                metadata_path = (self.run_dir / item["metadata_path"]).resolve()
+                raw_path = (self.run_dir / item["raw_path"]).resolve()
+                if self.run_dir not in metadata_path.parents or self.run_dir not in raw_path.parents:
+                    continue
                 metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
                 raw = gzip.decompress(raw_path.read_bytes())
-            except (OSError, KeyError, ValueError, json.JSONDecodeError):
+            except (OSError, KeyError, ValueError, EOFError, zlib.error, json.JSONDecodeError):
                 continue
             if (
                 metadata.get("player_id") == player_id
@@ -348,6 +372,8 @@ class PlayerCaptureStore:
             "final_url": final_url,
         }
         self.manifest["snapshots"].append(item)
+        self._snapshot_lookup.setdefault(self._snapshot_key(item), []).append(item)
+        self._snapshot_by_id[snapshot_id] = item
         self.manifest["status"] = "in_progress"
         self._checkpoint()
         return metadata

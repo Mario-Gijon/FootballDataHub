@@ -194,3 +194,75 @@ nueva ejecución.
 Verificación de PLAYER-01C1: **332 passed, 1 skipped** en 577,99 s; omitida la
 integración optativa de 40 perfiles. Los 30 tests focalizados de política,
 reanudación, disco y progreso pasaron. Ruff y `git diff --check` también pasan.
+
+## PLAYER-01C2 — reconciliación eficiente y reanudación del timeout
+
+El run `20261014T180513.060987Z-85c60940` se detuvo en `27659/rivals` con
+`NAVIGATION_ERROR`, `TimeoutError` y sin estado HTTP confirmado. La captura no
+demuestra una denegación ni un desafío, así que se mantiene pendiente y nunca se
+marca como válida.
+
+El perfil acotado de la reconciliación anterior encontró el trabajo redundante:
+en 60 segundos con `cProfile` solo avanzó por 21 snapshots; `parse_snapshot`
+ocupó 47,2 s en 9 revalidaciones y BeautifulSoup construyó DOM 27 veces,
+ocupando 34,6 s. El recorrido completo actual contiene 4.995 registros de
+snapshot en dos manifiestos. El cuello de botella era volver a construir y
+recorrer un árbol DOM grande para snapshots cuya validación ya estaba guardada,
+además de volver a buscar linealmente en el manifiesto del run al preparar cada
+jugador/vista.
+
+La reconciliación ahora sigue calculando SHA-256 del HTML descomprimido y
+verificando metadata, URL, identidad de captura, ID, vista, HTTP 200, tamaño y
+procedencia en cada ejecución. Omite el parser pesado únicamente cuando la
+validación previa está en la versión actual y el manifiesto acredita el mismo
+SHA-256 del inventario; el HTML sigue teniendo que coincidir con los hashes del
+manifiesto y metadata. Si cambia el inventario, la versión del parser o falta
+esa vinculación, vuelve a parsear y validar identidad/estructura. No se añade
+caché persistente que pueda ocultar cambios de snapshots.
+
+`PlayerCaptureStore` crea índices en memoria para localizar snapshots por
+jugador, vista, tipo y URL, y por `snapshot_id`. La adquisición normal aprovecha
+el índice de progreso ya verificado para excluir las vistas existentes, sin
+volver a barrer y descomprimir el manifiesto por cada vista del inventario. El
+preflight envía progreso a stderr con manifiestos, snapshots verificados y
+tiempo transcurrido.
+
+Medición offline tras los cambios, contra los archivos locales existentes y sin
+escrituras en el almacén de capturas:
+
+- Tiempo total: **50,11 s** para 4.995 registros de snapshot y 4.976 vistas
+  verificadas (la diferencia es un snapshot válido duplicado para el mismo
+  jugador/vista).
+- Resultado: 1.243 jugadores completos, 4.975 pares válidos únicos, 466
+  jugadores pendientes y 1.861 vistas pendientes.
+- Manifiestos corruptos: 0. Timeout transitorio pendiente: exactamente
+  `27659/rivals` en el run indicado.
+- El preflight CLI con reintento explícito obtuvo
+  `READY_FOR_EXPLICIT_EXECUTION`; `execution_started` fue `false`.
+
+Solo se autoriza un nuevo intento si el operador proporciona
+`--retry-transient-navigation 27659/rivals` junto a `--resume` del mismo run.
+El permiso cubre un único timeout sin HTTP confirmado, sin URL final, sin
+marcadores de desafío/denegación y sin errores estructurales. No se cambia la
+política de adquisición: esa navegación se ejecuta una vez, sin bucle de
+reintentos, y cualquier nuevo timeout, HTTP 403/404/429/5xx, desafío, identidad
+incorrecta o fallo estructural detiene el lote.
+
+Comando preparado para una ejecución que el operador inicie explícitamente; no
+se ha ejecutado en este hito:
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/acquire_bdfutbol_players.py \
+  --execute --resume 20261014T180513.060987Z-85c60940 \
+  --retry-transient-navigation 27659/rivals \
+  --pause-seconds 5 --reserve-gib 1.5 \
+  --inventory "$HOME/FootballDataHub-data/players/inventory-2026-27/players.json" \
+  --capture-root "$HOME/FootballDataHub-data/players/player-captures" \
+  --compact-root "$HOME/FootballDataHub-data/players/compact-2026-27" \
+  --profile "$HOME/.football-data-hub-chromium-pure-cdp" \
+  --browser-executable /usr/bin/chromium
+```
+
+La prueba completa de preflight usó rutas de salida bajo `/tmp`; no abrió
+Chromium, no visitó BDFutbol ni cambió manifiestos, snapshots o archivos
+capturados.

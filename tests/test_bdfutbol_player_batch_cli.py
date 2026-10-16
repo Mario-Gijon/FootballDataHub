@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 import acquire_bdfutbol_players as batch_cli
 from football_data_hub.providers.bdfutbol.players.acquisition import PLAYER_VIEWS, PlayerAcquisitionStopped
 
@@ -26,6 +28,65 @@ def test_profile_process_check_ignores_command_lines_that_only_mention_chromium_
         f"/usr/bin/chromium\0--user-data-dir={tmp_path / 'other'}\0".encode()
     )
     assert batch_cli._matching_profile_processes(profile, proc) == [99]
+
+
+def test_explicit_retry_requires_the_only_timeout_issue_from_the_resumed_capture() -> None:
+    issue = {
+        "capture_id": "resume-run",
+        "player_id": 27659,
+        "view": "rivals",
+        "error_code": "NAVIGATION_ERROR",
+        "access_status": "NAVIGATION_ERROR",
+        "http_status": None,
+    }
+    progress = {
+        "players": [{"player_id": 27659, "access_issues": {"rivals": [issue]}}],
+        "retryable_navigation_errors": [issue],
+    }
+    assert not batch_cli._explicit_retry_is_authorized(progress, None, "resume-run")
+    assert batch_cli._explicit_retry_is_authorized(
+        progress, (27659, "rivals"), "resume-run",
+    )
+    assert not batch_cli._explicit_retry_is_authorized(
+        progress, (27659, "rivals"), "different-run",
+    )
+    assert not batch_cli._explicit_retry_is_authorized(
+        progress, (27659, "profile"), "resume-run",
+    )
+    progress["players"][0]["access_issues"]["statistics"] = [{
+        **issue, "view": "statistics", "error_code": "HTTP_403_STOPPED",
+    }]
+    assert not batch_cli._explicit_retry_is_authorized(
+        progress, (27659, "rivals"), "resume-run",
+    )
+
+
+def test_cli_requires_resume_and_passes_explicit_retry_target_to_preflight(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    calls: list[dict] = []
+    monkeypatch.setattr(
+        batch_cli,
+        "_make_plan",
+        lambda **kwargs: (calls.append(kwargs) or _plan_and_progress()),
+    )
+    code = batch_cli.main([
+        "--resume", "resume-run",
+        "--retry-transient-navigation", "27659/rivals",
+        "--capture-root", str(tmp_path / "captures"),
+        "--progress-output", str(tmp_path / "progress.json"),
+    ])
+    assert code == 0
+    assert calls[0]["retry_target"] == (27659, "rivals")
+    assert calls[0]["retry_capture_id"] == "resume-run"
+    capsys.readouterr()
+
+    with pytest.raises(SystemExit) as exc_info:
+        batch_cli.main([
+            "--retry-transient-navigation", "27659/rivals",
+            "--capture-root", str(tmp_path / "captures"),
+        ])
+    assert exc_info.value.code == 2
 
 
 def _plan_and_progress() -> tuple[dict, dict, dict[int, str]]:

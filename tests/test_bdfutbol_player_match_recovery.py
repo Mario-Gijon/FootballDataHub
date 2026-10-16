@@ -2,8 +2,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import gzip
 from pathlib import Path
 
+import pytest
+
+import football_data_hub.providers.bdfutbol.players.catalog as player_catalog
 from football_data_hub.providers.bdfutbol.players.capture_store import PlayerCaptureStore
 from football_data_hub.providers.bdfutbol.players.acquisition import acquire_player_views
 from football_data_hub.providers.bdfutbol.players.catalog import (
@@ -13,6 +17,7 @@ from football_data_hub.providers.bdfutbol.players.catalog import (
 from football_data_hub.providers.bdfutbol.players.export import build_player_capture_export
 from football_data_hub.providers.bdfutbol.players.models import PlayerMatchesPage
 from football_data_hub.providers.bdfutbol.players.parsers import parse_player_html
+from football_data_hub.providers.bdfutbol.players.html_parser import PLAYER_PARSER_VERSION
 
 
 def _p_row(
@@ -59,6 +64,17 @@ def _matches_html(player_id: int, p_rows: list[list[object]], *, rendered: bool 
     return (
         f"<html><head>{identity}</head><body>{summaries}{table}"
         f"<script>window.P={raw_p};</script></body></html>"
+    )
+
+
+def _catalog_profile_html() -> str:
+    return (
+        "<html><head><title>Test Player, Test Full Name | BDFutbol</title>"
+        "</head><body><h1>Test Player</h1>"
+        '<table class="taula_estil traject"><thead><tr><th>Temp</th><th>Equipo</th>'
+        "<th>País</th><th>Div</th><th>Edad</th><th>PJ</th></tr></thead><tbody>"
+        "<tr><td>2026-27</td><td>Test FC</td><td>España</td><td>1ªRf</td>"
+        "<td>20</td><td>0</td></tr></tbody></table></body></html>"
     )
 
 
@@ -192,14 +208,15 @@ def test_catalog_reconciles_reusable_views_and_cohorts_atomically(tmp_path: Path
     root = tmp_path / "captures"
     store = PlayerCaptureStore(root, capture_id="catalog-run")
     url = "https://www.bdfutbol.com/es/j/j12345.html"
-    html = '<html><title>Test Player | BDFutbol</title><h1>Test Player</h1></html>'
+    html = _catalog_profile_html()
     saved = store.save_snapshot(
         player_id=12345, view="profile", requested_url=url, final_url=url,
         http_status=200, page_title="Test Player", html=html,
         browser={"backend": "test"},
     )
+    parse_player_html(html, saved, expected_player_id=12345, expected_names=("Test Player",))
     store.record_snapshot_validation(
-        saved["snapshot_id"], status="VALID", parser_version="test-parser",
+        saved["snapshot_id"], status="VALID", parser_version=PLAYER_PARSER_VERSION,
     )
     store.mark_complete()
     inventory = tmp_path / "inventory.json"
@@ -225,6 +242,7 @@ def test_catalog_reconciles_reusable_views_and_cohorts_atomically(tmp_path: Path
         "captured_valid_base_views": 1,
         "players_with_access_errors": 0,
         "blocked_base_views": 0,
+        "retryable_navigation_errors": 0,
     }
     assert progress["pending_player_ids"] == [12345, 54321]
     assert find_valid_base_snapshot(
@@ -269,6 +287,257 @@ def test_progress_allows_disk_pause_resume_but_keeps_http_404_unresolved(tmp_pat
     progress = build_player_acquisition_progress(inventory_path=inventory, capture_root=root)
     assert progress["summary"]["players_with_access_errors"] == 1
     assert progress["summary"]["blocked_base_views"] == 1
+    assert progress["retryable_navigation_errors"] == []
+
+
+def test_progress_coalesces_timeout_event_and_diagnostic_for_one_explicit_retry(tmp_path: Path) -> None:
+    root = tmp_path / "captures"
+    inventory = tmp_path / "inventory.json"
+    inventory.write_text(json.dumps({"records": [{
+        "player_id": 27659, "display_name": "Player Timeout", "membership_count": 1,
+    }]}), encoding="utf-8")
+    run = PlayerCaptureStore(root, capture_id="timeout-run")
+    event = {
+        "player_id": 27659,
+        "view": "rivals",
+        "requested_url": "https://www.bdfutbol.com/es/p/jr27659.html",
+        "final_url": None,
+        "http_status": None,
+        "access_status": "NAVIGATION_ERROR",
+        "reason": "TimeoutError: navigation timed out",
+        "captured_at_utc": "2026-10-16T09:02:10.478628Z",
+        "navigation_purpose": "base_view_capture",
+    }
+    run.record_navigation(event)
+    run.record_diagnostic({
+        **event,
+        "error_code": "NAVIGATION_ERROR",
+        "failure_stage": "access_assessment",
+        "classification": "unverified_http_or_content_error",
+        "policy": "STOP_ON_UNVERIFIED_HTTP_ERROR",
+        "stop_acquisition": True,
+    })
+    progress = build_player_acquisition_progress(
+        inventory_path=inventory, capture_root=root,
+    )
+    assert progress["summary"]["players_with_access_errors"] == 1
+    assert progress["summary"]["retryable_navigation_errors"] == 1
+    assert len(progress["players"][0]["access_issues"]["rivals"]) == 1
+    assert progress["retryable_navigation_errors"][0]["capture_id"] == "timeout-run"
+    assert progress["pending_views"] == [
+        {"player_id": 27659, "view": view}
+        for view in ("profile", "statistics", "matches", "rivals")
+    ]
+
+
+@pytest.mark.parametrize(
+    ("status", "http_status", "error_code", "reason", "extra"),
+    [
+        ("HTTP_ERROR", 403, "HTTP_403_STOPPED", "HTTP 403", {}),
+        ("HTTP_ERROR", 429, "HTTP_429_STOPPED", "HTTP 429", {}),
+        ("STRUCTURE_ERROR", 200, "STRUCTURE_ERROR", "missing table", {}),
+        ("CHALLENGE_REQUIRED", 200, "CHALLENGE_REQUIRED", "challenge", {}),
+        ("NAVIGATION_ERROR", None, "NAVIGATION_ERROR", "TimeoutError: timeout", {"missing_selectors": ["h1"]}),
+        ("NAVIGATION_ERROR", None, "NAVIGATION_ERROR", "RuntimeError: connection closed", {}),
+    ],
+)
+def test_only_unconfirmed_timeout_without_structural_or_access_evidence_is_retryable(
+    tmp_path: Path,
+    status: str,
+    http_status: int | None,
+    error_code: str,
+    reason: str,
+    extra: dict,
+) -> None:
+    root = tmp_path / "captures"
+    inventory = tmp_path / "inventory.json"
+    inventory.write_text(json.dumps({"records": [{
+        "player_id": 501, "display_name": "Player 501", "membership_count": 1,
+    }]}), encoding="utf-8")
+    run = PlayerCaptureStore(root, capture_id="blocked-run")
+    run.record_diagnostic({
+        "player_id": 501, "view": "rivals",
+        "requested_url": "https://www.bdfutbol.com/es/p/jr501.html",
+        "final_url": None, "http_status": http_status, "access_status": status,
+        "reason": reason, "captured_at_utc": "2026-10-16T10:00:00Z",
+        "error_code": error_code, "failure_stage": "access_assessment",
+        "classification": "unverified_http_or_content_error",
+        "policy": "STOP_ON_UNVERIFIED_HTTP_ERROR", "stop_acquisition": True,
+        **extra,
+    })
+    progress = build_player_acquisition_progress(inventory_path=inventory, capture_root=root)
+    assert progress["retryable_navigation_errors"] == []
+
+
+def test_second_timeout_attempt_is_not_eligible_for_another_retry(tmp_path: Path) -> None:
+    root = tmp_path / "captures"
+    inventory = tmp_path / "inventory.json"
+    inventory.write_text(json.dumps({"records": [{
+        "player_id": 501, "display_name": "Player 501", "membership_count": 1,
+    }]}), encoding="utf-8")
+    for capture_id, timestamp in (
+        ("first-timeout", "2026-10-16T10:00:00Z"),
+        ("second-timeout", "2026-10-16T10:05:00Z"),
+    ):
+        run = PlayerCaptureStore(root, capture_id=capture_id)
+        run.record_diagnostic({
+            "player_id": 501, "view": "rivals",
+            "requested_url": "https://www.bdfutbol.com/es/p/jr501.html",
+            "final_url": None, "http_status": None, "access_status": "NAVIGATION_ERROR",
+            "reason": "TimeoutError: navigation timed out", "captured_at_utc": timestamp,
+            "error_code": "NAVIGATION_ERROR", "failure_stage": "access_assessment",
+            "classification": "unverified_http_or_content_error",
+            "policy": "STOP_ON_UNVERIFIED_HTTP_ERROR", "stop_acquisition": True,
+        })
+    progress = build_player_acquisition_progress(inventory_path=inventory, capture_root=root)
+    assert progress["summary"]["retryable_navigation_errors"] == 2
+
+
+def test_valid_snapshot_reconciliation_is_idempotent_and_reports_progress(tmp_path: Path, monkeypatch) -> None:
+    root = tmp_path / "captures"
+    run = PlayerCaptureStore(root, capture_id="speed-run")
+    url = "https://www.bdfutbol.com/es/j/j12345.html"
+    html = _catalog_profile_html()
+    for _ in range(12):
+        saved = run.save_snapshot(
+            player_id=12345, view="profile", requested_url=url, final_url=url,
+            http_status=200, page_title="Test Player", html=html,
+            browser={"backend": "fixture"},
+        )
+        parse_player_html(html, saved, expected_player_id=12345, expected_names=("Test Player",))
+        run.record_snapshot_validation(
+            saved["snapshot_id"], status="VALID", parser_version=PLAYER_PARSER_VERSION,
+        )
+    inventory = tmp_path / "inventory.json"
+    inventory.write_text(json.dumps({"records": [{
+        "player_id": 12345, "display_name": "Test Player", "membership_count": 1,
+    }]}), encoding="utf-8")
+    inventory_raw = inventory.read_bytes()
+    run.record_inventory_source({
+        "path": str(inventory), "sha256": hashlib.sha256(inventory_raw).hexdigest(),
+        "season": "2026-27",
+    })
+    monkeypatch.setattr(
+        player_catalog,
+        "parse_player_html",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("valid parser proof was reparsed")),
+    )
+    events: list[dict] = []
+    first = build_player_acquisition_progress(
+        inventory_path=inventory, capture_root=root, progress_callback=events.append,
+    )
+    second = build_player_acquisition_progress(inventory_path=inventory, capture_root=root)
+    assert first["summary"] == second["summary"]
+    assert first["players"][0]["view_snapshots"] == second["players"][0]["view_snapshots"]
+    assert events[0]["phase"] == "manifest_scan_started"
+    assert events[-1]["phase"] == "manifest_complete"
+    assert events[-1]["snapshots_processed"] == 12
+    assert events[-1]["snapshots_verified"] == 12
+
+
+def test_corrupted_raw_snapshot_is_not_reused_or_hidden_by_parser_proof(tmp_path: Path) -> None:
+    root = tmp_path / "captures"
+    run = PlayerCaptureStore(root, capture_id="corrupt-run")
+    url = "https://www.bdfutbol.com/es/j/j12345.html"
+    html = _catalog_profile_html()
+    saved = run.save_snapshot(
+        player_id=12345, view="profile", requested_url=url, final_url=url,
+        http_status=200, page_title="Test Player", html=html,
+        browser={"backend": "fixture"},
+    )
+    parse_player_html(html, saved, expected_player_id=12345, expected_names=("Test Player",))
+    run.record_snapshot_validation(
+        saved["snapshot_id"], status="VALID", parser_version=PLAYER_PARSER_VERSION,
+    )
+    inventory = tmp_path / "inventory.json"
+    inventory.write_text(json.dumps({"records": [{
+        "player_id": 12345, "display_name": "Test Player", "membership_count": 1,
+    }]}), encoding="utf-8")
+    before = build_player_acquisition_progress(inventory_path=inventory, capture_root=root)
+    raw_path = run.run_dir / run.manifest["snapshots"][0]["raw_path"]
+    damaged_html = gzip.decompress(raw_path.read_bytes()).replace(b"Test Player", b"Other Player")
+    raw_path.write_bytes(gzip.compress(damaged_html, mtime=0))
+    after = build_player_acquisition_progress(inventory_path=inventory, capture_root=root)
+    assert before["summary"]["captured_valid_base_views"] == 1
+    assert after["summary"]["captured_valid_base_views"] == 0
+    assert {"player_id": 12345, "view": "profile"} in after["pending_views"]
+    raw_path.write_bytes(b"\x1f\x8b")
+    truncated = build_player_acquisition_progress(inventory_path=inventory, capture_root=root)
+    assert truncated["summary"]["captured_valid_base_views"] == 0
+
+
+def test_changed_inventory_invalidates_prior_identity_proof(tmp_path: Path) -> None:
+    root = tmp_path / "captures"
+    run = PlayerCaptureStore(root, capture_id="inventory-change")
+    url = "https://www.bdfutbol.com/es/j/j12345.html"
+    html = _catalog_profile_html()
+    saved = run.save_snapshot(
+        player_id=12345, view="profile", requested_url=url, final_url=url,
+        http_status=200, page_title="Test Player", html=html,
+        browser={"backend": "fixture"},
+    )
+    parse_player_html(html, saved, expected_player_id=12345, expected_names=("Test Player",))
+    run.record_snapshot_validation(
+        saved["snapshot_id"], status="VALID", parser_version=PLAYER_PARSER_VERSION,
+    )
+    inventory = tmp_path / "inventory.json"
+    original = {"records": [{
+        "player_id": 12345, "display_name": "Test Player", "membership_count": 1,
+    }]}
+    inventory.write_text(json.dumps(original), encoding="utf-8")
+    original_raw = inventory.read_bytes()
+    run.record_inventory_source({
+        "path": str(inventory), "sha256": hashlib.sha256(original_raw).hexdigest(),
+        "season": "2026-27",
+    })
+    valid = build_player_acquisition_progress(inventory_path=inventory, capture_root=root)
+    assert valid["summary"]["captured_valid_base_views"] == 1
+
+    inventory.write_text(json.dumps({"records": [{
+        "player_id": 12345, "display_name": "Different Player", "membership_count": 1,
+    }]}), encoding="utf-8")
+    changed = build_player_acquisition_progress(inventory_path=inventory, capture_root=root)
+    assert changed["summary"]["captured_valid_base_views"] == 0
+    assert {"player_id": 12345, "view": "profile"} in changed["pending_views"]
+
+
+def test_capture_store_uses_manifest_indexes_for_exact_snapshot_lookup(tmp_path: Path) -> None:
+    root = tmp_path / "captures"
+    run = PlayerCaptureStore(root, capture_id="indexed-run")
+    target_id = 0
+    target_url = ""
+    for player_id in range(100, 140):
+        url = f"https://www.bdfutbol.com/es/j/j{player_id}.html"
+        html = f"<html><head><title>Player {player_id}</title></head><body>page</body></html>"
+        run.save_snapshot(
+            player_id=player_id, view="profile", requested_url=url, final_url=url,
+            http_status=200, page_title=f"Player {player_id}", html=html,
+            browser={"backend": "fixture"},
+        )
+        target_id, target_url = player_id, url
+
+    class ManifestScanForbidden(list):
+        def __iter__(self):
+            raise AssertionError("lookup iterated the full manifest snapshot list")
+
+    run.manifest["snapshots"] = ManifestScanForbidden()
+    assert run.has_valid_base_snapshot(
+        player_id=target_id, view="profile", requested_url=target_url,
+    )
+
+
+def test_reused_snapshot_checkpoint_is_idempotent(tmp_path: Path, monkeypatch) -> None:
+    run = PlayerCaptureStore(tmp_path / "captures", capture_id="reuse-index")
+    reference = {
+        "capture_id": "source-run", "snapshot_id": "source-snapshot",
+        "player_id": 12345, "view": "profile", "html_sha256": "a" * 64,
+    }
+    checkpoints: list[bool] = []
+    monkeypatch.setattr(run, "_checkpoint", lambda: checkpoints.append(True))
+    run.record_reused_snapshot(reference)
+    run.record_reused_snapshot(reference)
+    assert len(run.manifest["reused_snapshots"]) == 1
+    assert len(checkpoints) == 1
 
 
 def test_acquisition_reuses_verified_snapshot_from_another_run_without_browser(

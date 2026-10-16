@@ -82,6 +82,37 @@ def _load_compact_sample(compact_root: Path) -> tuple[dict[str, Any] | None, lis
         return None, [], f"{type(exc).__name__}: {exc}"
 
 
+def _explicit_retry_is_authorized(
+    progress: dict[str, Any],
+    retry_target: tuple[int, str] | None,
+    retry_capture_id: str | None,
+) -> bool:
+    if not retry_target or not retry_capture_id:
+        return False
+    all_issues = [
+        {"player_id": record["player_id"], "view": view, **issue}
+        for record in progress.get("players", [])
+        for view, issues in record.get("access_issues", {}).items()
+        for issue in issues
+    ]
+    candidates = progress.get("retryable_navigation_errors", [])
+    issue = all_issues[0] if len(all_issues) == 1 else {}
+    return bool(
+        len(all_issues) == 1
+        and len(candidates) == 1
+        and issue.get("player_id") == retry_target[0]
+        and issue.get("view") == retry_target[1]
+        and issue.get("capture_id") == retry_capture_id
+        and issue.get("error_code") == "NAVIGATION_ERROR"
+        and issue.get("access_status") == "NAVIGATION_ERROR"
+        and issue.get("http_status") is None
+        and candidates[0].get("player_id") == retry_target[0]
+        and candidates[0].get("view") == retry_target[1]
+        and candidates[0].get("capture_id") == retry_capture_id
+        and candidates[0].get("http_status") is None
+    )
+
+
 def _make_plan(
     *,
     inventory_path: Path,
@@ -91,6 +122,9 @@ def _make_plan(
     profile: Path,
     browser_executable: Path,
     reserve_gib: float,
+    retry_target: tuple[int, str] | None = None,
+    retry_capture_id: str | None = None,
+    progress_callback: Any | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[int, str]]:
     inventory_path = inventory_path.expanduser().resolve()
     capture_root = capture_root.expanduser().resolve()
@@ -99,6 +133,7 @@ def _make_plan(
         inventory_path=inventory_path,
         capture_root=capture_root,
         output_path=progress_output,
+        progress_callback=progress_callback,
     )
     inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
     ordered_ids, cohorts = ordered_player_ids(inventory)
@@ -126,11 +161,16 @@ def _make_plan(
     xvfb_executable = shutil.which("Xvfb")
     matching_processes = _matching_profile_processes(profile)
     summary = progress["summary"]
+    explicit_retry_authorized = _explicit_retry_is_authorized(
+        progress, retry_target, retry_capture_id,
+    )
+    no_access_errors = summary["players_with_access_errors"] == 0
     checks = {
         "inventory_matches_expected_1709": len(ordered_ids) == EXPECTED_INVENTORY_PLAYERS,
         "cohort_sizes_match_expected": len(roster_ids) == 1065 and len(transfer_ids) == 644,
         "no_corrupt_manifests": not progress["corrupt_manifests"],
-        "no_previous_access_or_structure_errors": summary["players_with_access_errors"] == 0,
+        "no_previous_access_or_structure_errors": no_access_errors or explicit_retry_authorized,
+        "explicit_retry_is_single_unconfirmed_timeout": retry_target is None or explicit_retry_authorized,
         "chromium_available": browser_executable.is_file(),
         "xvfb_available": bool(xvfb_executable),
         "profile_not_in_use": not matching_processes,
@@ -175,9 +215,18 @@ def _make_plan(
         "storage": storage,
         "access_policy": {
             "name": STOP_ON_UNVERIFIED_HTTP_ERROR,
-            "behavior": "Solo VALID con HTTP 200 continúa; toda respuesta no verificada detiene el lote.",
+            "behavior": "Solo VALID con HTTP 200 continúa; cualquier error durante la adquisición detiene el lote.",
             "http_404_means_missing_player": False,
             "http_404_action": "record_and_stop",
+            "transient_navigation_retry": (
+                "Un timeout único sin HTTP confirmado puede ejecutarse una vez solo con --retry-transient-navigation PLAYER_ID/VIEW y el capture_id correspondiente. Si vuelve a fallar, la política detiene el lote."
+            ),
+        },
+        "explicit_retry": {
+            "target": f"{retry_target[0]}/{retry_target[1]}" if retry_target else None,
+            "capture_id": retry_capture_id if retry_target else None,
+            "authorized": explicit_retry_authorized if retry_target else False,
+            "navigation_attempts_permitted": 1 if explicit_retry_authorized else 0,
         },
         "checks": checks,
         "block_reasons": [],
@@ -222,6 +271,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--reserve-gib", type=float, default=1.5)
     parser.add_argument("--execute", action="store_true", help="Empieza adquisición real; sin esta opción solo muestra el preflight.")
     parser.add_argument("--resume", metavar="CAPTURE_ID", help="Reanuda un run interrumpido conservando sus snapshots.")
+    parser.add_argument(
+        "--retry-transient-navigation", metavar="PLAYER_ID/VIEW",
+        help="Autoriza exactamente una navegación explícita para un único TimeoutError sin HTTP confirmado; exige --resume y no reintenta automáticamente.",
+    )
     parser.add_argument("--status", action="store_true", help="Muestra el estado persistido sin iniciar adquisición.")
     parser.add_argument("--progress-output", type=Path)
     parser.add_argument("--status-file", type=Path)
@@ -244,6 +297,27 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--reserve-gib debe ser mayor que cero")
     if args.resume and not args.resume.replace("-", "").replace(".", "").isalnum():
         parser.error("CAPTURE_ID de reanudación contiene caracteres no admitidos")
+    retry_target: tuple[int, str] | None = None
+    if args.retry_transient_navigation:
+        if not args.resume:
+            parser.error("--retry-transient-navigation requiere --resume CAPTURE_ID")
+        try:
+            player_text, view = args.retry_transient_navigation.split("/", 1)
+            retry_target = (int(player_text), view)
+        except (TypeError, ValueError):
+            parser.error("Use --retry-transient-navigation PLAYER_ID/VIEW")
+        if retry_target[0] <= 0 or retry_target[1] not in PLAYER_VIEWS:
+            parser.error("PLAYER_ID/VIEW no corresponde a una vista admitida")
+
+    last_progress_at = 0.0
+
+    def report_preflight_progress(event: dict[str, Any]) -> None:
+        nonlocal last_progress_at
+        now = float(event.get("elapsed_seconds") or 0)
+        if event.get("phase") not in {"manifest_scan_started", "manifest_complete"} and now - last_progress_at < 2.0:
+            return
+        last_progress_at = now
+        print(json.dumps({"preflight_progress": event}, ensure_ascii=False), file=sys.stderr, flush=True)
 
     try:
         plan, progress, cohorts = _make_plan(
@@ -254,6 +328,9 @@ def main(argv: list[str] | None = None) -> int:
             profile=args.profile,
             browser_executable=args.browser_executable,
             reserve_gib=args.reserve_gib,
+            retry_target=retry_target,
+            retry_capture_id=args.resume,
+            progress_callback=report_preflight_progress,
         )
     except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
         print(json.dumps({"status": "BLOCKED", "error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False))
