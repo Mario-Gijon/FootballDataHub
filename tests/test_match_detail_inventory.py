@@ -15,6 +15,7 @@ from football_data_hub.providers.bdfutbol.match_details.inventory import (
     build_match_detail_inventory,
     write_inventory_immutable,
 )
+from football_data_hub.providers.bdfutbol.match_details.store import MatchDetailStore
 from tests.match_detail_fixtures import make_inventory, make_verified_generation
 
 
@@ -181,6 +182,32 @@ def test_offline_cli_plan_never_calls_network_apis(monkeypatch, tmp_path):
     assert report["counts"]["eligible"] == 2
     assert report["counts"]["pending"] == 2
     assert report["inventory_id"] == inventory["inventory_id"]
+
+
+def test_offline_cli_reports_access_stop_separately_from_integrity(tmp_path):
+    inventory = make_inventory()
+    record = inventory["matches"][0]
+    store = MatchDetailStore(tmp_path / "store")
+    store.record_diagnostic(
+        inventory,
+        internal_id=record["internal_id"],
+        requested_url=record["source_match_url"],
+        error_code="HTTP_403",
+        diagnostic="Synthetic offline stop fixture",
+        http_status=403,
+    )
+
+    report, _ = build_offline_plan(
+        generation_root=Path("/unused"),
+        data_root=Path("/unused"),
+        store_root=tmp_path / "store",
+        verified_generation=make_verified_generation(),
+    )
+
+    assert report["status"] == "BLOCKED"
+    assert report["integrity_blocked"] is False
+    assert report["active_stop"] is True
+    assert report["diagnostics"][-1]["error_code"] == "HTTP_403"
 
 
 def test_invalid_snapshots_and_stop_diagnostics_block_the_plan(tmp_path):

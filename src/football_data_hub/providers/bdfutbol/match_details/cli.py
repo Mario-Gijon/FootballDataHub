@@ -64,6 +64,7 @@ def build_offline_plan(
     diagnostics = reconciliation["diagnostics"]
     blocked = (
         reconciliation["blocked"]
+        or reconciliation["active_stop"]
         or not storage["sufficient"]
         or any(item.get("stop_acquisition", True) for item in diagnostics)
     )
@@ -90,6 +91,8 @@ def build_offline_plan(
             for key, value in sorted(verified_ids.items())
         },
         "invalid_snapshots": reconciliation["invalid_snapshots"],
+        "integrity_blocked": reconciliation["integrity_blocked"],
+        "active_stop": reconciliation["active_stop"],
         "diagnostics": diagnostics,
         "checkpoint_revision": reconciliation["revision"],
         "storage": storage,

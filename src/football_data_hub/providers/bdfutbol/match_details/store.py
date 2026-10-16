@@ -25,7 +25,12 @@ from football_data_hub.domain.matches.details import (
 )
 
 from .inventory import _canonical_json
-from .policy import CaptureDecision, REQUIRED_STRUCTURE_EVIDENCE, assess_capture
+from .policy import (
+    CaptureDecision,
+    REQUIRED_STRUCTURE_EVIDENCE,
+    assess_capture,
+    validate_promotion_evidence,
+)
 
 _INVENTORY_ID = re.compile(r"^match-detail-inventory-[a-f0-9]{16}$")
 _CAPTURE_ID = re.compile(r"^\d{8}T\d{6}\.\d{6}Z-[a-f0-9]{8}$")
@@ -374,7 +379,13 @@ class MatchDetailStore:
         self._prepare_inventory_locked(inventory)
         reconciliation = self.reconcile(inventory)
         if reconciliation["blocked"]:
-            raise MatchDetailStoreError("El almacén contiene snapshots o checkpoints inválidos")
+            raise MatchDetailStoreError(
+                "La integridad de snapshots o checkpoints está bloqueada"
+            )
+        if reconciliation["active_stop"]:
+            raise MatchDetailStoreError(
+                "La adquisición tiene una parada activa; requiere resolución explícita"
+            )
         existing = reconciliation["verified_by_internal_id"].get(internal_id)
         if existing is not None:
             return existing["capture_id"]
@@ -386,6 +397,27 @@ class MatchDetailStore:
         if detail.source_generation_id != inventory["source_generation"]["generation_id"]:
             raise MatchDetailStoreError("El detalle apunta a otra generación de calendario")
         html_hash = _sha256(html)
+        evidence_errors = validate_promotion_evidence(
+            calendar_record,
+            detail,
+            html,
+            parser_version=parser_version,
+        )
+        if evidence_errors:
+            diagnostic = "; ".join(evidence_errors)
+            self.record_diagnostic(
+                inventory,
+                internal_id=internal_id,
+                requested_url=validation.requested_url,
+                http_status=validation.http_status,
+                error_code="SOURCE_EVIDENCE_UNVERIFIED",
+                stage="identity_and_structure_evidence",
+                diagnostic=diagnostic,
+                final_url=validation.final_url,
+            )
+            raise MatchDetailStoreError(
+                f"Captura no promovida (SOURCE_EVIDENCE_UNVERIFIED): {diagnostic}"
+            )
         if detail.source_html_sha256 not in {None, html_hash}:
             raise MatchDetailStoreError("El hash HTML del modelo no coincide con los bytes")
         capture_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
@@ -610,6 +642,17 @@ class MatchDetailStore:
             != metadata.get("validation_sha256")
         ):
             raise MatchDetailStoreError("Hash o tamaño de captura no coincide")
+        evidence_errors = validate_promotion_evidence(
+            record,
+            typed_detail,
+            raw,
+            parser_version=metadata["parser_version"],
+        )
+        if evidence_errors:
+            raise MatchDetailStoreError(
+                "Evidencia de origen no verificable en snapshot: "
+                + "; ".join(evidence_errors)
+            )
         if (
             detail.get("schema_version") != "football_data_hub.match_detail.v1"
             or detail.get("source") != "BDFutbol"
@@ -794,6 +837,9 @@ class MatchDetailStore:
             "invalid_snapshots": invalid,
             "diagnostics": list(state.get("diagnostics", [])),
             "revision": state.get("revision", 0),
+            "integrity_blocked": bool(invalid),
+            "active_stop": state.get("status") == "stopped"
+            or any(item.get("stop_acquisition", True) for item in state.get("diagnostics", [])),
             "blocked": bool(invalid),
         }
 
@@ -808,11 +854,16 @@ class MatchDetailStore:
             diagnostics = reconciliation["diagnostics"]
             if (
                 reconciliation["blocked"]
+                or reconciliation["active_stop"]
                 or verified != total
                 or any(item.get("stop_acquisition", True) for item in diagnostics)
             ):
                 state = self._load_state_locked(inventory["inventory_id"])
-                state["status"] = "stopped" if diagnostics else "in_progress"
+                state["status"] = (
+                    "stopped"
+                    if reconciliation["active_stop"] or diagnostics
+                    else "in_progress"
+                )
                 state["revision"] = int(state.get("revision", 0)) + 1
                 state["updated_at_utc"] = _utc_now()
                 _atomic_json(self._state_path(inventory["inventory_id"]), state)

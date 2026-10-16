@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from typing import Any
 
@@ -15,6 +16,61 @@ from football_data_hub.domain.matches.details import (
 REQUIRED_STRUCTURE_EVIDENCE = frozenset(
     {"match_detail_root", "source_match_id", "home_team", "away_team"}
 )
+
+REQUIRED_SOURCE_EVIDENCE = {
+    "structure.match_detail_root": None,
+    "identity.source_match_id": "source_match_id",
+    "home_team.team_id": "home_team_id",
+    "away_team.team_id": "away_team_id",
+}
+
+
+def validate_promotion_evidence(
+    calendar_record: dict[str, Any],
+    detail: MatchDetail,
+    source_html: bytes,
+    *,
+    parser_version: str,
+) -> tuple[str, ...]:
+    """Exige observaciones concretas ligadas a los bytes que se van a guardar.
+
+    Los flags de MatchDetailValidation describen el resultado del futuro parser,
+    pero no bastan para promocionar un snapshot. Cada campo requerido debe tener
+    una referencia de origen, un valor observado presente en el HTML, su hash y
+    la versión del parser que lo extrajo. MATCH-01B deberá verificar que esas
+    referencias y valores representan realmente la ficha.
+    """
+
+    if not isinstance(parser_version, str) or not parser_version.strip():
+        return ("parser-version-missing",)
+    source_hash = hashlib.sha256(source_html).hexdigest()
+    by_path: dict[str, list] = {}
+    for item in detail.field_evidence:
+        if item.field_path in REQUIRED_SOURCE_EVIDENCE:
+            by_path.setdefault(item.field_path, []).append(item)
+
+    errors: list[str] = []
+    for field_path, record_key in REQUIRED_SOURCE_EVIDENCE.items():
+        items = by_path.get(field_path, [])
+        if len(items) != 1:
+            errors.append(f"{field_path}:expected-one-evidence-record")
+            continue
+        item = items[0]
+        if item.state != "observed":
+            errors.append(f"{field_path}:not-observed")
+        if not isinstance(item.source_reference, str) or not item.source_reference.strip():
+            errors.append(f"{field_path}:missing-source-reference")
+        if not isinstance(item.raw_value, str) or not item.raw_value:
+            errors.append(f"{field_path}:missing-raw-value")
+        elif item.raw_value.encode("utf-8") not in source_html:
+            errors.append(f"{field_path}:raw-value-not-in-source-html")
+        if item.source_html_sha256 != source_hash:
+            errors.append(f"{field_path}:source-html-hash-mismatch")
+        if item.parser_version != parser_version:
+            errors.append(f"{field_path}:parser-version-mismatch")
+        if record_key is not None and item.raw_value != str(calendar_record.get(record_key)):
+            errors.append(f"{field_path}:raw-value-does-not-match-inventory")
+    return tuple(errors)
 
 
 @dataclass(frozen=True, slots=True)

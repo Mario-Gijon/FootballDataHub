@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import asdict, replace
 
@@ -73,15 +74,64 @@ def _validation(
     )
 
 
+def _source_html(record, label="synthetic-detail"):
+    return (
+        '<html data-detail-root="match-detail"><body '
+        f'data-match-id="{record["source_match_id"]}" '
+        f'data-home-team-id="{record["home_team_id"]}" '
+        f'data-away-team-id="{record["away_team_id"]}">{label}</body></html>'
+    ).encode()
+
+
+def _detail_with_source_evidence(record, html, parser_version="synthetic-test-parser-v1"):
+    source_hash = hashlib.sha256(html).hexdigest()
+    evidence = (
+        FieldEvidence(
+            field_path="structure.match_detail_root",
+            state="observed",
+            source_reference="fixture://match-detail-root",
+            raw_value='data-detail-root="match-detail"',
+            source_html_sha256=source_hash,
+            parser_version=parser_version,
+        ),
+        FieldEvidence(
+            field_path="identity.source_match_id",
+            state="observed",
+            source_reference="fixture://match-id",
+            raw_value=str(record["source_match_id"]),
+            source_html_sha256=source_hash,
+            parser_version=parser_version,
+        ),
+        FieldEvidence(
+            field_path="home_team.team_id",
+            state="observed",
+            source_reference="fixture://home-team-id",
+            raw_value=str(record["home_team_id"]),
+            source_html_sha256=source_hash,
+            parser_version=parser_version,
+        ),
+        FieldEvidence(
+            field_path="away_team.team_id",
+            state="observed",
+            source_reference="fixture://away-team-id",
+            raw_value=str(record["away_team_id"]),
+            source_html_sha256=source_hash,
+            parser_version=parser_version,
+        ),
+    )
+    return replace(_detail(record), field_evidence=(*_detail(record).field_evidence, *evidence))
+
+
 def _store_one(tmp_path):
     inventory = make_inventory()
     record = inventory_record(inventory)
     store = MatchDetailStore(tmp_path / "store")
+    html = _source_html(record)
     capture_id = store.store_valid_capture(
         inventory,
         record,
-        b"<html><body>synthetic authorized fixture</body></html>",
-        _detail(record),
+        html,
+        _detail_with_source_evidence(record, html),
         _validation(record),
         parser_version="synthetic-test-parser-v1",
     )
@@ -96,7 +146,7 @@ def test_valid_capture_is_atomic_hashed_and_reusable_after_resume(tmp_path):
     assert metadata["http_status"] == 200
     assert metadata["source_match_id"] == record["source_match_id"]
     assert len(metadata["source_html_sha256"]) == 64
-    assert (snapshot / "raw/source.html").read_bytes().startswith(b"<html>")
+    assert (snapshot / "raw/source.html").read_bytes().startswith(b"<html ")
     assert set(snapshot_manifest["files"]) == {
         "raw/source.html",
         "match_detail.json",
@@ -106,6 +156,8 @@ def test_valid_capture_is_atomic_hashed_and_reusable_after_resume(tmp_path):
 
     reconciliation = MatchDetailStore(tmp_path / "store").reconcile(inventory)
     assert reconciliation["blocked"] is False
+    assert reconciliation["integrity_blocked"] is False
+    assert reconciliation["active_stop"] is False
     assert reconciliation["verified_by_internal_id"][record["internal_id"]]["capture_id"] == capture_id
     assert reconciliation["invalid_snapshots"] == []
 
@@ -155,6 +207,8 @@ def test_corrupted_or_truncated_html_is_never_reused(tmp_path):
     reconciliation = MatchDetailStore(tmp_path / "store").reconcile(inventory)
     assert reconciliation["verified_by_internal_id"] == {}
     assert reconciliation["blocked"] is True
+    assert reconciliation["integrity_blocked"] is True
+    assert reconciliation["active_stop"] is False
     assert "manifiesto" in reconciliation["invalid_snapshots"][0]["reason"]
 
 
@@ -251,6 +305,189 @@ def test_access_failure_diagnostic_stops_and_survives_resume(tmp_path):
     assert resumed["diagnostics"][0]["stop_acquisition"] is True
 
 
+@pytest.mark.parametrize(
+    ("validation", "expected_code"),
+    [
+        (lambda record: _validation(record, status=403), "HTTP_403"),
+        (
+            lambda record: _validation(record, valid=False, evidence=("match_detail_root",)),
+            "STRUCTURE_UNVERIFIED",
+        ),
+    ],
+)
+def test_active_access_or_structure_stop_blocks_later_capture_and_preserves_checkpoint(
+    tmp_path, validation, expected_code
+):
+    inventory = make_inventory()
+    record = inventory_record(inventory)
+    store = MatchDetailStore(tmp_path / "store")
+    rejected_validation = validation(record)
+    decision = store.stop_for_validation(
+        inventory, record, _detail(record), rejected_validation
+    )
+    before = store.reconcile(inventory)
+    state_path = tmp_path / "store/states" / f"{inventory['inventory_id']}.json"
+    state_before = json.loads(state_path.read_text())
+    capture_root = tmp_path / "store/captures" / inventory["inventory_id"]
+    files_before = sorted(path.relative_to(capture_root) for path in capture_root.rglob("*"))
+
+    html = _source_html(record, "later-valid-looking-attempt")
+    with pytest.raises(MatchDetailStoreError, match="parada activa"):
+        store.store_valid_capture(
+            inventory,
+            record,
+            html,
+            _detail_with_source_evidence(record, html),
+            _validation(record),
+            parser_version="synthetic-test-parser-v1",
+        )
+
+    after = store.reconcile(inventory)
+    state_after = json.loads(state_path.read_text())
+    files_after = sorted(path.relative_to(capture_root) for path in capture_root.rglob("*"))
+    assert decision.code == expected_code
+    assert before["integrity_blocked"] is False
+    assert before["blocked"] is False
+    assert before["active_stop"] is True
+    assert after["active_stop"] is True
+    assert state_before["status"] == state_after["status"] == "stopped"
+    assert state_after["diagnostics"] == state_before["diagnostics"]
+    assert state_after["diagnostics"][-1]["error_code"] == expected_code
+    assert files_after == files_before
+
+
+def test_verified_snapshot_cannot_be_reused_to_bypass_active_stop(tmp_path):
+    inventory, record, store, capture_id = _store_one(tmp_path)
+    decision = store.stop_for_validation(
+        inventory,
+        record,
+        _detail(record),
+        _validation(record, status=403),
+    )
+    state_path = tmp_path / "store/states" / f"{inventory['inventory_id']}.json"
+    stopped_state = json.loads(state_path.read_text())
+    capture_root = tmp_path / "store/captures" / inventory["inventory_id"]
+    capture_files_before = {
+        path.relative_to(capture_root): path.read_bytes()
+        for path in capture_root.rglob("*")
+        if path.is_file()
+    }
+
+    with pytest.raises(MatchDetailStoreError, match="parada activa"):
+        store.store_valid_capture(
+            inventory,
+            record,
+            b"different payload must not replace the verified capture",
+            _detail(record),
+            _validation(record),
+            parser_version="synthetic-test-parser-v1",
+        )
+
+    after_state = json.loads(state_path.read_text())
+    capture_files_after = {
+        path.relative_to(capture_root): path.read_bytes()
+        for path in capture_root.rglob("*")
+        if path.is_file()
+    }
+    assert decision.code == "HTTP_403"
+    assert after_state["status"] == "stopped"
+    assert after_state["diagnostics"] == stopped_state["diagnostics"]
+    assert after_state["diagnostics"][-1]["http_status"] == 403
+    assert capture_files_after == capture_files_before
+    assert store.reconcile(inventory)["verified_by_internal_id"][record["internal_id"]][
+        "capture_id"
+    ] == capture_id
+
+
+def test_stopped_checkpoint_blocks_even_without_diagnostic_entries(tmp_path):
+    inventory = make_inventory()
+    record = inventory_record(inventory)
+    store = MatchDetailStore(tmp_path / "store")
+    store.prepare_inventory(inventory)
+    state_path = tmp_path / "store/states" / f"{inventory['inventory_id']}.json"
+    state = json.loads(state_path.read_text())
+    state["status"] = "stopped"
+    json_bytes = json.dumps(state, separators=(",", ":"), sort_keys=True).encode()
+    state_path.write_bytes(json_bytes + b"\n")
+
+    html = _source_html(record)
+    with pytest.raises(MatchDetailStoreError, match="parada activa"):
+        store.store_valid_capture(
+            inventory,
+            record,
+            html,
+            _detail_with_source_evidence(record, html),
+            _validation(record),
+            parser_version="synthetic-test-parser-v1",
+        )
+
+    reconciliation = store.reconcile(inventory)
+    assert reconciliation["active_stop"] is True
+    assert reconciliation["diagnostics"] == []
+    assert json.loads(state_path.read_text())["status"] == "stopped"
+
+
+def test_validation_flags_alone_cannot_promote_without_source_bound_evidence(tmp_path):
+    inventory = make_inventory()
+    record = inventory_record(inventory)
+    store = MatchDetailStore(tmp_path / "store")
+    html = _source_html(record)
+
+    with pytest.raises(MatchDetailStoreError, match="SOURCE_EVIDENCE_UNVERIFIED"):
+        store.store_valid_capture(
+            inventory,
+            record,
+            html,
+            _detail(record),
+            _validation(record),
+            parser_version="synthetic-test-parser-v1",
+        )
+
+    reconciliation = store.reconcile(inventory)
+    assert reconciliation["verified_by_internal_id"] == {}
+    assert reconciliation["active_stop"] is True
+    assert reconciliation["diagnostics"][-1]["error_code"] == "SOURCE_EVIDENCE_UNVERIFIED"
+
+
+@pytest.mark.parametrize(
+    ("field_path", "replacement", "expected_fragment"),
+    [
+        ("home_team.team_id", "999", "raw-value-not-in-source-html"),
+        ("away_team.team_id", "0" * 64, "source-html-hash-mismatch"),
+    ],
+)
+def test_source_evidence_must_match_html_and_inventory(
+    tmp_path, field_path, replacement, expected_fragment
+):
+    inventory = make_inventory()
+    record = inventory_record(inventory)
+    store = MatchDetailStore(tmp_path / "store")
+    html = _source_html(record)
+    detail = _detail_with_source_evidence(record, html)
+    evidence = tuple(
+        replace(item, raw_value=replacement)
+        if item.field_path == field_path and expected_fragment == "raw-value-not-in-source-html"
+        else replace(item, source_html_sha256=replacement)
+        if item.field_path == field_path
+        else item
+        for item in detail.field_evidence
+    )
+
+    with pytest.raises(MatchDetailStoreError, match=expected_fragment):
+        store.store_valid_capture(
+            inventory,
+            record,
+            html,
+            replace(detail, field_evidence=evidence),
+            _validation(record),
+            parser_version="synthetic-test-parser-v1",
+        )
+
+    reconciliation = store.reconcile(inventory)
+    assert reconciliation["verified_by_internal_id"] == {}
+    assert reconciliation["diagnostics"][-1]["stop_acquisition"] is True
+
+
 def test_calendar_mismatches_are_preserved_as_discrepancies(tmp_path):
     inventory = make_inventory()
     record = inventory_record(inventory)
@@ -300,12 +537,13 @@ def test_failed_atomic_snapshot_publish_leaves_no_partial_capture(monkeypatch, t
         raise OSError("synthetic atomic rename failure")
 
     monkeypatch.setattr(store_module.os, "rename", fail_rename)
+    html = _source_html(record)
     with pytest.raises(OSError, match="synthetic"):
         store.store_valid_capture(
             inventory,
             record,
-            b"<html>valid synthetic test</html>",
-            _detail(record),
+            html,
+            _detail_with_source_evidence(record, html),
             _validation(record),
             parser_version="synthetic-test-parser-v1",
         )
@@ -372,11 +610,12 @@ def test_finalize_requires_every_snapshot_and_rechecks_hashes(tmp_path):
     assert store.reconcile(inventory)["blocked"] is False
 
     for record in inventory["matches"]:
+        html = _source_html(record)
         store.store_valid_capture(
             inventory,
             record,
-            f"<html>{record['source_match_id']}</html>".encode(),
-            _detail(record),
+            html,
+            _detail_with_source_evidence(record, html),
             _validation(record),
             parser_version="synthetic-test-parser-v1",
         )
