@@ -7,6 +7,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from bs4 import BeautifulSoup
+
 MATCH_ID = "272582"
 MATCH_URL = f"https://www.bdfutbol.com/es/p/p.php?id={MATCH_ID}"
 DISCOVERY_ID = "20261016T120000.000000Z-1234abcd"
@@ -209,6 +211,8 @@ def match_html(
 
 
 def metadata_for(html: bytes) -> dict[str, Any]:
+    title_node = BeautifulSoup(html, "html.parser").title
+    page_title = title_node.get_text(" ", strip=True) if title_node else ""
     return {
         "schema_version": "football_data_hub.match_detail_discovery_artifact.v1",
         "artifact_type": "discovery_only_unverified",
@@ -223,7 +227,7 @@ def metadata_for(html: bytes) -> dict[str, Any]:
         "internal_id": "pf-2026-27-group-ii-bdfutbol-272582",
         "inventory_id": INVENTORY_ID,
         "matchday": 7,
-        "page_title": "Jaén - Villarreal B (1 - 1) 10/10/2026 | BDFutbol",
+        "page_title": page_title,
         "promotion_eligible": False,
         "requested_url": MATCH_URL,
         "season": "2026-27",
@@ -233,6 +237,89 @@ def metadata_for(html: bytes) -> dict[str, Any]:
         "source_html_sha256": hashlib.sha256(html).hexdigest(),
         "source_match_id": MATCH_ID,
     }
+
+
+def score_scenario_html(
+    home_goals: int,
+    away_goals: int,
+    goals: list[dict[str, Any]],
+) -> tuple[bytes, dict[str, Any]]:
+    """Build a synthetic-only score/goal-summary scenario.
+
+    Each goal provides ``side``, ``player_id``, ``minute``, ``after_home`` and
+    ``after_away``; ``penalty`` is optional. This fixture intentionally does
+    not claim to model unobserved BDFutbol variants such as own goals.
+    """
+
+    soup = BeautifulSoup(match_html(), "html.parser")
+    for index, score_node in enumerate(soup.select(".resultat-partit")):
+        score_node.string = str(home_goals if index % 2 == 0 else away_goals)
+    if soup.title is not None:
+        soup.title.string = (
+            f"Jaén - Villarreal B ({home_goals} - {away_goals}) 10/10/2026 | BDFutbol"
+        )
+
+    hero = soup.select_one("div.hero.hero-partit")
+    assert hero is not None
+    summary_columns = hero.select("div.col-6.col-sm.f14")
+    assert len(summary_columns) == 2
+    for column in summary_columns:
+        for prior in column.select(".text-blanc"):
+            prior.decompose()
+
+    data_row = soup.select_one(
+        "div.container > div.row.pt-3.pb-2[style*=overflow]"
+    )
+    assert data_row is not None
+    for table in data_row.select("table.taula_estil"):
+        for icon in table.select(".cosa > div.G, .cosa > div.GP"):
+            icon.parent.decompose()
+
+    for goal in goals:
+        side = str(goal["side"])
+        player_id = int(goal["player_id"])
+        if side not in {"home", "away"}:
+            raise ValueError(f"invalid synthetic goal side: {side}")
+        player_anchor = data_row.select_one(
+            f'table.taula_estil a[href$="/j/j{player_id}.html"]'
+        )
+        if player_anchor is None:
+            raise ValueError(f"synthetic scorer {player_id} is not in a roster")
+        player_row = player_anchor.find_parent("tr")
+        cells = player_row.find_all(["th", "td"], recursive=False) if player_row else []
+        if not cells:
+            raise ValueError(f"synthetic scorer {player_id} has no roster cells")
+        event_type = "GP" if goal.get("penalty") else "G"
+        event_title = "Gol de Penalty" if goal.get("penalty") else "Gol"
+        wrapper = soup.new_tag("div", attrs={"class": "cosa"})
+        icon = soup.new_tag(
+            "div", attrs={"class": event_type, "title": event_title}
+        )
+        wrapper.append(icon)
+        wrapper.append(str(goal["minute"]))
+        cells[-1].append(wrapper)
+
+        goal_row = soup.new_tag("div", attrs={"class": "text-blanc"})
+        score = soup.new_tag("span")
+        score.string = f"{goal['after_home']}-{goal['after_away']}"
+        goal_row.append(score)
+        goal_row.append(" ")
+        scorer = soup.new_tag(
+            "a", href=f"../j/j{player_id}.html"
+        )
+        scorer.string = str(player_anchor.get_text(" ", strip=True))
+        goal_row.append(scorer)
+        goal_row.append(f" {goal['minute']}'")
+        if goal.get("penalty"):
+            goal_row.append(" (pen)")
+        summary_columns[0 if side == "home" else 1].append(goal_row)
+
+    expected = expected_match()
+    expected["reference_result"] = {
+        "home_goals": home_goals,
+        "away_goals": away_goals,
+    }
+    return str(soup).encode("utf-8"), expected
 
 
 def saved_artifact(root: Path, html: bytes | None = None) -> Path:

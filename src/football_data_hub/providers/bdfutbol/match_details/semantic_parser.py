@@ -33,16 +33,22 @@ from football_data_hub.domain.matches.semantic_detail import (
     TeamIdentity,
     ValidationCheck,
 )
+from football_data_hub.providers.bdfutbol.match_details.semantic_validation import (
+    goal_progression_is_consistent,
+    roster_identity_errors,
+)
 
-PARSER_VERSION = "match-detail-semantic-0.1.0"
+PARSER_VERSION = "match-detail-semantic-0.2.0"
 _TEAM_HREF = re.compile(r"(?:^|/)e/e(\d+)\.html$")
-_PERSON_HREF = re.compile(r"(?:^|/)j/j(\d+)\.html$")
 _COACH_HREF = re.compile(r"(?:^|/)l/l(\d+)\.html$")
 _STADIUM_HREF = re.compile(r"(?:^|/)s/(\d+)\.html$")
 _REFEREE_HREF = re.compile(r"(?:^|/)r/r(\d+)\.html$")
 _IMAGE_ID = re.compile(r"(?:^|/)i/m/(\d+)\.(?:png|webp|jpe?g)$", re.IGNORECASE)
 _GOAL_SCORE = re.compile(r"^(\d+)\s*-\s*(\d+)$")
-_MINUTE = re.compile(r"(\d+\s*(?:\+\s*\d+)?)\s*[’']?")
+_MINUTE = re.compile(
+    r"^\s*(\d+\s*(?:\+\s*\d+)?)\s*[’']?\s*(?:\(pen\))?\s*$",
+    re.IGNORECASE,
+)
 _DATE_TIME = re.compile(r"(\d{1,2})/(\d{1,2})/(\d{4})\s*\((\d{1,2}:\d{2})\)")
 
 
@@ -286,12 +292,41 @@ def _profile_id(href: str, pattern: re.Pattern[str], label: str) -> int:
 
 
 def _minute(value: str) -> tuple[str | None, int | None, int | None]:
-    match = _MINUTE.search(value)
+    # Match the complete event text. A number embedded in an unexpected label
+    # must not be mistaken for a minute (for example, "Evento 17").
+    match = _MINUTE.fullmatch(value)
     if match is None:
         return None, None, None
     literal = re.sub(r"\s+", "", match.group(1))
     parts = literal.split("+", 1)
     return literal, int(parts[0]), int(parts[1]) if len(parts) == 2 else None
+
+
+def _player_profile_id(href: str, base_url: str, label: str) -> int:
+    """Accept player IDs only from the expected BDFutbol profile URL shape."""
+
+    resolved = urlsplit(urljoin(base_url, href))
+    try:
+        port = resolved.port
+    except ValueError as exc:
+        raise MatchDetailParserError(
+            f"Enlace de {label} contiene un puerto no válido: {href!r}"
+        ) from exc
+    match = re.fullmatch(r"/es/j/j(\d+)\.html", resolved.path)
+    if (
+        resolved.scheme != "https"
+        or resolved.hostname != "www.bdfutbol.com"
+        or resolved.username is not None
+        or resolved.password is not None
+        or port not in {None, 443}
+        or resolved.query
+        or resolved.fragment
+        or match is None
+    ):
+        raise MatchDetailParserError(
+            f"Enlace de {label} no es un perfil BDFutbol válido: {href!r}"
+        )
+    return int(match.group(1))
 
 
 def _single_unique(values: list[str], label: str) -> str:
@@ -454,8 +489,7 @@ def _event_kind(icon: Tag) -> str:
     return "unknown"
 
 
-def _nationality_class(row: Tag) -> str | None:
-    flag = row.select_one(".pais")
+def _nationality_class(flag: Tag | None) -> str | None:
     if not isinstance(flag, Tag):
         return None
     classes = [name for name in _classes(flag) if name != "pais"]
@@ -478,15 +512,23 @@ def _parse_appearance_table(
     for row_index, row in enumerate(rows):
         if not isinstance(row, Tag):
             continue
-        style = str(row.get("style", "")).replace(" ", "").casefold()
+        style = str(row.get("style", ""))
         cells = row.find_all(["th", "td"], recursive=False)
         links = row.select('a[href*="/j/j"]')
         source_row = (
             f"css:div.container > div.row.pt-3.pb-2[style*=overflow] "
             f"table.taula_estil.text-left; section={role}; side={side}; row={row_index}"
         )
-        if "display:none" in style:
-            if any(_text(cell) for cell in cells):
+        hidden = re.search(
+            r"(?:^|;)\s*display\s*:\s*none(?:\s*!important)?\s*(?:;|$)",
+            style,
+            re.IGNORECASE,
+        ) is not None
+        if hidden:
+            if (
+                any(_text(cell) for cell in cells)
+                or row.select_one("a[href], img[src], .cosa, .pais") is not None
+            ):
                 errors.append(f"hidden_nonempty_roster_row:{role}:{side}:{row_index}")
             continue
         if not links:
@@ -501,7 +543,7 @@ def _parse_appearance_table(
         player_anchor = links[0]
         href = str(player_anchor.get("href", ""))
         try:
-            player_id = _profile_id(href, _PERSON_HREF, "jugador")
+            player_id = _player_profile_id(href, base_url, "jugador")
         except MatchDetailParserError:
             errors.append(f"unknown_player_link:{role}:{side}:{row_index}")
             continue
@@ -509,7 +551,20 @@ def _parse_appearance_table(
         if not player_name:
             errors.append(f"empty_player_name:{role}:{side}:{row_index}")
             continue
-        number_raw = _text(cells[0])
+        player_cell = player_anchor.find_parent(["td", "th"])
+        if not isinstance(player_cell, Tag) or player_cell not in cells:
+            errors.append(f"player_link_outside_roster_cell:{role}:{side}:{row_index}")
+            continue
+        number_cells = [
+            cell
+            for cell in cells
+            if _text(cell).isdigit()
+            and cell.select_one("a[href], img[src], .cosa, .pais") is None
+        ]
+        if len(number_cells) > 1:
+            errors.append(f"ambiguous_shirt_number_cell:{role}:{side}:{row_index}")
+            continue
+        number_raw = _text(number_cells[0]) if number_cells else ""
         shirt_number: int | None = None
         if number_raw:
             if not number_raw.isdigit():
@@ -522,9 +577,10 @@ def _parse_appearance_table(
             image_match = _IMAGE_ID.search(str(photo.get("src", "")))
             if image_match is not None and int(image_match.group(1)) != player_id:
                 errors.append(f"player_photo_id_mismatch:{role}:{side}:{row_index}")
-        nationality = _nationality_class(row)
+        nationality_node = row.select_one(".pais")
+        nationality = _nationality_class(nationality_node)
         row_events: list[_RawRosterEvent] = []
-        for cell_index, cell in enumerate(cells[4:], start=4):
+        for cell_index, cell in enumerate(cells):
             for event_index, item in enumerate(cell.select(".cosa")):
                 icon = item.find("div", recursive=False)
                 if not isinstance(icon, Tag):
@@ -619,7 +675,7 @@ def _parse_appearance_table(
             f"{role}[{side}].nationality_class",
             "observed" if nationality is not None else "not_observed",
             f"{source_row}; .pais[class]",
-            " ".join(_classes(row.select_one(".pais"))) if isinstance(row.select_one(".pais"), Tag) else None,
+            " ".join(_classes(nationality_node)) if isinstance(nationality_node, Tag) else None,
             nationality,
         )
         evidence.add(
@@ -632,7 +688,7 @@ def _parse_appearance_table(
         evidence.add(
             f"{role}[{side}].shirt_number",
             "observed" if shirt_number is not None else "explicitly_absent",
-            f"{source_row}; td[1]",
+            f"{source_row}; identified numeric shirt-number cell",
             number_raw or None,
             shirt_number,
         )
@@ -709,7 +765,7 @@ def _parse_goal_summary(
                 continue
             href = str(links[0].get("href", ""))
             try:
-                player_id = _profile_id(href, _PERSON_HREF, "goleador")
+                player_id = _player_profile_id(href, base_url, "goleador")
             except MatchDetailParserError:
                 errors.append(f"goal_scorer_id_unverified:{side}:{row_index}")
                 continue
@@ -776,68 +832,6 @@ def _event_signature(event: MatchEvent | _RawRosterEvent) -> tuple[Any, ...]:
     )
 
 
-def _goal_progression_is_consistent(
-    goals: list[MatchEvent], final_home: int, final_away: int
-) -> tuple[bool, str]:
-    """Check score-after-goal values without inventing order for equal minutes."""
-
-    if any(
-        goal.minute_base is None
-        or goal.score_after_home is None
-        or goal.score_after_away is None
-        for goal in goals
-    ):
-        return False, "a goal is missing an interpretable minute or partial score"
-
-    groups: dict[tuple[int, int], list[MatchEvent]] = {}
-    for goal in goals:
-        assert goal.minute_base is not None
-        minute_key = (goal.minute_base, goal.minute_added or 0)
-        groups.setdefault(minute_key, []).append(goal)
-
-    possible_scores: set[tuple[int, int]] = {(0, 0)}
-    for minute_key in sorted(groups):
-        minute_goals = groups[minute_key]
-        group_results: set[tuple[int, int]] = set()
-        initial_mask = (1 << len(minute_goals)) - 1
-        memo: dict[tuple[int, int, int], frozenset[tuple[int, int]]] = {}
-
-        def consume(score_home: int, score_away: int, remaining: int) -> frozenset[tuple[int, int]]:
-            memo_key = (score_home, score_away, remaining)
-            if memo_key in memo:
-                return memo[memo_key]
-            if remaining == 0:
-                return frozenset({(score_home, score_away)})
-            reachable: set[tuple[int, int]] = set()
-            for index, goal in enumerate(minute_goals):
-                bit = 1 << index
-                if not remaining & bit:
-                    continue
-                expected_after = (
-                    (score_home + 1, score_away)
-                    if goal.side == "home"
-                    else (score_home, score_away + 1)
-                )
-                observed_after = (goal.score_after_home, goal.score_after_away)
-                if observed_after != expected_after:
-                    continue
-                reachable.update(
-                    consume(*expected_after, remaining ^ bit)
-                )
-            memo[memo_key] = frozenset(reachable)
-            return memo[memo_key]
-
-        for prior_score in possible_scores:
-            group_results.update(consume(*prior_score, initial_mask))
-        if not group_results:
-            return False, f"impossible partial-score progression at minute {minute_key}"
-        possible_scores = group_results
-
-    if (final_home, final_away) not in possible_scores:
-        return False, "ordered goal progression does not finish at the match result"
-    return True, "goal partial scores admit a valid chronological ordering"
-
-
 def _semantic_events(
     summary_goals: list[MatchEvent],
     roster_events: list[_RawRosterEvent],
@@ -899,32 +893,6 @@ def _semantic_events(
     return tuple(result_events), errors
 
 
-def _roster_identity_errors(
-    starters: Mapping[str, tuple[PlayerAppearance, ...] | None],
-    substitutes: Mapping[str, tuple[PlayerAppearance, ...] | None],
-) -> list[str]:
-    errors: list[str] = []
-    all_sides_by_player: dict[int, set[str]] = {}
-    for side in ("home", "away"):
-        role_ids: dict[str, set[int]] = {}
-        for role, roster in (("starters", starters), ("substitutes", substitutes)):
-            appearances = roster[side] or ()
-            ids = [item.player_id for item in appearances]
-            seen: set[int] = set()
-            for player_id in ids:
-                if player_id in seen:
-                    errors.append(f"duplicate_player_id:{role}:{side}:{player_id}")
-                seen.add(player_id)
-                all_sides_by_player.setdefault(player_id, set()).add(side)
-            role_ids[role] = seen
-        for player_id in sorted(role_ids["starters"] & role_ids["substitutes"]):
-            errors.append(f"player_id_in_starters_and_substitutes:{side}:{player_id}")
-    for player_id, sides in sorted(all_sides_by_player.items()):
-        if len(sides) > 1:
-            errors.append(f"player_id_appears_for_both_teams:{player_id}")
-    return errors
-
-
 def _ephemerides(soup: BeautifulSoup, base_url: str) -> tuple[AdditionalSourceNote, ...]:
     result: list[AdditionalSourceNote] = []
     for heading in soup.find_all("h2"):
@@ -941,7 +909,9 @@ def _ephemerides(soup: BeautifulSoup, base_url: str) -> tuple[AdditionalSourceNo
             linked_id = None
             if isinstance(link, Tag):
                 try:
-                    linked_id = _profile_id(str(link.get("href", "")), _PERSON_HREF, "efeméride")
+                    linked_id = _player_profile_id(
+                        str(link.get("href", "")), base_url, "efeméride"
+                    )
                 except MatchDetailParserError:
                     linked_id = None
             result.append(
@@ -1256,8 +1226,8 @@ def parse_match_detail_html(
                     errors.append(f"starter_count_not_11:{side}:{len(appearances)}")
             else:
                 subs_by_side[side] = tuple(appearances)
-    roster_identity_errors = _roster_identity_errors(starters_by_side, subs_by_side)
-    errors.extend(roster_identity_errors)
+    identity_errors = roster_identity_errors(starters_by_side, subs_by_side)
+    errors.extend(identity_errors)
 
     coach_by_side: dict[str, Coach | None] = {"home": None, "away": None}
     if sections["coaches"]:
@@ -1300,7 +1270,7 @@ def parse_match_detail_html(
     if not goals_count_ok:
         errors.append("goal_event_count_does_not_match_score")
     checks.append(ValidationCheck("goal_summary_count_matches_score", goals_count_ok, f"{len(summary_goals)} goals for {home_goals}-{away_goals}"))
-    goal_progression_ok, goal_progression_detail = _goal_progression_is_consistent(
+    goal_progression_ok, goal_progression_detail = goal_progression_is_consistent(
         summary_goals, home_goals, away_goals
     )
     if not goal_progression_ok:
@@ -1419,7 +1389,7 @@ def parse_match_detail_html(
         (
             ValidationCheck("two_distinct_team_ids_match_catalog", home.team_id != away.team_id, f"{home.team_id},{away.team_id}"),
             ValidationCheck("eleven_starters_each", len(starters_by_side["home"] or ()) == 11 and len(starters_by_side["away"] or ()) == 11, f"{len(starters_by_side['home'] or ())},{len(starters_by_side['away'] or ())}"),
-            ValidationCheck("roster_player_ids_are_unique", not roster_identity_errors, "; ".join(roster_identity_errors) or "unique within and across teams/roles"),
+            ValidationCheck("roster_player_ids_are_unique", not identity_errors, "; ".join(identity_errors) or "unique within and across teams/roles"),
             ValidationCheck("unknown_event_icons_rejected", not unknown_events, f"unknown={len(unknown_events)}"),
             ValidationCheck("source_not_promotable", source.promotion_eligible is False and metadata.get("artifact_type") == "discovery_only_unverified", str(metadata.get("artifact_type"))),
         )

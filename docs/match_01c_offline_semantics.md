@@ -175,3 +175,74 @@ La revisión MATCH-01C-A1 añade estas condiciones semánticas:
 
 La ruta personal absoluta `ARTIFACT_ROOT` se eliminó; las funciones del parser
 reciben el directorio del artefacto explícitamente.
+
+## MATCH-01C-B — generalización offline y límites de evidencia
+
+Esta extensión amplía los tests sintéticos y corrige supuestos de parseo sin
+cambiar el estado ni los bytes de la captura real. La versión del parser es
+`match-detail-semantic-0.2.0`.
+
+### Evidencia real, escenarios sintéticos y pendientes
+
+| Estado | Casos |
+| --- | --- |
+| Confirmado con el único HTML real validado | Jaén 3–3 Villarreal B, 10/10/2026: encabezados responsive, 11 titulares por lado, 12/9 suplentes, entrenador en ambos lados, goles, amarillas, sustituciones y sus minutos. La integración valida el hash original `9242edad00b43a4e83c649ddad006edb0d1172e0d88640082312a0fe1cf16997`. |
+| Cubierto solo por fixtures sintéticos | Marcadores 0–0, 1–0, 0–3 y 3–3; penalti añadido, goleador repetido, tiempo añadido, goles al mismo minuto y orden parcial imposible; resumen incompleto/ausente; dorsal vacío; columnas de jugador reordenadas; banquillo/entrenador ausentes; suplencias de cero, múltiples, descanso y añadido; eventos desequilibrados; tarjetas repetidas; clase/título discordantes; filas ocultas vacías/con contenido; URL de jugador ajena; alineación incompleta; ruido global, clases adicionales y atributos reordenados. |
+| Requiere nueva evidencia real antes de soportarse | Goles en propia puerta y su iconografía/resumen; alineaciones que no sean de once sin causa identificada; tarjetas dobles con codificación distinta; partido suspendido/abandonado; otras plantillas de tablas, cambios de orden del resumen de goles, iconos de evento nuevos, traducciones u otras variantes responsive. |
+
+Los tests sintéticos prueban cómo responde el parser ante los casos construidos;
+no demuestran que BDFutbol publique esas variantes. Los autogoles no se modelan:
+un marcador o icono desconocido deja el contenido sin validar en vez de asignar
+un evento inferido.
+
+### Reglas conservadoras añadidas
+
+- Los enlaces de jugador se aceptan solo si resuelven a HTTPS, host
+  `www.bdfutbol.com`, puerto normal/443 y ruta `/es/j/j<ID>.html`, sin query ni
+  fragmento. Un enlace de otro host o forma produce error semántico.
+- La celda de dorsal se localiza por su único contenido numérico simple; los
+  eventos se inspeccionan en todas las celdas. Así un cambio cosmético de orden
+  no desplaza el dorsal ni esconde eventos. Si no hay dorsal, se conserva `null`;
+  varios candidatos numéricos hacen fallar la fila en lugar de adivinar.
+- Una fila con `display: none` se ignora únicamente si está realmente vacía de
+  texto, enlaces, imágenes e iconos semánticos. Se admiten espacios CSS y
+  `!important`; una fila oculta con contenido es un error.
+- El minuto se reconoce solo cuando el texto completo del evento tiene la forma
+  numérica observada (`N`, `N+M`, con apóstrofo opcional; el resumen admite además
+  `(pen)`). Un número dentro de una etiqueta como `Evento 17` no se convierte en
+  minuto.
+- La reconciliación pura de progresión de goles e identidad de alineaciones está
+  aislada en `providers/bdfutbol/match_details/semantic_validation.py`. No
+  resuelve jugadores por nombre ni modifica la lista de goles para aparentar un
+  orden cronológico.
+
+El parser sigue exigiendo dos tablas de titulares, 11 jugadores por equipo y un
+resumen de goles estructuralmente reconocible. Un resumen presente pero vacío
+puede representar un 0–0; si falta el bloque o no se reconocen sus dos lados, el
+parseo falla cerrado. Un banquillo o bloque de entrenadores no observado se
+conserva como `None` con advertencia; una tabla observada sin filas de jugadores
+se conserva como lista vacía. Una sección desconocida nunca se reclasifica como
+titulares/suplentes.
+
+### Rendimiento observado
+
+Se midió el parseo offline de ocho repeticiones del artefacto real de 1.504.876
+bytes: mediana 655,73 ms, mínimo 619,75 ms y máximo 728,36 ms en este entorno.
+Con `cProfile`, el tiempo instrumentado fue 1,796 s; la construcción del árbol
+con `html.parser` consumió 1,395 s y las consultas CSS acumularon 0,315 s. La
+instrumentación altera el tiempo absoluto. No se aplicó una optimización de
+velocidad: domina la construcción del árbol, y no se establece un umbral a
+partir de una sola captura.
+
+La prueba de integración de 272582 continúa siendo optativa y de solo lectura.
+Verifica hashes antes y después y mantiene el estado histórico
+`INVALID_CONTENT`/`discovery_only_unverified`; el resultado semántico no autoriza
+promoción. La cobertura sintética nueva no equivale a una validación de parser
+con 140 páginas. Antes de adquirirlas seguirán pendientes muestras reales de
+variantes, política y contrato de promoción independientes, además de revisar
+los resultados individualmente sin automatizar inferencias.
+
+Validación ejecutada para MATCH-01C-B: 49 tests del parser; 137 tests focalizados
+de parser, store, discovery, inventory y adquisición de jugadores; otros 77
+tests `test_bdfutbol_player_*.py`; y 1 integración optativa sobre 272582. Ruff y
+`git diff --check` pasan. No se ejecutó la suite global del repositorio.

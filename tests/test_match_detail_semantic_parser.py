@@ -5,6 +5,7 @@ import socket
 import urllib.request
 
 import pytest
+from bs4 import BeautifulSoup
 
 from football_data_hub.providers.bdfutbol.match_details.semantic_parser import (
     MatchDetailParserError,
@@ -17,6 +18,7 @@ from tests.match_detail_semantic_fixtures import (
     expected_match,
     match_html,
     metadata_for,
+    score_scenario_html,
     saved_artifact,
 )
 
@@ -269,6 +271,107 @@ def test_equal_minute_goals_are_validated_across_possible_orders():
 
 
 @pytest.mark.parametrize(
+    ("home_score", "away_score", "goals"),
+    [
+        (0, 0, []),
+        (
+            1,
+            0,
+            [
+                {
+                    "side": "home",
+                    "player_id": 1001,
+                    "minute": "90+1",
+                    "after_home": 1,
+                    "after_away": 0,
+                    "penalty": True,
+                }
+            ],
+        ),
+        (
+            0,
+            3,
+            [
+                {"side": "away", "player_id": 2001, "minute": "6", "after_home": 0, "after_away": 1},
+                {"side": "away", "player_id": 2001, "minute": "45+2", "after_home": 0, "after_away": 2},
+                {"side": "away", "player_id": 2001, "minute": "90+1", "after_home": 0, "after_away": 3},
+            ],
+        ),
+        (
+            3,
+            3,
+            [
+                {"side": "home", "player_id": 1001, "minute": "20", "after_home": 1, "after_away": 0},
+                {"side": "away", "player_id": 2001, "minute": "45", "after_home": 1, "after_away": 1},
+                {"side": "home", "player_id": 1001, "minute": "66", "after_home": 2, "after_away": 1},
+                {"side": "away", "player_id": 2001, "minute": "66", "after_home": 2, "after_away": 2},
+                {"side": "home", "player_id": 1001, "minute": "90+2", "after_home": 3, "after_away": 2},
+                {"side": "away", "player_id": 2001, "minute": "90+2", "after_home": 3, "after_away": 3},
+            ],
+        ),
+    ],
+    ids=("0-0-no-goals", "1-0-penalty-added-time", "0-3-repeat-scorer", "3-3-same-minute"),
+)
+def test_synthetic_score_scenarios_are_reconciled_without_fabricating_goals(
+    home_score, away_score, goals
+):
+    html, expected = score_scenario_html(home_score, away_score, goals)
+    observation = _parse(html, expected)
+
+    assert observation.validation.semantic_valid is True
+    assert (observation.score.home_goals, observation.score.away_goals) == (
+        home_score,
+        away_score,
+    )
+    parsed_goals = [
+        event
+        for event in observation.events
+        if event.event_type in {"goal", "penalty_goal"}
+    ]
+    assert len(parsed_goals) == len(goals)
+    assert sum(event.side == "home" for event in parsed_goals) == home_score
+    assert sum(event.side == "away" for event in parsed_goals) == away_score
+    assert all(event.minute_base is not None for event in parsed_goals)
+    if home_score == 0 and away_score == 0:
+        assert parsed_goals == []
+    if goals and goals[0].get("penalty"):
+        assert parsed_goals[0].event_type == "penalty_goal"
+
+
+def test_incomplete_goal_summary_is_not_treated_as_zero_or_repaired():
+    html, expected = score_scenario_html(
+        1,
+        1,
+        [
+            {
+                "side": "away",
+                "player_id": 2001,
+                "minute": "6",
+                "after_home": 0,
+                "after_away": 1,
+            }
+        ],
+    )
+    observation = _parse(html, expected)
+
+    assert observation.score.home_goals == observation.score.away_goals == 1
+    assert observation.validation.semantic_valid is False
+    assert "goal_event_count_does_not_match_score" in observation.validation.errors
+    assert "goal_score_progression_invalid" in observation.validation.errors
+
+
+def test_missing_goal_summary_structure_fails_closed():
+    soup = BeautifulSoup(match_html(), "html.parser")
+    hero = soup.select_one("div.hero.hero-partit")
+    assert hero is not None
+    for column in hero.select("div.col-6.col-sm.f14"):
+        column.decompose()
+
+    with pytest.raises(MatchDetailParserError, match="resumen de goles"):
+        _parse(str(soup).encode())
+
+
+@pytest.mark.parametrize(
     ("html", "expected_error"),
     [
         (
@@ -301,19 +404,188 @@ def test_duplicate_player_ids_in_eleven_row_rosters_are_rejected(html, expected_
     )
 
 
-def test_unbalanced_substitution_events_are_reported_without_pairing():
+def test_reordered_roster_columns_keep_player_number_and_events_associated():
+    soup = BeautifulSoup(match_html(), "html.parser")
+    data_row = soup.select_one(
+        "div.container > div.row.pt-3.pb-2[style*=overflow]"
+    )
+    assert data_row is not None
+    for table in data_row.select("table.taula_estil"):
+        for row in table.find_all("tr"):
+            cells = row.find_all(["th", "td"], recursive=False)
+            if len(cells) != 6 or row.select_one('a[href*="/j/j"]') is None:
+                continue
+            reordered = [cells[3], cells[0], cells[5], cells[2], cells[1], cells[4]]
+            for cell in cells:
+                cell.extract()
+            for cell in reordered:
+                row.append(cell)
+
+    observation = _parse(str(soup).encode())
+
+    assert observation.validation.semantic_valid is True
+    assert observation.home.starters[0].player_id == 1001
+    assert observation.home.starters[0].shirt_number == 1
+    assert any(event.player_id == 1001 and event.event_type == "penalty_goal" for event in observation.events)
+    assert any(event.player_id == 1002 and event.event_type == "substitution_out" for event in observation.events)
+
+
+def test_absent_shirt_number_is_preserved_as_null():
+    soup = BeautifulSoup(match_html(), "html.parser")
+    row = soup.select_one(
+        'div.container table.taula_estil a[href$="/j/j1004.html"]'
+    )
+    assert row is not None
+    player_row = row.find_parent("tr")
+    assert player_row is not None
+    cells = player_row.find_all(["th", "td"], recursive=False)
+    cells[0].clear()
+
+    observation = _parse(str(soup).encode())
+
+    appearance = next(item for item in observation.home.starters if item.player_id == 1004)
+    assert observation.validation.semantic_valid is True
+    assert appearance.shirt_number is None
+
+
+def test_hidden_roster_row_with_structural_content_is_not_ignored():
+    soup = BeautifulSoup(match_html(), "html.parser")
+    hidden_row = soup.select_one("table.taula_estil tr[style]")
+    assert hidden_row is not None
+    hidden_row["style"] = "color: transparent; display : none !important"
+    cell = hidden_row.find("td")
+    assert cell is not None
+    link = soup.new_tag("a", href="../j/j9999.html")
+    link.string = "Hidden Player"
+    cell.append(link)
+
+    observation = _parse(str(soup).encode())
+
+    assert observation.validation.semantic_valid is False
+    assert any(
+        error.startswith("hidden_nonempty_roster_row:starter:home:")
+        for error in observation.validation.errors
+    )
+
+
+def test_external_or_wrong_host_player_link_is_rejected():
     html = match_html().replace(
-        b'<div class="cosa"><div class="Surt" title="Sale"></div>66</div>',
-        b"",
+        b'href="../j/j1004.html"',
+        b'href="https://not-bdfutbol.example/es/j/j1004.html"',
         1,
     )
     observation = _parse(html)
 
+    assert observation.validation.semantic_valid is False
+    assert "unknown_player_link:starter:home:4" in observation.validation.errors
+
+
+def test_incomplete_starter_count_is_not_promoted_to_valid():
+    soup = BeautifulSoup(match_html(), "html.parser")
+    row = soup.select_one(
+        'div.container table.taula_estil a[href$="/j/j1011.html"]'
+    )
+    assert row is not None
+    row.find_parent("tr").decompose()
+
+    observation = _parse(str(soup).encode())
+
+    assert len(observation.home.starters) == 10
+    assert observation.validation.semantic_valid is False
+    assert "starter_count_not_11:home:10" in observation.validation.errors
+
+
+def test_reordered_attributes_extra_classes_and_global_noise_remain_cosmetic():
+    html = match_html(noise_tables=40).replace(
+        b'<div class="hero hero-partit">',
+        b'<div data-layout="responsive" class="extra hero-partit hero">',
+        1,
+    ).replace(
+        b'<span class="col-auto resultat-partit">',
+        b'<span data-kind="score" class="resultat-partit col-auto extra">',
+        4,
+    )
+    observation = _parse(html)
+
+    assert observation.validation.semantic_valid is True
+    assert (observation.score.home_goals, observation.score.away_goals) == (1, 1)
+
+
+@pytest.mark.parametrize(
+    ("removed_event", "expected_counts"),
+    [
+        (b'<div class="Surt" title="Sale"></div>66', "in=2:out=1"),
+        (b'<div class="Entra" title="Entra"></div>66', "in=1:out=2"),
+    ],
+)
+def test_unbalanced_substitution_events_are_reported_without_pairing(
+    removed_event, expected_counts
+):
+    html = match_html().replace(removed_event, b"", 1)
+    observation = _parse(html)
+
     assert any(
-        warning.startswith("substitution_event_balance_mismatch:home:")
+        warning == f"substitution_event_balance_mismatch:home:{expected_counts}"
         for warning in observation.validation.warnings
     )
     assert not any(hasattr(event, "related_player_id") for event in observation.events)
+
+
+def test_no_substitutions_is_distinct_from_an_unobserved_bench():
+    soup = BeautifulSoup(match_html(), "html.parser")
+    for icon in soup.select(".cosa > div.Surt, .cosa > div.Entra"):
+        icon.parent.decompose()
+
+    observation = _parse(str(soup).encode())
+
+    assert observation.validation.semantic_valid is True
+    assert observation.home.substitutes is not None
+    assert observation.home.substitutes
+    assert not any("substitution_" in event.event_type for event in observation.events)
+    assert not any(
+        warning.startswith("substitution_event_balance_mismatch:")
+        for warning in observation.validation.warnings
+    )
+
+
+@pytest.mark.parametrize(("minute", "expected"), [("45", "45"), ("90+4", "90+4")])
+def test_halftime_and_added_time_substitutions_preserve_literal_minutes(minute, expected):
+    html = match_html().replace(b"></div>66</div>", f"></div>{minute}</div>".encode())
+    observation = _parse(html)
+
+    assert observation.validation.semantic_valid is True
+    substitutions = [
+        event
+        for event in observation.events
+        if event.event_type in {"substitution_in", "substitution_out"}
+    ]
+    assert substitutions
+    assert {event.minute_literal for event in substitutions} == {expected}
+
+
+def test_repeated_card_events_for_one_player_are_preserved():
+    soup = BeautifulSoup(match_html(), "html.parser")
+    row_link = soup.select_one(
+        'div.container table.taula_estil a[href$="/j/j1002.html"]'
+    )
+    assert row_link is not None
+    player_row = row_link.find_parent("tr")
+    assert player_row is not None
+    event_cell = player_row.find_all(["td", "th"], recursive=False)[-1]
+    event = soup.new_tag("div", attrs={"class": "cosa"})
+    event.append(soup.new_tag("div", attrs={"class": "TG", "title": "Tarjeta Amarilla"}))
+    event.append("90+3")
+    event_cell.append(event)
+
+    observation = _parse(str(soup).encode())
+
+    assert observation.validation.semantic_valid is True
+    same_player_cards = [
+        item
+        for item in observation.events
+        if item.player_id == 1002 and item.event_type == "yellow_card"
+    ]
+    assert [item.minute_literal for item in same_player_cards] == ["45", "90+3"]
 
 
 def test_unknown_section_heading_fails_closed():
@@ -363,6 +635,44 @@ def test_unknown_event_icon_fails_closed():
     assert observation.validation.semantic_valid is False
     assert any(error.startswith("unknown_event_icon:") for error in observation.validation.errors)
     assert any(item.state == "unresolved" and item.normalized_value == "unknown" for item in observation.evidence)
+
+
+@pytest.mark.parametrize(
+    ("old_text", "new_text"),
+    [
+        (b"></div>45", b"></div>Evento 17"),
+        (b"></div>45", b"></div>45+bad"),
+    ],
+)
+def test_minute_parser_does_not_extract_numbers_from_unrecognized_text(old_text, new_text):
+    html = match_html().replace(
+        b'class="TG" title="Tarjeta Amarilla"' + old_text,
+        b'class="TG" title="Tarjeta Amarilla"' + new_text,
+        1,
+    )
+    observation = _parse(html)
+
+    assert observation.validation.semantic_valid is False
+    assert "recognized_event_missing_minute:yellow_card:home:1002" in observation.validation.errors
+    evidence = next(
+        item
+        for item in observation.evidence
+        if item.field_path.startswith("events.yellow_card[home.1002]")
+    )
+    assert evidence.state == "unresolved"
+    assert "Evento 17" in (evidence.raw_value or "") or "45+bad" in (evidence.raw_value or "")
+
+
+def test_recognized_icon_with_incompatible_title_fails_closed():
+    html = match_html().replace(
+        b'class="TG" title="Tarjeta Amarilla"',
+        b'class="TG" title="Tarjeta Roja"',
+        1,
+    )
+    observation = _parse(html)
+
+    assert observation.validation.semantic_valid is False
+    assert any(error.startswith("unknown_event_icon:home:1002") for error in observation.validation.errors)
 
 
 def test_optional_bench_coach_and_ephemeris_sections_are_not_fabricated():
