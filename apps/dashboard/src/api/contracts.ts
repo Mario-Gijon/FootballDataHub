@@ -1189,6 +1189,7 @@ export const PlayerDirectorySchema = z.object({
 }).strict();
 
 const PlayerCellScalarSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
+const PlayerSourceFieldsSchema = z.record(z.string(), z.unknown());
 const PlayerViewSchema = z.object({
   view: z.enum(["profile", "statistics", "matches", "rivals"]),
   source_url: z.string().url(),
@@ -1198,18 +1199,49 @@ const PlayerViewSchema = z.object({
   tables: z.array(z.object({
     table_role: z.string(),
     source_table_index: z.number().int().nullable(),
-    columns: z.array(z.object({ label: z.string(), title: z.string().nullable(), hidden_in_source: z.boolean() }).strict()),
+    table_id: z.string().nullable(),
+    schema_id: z.string().nullable(),
+    columns: z.array(z.object({
+      label: z.string(), title: z.string().nullable(), hidden_in_source: z.boolean(),
+      source_index: z.number().int().nullable(), group_header: z.string().nullable(), data_colid: z.string().nullable(),
+    }).strict()),
     rows: z.array(z.object({
       context: z.record(z.string(), PlayerCellScalarSchema),
       cells: z.array(z.object({ raw_value: PlayerCellScalarSchema, normalized_integer: nullableInteger, value_status: z.string().nullable() }).strict()),
+      source_fields: PlayerSourceFieldsSchema,
     }).strict()),
   }).strict()),
+  profile: PlayerSourceFieldsSchema.nullable(),
+  coverage: PlayerSourceFieldsSchema.nullable(),
   historical_matches: z.array(z.object({
     match_id: z.string().nullable(), match_url: z.string().url().nullable(), date: dateOnly, date_raw: z.string().nullable(),
     season: z.string().nullable(), competition: z.string().nullable(), round_label: z.string().nullable(),
     player_team: z.string().nullable(), opponent_team: z.string().nullable(), side: z.string().nullable(),
     minutes: nullableInteger, match_state: z.string().nullable(), appearance_status: z.string().nullable(),
+    source_fields: PlayerSourceFieldsSchema,
   }).strict()),
+  summoned_without_participation: z.array(z.object({
+    match_id: z.string().nullable(), match_url: z.string().url().nullable(), date: dateOnly, date_raw: z.string().nullable(),
+    season: z.string().nullable(), competition: z.string().nullable(), round_label: z.string().nullable(),
+    player_team: z.string().nullable(), opponent_team: z.string().nullable(), side: z.string().nullable(),
+    minutes: nullableInteger, match_state: z.string().nullable(), appearance_status: z.string().nullable(),
+    source_fields: PlayerSourceFieldsSchema,
+  }).strict()),
+  other_match_records: z.array(z.object({
+    match_id: z.string().nullable(), match_url: z.string().url().nullable(), date: dateOnly, date_raw: z.string().nullable(),
+    season: z.string().nullable(), competition: z.string().nullable(), round_label: z.string().nullable(),
+    player_team: z.string().nullable(), opponent_team: z.string().nullable(), side: z.string().nullable(),
+    minutes: nullableInteger, match_state: z.string().nullable(), appearance_status: z.string().nullable(),
+    source_fields: PlayerSourceFieldsSchema,
+  }).strict()),
+  record_counts: PlayerSourceFieldsSchema,
+  individual_matches_source: z.string().nullable(),
+  window_p_parse_status: z.string().nullable(),
+  window_p_record_count: nullableInteger,
+  detail_coverage: z.string().nullable(),
+  exhaustiveness_status: z.string().nullable(),
+  filter_parameters: PlayerSourceFieldsSchema,
+  filtered_view: z.boolean().nullable(),
 }).strict();
 
 export const PlayerDetailSchema = z.object({

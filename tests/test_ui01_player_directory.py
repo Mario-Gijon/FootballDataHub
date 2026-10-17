@@ -3,12 +3,21 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import gzip
+import hashlib
+import json
+from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
 from football_data_hub_api.config import ApiSettings, PROJECT_ROOT
 from football_data_hub_api.main import create_app
-from football_data_hub_api.player_dataset import PlayerDirectoryBundle
+from football_data_hub_api.player_dataset import (
+    CompactDocumentStore,
+    PlayerDatasetLoadError,
+    PlayerDirectoryBundle,
+    _project_individual_views,
+)
 from football_data_hub_api.schemas import (
     MatchGenerationRecordResponse,
     PlayerDirectoryMetadataResponse,
@@ -117,6 +126,73 @@ def test_inventory_only_player_keeps_missing_values_null() -> None:
     assert response.photo_url is None
     assert response.birth_date is None
     assert response.age_years is None
+
+
+def test_compact_store_loads_on_demand_and_rechecks_hash_even_when_cached(tmp_path: Path) -> None:
+    document = {
+        "schema_version": "football_data_hub.bdfutbol.player_compact_profile.v1",
+        "player_id": 100,
+        "status": "COMPLETE_BASE_VIEWS",
+        "season_context": "2026-27",
+        "views": {name: {} for name in ("profile", "statistics", "matches", "rivals")},
+    }
+    path = tmp_path / "players/100.json.gz"
+    path.parent.mkdir(parents=True)
+    compressed = gzip.compress(json.dumps(document).encode())
+    path.write_bytes(compressed)
+    entry = {
+        "path": "players/100.json.gz", "sha256": hashlib.sha256(compressed).hexdigest(),
+        "bytes": len(compressed), "status": "COMPLETE_BASE_VIEWS", "compression": "gzip",
+    }
+    store = CompactDocumentStore(tmp_path, {100: entry}, cache_size=1)
+    assert store.statuses == {100: "COMPLETE_BASE_VIEWS"}
+    assert len(store.cache) == 0
+    assert store[100]["player_id"] == 100
+    assert len(store.cache) == 1
+
+    path.write_bytes(compressed + b"changed")
+    with pytest.raises(PlayerDatasetLoadError, match="SHA-256"):
+        store[100]
+
+
+def test_view_projection_preserves_profile_match_summaries_auxiliary_records_and_row_fields() -> None:
+    row = {
+        "season_raw": "2025-26", "team_name_raw": "Real Jaén", "source_row_index": 3,
+        "column_values": [["10", 10, "NORMALIZED_INTEGER"]],
+    }
+    table = {
+        "table_id": "career", "schema_id": "schema-1", "table_role": "career_trajectory",
+        "source_table_index": 2,
+        "columns": [{"source_index": 0, "header_original": "PJ", "group_header_raw": "Totales", "data_colid_raw": "pj"}],
+        "records": [row],
+    }
+    summary_table = {**table, "table_role": None, "records": [{**row, "summary_dimension": "match_summary_by_season"}]}
+    match_row = {"match_id": "m1", "player_appearance_status": "SUMMONED", "minutes": None, "source_record_index": 8}
+    sources = {
+        name: {"requested_url": f"https://www.bdfutbol.com/es/j/j100.html?view={name}", "html_sha256": "a" * 64}
+        for name in ("profile", "statistics", "matches", "rivals")
+    }
+    document = {"view_sources": sources, "views": {
+        "profile": {"profile": {"height_raw": "183 cm"}, "coverage": {"data_scope": "observed"}, "career_tables": [table], "career_totals_tables": []},
+        "statistics": {"statistics_tables": [table]},
+        "matches": {
+            "summary_tables": [summary_table], "individual_matches": [match_row],
+            "summoned_without_participation": [match_row], "other_match_records": [],
+            "record_counts": {"individual_matches": 1}, "coverage": {"parse_status": "PARSED"},
+            "exhaustiveness_status": "NOT_CERTIFIED", "window_p_record_count": 8,
+        },
+        "rivals": {"rival_tables": [table]},
+    }}
+    projected = {item.view: item for item in _project_individual_views(document)}
+    assert projected["profile"].profile == {"height_raw": "183 cm"}
+    assert projected["profile"].tables[0].rows[0].source_fields["source_row_index"] == 3
+    assert projected["profile"].tables[0].columns[0].group_header == "Totales"
+    assert projected["matches"].tables[0].table_id == "career"
+    assert projected["matches"].tables[0].table_role == "match_summary_by_season"
+    assert projected["matches"].record_counts["individual_matches"] == 1
+    assert projected["matches"].window_p_record_count == 8
+    assert len(projected["matches"].summoned_without_participation) == 1
+    assert projected["matches"].summoned_without_participation[0].source_fields["source_record_index"] == 8
 
 
 def test_api_player_routes_support_search_detail_errors_and_etags() -> None:

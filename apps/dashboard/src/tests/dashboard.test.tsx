@@ -248,7 +248,19 @@ const playerDetailFixture = {
     source_sha256: "c".repeat(64),
     scope_note: "Fixture de prueba; no representa un snapshot real.",
     tables: [],
+    profile: null,
+    coverage: null,
     historical_matches: [],
+    summoned_without_participation: [],
+    other_match_records: [],
+    record_counts: {},
+    individual_matches_source: null,
+    window_p_parse_status: null,
+    window_p_record_count: null,
+    detail_coverage: null,
+    exhaustiveness_status: null,
+    filter_parameters: {},
+    filtered_view: null,
   })),
   warnings: ["La pertenencia se observó en capturas de la temporada; no certifica que siga vigente hoy."],
 };
@@ -936,7 +948,7 @@ describe("dashboard de clasificación", () => {
     expect(await screen.findByRole("heading", { name: "Nacho Castillo" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Perfil original de BDFutbol ↗" })).toHaveAttribute("target", "_blank");
     expect(screen.getByText(/no certifica que siga vigente hoy/)).toBeInTheDocument();
-    expect(screen.getByText("Vistas individuales verificadas")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Datos deportivos" })).toBeInTheDocument();
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/api/v1/players/28577"))).toBe(true);
     expect(fetchMock.mock.calls.every(([url]) => !String(url).includes("bdfutbol.com"))).toBe(true);
   });

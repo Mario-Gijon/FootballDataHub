@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 import re
-from typing import Literal
+from typing import Any, Literal
 from urllib.parse import parse_qs, urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, StrictFloat, StrictInt, model_validator
@@ -711,6 +711,9 @@ class PlayerTableColumnResponse(ApiModel):
     label: str = Field(min_length=1)
     title: str | None
     hidden_in_source: bool
+    source_index: StrictInt | None = None
+    group_header: str | None = None
+    data_colid: str | None = None
 
 
 class PlayerTableCellResponse(ApiModel):
@@ -722,11 +725,14 @@ class PlayerTableCellResponse(ApiModel):
 class PlayerTableRowResponse(ApiModel):
     context: dict[str, PlayerScalar]
     cells: list[PlayerTableCellResponse]
+    source_fields: dict[str, Any] = Field(default_factory=dict)
 
 
 class PlayerCompactTableResponse(ApiModel):
     table_role: str
     source_table_index: StrictInt | None
+    table_id: str | None = None
+    schema_id: str | None = None
     columns: list[PlayerTableColumnResponse]
     rows: list[PlayerTableRowResponse]
 
@@ -745,6 +751,7 @@ class PlayerHistoricalMatchResponse(ApiModel):
     minutes: StrictInt | None
     match_state: str | None
     appearance_status: str | None
+    source_fields: dict[str, Any] = Field(default_factory=dict)
 
 
 class PlayerIndividualViewResponse(ApiModel):
@@ -754,7 +761,19 @@ class PlayerIndividualViewResponse(ApiModel):
     source_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
     scope_note: str
     tables: list[PlayerCompactTableResponse]
+    profile: dict[str, Any] | None = None
+    coverage: dict[str, Any] | None = None
     historical_matches: list[PlayerHistoricalMatchResponse]
+    summoned_without_participation: list[PlayerHistoricalMatchResponse] = Field(default_factory=list)
+    other_match_records: list[PlayerHistoricalMatchResponse] = Field(default_factory=list)
+    record_counts: dict[str, Any] = Field(default_factory=dict)
+    individual_matches_source: str | None = None
+    window_p_parse_status: str | None = None
+    window_p_record_count: StrictInt | None = None
+    detail_coverage: str | None = None
+    exhaustiveness_status: str | None = None
+    filter_parameters: dict[str, Any] = Field(default_factory=dict)
+    filtered_view: bool | None = None
 
 
 class PlayerDetailResponse(ApiModel):

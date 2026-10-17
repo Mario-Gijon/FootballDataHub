@@ -2,6 +2,7 @@ import { useEffect, useState, type MouseEvent } from "react";
 import { loadPlayerDetail, loadPlayerDirectory } from "../api/client";
 import type { PlayerDetail, PlayerDirectory, PlayerIndexRecord } from "../api/contracts";
 import { ProfileImage } from "./TeamRosterShared";
+import { PlayerIndividualViews } from "./PlayerIndividualViews";
 
 interface Props {
   playerId: number | null;
@@ -141,7 +142,7 @@ function PlayerDetailPage({ detail, loading, error, onNavigate }: { detail: Play
       </article>
     </section>
     {detail.transfer_references.length > 0 && <section className="player-info-panel"><h2>Referencias de traspasos</h2><ul className="player-association-list">{detail.transfer_references.map((item, index) => <li key={`${item.team_id}-${item.group}-${item.direction}-${index}`}><strong>{item.direction === "incoming" ? "Alta" : "Baja"} · {item.team_name ?? "Equipo no indicado"}</strong><span>{item.other_team_name ?? "Origen o destino no observado"} · Grupo {item.group}{item.age_years === null ? "" : ` · ${item.age_years} años`}</span></li>)}</ul></section>}
-    <section className="player-individual-views"><h2>Vistas individuales verificadas</h2>{detail.verified_individual_views.length ? detail.verified_individual_views.map((view) => <details className="player-view-panel" key={view.view}><summary>{viewLabel(view.view)} <span>{formatDate(view.captured_at)} · {view.tables.length} tablas</span></summary><p>{view.scope_note}</p>{view.historical_matches.length > 0 && <div className="player-table-scroll"><table className="player-data-table"><thead><tr><th>Fecha</th><th>Competición</th><th>Partido</th><th>Minutos</th><th>Estado</th></tr></thead><tbody>{view.historical_matches.map((match, index) => <tr key={`${match.match_id}-${index}`}><td>{match.date ? formatDateOnly(match.date) : match.date_raw ?? "—"}</td><td>{match.competition ?? "—"}</td><td>{match.match_url ? <a href={match.match_url} target="_blank" rel="noreferrer">{match.player_team ?? "—"} – {match.opponent_team ?? "—"} ↗</a> : `${match.player_team ?? "—"} – ${match.opponent_team ?? "—"}`}</td><td>{show(match.minutes)}</td><td>{match.appearance_status}</td></tr>)}</tbody></table></div>}{view.tables.map((table, tableIndex) => <div className="player-table-scroll" key={`${table.table_role}-${tableIndex}`}><h3>{table.table_role}</h3>{table.rows.length ? <table className="player-data-table"><thead><tr>{table.columns.map((column, index) => <th key={`${column.label}-${index}`} title={column.title ?? undefined}>{column.label}</th>)}</tr></thead><tbody>{table.rows.map((row, rowIndex) => <tr key={rowIndex}>{row.cells.map((cell, index) => <td key={index}>{show(cell.normalized_integer ?? cell.raw_value)}</td>)}</tr>)}</tbody></table> : <p>No hay filas estructuradas en esta tabla.</p>}</div>)}<a href={view.source_url} target="_blank" rel="noreferrer">Abrir esta vista en BDFutbol ↗</a></details>) : <p>No hay compactos individuales verificados para este jugador.</p>}</section>
+    <PlayerIndividualViews views={detail.verified_individual_views} />
     {detail.warnings.map((warning, index) => <p className="roster-warning" key={index}>{warning}</p>)}
   </main>;
 }
@@ -159,4 +160,3 @@ function formatDateOnly(value: string): string { const [year, month, day] = valu
 function statusLabel(player: PlayerIndexRecord): string { return player.association_status === "roster_membership_observed" ? "Pertenencia de plantilla observada" : "Referencia únicamente en traspasos"; }
 function associationLabel(value: string): string { return value === "membership" ? "Plantilla observada" : "Referencia de traspaso"; }
 function metricLabel(value: string | null): string { return value ? ({ minutes_played: "Minutos", goals: "Goles", yellow_cards: "Amarillas", red_cards: "Rojas", assists: "Asistencias" } as Record<string, string>)[value] ?? value : "—"; }
-function viewLabel(value: string): string { return ({ profile: "Trayectoria", statistics: "Estadísticas", matches: "Partidos", rivals: "Rivales" } as Record<string, string>)[value] ?? value; }

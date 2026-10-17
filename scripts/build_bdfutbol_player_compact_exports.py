@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 from pathlib import Path
 
 from football_data_hub.providers.bdfutbol.players.catalog import build_player_acquisition_progress
@@ -36,14 +37,26 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--player-id", type=int, action="append")
     parser.add_argument(
+        "--progress-index", type=Path,
+        help="Reutiliza un progreso de adquisición ya verificado en lugar de reconstruirlo.",
+    )
+    parser.add_argument(
         "--complete-only", action="store_true",
         help="Publica únicamente jugadores con las cuatro vistas base verificadas.",
     )
+    parser.add_argument(
+        "--workers", type=int, default=4,
+        help="Número de procesos para la transformación offline (1–8; no realiza navegaciones).",
+    )
     args = parser.parse_args(argv)
     try:
-        progress = build_player_acquisition_progress(
-            inventory_path=args.inventory,
-            capture_root=args.capture_root,
+        progress = (
+            json.loads(args.progress_index.read_text(encoding="utf-8"))
+            if args.progress_index
+            else build_player_acquisition_progress(
+                inventory_path=args.inventory,
+                capture_root=args.capture_root,
+            )
         )
         result = build_compact_player_generation(
             inventory_path=args.inventory,
@@ -52,6 +65,11 @@ def main(argv: list[str] | None = None) -> int:
             player_ids=set(args.player_id) if args.player_id else None,
             complete_only=args.complete_only,
             progress_index=progress,
+            max_workers=args.workers,
+            progress_callback=lambda completed, total: (
+                print(f"Compactados {completed}/{total} perfiles.", file=sys.stderr, flush=True)
+                if completed == total or completed % 25 == 0 else None
+            ),
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(json.dumps({"status": "failed", "error": str(exc)}, ensure_ascii=False))

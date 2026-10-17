@@ -8,9 +8,10 @@ import json
 import os
 import shutil
 import tempfile
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 from uuid import uuid4
 
 from .catalog import PLAYER_VIEWS, build_player_acquisition_progress
@@ -378,6 +379,39 @@ def build_compact_player_document(
     }
 
 
+def _build_compact_generation_entry(
+    task: tuple[dict[str, Any], Path, dict[str, Any], str, str, Path],
+) -> dict[str, Any]:
+    player, capture_root, progress_record, inventory_hash, season, temporary_dir = task
+    player_id = int(player["player_id"])
+    document = build_compact_player_document(
+        player=player,
+        capture_root=capture_root,
+        progress_record=progress_record,
+        inventory_sha256=inventory_hash,
+        season=season,
+    )
+    relative_path = Path("players") / f"{player_id}.json.gz"
+    json_raw = json.dumps(
+        document, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8") + b"\n"
+    raw = gzip.compress(json_raw, compresslevel=6, mtime=0)
+    _atomic_bytes(temporary_dir / relative_path, raw)
+    return {
+        "player_id": player_id,
+        "cohort": "roster" if int(player.get("membership_count") or 0) > 0 else "transfer_only",
+        "status": document["status"],
+        "path": relative_path.as_posix(),
+        "sha256": hashlib.sha256(raw).hexdigest(),
+        "bytes": len(raw),
+        "uncompressed_bytes": len(json_raw),
+        "compression": "gzip",
+        "source_capture_ids": sorted({
+            ref["capture_id"] for ref in document["view_sources"].values()
+        }),
+    }
+
+
 def build_compact_player_generation(
     *,
     inventory_path: Path,
@@ -386,11 +420,15 @@ def build_compact_player_generation(
     player_ids: set[int] | None = None,
     complete_only: bool = False,
     progress_index: dict[str, Any] | None = None,
+    max_workers: int = 4,
+    progress_callback: Callable[[int, int], None] | None = None,
 ) -> dict[str, Any]:
     """Atomically publish compact player documents and a versioned manifest."""
     inventory_path = inventory_path.expanduser().resolve()
     capture_root = capture_root.expanduser().resolve()
     output_root = output_root.expanduser().resolve()
+    if type(max_workers) is not int or not 1 <= max_workers <= 8:
+        raise ValueError("max_workers debe estar entre 1 y 8")
     inventory_raw = inventory_path.read_bytes()
     inventory_hash = hashlib.sha256(inventory_raw).hexdigest()
     inventory = json.loads(inventory_raw)
@@ -430,34 +468,33 @@ def build_compact_player_generation(
     final_dir = generations_root / generation_id
     entries: list[dict[str, Any]] = []
     try:
-        for record in selected:
-            player_id = int(record["player_id"])
-            document = build_compact_player_document(
-                player=inventory_records[player_id],
-                capture_root=capture_root,
-                progress_record=record,
-                inventory_sha256=inventory_hash,
-                season=str(inventory.get("metadata", {}).get("season") or "2026-27"),
+        tasks = [
+            (
+                inventory_records[int(record["player_id"])],
+                capture_root,
+                record,
+                inventory_hash,
+                str(inventory.get("metadata", {}).get("season") or "2026-27"),
+                temporary_dir,
             )
-            relative_path = Path("players") / f"{player_id}.json.gz"
-            json_raw = json.dumps(
-                document, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-            ).encode("utf-8") + b"\n"
-            raw = gzip.compress(json_raw, compresslevel=6, mtime=0)
-            _atomic_bytes(temporary_dir / relative_path, raw)
-            entries.append({
-                "player_id": player_id,
-                "cohort": "roster" if int(inventory_records[player_id].get("membership_count") or 0) > 0 else "transfer_only",
-                "status": document["status"],
-                "path": relative_path.as_posix(),
-                "sha256": hashlib.sha256(raw).hexdigest(),
-                "bytes": len(raw),
-                "uncompressed_bytes": len(json_raw),
-                "compression": "gzip",
-                "source_capture_ids": sorted({
-                    ref["capture_id"] for ref in document["view_sources"].values()
-                }),
-            })
+            for record in selected
+        ]
+        if max_workers == 1:
+            results = map(_build_compact_generation_entry, tasks)
+            for completed, entry in enumerate(results, start=1):
+                entries.append(entry)
+                if progress_callback is not None:
+                    progress_callback(completed, len(tasks))
+        else:
+            entry_by_id = {}
+            with ProcessPoolExecutor(max_workers=max_workers) as executor:
+                futures = [executor.submit(_build_compact_generation_entry, task) for task in tasks]
+                for completed, future in enumerate(as_completed(futures), start=1):
+                    entry = future.result()
+                    entry_by_id[entry["player_id"]] = entry
+                    if progress_callback is not None:
+                        progress_callback(completed, len(tasks))
+            entries = [entry_by_id[int(record["player_id"])] for record in selected]
         manifest = {
             "schema_version": "football_data_hub.player_compact_generation.v1",
             "generation_id": generation_id,

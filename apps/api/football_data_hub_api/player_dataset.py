@@ -6,6 +6,9 @@ import gzip
 import hashlib
 import json
 import re
+import threading
+from collections import OrderedDict
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -33,17 +36,65 @@ PLAYER_COMPACT_SCHEMA = "football_data_hub.bdfutbol.player_compact_profile.v1"
 PLAYER_COMPACT_GENERATION_SCHEMA = "football_data_hub.player_compact_generation.v1"
 PLAYER_COMPACT_POINTER_SCHEMA = "football_data_hub.player_compact_current.v1"
 PLAYER_VIEWS = ("profile", "statistics", "matches", "rivals")
-_CONTEXT_FIELDS = (
-    "season_raw", "team_name_raw", "country_raw", "division_raw",
-    "competition_raw", "date_raw", "round_title_raw", "opponent_team_raw",
-    "team_name", "opponent_team", "coach_name_raw", "player_display_name",
-    "match_id", "source_kind", "player_team_raw", "player_team_side_raw",
-    "season", "competition", "team_id", "group", "minutes",
-)
+PLAYER_COMPACT_CACHE_SIZE = 12
 
 
 class PlayerDatasetLoadError(ValueError):
     """Player inventory or compact generation failed provenance validation."""
+
+
+class CompactDocumentStore(Mapping[int, dict[str, Any]]):
+    """Hash-checked lazy access to immutable compact files with a bounded cache."""
+
+    def __init__(self, root: Path, entries: dict[int, dict[str, Any]], cache_size: int = PLAYER_COMPACT_CACHE_SIZE):
+        self.root = root
+        self.entries = entries
+        self.cache_size = cache_size
+        self.cache: OrderedDict[int, tuple[str, dict[str, Any]]] = OrderedDict()
+        self.lock = threading.RLock()
+
+    @property
+    def statuses(self) -> dict[int, str]:
+        return {player_id: entry["status"] for player_id, entry in self.entries.items()}
+
+    def __getitem__(self, player_id: int) -> dict[str, Any]:
+        entry = self.entries[player_id]
+        compressed = _verify_file(
+            _safe_child(self.root, entry["path"]), entry, f"compacto player_id={player_id}"
+        )
+        digest = entry["sha256"]
+        with self.lock:
+            cached = self.cache.get(player_id)
+            if cached is not None and cached[0] == digest:
+                self.cache.move_to_end(player_id)
+                return cached[1]
+        try:
+            document = _decode_json(gzip.decompress(compressed), f"compacto player_id={player_id}")
+        except (OSError, EOFError) as exc:
+            raise PlayerDatasetLoadError(f"El compacto gzip no se puede leer para player_id={player_id}.") from exc
+        views = document.get("views")
+        if (
+            document.get("schema_version") != PLAYER_COMPACT_SCHEMA
+            or document.get("player_id") != player_id
+            or document.get("status") != entry.get("status")
+            or document.get("season_context") != "2026-27"
+            or not isinstance(views, dict)
+            or not set(views).issubset(PLAYER_VIEWS)
+            or (entry.get("status") == "COMPLETE_BASE_VIEWS" and set(views) != set(PLAYER_VIEWS))
+        ):
+            raise PlayerDatasetLoadError(f"Identidad o estructura compacta inválida para player_id={player_id}.")
+        with self.lock:
+            self.cache[player_id] = (digest, document)
+            self.cache.move_to_end(player_id)
+            while len(self.cache) > self.cache_size:
+                self.cache.popitem(last=False)
+        return document
+
+    def __iter__(self) -> Iterator[int]:
+        return iter(self.entries)
+
+    def __len__(self) -> int:
+        return len(self.entries)
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,8 +104,9 @@ class PlayerDirectoryBundle:
     players_by_id: dict[int, dict[str, Any]]
     memberships_by_player: dict[int, tuple[dict[str, Any], ...]]
     teams: tuple[PlayerTeamFilterResponse, ...]
-    compact_documents: dict[int, dict[str, Any]]
+    compact_documents: Mapping[int, dict[str, Any]]
     etag: str
+    compact_statuses: dict[int, str] | None = None
 
     def list_players(
         self,
@@ -191,8 +243,7 @@ class PlayerDirectoryBundle:
 
     def _index_record(self, player: dict[str, Any]) -> PlayerIndexRecordResponse:
         player_id = player["player_id"]
-        full_compact = self.compact_documents.get(player_id)
-        compact_status = full_compact.get("status") if full_compact else None
+        compact_status = (self.compact_statuses or {}).get(player_id)
         if compact_status == "COMPLETE_BASE_VIEWS":
             profile_status = "four_views_verified"
         elif compact_status == "PARTIAL_BASE_VIEWS":
@@ -293,14 +344,16 @@ def load_player_directory(
         _validate_associations(record, membership_keys)
 
     compact_manifest, compact_docs = _load_compact_generation(
-        compact_root, expected_inventory_sha=hashlib.sha256(files["players.json"]).hexdigest()
+        compact_root,
+        expected_inventory_sha=hashlib.sha256(files["players.json"]).hexdigest(),
+        inventory_player_ids=set(players_by_id),
     )
     metadata = PlayerDirectoryMetadataResponse(
         season="2026-27",
         inventory_generated_at=manifest["generated_at_utc"],
         inventory_player_count=len(players_by_id),
-        complete_individual_profile_count=sum(doc.get("status") == "COMPLETE_BASE_VIEWS" for doc in compact_docs.values()),
-        partial_individual_profile_count=sum(doc.get("status") == "PARTIAL_BASE_VIEWS" for doc in compact_docs.values()),
+        complete_individual_profile_count=sum(status == "COMPLETE_BASE_VIEWS" for status in compact_docs.statuses.values()),
+        partial_individual_profile_count=sum(status == "PARTIAL_BASE_VIEWS" for status in compact_docs.statuses.values()),
         inventory_only_count=len(players_by_id) - len(compact_docs),
         roster_membership_count=sum(record.get("association_status") == "roster_membership_observed" for record in player_records),
         transfer_only_count=sum(record.get("association_status") == "transfer_reference_only" for record in player_records),
@@ -333,6 +386,7 @@ def load_player_directory(
         teams=teams,
         compact_documents=compact_docs,
         etag=etag,
+        compact_statuses=compact_docs.statuses,
     )
 
 
@@ -373,11 +427,11 @@ def _verify_team_capture_sources(manifest: dict[str, Any], capture_root: Path) -
 
 
 def _load_compact_generation(
-    compact_root: Path, *, expected_inventory_sha: str
-) -> tuple[dict[str, Any] | None, dict[int, dict[str, Any]]]:
+    compact_root: Path, *, expected_inventory_sha: str, inventory_player_ids: set[int]
+) -> tuple[dict[str, Any] | None, CompactDocumentStore]:
     pointer_path = compact_root / "current.json"
     if not pointer_path.is_file():
-        return None, {}
+        return None, CompactDocumentStore(compact_root, {})
     pointer, pointer_raw = _read_json(pointer_path, "puntero compacto")
     generation_id = pointer.get("generation_id")
     if (
@@ -402,40 +456,24 @@ def _load_compact_generation(
         or manifest.get("player_count") != len(manifest["entries"])
     ):
         raise PlayerDatasetLoadError("La generación compacta no corresponde al inventario actual.")
-    docs: dict[int, dict[str, Any]] = {}
+    entries: dict[int, dict[str, Any]] = {}
     for entry in manifest["entries"]:
         if not isinstance(entry, dict):
             raise PlayerDatasetLoadError("Entrada de generación compacta mal formada.")
         player_id = entry.get("player_id")
         status = entry.get("status")
-        if type(player_id) is not int or player_id <= 0 or player_id in docs:
+        if type(player_id) is not int or player_id <= 0 or player_id in entries or player_id not in inventory_player_ids:
             raise PlayerDatasetLoadError("player_id compacto inválido o duplicado.")
         if status not in {"COMPLETE_BASE_VIEWS", "PARTIAL_BASE_VIEWS"}:
             raise PlayerDatasetLoadError(f"Estado compacto no reconocido para player_id={player_id}.")
         path = _safe_child(generation_root, entry.get("path", ""))
-        compressed = _verify_file(path, entry, f"compacto player_id={player_id}")
-        if entry.get("compression") != "gzip":
+        if entry.get("compression") != "gzip" or type(entry.get("bytes")) is not int or entry["bytes"] <= 0:
             raise PlayerDatasetLoadError(f"Compresión compacta inesperada para player_id={player_id}.")
-        try:
-            document = _decode_json(gzip.decompress(compressed), f"compacto player_id={player_id}")
-        except (OSError, EOFError) as exc:
-            raise PlayerDatasetLoadError(f"El compacto gzip no se puede leer para player_id={player_id}.") from exc
-        views = document.get("views")
-        if (
-            document.get("schema_version") != PLAYER_COMPACT_SCHEMA
-            or document.get("player_id") != player_id
-            or document.get("status") != status
-            or document.get("season_context") != "2026-27"
-            or not isinstance(views, dict)
-            or not set(views).issubset(PLAYER_VIEWS)
-        ):
-            raise PlayerDatasetLoadError(f"Identidad o estructura compacta inválida para player_id={player_id}.")
-        if status == "COMPLETE_BASE_VIEWS" and set(views) != set(PLAYER_VIEWS):
-            raise PlayerDatasetLoadError(f"El compacto completo carece de una vista de player_id={player_id}.")
-        docs[player_id] = document
-    if sum(doc.get("status") == "COMPLETE_BASE_VIEWS" for doc in docs.values()) != manifest.get("complete_player_count"):
+        _verify_file(path, entry, f"compacto player_id={player_id}")
+        entries[player_id] = entry
+    if sum(entry.get("status") == "COMPLETE_BASE_VIEWS" for entry in entries.values()) != manifest.get("complete_player_count"):
         raise PlayerDatasetLoadError("El recuento de compactos completos no coincide con el manifest.")
-    return manifest, docs
+    return manifest, CompactDocumentStore(generation_root, entries)
 
 
 def _project_individual_views(document: dict[str, Any]) -> list[PlayerIndividualViewResponse]:
@@ -458,6 +496,8 @@ def _project_individual_views(document: dict[str, Any]) -> list[PlayerIndividual
             tables_source.extend(payload.get("statistics_tables", []))
         elif view == "rivals":
             tables_source.extend(payload.get("rival_tables", []))
+        elif view == "matches":
+            tables_source.extend(payload.get("summary_tables", []))
         coverage = payload.get("coverage")
         scope_note = "Datos estructurados de la captura individual."
         if view == "matches":
@@ -474,11 +514,31 @@ def _project_individual_views(document: dict[str, Any]) -> list[PlayerIndividual
             source_sha256=source.get("html_sha256"),
             scope_note=scope_note,
             tables=[_project_table(table) for table in tables_source if isinstance(table, dict)],
+            profile=payload.get("profile") if isinstance(payload.get("profile"), dict) else None,
+            coverage=coverage if isinstance(coverage, dict) else None,
             historical_matches=[
                 _project_historical_match(item)
                 for item in payload.get("individual_matches", [])
                 if isinstance(item, dict)
             ] if view == "matches" else [],
+            summoned_without_participation=[
+                _project_historical_match(item)
+                for item in payload.get("summoned_without_participation", [])
+                if isinstance(item, dict)
+            ] if view == "matches" else [],
+            other_match_records=[
+                _project_historical_match(item)
+                for item in payload.get("other_match_records", [])
+                if isinstance(item, dict)
+            ] if view == "matches" else [],
+            record_counts=payload.get("record_counts") if isinstance(payload.get("record_counts"), dict) else {},
+            individual_matches_source=payload.get("individual_matches_source") if isinstance(payload.get("individual_matches_source"), str) else None,
+            window_p_parse_status=payload.get("window_p_parse_status") if isinstance(payload.get("window_p_parse_status"), str) else None,
+            window_p_record_count=payload.get("window_p_record_count") if type(payload.get("window_p_record_count")) is int else None,
+            detail_coverage=payload.get("detail_coverage") if isinstance(payload.get("detail_coverage"), str) else None,
+            exhaustiveness_status=payload.get("exhaustiveness_status") if isinstance(payload.get("exhaustiveness_status"), str) else None,
+            filter_parameters=payload.get("filter_parameters") if isinstance(payload.get("filter_parameters"), dict) else {},
+            filtered_view=payload.get("filtered_view") if type(payload.get("filtered_view")) is bool else None,
         ))
     return result
 
@@ -497,15 +557,18 @@ def _project_table(table: dict[str, Any]) -> PlayerCompactTableResponse:
                 label=label.strip(),
                 title=column.get("header_title_raw") if isinstance(column.get("header_title_raw"), str) else None,
                 hidden_in_source=column.get("hidden_by_inline_style") is True,
+                source_index=column.get("source_index") if type(column.get("source_index")) is int else column.get("column_index") if type(column.get("column_index")) is int else None,
+                group_header=column.get("group_header_raw") if isinstance(column.get("group_header_raw"), str) else None,
+                data_colid=column.get("data_colid_raw") if isinstance(column.get("data_colid_raw"), str) else None,
             ))
     rows = []
     for record in table.get("records", []):
         if not isinstance(record, dict):
             continue
         context = {
-            key: record[key] for key in _CONTEXT_FIELDS
-            if key in record and (
-                record[key] is None or isinstance(record[key], (str, int, float, bool))
+            key: value for key, value in record.items()
+            if key != "column_values" and (
+                value is None or isinstance(value, (str, int, float, bool))
             )
         }
         cells = []
@@ -520,10 +583,20 @@ def _project_table(table: dict[str, Any]) -> PlayerCompactTableResponse:
                 normalized_integer=normalized,
                 value_status=status,
             ))
-        rows.append(PlayerTableRowResponse(context=context, cells=cells))
+        rows.append(PlayerTableRowResponse(
+            context=context,
+            cells=cells,
+            source_fields={key: value for key, value in record.items() if key != "column_values"},
+        ))
+    role = table.get("table_role")
+    if not isinstance(role, str) or not role.strip():
+        first_record = next((item for item in table.get("records", []) if isinstance(item, dict)), {})
+        role = first_record.get("summary_dimension") or table.get("table_id") or "Tabla de BDFutbol"
     return PlayerCompactTableResponse(
-        table_role=str(table.get("table_role") or "Tabla de BDFutbol"),
+        table_role=str(role),
         source_table_index=table.get("source_table_index") if type(table.get("source_table_index")) is int else None,
+        table_id=table.get("table_id") if isinstance(table.get("table_id"), str) else None,
+        schema_id=table.get("schema_id") if isinstance(table.get("schema_id"), str) else None,
         columns=columns,
         rows=rows,
     )
@@ -548,6 +621,7 @@ def _project_historical_match(item: dict[str, Any]) -> dict[str, Any]:
         "minutes": item.get("minutes") if type(item.get("minutes")) is int else None,
         "match_state": item.get("match_state"),
         "appearance_status": item.get("player_appearance_status"),
+        "source_fields": item,
     }
 
 

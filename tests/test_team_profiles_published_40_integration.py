@@ -10,7 +10,7 @@ import json
 import os
 
 import pytest
-from fastapi import Request, Response
+from fastapi import HTTPException, Request, Response
 
 from football_data_hub_api.config import ApiSettings
 from football_data_hub_api.dataset import load_dataset
@@ -75,10 +75,17 @@ def test_all_40_team_profiles_and_competition_bootstraps_are_available() -> None
     app.state.team_transfers_registry = transfers
 
     assert roster.index_error is None and roster.profile_errors == {}
-    assert follow.index_error is None and follow.profile_errors == {}
+    assert follow.index_error is None
+    assert set(follow.profiles).isdisjoint(follow.profile_errors)
+    assert set(follow.profiles) | set(follow.profile_errors) == {int(team_id) for team_id in profiles}
+    assert all(
+        "catálogo activo" in error and "unplayed" in error
+        for error in follow.profile_errors.values()
+    )
     assert transfers.index_error is None and transfers.profile_errors == {}
     expected_ids = {int(team_id) for team_id in profiles}
-    assert set(roster.profiles) == set(follow.profiles) == set(transfers.profiles) == expected_ids
+    assert set(roster.profiles) == set(transfers.profiles) == expected_ids
+    assert set(follow.profiles) | set(follow.profile_errors) == expected_ids
 
     bootstrap_team_ids: dict[str, set[int]] = {}
     bootstrap_by_group: dict[str, dict] = {}
@@ -106,7 +113,7 @@ def test_all_40_team_profiles_and_competition_bootstraps_are_available() -> None
             for match in active_matches.values()
         )
 
-        for section in ("roster", "follow", "transfers"):
+        for section in ("roster", "transfers"):
             result, _ = _invoke(
                 app,
                 f"/api/v1/teams/{{team_id}}/seasons/{{season}}/{section}",
@@ -118,13 +125,25 @@ def test_all_40_team_profiles_and_competition_bootstraps_are_available() -> None
             assert result.metadata.group == group
             assert result.metadata.capture_id == selected["capture_id"]
 
-        follow_data, _ = _invoke(
-            app,
-            "/api/v1/teams/{team_id}/seasons/{season}/follow",
-            team_id=team_id,
-            season="2026-27",
-        )
-        referenced_ids = {item.match_id for item in follow_data.minutes}
-        referenced_ids.update(item.match_id for item in follow_data.metrics)
-        assert referenced_ids.issubset(active_matches)
-        assert all(active_matches[match_id]["status"] == "played" for match_id in referenced_ids)
+        if team_id in follow.profiles:
+            follow_data, _ = _invoke(
+                app,
+                "/api/v1/teams/{team_id}/seasons/{season}/follow",
+                team_id=team_id,
+                season="2026-27",
+            )
+            assert follow_data.status == "available"
+            referenced_ids = {item.match_id for item in follow_data.minutes}
+            referenced_ids.update(item.match_id for item in follow_data.metrics)
+            assert referenced_ids.issubset(active_matches)
+            assert all(active_matches[match_id]["status"] == "played" for match_id in referenced_ids)
+        else:
+            with pytest.raises(HTTPException) as unavailable:
+                _invoke(
+                    app,
+                    "/api/v1/teams/{team_id}/seasons/{season}/follow",
+                    team_id=team_id,
+                    season="2026-27",
+                )
+            assert unavailable.value.status_code == 503
+            assert unavailable.value.detail["code"] == "follow_invalid"

@@ -92,13 +92,14 @@ def test_real_player_inventory_compact_and_three_verified_cases() -> None:
 
     assert len(bundle.players) == 1709
     assert bundle.metadata.inventory_player_count == 1709
-    assert bundle.metadata.complete_individual_profile_count == generation_manifest["complete_player_count"]
+    assert bundle.metadata.complete_individual_profile_count == generation_manifest["complete_player_count"] == 1708
     acquisition_complete_count = sum(
         record.get("status") == "COMPLETE_BASE_VIEWS" for record in progress["players"]
     )
     assert acquisition_complete_count == 1708
-    assert bundle.metadata.complete_individual_profile_count == 4
-    assert bundle.metadata.inventory_only_count == 1705
+    assert bundle.metadata.complete_individual_profile_count == 1708
+    assert bundle.metadata.partial_individual_profile_count == 0
+    assert bundle.metadata.inventory_only_count == 1
     nacho = bundle.list_players(query="Nacho Castillo", page_size=5)
     assert nacho.total == 1
     assert nacho.players[0].player_id == 28577
@@ -107,7 +108,7 @@ def test_real_player_inventory_compact_and_three_verified_cases() -> None:
     transfer_only = next(player for player in bundle.players if player["association_status"] == "transfer_reference_only")
     complete = next(
         player for player in bundle.players
-        if bundle.compact_documents.get(player["player_id"], {}).get("status") == "COMPLETE_BASE_VIEWS"
+        if bundle.compact_statuses.get(player["player_id"]) == "COMPLETE_BASE_VIEWS"
     )
     assert bundle.detail(roster["player_id"]) is not None
     transfer_detail = bundle.detail(transfer_only["player_id"])
@@ -120,13 +121,52 @@ def test_real_player_inventory_compact_and_three_verified_cases() -> None:
         "profile", "statistics", "matches", "rivals"
     }
 
-    for player_id in (23751, 28577, 209629):
+    for player_id in (110652, 28577, 23751, 19269, 209629, 729168):
         detail = bundle.detail(player_id)
         assert detail is not None
         assert detail.player.profile_status == "four_views_verified"
         assert len(detail.verified_individual_views) == 4
+        compact = bundle.compact_documents[player_id]
+        projected = {view.view: view for view in detail.verified_individual_views}
+        assert set(projected) == {"profile", "statistics", "matches", "rivals"}
+        for view_name in ("profile", "statistics", "matches", "rivals"):
+            source = compact["views"][view_name]
+            view = projected[view_name]
+            source_tables = (
+                source.get("career_tables", []) + source.get("career_totals_tables", [])
+                if view_name == "profile" else
+                source.get("statistics_tables", []) if view_name == "statistics" else
+                source.get("summary_tables", []) if view_name == "matches" else
+                source.get("rival_tables", [])
+            )
+            assert len(view.tables) == len(source_tables)
+            for api_table, source_table in zip(view.tables, source_tables, strict=True):
+                assert len(api_table.rows) == len(source_table.get("records", []))
+                if api_table.rows and source_table.get("records"):
+                    assert api_table.rows[0].cells[0].raw_value == source_table["records"][0]["column_values"][0][0]
+                    assert api_table.rows[0].source_fields.get("season_raw") == source_table["records"][0].get("season_raw")
+        original_matches = compact["views"]["matches"]
+        assert len(projected["matches"].historical_matches) == len(original_matches.get("individual_matches", []))
+        assert len(projected["matches"].summoned_without_participation) == len(original_matches.get("summoned_without_participation", []))
+        assert len(projected["matches"].other_match_records) == len(original_matches.get("other_match_records", []))
+        for source_key, api_key in (
+            ("individual_matches", "historical_matches"),
+            ("summoned_without_participation", "summoned_without_participation"),
+            ("other_match_records", "other_match_records"),
+        ):
+            source_records = original_matches.get(source_key, [])
+            api_records = getattr(projected["matches"], api_key)
+            if source_records:
+                assert api_records[0].source_fields == source_records[0]
+                assert api_records[0].minutes == source_records[0].get("minutes")
+        assert projected["profile"].profile == compact["views"]["profile"]["profile"]
 
     transfer_only_detail = bundle.detail(transfer_only["player_id"])
     assert transfer_only_detail is not None
     assert transfer_only_detail.player.association_status == "transfer_reference_only"
-    assert transfer_only_detail.verified_individual_views == []
+    if transfer_only_detail.player.profile_status == "four_views_verified":
+        assert {view.view for view in transfer_only_detail.verified_individual_views} == {
+            "profile", "statistics", "matches", "rivals"
+        }
+    else:
+        assert transfer_only_detail.verified_individual_views == []
