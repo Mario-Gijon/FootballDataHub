@@ -156,6 +156,12 @@ def _cell_record(cell: Tag, column_index: int, base_url: str) -> dict[str, Any]:
     style = cell.get("style")
     classes = list(cell.get("class", []))
     inline_hidden = bool(style and re.search(r"display\s*:\s*none", style, re.I))
+    marker_labels: list[str] = []
+    if {"colTrofeu", "colComps"}.intersection(classes) or cell.select_one(".punt_comp"):
+        for marker in cell.select("[title], [alt], .punt_comp"):
+            label = str(marker.get("title") or marker.get("alt") or _text(marker)).strip()
+            if label and label not in marker_labels:
+                marker_labels.append(label)
     return {
         "column_index": column_index,
         "tag": cell.name,
@@ -168,6 +174,7 @@ def _cell_record(cell: Tag, column_index: int, base_url: str) -> dict[str, Any]:
         "style_raw": style,
         "hidden_by_inline_style": inline_hidden,
         "responsive_optional": "resp_off" in classes,
+        "marker_labels_raw": marker_labels,
         "colspan": int(cell.get("colspan", 1) or 1),
         "rowspan": int(cell.get("rowspan", 1) or 1),
         "links": _links(cell, base_url),
@@ -286,6 +293,72 @@ def _table_record(
     }
 
 
+def _cells_with_headers(row: dict[str, Any], table: dict[str, Any]) -> list[dict[str, Any]]:
+    """Keep the source's actual leaf and grouped headers beside each data cell."""
+    headers = {
+        int(header["column_index"]): header
+        for header in table.get("column_headers", [])
+        if isinstance(header, dict) and type(header.get("column_index")) is int
+    }
+    result = []
+    for source_cell in row.get("cells", []):
+        if not isinstance(source_cell, dict):
+            continue
+        cell = dict(source_cell)
+        header = headers.get(cell.get("column_index"), {})
+        cell.update({
+            "header_original": header.get("header_original"),
+            "header_title_raw": header.get("header_title_raw"),
+            "group_header_raw": header.get("group_header_raw"),
+            "header_classes_raw": header.get("classes_raw", []),
+            "header_data_colid_raw": header.get("data_colid_raw"),
+            "header_hidden_by_inline_style": header.get("hidden_by_inline_style"),
+        })
+        result.append(cell)
+    return result
+
+
+def _window_p_match_statistics(
+    record: dict[str, Any], fixture_table: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    """Label per-match P values only where the same captured DOM exposes a meaning."""
+    if fixture_table is None:
+        return []
+    headers = {
+        str(header.get("data_colid_raw")): header
+        for header in fixture_table.get("column_headers", [])
+        if isinstance(header, dict) and header.get("data_colid_raw")
+    }
+    metrics = record.get("player_match_metrics_raw")
+    if not isinstance(metrics, dict):
+        return []
+    # These P fields were matched by match_id against the captured #tpartits
+    # headings in the saved base and filtered views. Unmatched P tuple fields
+    # remain in the raw compact record and are deliberately not relabeled here.
+    field_columns = (
+        ("pt", "pt"), ("pc", "pc"), ("ps", "ps"), ("px", "px"),
+        ("pv", "pv"), ("min", "mins"), ("tg1", "tg1"),
+        ("tv", "tv"), ("tg", "gols"), ("genc", "genc"),
+    )
+    result = []
+    for field, colid in field_columns:
+        header = headers.get(colid)
+        if not header:
+            continue
+        label = str(header.get("header_title_raw") or header.get("header_original") or "").strip()
+        if not label:
+            continue
+        value = metrics.get(field)
+        normalized = value if type(value) is int else _integer(str(value)) if isinstance(value, str) else None
+        result.append({
+            "label_raw": label,
+            "source_colid": colid,
+            "raw_value": value,
+            "normalized_integer": normalized,
+        })
+    return result
+
+
 _TABLE_ROLES: dict[str, dict[str, str]] = {
     "profile": {".traject": "career_trajectory"},
     "statistics": {
@@ -360,10 +433,15 @@ def _view_tables(soup: BeautifulSoup, view: str, base_url: str) -> list[dict[str
             continue
         indexed.append((index, table, "additional_sports_table"))
 
-    return [
-        _table_record(table, table_index=index, table_role=role, base_url=base_url)
-        for index, table, role in sorted(indexed, key=lambda item: item[0])
-    ]
+    records = []
+    for index, table, role in sorted(indexed, key=lambda item: item[0]):
+        record = _table_record(table, table_index=index, table_role=role, base_url=base_url)
+        if role == "milestone_matches":
+            heading = table.find_previous_sibling("h4")
+            if isinstance(heading, Tag):
+                record["caption_raw"] = _text(heading)
+        records.append(record)
+    return records
 
 
 def _find_profile_value(soup: BeautifulSoup, label: str) -> dict[str, Any] | None:
@@ -434,7 +512,14 @@ def _profile_data(soup: BeautifulSoup, tables: list[dict[str, Any]], base_url: s
         header_by_index = {item["column_index"]: item for item in headers}
         for row in trajectory_table["rows"]:
             if row["row_role"] == "total":
-                total_rows.append(row)
+                total_rows.append({
+                    **row,
+                    "table_id": trajectory_table.get("table_id"),
+                    "table_role": "career_totals",
+                    "source_table_index": trajectory_table.get("table_index"),
+                    "table_caption_raw": trajectory_table.get("caption_raw"),
+                    "cells": _cells_with_headers(row, trajectory_table),
+                })
                 continue
             values = {cell["column_index"]: cell for cell in row["cells"]}
             season = values.get(0, {}).get("raw_value", "")
@@ -445,6 +530,10 @@ def _profile_data(soup: BeautifulSoup, tables: list[dict[str, Any]], base_url: s
             team_url = team_link.get("url") if team_link else None
             team_season_match = _TEAM_SEASON_ID.search(urlsplit(team_url).path) if team_url else None
             trajectories.append({
+                "table_id": trajectory_table.get("table_id"),
+                "table_role": "career_trajectory",
+                "source_table_index": trajectory_table.get("table_index"),
+                "table_caption_raw": trajectory_table.get("caption_raw"),
                 "season_raw": season,
                 "team_name_raw": team_cell.get("raw_value"),
                 "team_season_url": team_url,
@@ -453,12 +542,16 @@ def _profile_data(soup: BeautifulSoup, tables: list[dict[str, Any]], base_url: s
                 "division_raw": values.get(4, {}).get("raw_value"),
                 "age_raw": values.get(5, {}).get("raw_value"),
                 "age_integer": _integer(values.get(5, {}).get("raw_value")),
+                "team_achievements_raw": values.get(3, {}).get("marker_labels_raw", []),
+                "competition_participations_raw": values.get(25, {}).get("marker_labels_raw", []),
                 "columns": [
                     {
                         "column_index": index,
                         "header_original": header_by_index.get(index, {}).get("header_original"),
                         "header_title_raw": header_by_index.get(index, {}).get("header_title_raw"),
                         "group_header_raw": header_by_index.get(index, {}).get("group_header_raw"),
+                        "classes_raw": header_by_index.get(index, {}).get("classes_raw", []),
+                        "marker_labels_raw": values.get(index, {}).get("marker_labels_raw", []),
                         "raw_value": values.get(index, {}).get("raw_value"),
                         "normalized_integer": values.get(index, {}).get("normalized_integer"),
                         "value_status": values.get(index, {}).get("value_status", "CELL_NOT_PRESENT"),
@@ -884,10 +977,11 @@ def _view_records(
                         "player_id": player_id,
                         "table_id": table.get("table_id"),
                         "table_role": table.get("table_role"),
+                        "table_caption_raw": table.get("caption_raw"),
                         "source_row_index": row.get("row_index"),
                         "row_role": row.get("row_role"),
                         "metric_label_raw": row["cells"][0]["raw_value"] if row["cells"] else None,
-                        "columns": row["cells"],
+                        "columns": _cells_with_headers(row, table),
                         "source_table_index": table.get("table_index"),
                     })
         return {"statistics_rows": stat_rows}
@@ -902,10 +996,12 @@ def _view_records(
                         "player_id": player_id,
                         "summary_dimension": table.get("table_role"),
                         "table_id": table.get("table_id"),
+                        "table_role": table.get("table_role"),
+                        "table_caption_raw": table.get("caption_raw"),
                         "source_row_index": row.get("row_index"),
                         "row_role": row.get("row_role"),
                         "dimension_value_raw": row["cells"][0]["raw_value"] if row["cells"] else None,
-                        "columns": row["cells"],
+                        "columns": _cells_with_headers(row, table),
                         "source_table_index": table.get("table_index"),
                     })
         fixture_table = next(
@@ -934,6 +1030,8 @@ def _view_records(
                 captured_at_utc=captured_at_utc,
                 source_reference=snapshot_source or {},
             )
+            for record in individual_rows:
+                record["match_statistics"] = _window_p_match_statistics(record, fixture_table)
             individual_rows_source = "WINDOW_P" if individual_rows else None
         else:
             individual_rows_source = "TPARTITS" if individual_rows else None
@@ -999,9 +1097,10 @@ def _view_records(
                     "rival_url": href,
                     "source_table_id": table.get("table_id"),
                     "source_table_role": role,
+                    "table_caption_raw": table.get("caption_raw"),
                     "source_row_index": row.get("row_index"),
                     "row_duplicate_of": row.get("duplicate_of_row_index"),
-                    "columns": row["cells"],
+                    "columns": _cells_with_headers(row, table),
                 })
         return {"rival_records": records}
     raise PlayerSnapshotError(f"Vista no soportada: {view}")

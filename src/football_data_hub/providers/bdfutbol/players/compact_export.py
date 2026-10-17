@@ -79,7 +79,8 @@ def _compact_column(column: dict[str, Any]) -> dict[str, Any]:
     for key in (
         "column_index", "group_header_raw", "header_original", "header_title_raw",
         "data_colid_raw", "raw_value", "normalized_integer", "value_status",
-        "hidden_by_inline_style",
+        "hidden_by_inline_style", "classes_raw", "header_classes_raw",
+        "header_hidden_by_inline_style", "header_data_colid_raw", "marker_labels_raw",
     ):
         if key in column:
             compact[key] = column[key]
@@ -151,8 +152,11 @@ def _compact_tabular_tables(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "group_header_raw": column.get("group_header_raw"),
                 "header_original": column.get("header_original"),
                 "header_title_raw": column.get("header_title_raw"),
-                "data_colid_raw": column.get("data_colid_raw"),
-                "hidden_by_inline_style": column.get("hidden_by_inline_style"),
+                "data_colid_raw": column.get("header_data_colid_raw") or column.get("data_colid_raw"),
+                "hidden_by_inline_style": column.get(
+                    "header_hidden_by_inline_style", column.get("hidden_by_inline_style")
+                ),
+                "classes_raw": column.get("header_classes_raw") or column.get("classes_raw"),
             }
             headers.append(header)
             values.append({

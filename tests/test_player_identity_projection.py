@@ -129,18 +129,30 @@ def test_individual_profile_fills_inventory_gaps_without_becoming_nationality() 
     assert inventory == original
 
 
-def test_inventory_value_wins_and_conflict_is_preserved() -> None:
+def test_individual_profile_value_wins_and_conflict_is_preserved() -> None:
     identity = project_player_identity(
         _inventory(display_name="Nombre del inventario"),
         _compact(_profile(display_name_raw="Nombre de ficha")),
         inventory_sha256="c" * 64,
     )
 
-    assert identity.display_name == "Nombre del inventario"
-    assert identity.field_sources["display_name"] == "inventory"
+    assert identity.display_name == "Nombre de ficha"
+    assert identity.field_sources["display_name"] == "individual_profile"
     assert [(item.field, item.inventory_value, item.individual_profile_value) for item in identity.conflicts] == [
         ("display_name", "Nombre del inventario", "Nombre de ficha")
     ]
+    assert identity.conflicts[0].selected_source == "individual_profile"
+
+
+def test_profile_empty_field_falls_back_to_inventory() -> None:
+    identity = project_player_identity(
+        _inventory(display_name="Nombre de inventario", position_name="Centrocampista"),
+        _compact(_profile(position_raw="")),
+        inventory_sha256="c" * 64,
+    )
+
+    assert identity.position_name == "Centrocampista"
+    assert identity.field_sources["position_name"] == "inventory"
 
 
 @pytest.mark.parametrize(
@@ -296,4 +308,3 @@ def test_malformed_transfer_rows_do_not_crash_club_projection() -> None:
 
     assert result.status == "observed"
     assert result.team_id == 49
-

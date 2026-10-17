@@ -946,9 +946,7 @@ describe("dashboard de clasificación", () => {
     fireEvent.click(screen.getByRole("link", { name: "Jugadores" }));
 
     expect(await screen.findByRole("heading", { name: "Jugadores" })).toBeInTheDocument();
-    await screen.findByLabelText("Cobertura del inventario");
-    expect(screen.getByLabelText("Cobertura del inventario")).toHaveTextContent("2");
-    expect(screen.getByText("Referencia de traspaso")).toBeInTheDocument();
+    expect(screen.queryByText(/vistas publicadas|inventario generado|referencia de traspaso|pertenencia observada/i)).not.toBeInTheDocument();
     const search = screen.getByRole("searchbox", { name: "Buscar jugador" });
     fireEvent.change(search, { target: { value: "Nacho" } });
     const playerLink = await screen.findByRole("link", { name: /Nacho Castillo/ });
@@ -958,9 +956,11 @@ describe("dashboard de clasificación", () => {
     fireEvent.click(playerLink);
     expect(window.location.pathname).toBe("/players/28577");
     expect(await screen.findByRole("heading", { name: "Nacho Castillo" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Perfil original de BDFutbol ↗" })).toHaveAttribute("target", "_blank");
-    expect(screen.getByText(/no certifica que siga vigente hoy/)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Datos deportivos" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "BDFutbol ↗" })).toHaveAttribute("target", "_blank");
+    expect(screen.getByRole("link", { name: "Real Jaén · Grupo II" })).toHaveAttribute("href", "/teams/49");
+    expect(screen.getByRole("heading", { name: "Trayectoria y rendimiento" })).toBeInTheDocument();
+    expect(screen.getAllByRole("tab")).toHaveLength(4);
+    expect(document.body.textContent).not.toMatch(/SHA-256|captura|procedencia|inventario|fuente.*discrepa|no certifica|four_views_verified|roster_membership_observed/i);
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/api/v1/players/28577"))).toBe(true);
     expect(fetchMock.mock.calls.every(([url]) => !String(url).includes("bdfutbol.com"))).toBe(true);
   });

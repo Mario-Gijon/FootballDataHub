@@ -67,7 +67,7 @@ def project_player_identity(
 
     for field, inventory_value in inventory_values.items():
         individual_value = individual_values.get(field)
-        value, source = _prefer_inventory_value(
+        value, source = _prefer_individual_value(
             field, inventory_value, individual_value
         )
         fields[field] = value
@@ -79,7 +79,7 @@ def project_player_identity(
                 field=field,
                 inventory_value=_as_display_value(inventory_value),
                 individual_profile_value=_as_display_value(individual_value),
-                selected_source="inventory",
+                selected_source="individual_profile",
             ))
     field_sources["birth_place_raw"] = (
         "individual_profile" if _present(raw_birth_place) else "unavailable"
@@ -442,13 +442,13 @@ def _unique_value(values: set[Any]) -> Any:
     return next(iter(values)) if len(values) == 1 else None
 
 
-def _prefer_inventory_value(
+def _prefer_individual_value(
     field: str, inventory_value: Any, individual_value: Any
 ) -> tuple[Any, str]:
-    if _present(inventory_value):
-        return _normalize_inventory_value(field, inventory_value), "inventory"
     if _present(individual_value):
         return _normalize_individual_value(field, individual_value), "individual_profile"
+    if _present(inventory_value):
+        return _normalize_inventory_value(field, inventory_value), "inventory"
     return None, "unavailable"
 
 

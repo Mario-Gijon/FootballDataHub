@@ -27,6 +27,7 @@ from football_data_hub_api.schemas import (
     PlayerIndexRecordResponse,
     PlayerIndividualViewResponse,
     PlayerMatchMetricResponse,
+    PlayerMatchStatisticResponse,
     PlayerCompactTableResponse,
     PlayerSeasonStatisticResponse,
     PlayerTableCellResponse,
@@ -43,6 +44,27 @@ PLAYER_COMPACT_GENERATION_SCHEMA = "football_data_hub.player_compact_generation.
 PLAYER_COMPACT_POINTER_SCHEMA = "football_data_hub.player_compact_current.v1"
 PLAYER_VIEWS = ("profile", "statistics", "matches", "rivals")
 PLAYER_COMPACT_CACHE_SIZE = 12
+_PLAYER_DATA_COLUMN_LABELS = {
+    "n": "Número",
+    "data": "Fecha",
+    "temp": "Temporada",
+    "tipus": "Competición",
+    "jor": "Jornada",
+    "e1": "Local",
+    "res": "Marcador",
+    "e2": "Visitante",
+    "pt": "Partidos titular",
+    "pc": "Partidos completos",
+    "ps": "Partidos como suplente",
+    "px": "Partidos sustituido",
+    "pinc": "Partidos incompletos",
+    "pv": "Convocado sin jugar",
+    "mins": "Minutos",
+    "tg1": "Tarjetas amarillas",
+    "tv": "Tarjetas rojas",
+    "gols": "Goles",
+    "genc": "Goles encajados",
+}
 
 
 class PlayerDatasetLoadError(ValueError):
@@ -613,19 +635,46 @@ def _source_status_description(value: Any) -> str:
 
 
 def _project_table(table: dict[str, Any]) -> PlayerCompactTableResponse:
+    source_role = table.get("table_role")
     columns_source = table.get("columns")
     columns = []
     if isinstance(columns_source, list):
         for column in columns_source:
             if not isinstance(column, dict):
                 continue
-            label = column.get("header_original") or column.get("header_title_raw")
+            source_header = column.get("header_original")
+            source_title = column.get("header_title_raw")
+            label = source_title if isinstance(source_title, str) and source_title.strip() else source_header
+            classes = column.get("classes_raw")
+            classes = classes if isinstance(classes, list) else []
             if not isinstance(label, str) or not label.strip():
-                label = "Sin encabezado"
+                if "colTrofeu" in classes:
+                    label = "Ascenso o descenso"
+                elif "colComps" in classes:
+                    label = "Otras competiciones"
+                else:
+                    data_colid = column.get("data_colid_raw")
+                    label = _PLAYER_DATA_COLUMN_LABELS.get(data_colid) if isinstance(data_colid, str) else None
+            if not isinstance(label, str) or not label.strip():
+                source_index = column.get("source_index", column.get("column_index"))
+                raise PlayerDatasetLoadError(
+                    "La tabla individual contiene una columna sin significado verificado "
+                    f"(tabla={source_role!r}, índice={source_index!r}); no se publica parcialmente."
+                )
+            source_header_clean = source_header.strip() if isinstance(source_header, str) else ""
+            if source_header_clean == "#":
+                label = "N.º"
+            elif source_header_clean == "Temp" and source_role in {"career_trajectory", "career_totals"}:
+                label = "Temporada"
+            elif source_header_clean == "Tipo" and isinstance(source_role, str) and source_role.startswith("statistics_"):
+                label = "Estadística"
+            group_header = column.get("group_header_raw")
+            if isinstance(group_header, str) and group_header.strip():
+                label = f"{group_header.strip()} · {label.strip()}"
             columns.append(PlayerTableColumnResponse(
                 label=label.strip(),
-                source_header=column.get("header_original") if isinstance(column.get("header_original"), str) else None,
-                title=column.get("header_title_raw") if isinstance(column.get("header_title_raw"), str) else None,
+                source_header=source_header if isinstance(source_header, str) else None,
+                title=source_title if isinstance(source_title, str) else None,
                 hidden_in_source=column.get("hidden_by_inline_style") is True,
                 source_index=column.get("source_index") if type(column.get("source_index")) is int else column.get("column_index") if type(column.get("column_index")) is int else None,
                 group_header=column.get("group_header_raw") if isinstance(column.get("group_header_raw"), str) else None,
@@ -658,7 +707,7 @@ def _project_table(table: dict[str, Any]) -> PlayerCompactTableResponse:
             cells=cells,
             source_fields={key: value for key, value in record.items() if key != "column_values"},
         ))
-    role = table.get("table_role")
+    role = source_role
     if not isinstance(role, str) or not role.strip():
         first_record = next((item for item in table.get("records", []) if isinstance(item, dict)), {})
         role = first_record.get("summary_dimension") or table.get("table_id") or "source_table"
@@ -677,6 +726,30 @@ def _project_historical_match(item: dict[str, Any]) -> dict[str, Any]:
     match_url = _safe_bdfutbol_url(item.get("match_url"))
     if not isinstance(match_id, str):
         match_id = str(match_id or "")
+    metrics = item.get("player_match_metrics_raw")
+    metrics = metrics if isinstance(metrics, dict) else {}
+    appearance = item.get("player_appearance_status")
+    summoned = item.get("player_summoned_status")
+    if summoned == "SUMMONED_WITHOUT_APPEARANCE_PER_SOURCE_FLAG":
+        participation = "Convocado sin jugar"
+    elif appearance == "APPEARED_PER_SOURCE_FLAGS" and metrics.get("pt") == 1:
+        participation = "Titular"
+    elif appearance == "APPEARED_PER_SOURCE_FLAGS" and metrics.get("ps") == 1:
+        participation = "Entró desde el banquillo"
+    elif appearance == "APPEARED_PER_SOURCE_FLAGS":
+        participation = "Participó"
+    else:
+        participation = "Sin participación registrada"
+    match_statistics = []
+    for statistic in item.get("match_statistics", []):
+        if not isinstance(statistic, dict) or not isinstance(statistic.get("label_raw"), str):
+            continue
+        raw_value = statistic.get("raw_value")
+        match_statistics.append(PlayerMatchStatisticResponse(
+            label=statistic["label_raw"],
+            raw_value=raw_value if raw_value is None or isinstance(raw_value, (str, int, float)) else str(raw_value),
+            normalized_integer=statistic.get("normalized_integer") if type(statistic.get("normalized_integer")) is int else None,
+        ))
     return {
         "match_id": str(match_id) if match_id is not None else None,
         "match_url": match_url,
@@ -688,9 +761,13 @@ def _project_historical_match(item: dict[str, Any]) -> dict[str, Any]:
         "player_team": item.get("player_team_raw"),
         "opponent_team": item.get("opponent_team_raw"),
         "side": item.get("player_team_side_raw"),
+        "home_goals": item.get("home_goals") if type(item.get("home_goals")) is int else None,
+        "away_goals": item.get("away_goals") if type(item.get("away_goals")) is int else None,
         "minutes": item.get("minutes") if type(item.get("minutes")) is int else None,
         "match_state": item.get("match_state"),
-        "appearance_status": item.get("player_appearance_status"),
+        "appearance_status": appearance,
+        "participation": participation,
+        "match_statistics": match_statistics,
         "source_fields": item,
     }
 

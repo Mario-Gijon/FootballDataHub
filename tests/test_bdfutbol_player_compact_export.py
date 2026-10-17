@@ -124,6 +124,7 @@ def test_generation_consolidates_verified_views_across_runs_atomically(tmp_path:
         inventory_path=inventory,
         capture_root=capture_root,
         output_root=tmp_path / "compact",
+        max_workers=1,
     )
 
     player_path = Path(result["generation_dir"]) / "players/12345.json.gz"
@@ -168,6 +169,7 @@ def test_compact_generation_keeps_player_partial_when_a_base_view_is_missing(tmp
         inventory_path=inventory,
         capture_root=capture_root,
         output_root=tmp_path / "compact",
+        max_workers=1,
     )
     player_path = Path(result["generation_dir"]) / "players/12345.json.gz"
     document = json.loads(gzip.decompress(player_path.read_bytes()))

@@ -120,6 +120,131 @@ def test_match_summaries_are_not_counted_as_individual_fixtures() -> None:
     assert page.detail_coverage == "AGGREGATE_TABLES_ONLY_HEADER_ONLY_NO_FIXTURES"
 
 
+def test_source_column_headers_are_attached_to_statistics_cells() -> None:
+    html, url = _fixture("statistics")
+    page = parse_player_html(html, _metadata("statistics", 12345, html, url), expected_player_id=12345, expected_names=("Test Player",))
+
+    row = page.statistics_rows[0]
+    assert row["columns"][0]["header_original"] == "Métrica"
+    assert row["columns"][1]["header_original"] == "2026-27"
+    assert row["columns"][1]["column_index"] == 1
+
+
+def test_milestone_table_keeps_its_real_preceding_heading() -> None:
+    html, url = _fixture("statistics")
+    milestone = (
+        '<div class="milestones"><h4 class="pl-3">Participaciones</h4>'
+        '<table class="taula_estil taula_estil-compacte stats taula-fites-jugador">'
+        "<thead><tr><th>#</th><th>Temporada</th><th>Fecha</th><th>Partido</th></tr></thead>"
+        "<tbody><tr><td>1</td><td>2025-26</td><td>10/10/2025</td><td>Real Jaén - Rival</td></tr></tbody>"
+        "</table></div>"
+    )
+    html = html.replace("</body>", milestone + "</body>")
+
+    page = parse_player_html(
+        html, _metadata("statistics", 12345, html, url),
+        expected_player_id=12345, expected_names=("Test Player",),
+    )
+
+    milestone_table = next(table for table in page.tables if table["table_role"] == "milestone_matches")
+    assert milestone_table["caption_raw"] == "Participaciones"
+    milestone_row = next(row for row in page.statistics_rows if row["table_role"] == "milestone_matches")
+    assert milestone_row["table_caption_raw"] == "Participaciones"
+
+
+def test_rival_table_preserves_group_headers_for_player_and_opponent_metrics() -> None:
+    player_columns = "".join(
+        f"<th>{label}</th>" for label in ("#", "Nombre", "POS", "PJ")
+    )
+    opponent_columns = "".join(
+        f"<th title='{title}'>{short}</th>"
+        for short, title in (("PJ", "Partidos"), ("G", "Goles"), ("TA", "Tarjetas amarillas"), ("TR", "Tarjetas rojas"))
+    )
+    row = "<td>1</td><td><a href='/es/j/j987.html'>Rival</a></td><td>Defensa</td><td>2</td><td>2</td><td>1</td><td>0</td><td>1</td>"
+    html = (
+        "<html><head><title>Test Player | BDFutbol</title></head><body><h1>Test Player</h1>"
+        "<table id='t5'><thead><tr><th colspan='4'>JUGADOR</th><th colspan='4'>RIVAL</th></tr>"
+        f"<tr>{player_columns}{opponent_columns}</tr></thead><tbody><tr>{row}</tr></tbody></table>"
+        + _table("t6") + _table("t7") + "</body></html>"
+    )
+    url = "https://www.bdfutbol.com/es/p/jr12345.html"
+    page = parse_player_html(html, _metadata("rivals", 12345, html, url), expected_player_id=12345, expected_names=("Test Player",))
+
+    columns = page.rival_records[0]["columns"]
+    assert columns[3]["header_original"] == "PJ"
+    assert columns[3]["group_header_raw"] == "JUGADOR"
+    assert columns[4]["header_title_raw"] == "Partidos"
+    assert columns[4]["group_header_raw"] == "RIVAL"
+
+
+def test_profile_career_rows_keep_verified_achievement_and_competition_markers() -> None:
+    headers = ["Temp", "Equipo", "País", "", "Div", "Edad"] + ["PJ"] * 20
+    headers[3] = "__achievement__"
+    headers[25] = "__competitions__"
+    head_cells = []
+    for index, value in enumerate(headers):
+        if index == 3:
+            head_cells.append("<th class='colTrofeu'></th>")
+        elif index == 25:
+            head_cells.append("<th class='colComps'></th>")
+        else:
+            head_cells.append(f"<th>{value}</th>")
+    values = ["2025-26", "Real Jaén", "España", "", "1ªRf", "25"] + ["0"] * 20
+    cells = []
+    for index, value in enumerate(values):
+        if index == 1:
+            cells.append("<td><a href='/es/t/t2026-271g2.html'>Real Jaén</a></td>")
+        elif index == 3:
+            cells.append("<td class='colTrofeu'><img src='/up.png' title='Ascenso'></td>")
+        elif index == 25:
+            cells.append("<td class='colComps'><span class='punt_comp' title='Copa del Rey'>Copa</span></td>")
+        else:
+            cells.append(f"<td>{value}</td>")
+    html = (
+        "<html><head><title>Test Player | BDFutbol</title></head><body><h1>Test Player</h1>"
+        f"<table class='taula_estil traject'><thead><tr>{''.join(head_cells)}</tr></thead>"
+        f"<tbody><tr>{''.join(cells)}</tr></tbody></table></body></html>"
+    )
+    url = "https://www.bdfutbol.com/es/j/j12345.html"
+    page = parse_player_html(html, _metadata("profile", 12345, html, url), expected_player_id=12345, expected_names=("Test Player",))
+
+    career = page.profile["career_rows"][0]
+    assert career["team_achievements_raw"] == ["Ascenso"]
+    assert career["competition_participations_raw"] == ["Copa del Rey"]
+    assert "colTrofeu" in career["columns"][3]["classes_raw"]
+
+
+def test_window_p_match_values_are_labeled_from_captured_fixture_headers() -> None:
+    html, url = _fixture("matches")
+    headers = [
+        ("#", "Número", "n"), ("Fecha", "Fecha", "data"), ("Temporada", "Temporada", "temp"),
+        ("Competición", "Tipo", "tipus"), ("Tipo", "Jornada", "jor"), ("Local", "Local", "e1"),
+        ("", "Marcador", "res"), ("Visitante", "Visitante", "e2"),
+        ("PT", "Partidos titular", "pt"), ("PC", "Partidos completos", "pc"),
+        ("PS", "Partidos suplente", "ps"), ("PX", "Partidos sustituido", "px"),
+        ("PI", "Partidos incompletos", "pinc"), ("C", "Convocado (sin jugar)", "pv"),
+        ("Min", "Minutos", "mins"), ("TA", "Tarjetas amarillas 1", "tg1"),
+        ("TR", "Tarjetas rojas", "tv"), ("G", "Goles", "gols"), ("GE", "Goles encajados", "genc"),
+    ]
+    table = "<table id='tpartits'><thead><tr>" + "".join(
+        f"<th title='{title}' data-colid='{colid}'>{label}</th>" for label, title, colid in headers
+    ) + "</tr></thead><tbody></tbody></table>"
+    start = html.index("<table id=\"tpartits\"")
+    end = html.index("</table>", start) + len("</table>")
+    html = html[:start] + table + html[end:]
+    values = [2026, "1rf", "", "10/10/2026", 1, "Jaén", 3, 3, 272582, 1, 1, 0, 90, 0, 0, 0, 0, "", "Villarreal B", 49, 123, 0, 0, 0, "Jornada 6", "6", "2026-27"]
+    html = html.replace("</body>", f"<script>window.P={json.dumps([values])};</script></body>")
+    metadata = _metadata("matches", 12345, html, url)
+    page = parse_player_html(html, metadata, expected_player_id=12345, expected_names=("Test Player",))
+
+    stats = page.individual_matches[0]["match_statistics"]
+    by_label = {item["label_raw"]: item for item in stats}
+    assert by_label["Partidos titular"]["normalized_integer"] == 1
+    assert by_label["Minutos"]["normalized_integer"] == 90
+    assert by_label["Tarjetas amarillas 1"]["normalized_integer"] == 0
+    assert by_label["Goles"]["raw_value"] == ""
+
+
 def test_redirect_or_wrong_player_identity_is_rejected() -> None:
     html, url = _fixture("profile")
     metadata = _metadata("profile", 12345, html, url)

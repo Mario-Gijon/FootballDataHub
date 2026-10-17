@@ -700,7 +700,7 @@ class PlayerIdentityConflictResponse(ApiModel):
     field: str = Field(min_length=1)
     inventory_value: str
     individual_profile_value: str
-    selected_source: Literal["inventory"]
+    selected_source: Literal["individual_profile"]
 
 
 class PlayerIdentityResponse(ApiModel):
@@ -826,6 +826,12 @@ class PlayerTableRowResponse(ApiModel):
     source_fields: dict[str, Any] = Field(default_factory=dict)
 
 
+class PlayerMatchStatisticResponse(ApiModel):
+    label: str = Field(min_length=1)
+    raw_value: str | StrictInt | StrictFloat | None
+    normalized_integer: OptionalInt
+
+
 class PlayerCompactTableResponse(ApiModel):
     table_role: str
     source_table_index: StrictInt | None
@@ -846,9 +852,13 @@ class PlayerHistoricalMatchResponse(ApiModel):
     player_team: str | None
     opponent_team: str | None
     side: str | None
+    home_goals: OptionalInt = None
+    away_goals: OptionalInt = None
     minutes: StrictInt | None
     match_state: str | None
     appearance_status: str | None
+    participation: str = "Sin participación registrada"
+    match_statistics: list[PlayerMatchStatisticResponse] = Field(default_factory=list)
     source_fields: dict[str, Any] = Field(default_factory=dict)
 
 
