@@ -120,36 +120,116 @@ def _plan_ids(plan):
 
 
 def _add_review(ledger, plan, *, decision="scope_to_original_pilot"):
+    """Seed an explicitly synthetic review record for state-machine unit tests."""
+
+    import football_data_hub.providers.bdfutbol.match_details.campaign as module
+
     reference = plan["campaign"]["legacy_pilot_stop"]
     diagnostic = reference["diagnostic"]
-    diagnostic_hash = _sha(_canonical(diagnostic))
-    evidence = _canonical({"synthetic_fixture": "offline semantic evidence"})
-    return ledger.append_legacy_stop_review(
-        plan,
-        reviewer="offline synthetic reviewer",
-        decision=decision,
-        checkpoint_sha256=reference["checkpoint_sha256"],
-        original_attempt_id=diagnostic["navigation_attempt_id"],
-        original_diagnostic_sha256=diagnostic_hash,
-        semantic_evidence_reference="fixture://synthetic-offline-semantic-evidence",
-        semantic_evidence_sha256=_sha(evidence),
-        semantic_evidence_bytes=evidence,
-        confirmation=HUMAN_REVIEW_CONFIRMATION,
-        reviewed_at_utc="2026-10-17T10:00:00Z",
-    )
+    spec = module._campaign_spec(plan)
+    campaign_dir = ledger.initialize(plan)
+    evidence = {
+        "evidence_schema": "football_data_hub.match_detail_legacy_stop_evidence.v1",
+        "inventory_id": spec["source"]["inventory_id"],
+        "generation_id": spec["source"]["generation_id"],
+        "generation_manifest_sha256": spec["source"]["generation_manifest_sha256"],
+        "source_match_id": "272582",
+        "internal_id": "pf-2026-27-group-ii-bdfutbol-272582",
+        "original_attempt_id": diagnostic["navigation_attempt_id"],
+        "checkpoint_sha256": reference["checkpoint_sha256"],
+        "checkpoint_revision": reference["checkpoint_revision"],
+        "diagnostic_sha256": _sha(_canonical(diagnostic)),
+        # Synthetically shaped like the durable artifact reference; no real
+        # artifact is read or modified by these state-machine tests.
+        "artifact_id": "20000101T000000.000000Z-00000000",
+        "artifact_relative_path": (
+            f"diagnostics/{spec['source']['inventory_id']}/"
+            "20000101T000000.000000Z-00000000"
+        ),
+        "artifact_manifest_sha256": "c" * 64,
+        "source_html_sha256": "d" * 64,
+        "parser_version": "synthetic-test-only",
+        "semantic_valid": True,
+        "promotion_eligible": False,
+    }
+    payload = {
+        "schema_version": module.CAMPAIGN_REVIEW_SCHEMA,
+        "campaign_id": spec["campaign_id"],
+        "legacy_stop_reference": spec["legacy_stop_review_reference"],
+        "decision": decision,
+        "reviewer": "offline synthetic reviewer",
+        "reviewed_at_utc": "2026-10-17T10:00:00Z",
+        "human_confirmation": HUMAN_REVIEW_CONFIRMATION,
+        "evidence_verification": evidence,
+        "authorizes_any_navigation": False,
+    }
+    review_id = "legacy-stop-review-" + _sha(_canonical(payload))[:16]
+    review = {**payload, "review_id": review_id}
+    review_raw = _canonical(review)
+    manifest = {
+        "schema_version": module.CAMPAIGN_REVIEW_MANIFEST_SCHEMA,
+        "review_id": review_id,
+        "review_sha256": _sha(review_raw),
+        "campaign_id": spec["campaign_id"],
+    }
+    target = campaign_dir / "reviews/legacy-stop" / review_id
+    if target.exists():
+        raise MatchCampaignAuthorizationError("Ya existe una revisión histórica")
+    target.mkdir(parents=True)
+    (target / "review.json").write_bytes(review_raw)
+    (target / "manifest.json").write_bytes(_canonical(manifest))
+    return review_id
 
 
 def _authorize(ledger, plan, review_id):
+    import football_data_hub.providers.bdfutbol.match_details.campaign as module
+
     internal_id, url = _plan_ids(plan)
-    return ledger.authorize_candidate(
-        plan,
-        internal_id=internal_id,
-        reviewer="offline synthetic authorizer",
-        review_id=review_id,
-        confirmed_url=url,
-        confirmation=HUMAN_AUTHORIZATION_CONFIRMATION,
-        authorized_at_utc="2026-10-17T10:01:00Z",
-    )
+    spec = module._campaign_spec(plan)
+    campaign_dir = ledger.initialize(plan)
+    preflight = ledger.preflight(plan)
+    if preflight["blocked_reasons"]:
+        raise MatchCampaignAuthorizationError(
+            f"La campaña está bloqueada: {preflight['blocked_reasons']}"
+        )
+    reviews = ledger._read_reviews(campaign_dir, spec)
+    matching = [item for item in reviews if item["review_id"] == review_id]
+    if len(matching) != 1 or matching[0]["decision"] != "scope_to_original_pilot":
+        raise MatchCampaignAuthorizationError("Falta revisión histórica de prueba")
+    if ledger._read_events(
+        ledger._candidate_dir(campaign_dir, internal_id), spec["campaign_id"], internal_id
+    ):
+        raise MatchCampaignAuthorizationError("El candidato ya se consumió")
+    authorization_id = "match-detail-authorization-synthetic"
+    with ledger.exclusive_lock():
+        ledger._append_event_locked(
+            campaign_dir,
+            spec,
+            internal_id,
+            {
+                "event_type": "AUTHORIZED",
+                "authorization": {
+                    "authorization_id": authorization_id,
+                    "campaign_id": spec["campaign_id"],
+                    "inventory_id": spec["source"]["inventory_id"],
+                    "inventory_sha256": spec["source"]["inventory_sha256"],
+                    "inventory_manifest_sha256": spec["source"]["inventory_manifest_sha256"],
+                    "source_generation_id": spec["source"]["generation_id"],
+                    "source_generation_manifest_sha256": spec["source"]["generation_manifest_sha256"],
+                    "internal_id": internal_id,
+                    "source_match_id": "272525",
+                    "source_match_url": url,
+                    "review_id": review_id,
+                    "reviewer": "offline synthetic authorizer",
+                    "authorized_at_utc": "2026-10-17T10:01:00Z",
+                    "maximum_navigations": 1,
+                    "automatic_retries": 0,
+                    "capture_promotion_enabled": False,
+                    "human_confirmation": HUMAN_AUTHORIZATION_CONFIRMATION,
+                },
+            },
+        )
+    return authorization_id
 
 
 def _response(
@@ -215,21 +295,20 @@ def test_plan_tampering_or_noncanonical_selection_is_rejected(tmp_path):
         ledger.preflight(plan)
 
 
-def test_historical_review_requires_exact_checkpoint_attempt_diagnostic_and_semantic_hash(tmp_path):
+def test_historical_review_api_does_not_accept_caller_supplied_bytes_and_hashes(tmp_path):
     plan = _plan()
     ledger = MatchDetailCampaignLedger(tmp_path / "campaigns")
-    reference = plan["campaign"]["legacy_pilot_stop"]
-    with pytest.raises(MatchCampaignAuthorizationError):
+    with pytest.raises(TypeError):
         ledger.append_legacy_stop_review(
             plan,
             reviewer="reviewer",
             decision="scope_to_original_pilot",
             checkpoint_sha256="0" * 64,
-            original_attempt_id=reference["diagnostic"]["navigation_attempt_id"],
-            original_diagnostic_sha256=_sha(_canonical(reference["diagnostic"])),
+            original_attempt_id="caller-supplied",
+            original_diagnostic_sha256="1" * 64,
             semantic_evidence_reference="fixture://evidence",
             semantic_evidence_sha256="c" * 64,
-            semantic_evidence_bytes=b"synthetic evidence",
+            semantic_evidence_bytes=b"caller supplied evidence",
             confirmation=HUMAN_REVIEW_CONFIRMATION,
         )
     assert not (tmp_path / "campaigns").exists()

@@ -64,4 +64,5 @@ def test_latest_campaign_preflight_is_read_only_and_keeps_272525_unapproved(monk
     assert result["candidates"][0]["state"] == "NOT_AUTHORIZED"
     assert result["navigation_enabled"] is False
     assert result["real_access_adapter_enabled"] is False
+    assert result["real_access_adapter_implemented"] is True
     assert result["capture_promotion_enabled"] is False

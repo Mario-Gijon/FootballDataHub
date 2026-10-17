@@ -50,6 +50,7 @@ def main(argv: list[str] | None = None) -> int:
                     "browser_started": False,
                     "navigation_enabled": False,
                     "real_access_adapter_enabled": False,
+                    "real_access_adapter_implemented": True,
                     "capture_promotion_enabled": False,
                     "error": f"{type(exc).__name__}: {exc}",
                 },

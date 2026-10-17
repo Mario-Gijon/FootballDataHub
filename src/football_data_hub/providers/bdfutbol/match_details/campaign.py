@@ -1,9 +1,8 @@
 """Fail-closed, offline campaign ledger for explicitly authorized match samples.
 
-This module intentionally has no browser, HTTP, SeleniumBase, Playwright, or
-production access-adapter imports. Its runner accepts only the local simulation
-adapter defined here; enabling real navigation belongs to a separately reviewed
-future change.
+This ledger module intentionally has no browser, HTTP, SeleniumBase, Playwright,
+or production access-adapter imports. The isolated D1 real executor lives in a
+separate module and uses these persistence primitives without promoting captures.
 """
 
 from __future__ import annotations
@@ -19,7 +18,7 @@ import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterator, Literal
+from typing import Any, Iterator, Literal, Protocol
 
 from .discovery import discover_html_structure
 
@@ -56,6 +55,17 @@ class MatchCampaignIntegrityError(MatchCampaignError):
 
 class MatchCampaignAuthorizationError(MatchCampaignError):
     """A requested transition lacks the required explicit authorization."""
+
+
+class CampaignDiscoveryResponse(Protocol):
+    final_url: str | None
+    http_status: int | None
+    html: bytes
+    page_title: str
+    access_classification: str
+    challenge_detected: bool
+    denial_detected: bool
+    captured_at_utc: str | None
 
 
 def _canonical(value: Any) -> bytes:
@@ -546,14 +556,46 @@ class MatchDetailCampaignLedger:
                 or review.get("legacy_stop_reference") != spec["legacy_stop_review_reference"]
                 or review.get("human_confirmation") != HUMAN_REVIEW_CONFIRMATION
                 or review.get("decision") not in {"scope_to_original_pilot", "block_entire_campaign"}
-                or not isinstance(review.get("semantic_evidence_reference"), str)
-                or not review["semantic_evidence_reference"].strip()
-                or not _is_sha(review.get("semantic_evidence_sha256"))
-                or review.get("semantic_evidence_bytes_verified") is not True
+                or not isinstance(review.get("evidence_verification"), dict)
                 or not isinstance(review.get("reviewer"), str)
                 or not review["reviewer"].strip()
             ):
                 raise MatchCampaignIntegrityError("Contenido de revisión histórica inválido")
+            evidence = review["evidence_verification"]
+            legacy = spec["legacy_stop_review_reference"]
+            if (
+                evidence.get("evidence_schema")
+                != "football_data_hub.match_detail_legacy_stop_evidence.v1"
+                or evidence.get("inventory_id") != spec["source"]["inventory_id"]
+                or evidence.get("source_match_id") != "272582"
+                or evidence.get("internal_id")
+                != "pf-2026-27-group-ii-bdfutbol-272582"
+                or evidence.get("generation_id") != spec["source"]["generation_id"]
+                or evidence.get("generation_manifest_sha256")
+                != spec["source"]["generation_manifest_sha256"]
+                or evidence.get("original_attempt_id")
+                != legacy["original_attempt_id"]
+                or evidence.get("checkpoint_sha256") != legacy["checkpoint_sha256"]
+                or evidence.get("checkpoint_revision") != legacy["checkpoint_revision"]
+                or evidence.get("diagnostic_sha256")
+                != legacy["original_diagnostic_sha256"]
+                or not _is_sha(evidence.get("artifact_manifest_sha256"))
+                or not _is_sha(evidence.get("source_html_sha256"))
+                or not isinstance(evidence.get("artifact_id"), str)
+                or not re.fullmatch(
+                    r"[0-9]{8}T[0-9]{6}\.[0-9]{6}Z-[0-9a-f]{8}",
+                    evidence["artifact_id"],
+                )
+                or evidence.get("artifact_relative_path")
+                != f"diagnostics/{spec['source']['inventory_id']}/{evidence.get('artifact_id')}"
+                or not isinstance(evidence.get("parser_version"), str)
+                or not evidence["parser_version"].strip()
+                or evidence.get("semantic_valid") is not True
+                or evidence.get("promotion_eligible") is not False
+            ):
+                raise MatchCampaignIntegrityError(
+                    "La revisión no contiene evidencia semántica histórica verificada"
+                )
             actual_files = {
                 item.relative_to(review_dir).as_posix()
                 for item in review_dir.rglob("*")
@@ -570,16 +612,14 @@ class MatchDetailCampaignLedger:
         *,
         reviewer: str,
         decision: Literal["scope_to_original_pilot", "block_entire_campaign"],
-        checkpoint_sha256: str,
-        original_attempt_id: str,
-        original_diagnostic_sha256: str,
-        semantic_evidence_reference: str,
-        semantic_evidence_sha256: str,
-        semantic_evidence_bytes: bytes,
+        data_root: Path,
+        generation_root: Path,
+        inventory_dir: Path,
+        store_root: Path,
         confirmation: str,
         reviewed_at_utc: str | None = None,
     ) -> str:
-        """Append a future human decision; this task itself creates none."""
+        """Append a human decision only after re-verifying the historical files."""
 
         spec = _campaign_spec(plan)
         if confirmation != HUMAN_REVIEW_CONFIRMATION:
@@ -587,56 +627,64 @@ class MatchDetailCampaignLedger:
         if decision not in {"scope_to_original_pilot", "block_entire_campaign"}:
             raise MatchCampaignAuthorizationError("Decisión de alcance histórica desconocida")
         reference = spec["legacy_stop_review_reference"]
-        if (
-            reviewer.strip() == ""
-            or checkpoint_sha256 != reference["checkpoint_sha256"]
-            or original_attempt_id != reference["original_attempt_id"]
-            or original_diagnostic_sha256 != reference["original_diagnostic_sha256"]
-            or not isinstance(semantic_evidence_reference, str)
-            or not semantic_evidence_reference.strip()
-            or not _is_sha(semantic_evidence_sha256)
-            or not isinstance(semantic_evidence_bytes, bytes)
-            or _sha(semantic_evidence_bytes) != semantic_evidence_sha256
-        ):
-            raise MatchCampaignAuthorizationError("La revisión no enlaza la evidencia exacta requerida")
+        if reviewer.strip() == "":
+            raise MatchCampaignAuthorizationError("Debe identificarse la persona revisora")
+        from .historical_review import verify_historical_stop_evidence
+        from .store import MatchDetailStore
+
+        # Do not even initialize a campaign lock/root for a bad or stale proof.
+        # Recheck under the ordered locks immediately before appending the record.
+        verify_historical_stop_evidence(
+            plan,
+            data_root=data_root,
+            generation_root=generation_root,
+            inventory_dir=inventory_dir,
+            store_root=store_root,
+        )
         with self.exclusive_lock():
-            campaign_dir = self._ensure_initialized_locked(spec)
-            self._preflight_locked(spec, campaign_dir)
-            reviews = self._read_reviews(campaign_dir, spec)
-            if reviews:
-                raise MatchCampaignAuthorizationError(
-                    "Ya existe una revisión histórica; no se sustituye ni se resuelve automáticamente"
+            with MatchDetailStore(store_root).exclusive_lock():
+                evidence = verify_historical_stop_evidence(
+                    plan,
+                    data_root=data_root,
+                    generation_root=generation_root,
+                    inventory_dir=inventory_dir,
+                    store_root=store_root,
                 )
-            review_payload = {
-                "schema_version": CAMPAIGN_REVIEW_SCHEMA,
-                "campaign_id": spec["campaign_id"],
-                "legacy_stop_reference": reference,
-                "decision": decision,
-                "reviewer": reviewer.strip(),
-                "reviewed_at_utc": reviewed_at_utc or _now(),
-                "human_confirmation": confirmation,
-                "semantic_evidence_reference": semantic_evidence_reference,
-                "semantic_evidence_sha256": semantic_evidence_sha256,
-                "semantic_evidence_bytes_verified": True,
-                "authorizes_any_navigation": False,
-            }
-            review_id = "legacy-stop-review-" + _sha(_canonical(review_payload))[:16]
-            review = {**review_payload, "review_id": review_id}
-            review_raw = _canonical(review)
-            manifest = {
-                "schema_version": CAMPAIGN_REVIEW_MANIFEST_SCHEMA,
-                "review_id": review_id,
-                "review_sha256": _sha(review_raw),
-                "campaign_id": spec["campaign_id"],
-            }
-            reviews_root = campaign_dir / "reviews" / "legacy-stop"
-            _mkdirs_durable(reviews_root)
-            _atomic_directory(
-                reviews_root,
-                review_id,
-                {"review.json": review_raw, "manifest.json": _canonical(manifest)},
-            )
-            return review_id
+                campaign_dir = self._ensure_initialized_locked(spec)
+                self._preflight_locked(spec, campaign_dir)
+                reviews = self._read_reviews(campaign_dir, spec)
+                if reviews:
+                    raise MatchCampaignAuthorizationError(
+                        "Ya existe una revisión histórica; no se sustituye ni se resuelve automáticamente"
+                    )
+                review_payload = {
+                    "schema_version": CAMPAIGN_REVIEW_SCHEMA,
+                    "campaign_id": spec["campaign_id"],
+                    "legacy_stop_reference": reference,
+                    "decision": decision,
+                    "reviewer": reviewer.strip(),
+                    "reviewed_at_utc": reviewed_at_utc or _now(),
+                    "human_confirmation": confirmation,
+                    "evidence_verification": evidence,
+                    "authorizes_any_navigation": False,
+                }
+                review_id = "legacy-stop-review-" + _sha(_canonical(review_payload))[:16]
+                review = {**review_payload, "review_id": review_id}
+                review_raw = _canonical(review)
+                manifest = {
+                    "schema_version": CAMPAIGN_REVIEW_MANIFEST_SCHEMA,
+                    "review_id": review_id,
+                    "review_sha256": _sha(review_raw),
+                    "campaign_id": spec["campaign_id"],
+                }
+                reviews_root = campaign_dir / "reviews" / "legacy-stop"
+                _mkdirs_durable(reviews_root)
+                _atomic_directory(
+                    reviews_root,
+                    review_id,
+                    {"review.json": review_raw, "manifest.json": _canonical(manifest)},
+                )
+                return review_id
 
     def authorize_candidate(
         self,
@@ -646,6 +694,10 @@ class MatchDetailCampaignLedger:
         reviewer: str,
         review_id: str,
         confirmed_url: str,
+        data_root: Path,
+        generation_root: Path,
+        inventory_dir: Path,
+        store_root: Path,
         confirmation: str,
         authorized_at_utc: str | None = None,
     ) -> str:
@@ -660,56 +712,71 @@ class MatchDetailCampaignLedger:
         if not reviewer.strip():
             raise MatchCampaignAuthorizationError("Debe identificarse la persona autorizante")
         with self.exclusive_lock():
-            campaign_dir = self._ensure_initialized_locked(spec)
-            reviews = self._read_reviews(campaign_dir, spec)
-            matching = [review for review in reviews if review["review_id"] == review_id]
-            if len(matching) != 1 or matching[0]["decision"] != "scope_to_original_pilot":
-                raise MatchCampaignAuthorizationError(
-                    "No existe revisión humana válida que acote la parada al piloto original"
+            from .historical_review import verify_historical_stop_evidence
+            from .store import MatchDetailStore
+
+            with MatchDetailStore(store_root).exclusive_lock():
+                evidence = verify_historical_stop_evidence(
+                    plan,
+                    data_root=data_root,
+                    generation_root=generation_root,
+                    inventory_dir=inventory_dir,
+                    store_root=store_root,
                 )
-            preflight = self._preflight_locked(spec, campaign_dir)
-            if preflight["blocked_reasons"]:
-                raise MatchCampaignAuthorizationError(
-                    f"La campaña está bloqueada: {preflight['blocked_reasons']}"
-                )
-            candidate_dir = self._candidate_dir(campaign_dir, internal_id)
-            events = self._read_events(candidate_dir, spec["campaign_id"], internal_id)
-            if events:
-                raise MatchCampaignAuthorizationError(
-                    "El candidato ya tiene autorización o intento; no se emite otra"
-                )
-            authorization_id = "match-detail-authorization-" + uuid.uuid4().hex
-            payload = {
-                "event_type": "AUTHORIZED",
-                "authorization": {
-                    "authorization_id": authorization_id,
-                    "campaign_id": spec["campaign_id"],
-                    "inventory_id": spec["source"]["inventory_id"],
-                    "inventory_sha256": spec["source"]["inventory_sha256"],
-                    "inventory_manifest_sha256": spec["source"]["inventory_manifest_sha256"],
-                    "source_generation_id": spec["source"]["generation_id"],
-                    "source_generation_manifest_sha256": spec["source"]["generation_manifest_sha256"],
-                    "internal_id": internal_id,
-                    "source_match_id": candidate["source_match_id"],
-                    "source_match_url": candidate["source_match_url"],
-                    "review_id": review_id,
-                    "reviewer": reviewer.strip(),
-                    "authorized_at_utc": authorized_at_utc or _now(),
-                    "maximum_navigations": 1,
-                    "automatic_retries": 0,
-                    "capture_promotion_enabled": False,
-                    "human_confirmation": confirmation,
-                },
-            }
-            self._append_event_locked(campaign_dir, spec, internal_id, payload)
-            return authorization_id
+                campaign_dir = self._ensure_initialized_locked(spec)
+                reviews = self._read_reviews(campaign_dir, spec)
+                matching = [review for review in reviews if review["review_id"] == review_id]
+                if len(matching) != 1 or matching[0]["decision"] != "scope_to_original_pilot":
+                    raise MatchCampaignAuthorizationError(
+                        "No existe revisión humana válida que acote la parada al piloto original"
+                    )
+                if matching[0].get("evidence_verification") != evidence:
+                    raise MatchCampaignAuthorizationError(
+                        "La evidencia histórica cambió desde la revisión; requiere revisión manual nueva"
+                    )
+                preflight = self._preflight_locked(spec, campaign_dir)
+                if preflight["blocked_reasons"]:
+                    raise MatchCampaignAuthorizationError(
+                        f"La campaña está bloqueada: {preflight['blocked_reasons']}"
+                    )
+                candidate_dir = self._candidate_dir(campaign_dir, internal_id)
+                events = self._read_events(candidate_dir, spec["campaign_id"], internal_id)
+                if events:
+                    raise MatchCampaignAuthorizationError(
+                        "El candidato ya tiene autorización o intento; no se emite otra"
+                    )
+                authorization_id = "match-detail-authorization-" + uuid.uuid4().hex
+                payload = {
+                    "event_type": "AUTHORIZED",
+                    "authorization": {
+                        "authorization_id": authorization_id,
+                        "campaign_id": spec["campaign_id"],
+                        "inventory_id": spec["source"]["inventory_id"],
+                        "inventory_sha256": spec["source"]["inventory_sha256"],
+                        "inventory_manifest_sha256": spec["source"]["inventory_manifest_sha256"],
+                        "source_generation_id": spec["source"]["generation_id"],
+                        "source_generation_manifest_sha256": spec["source"]["generation_manifest_sha256"],
+                        "internal_id": internal_id,
+                        "source_match_id": candidate["source_match_id"],
+                        "source_match_url": candidate["source_match_url"],
+                        "review_id": review_id,
+                        "reviewer": reviewer.strip(),
+                        "authorized_at_utc": authorized_at_utc or _now(),
+                        "maximum_navigations": 1,
+                        "automatic_retries": 0,
+                        "capture_promotion_enabled": False,
+                        "human_confirmation": confirmation,
+                    },
+                }
+                self._append_event_locked(campaign_dir, spec, internal_id, payload)
+                return authorization_id
 
     def _store_discovery_artifact_locked(
         self,
         campaign_dir: Path,
         spec: dict[str, Any],
         candidate: dict[str, Any],
-        response: "SimulatedAccessResponse",
+        response: CampaignDiscoveryResponse,
         attempt_id: str,
     ) -> dict[str, str]:
         html = response.html
@@ -729,6 +796,7 @@ class MatchDetailCampaignLedger:
             "http_status": response.http_status,
             "page_title": response.page_title,
             "access_classification": response.access_classification,
+            "access_diagnostic": getattr(response, "access_diagnostic", None),
             "challenge_detected": response.challenge_detected,
             "denial_detected": response.denial_detected,
             "navigation_attempt_id": attempt_id,
@@ -902,7 +970,9 @@ class MatchDetailCampaignLedger:
             }
 
     @staticmethod
-    def _security_errors(candidate: dict[str, Any], response: "SimulatedAccessResponse") -> list[str]:
+    def _security_errors(
+        candidate: dict[str, Any], response: CampaignDiscoveryResponse
+    ) -> list[str]:
         errors = []
         if isinstance(response.http_status, bool) or not isinstance(response.http_status, int):
             errors.append("HTTP_UNKNOWN")
@@ -1015,7 +1085,11 @@ class MatchDetailCampaignLedger:
             for event in events:
                 if event["event_type"] == "AUTHORIZED":
                     authorization = event.get("authorization")
-                    review_ids = {item["review_id"] for item in reviews}
+                    matching_reviews = [
+                        item
+                        for item in reviews
+                        if item["review_id"] == authorization.get("review_id")
+                    ]
                     expected_candidate = next(
                         item
                         for item in spec["candidates"]
@@ -1039,7 +1113,8 @@ class MatchDetailCampaignLedger:
                         != expected_candidate["source_match_id"]
                         or authorization.get("source_match_url")
                         != expected_candidate["source_match_url"]
-                        or authorization.get("review_id") not in review_ids
+                        or len(matching_reviews) != 1
+                        or matching_reviews[0]["decision"] != "scope_to_original_pilot"
                         or authorization.get("maximum_navigations") != 1
                         or authorization.get("automatic_retries") != 0
                         or authorization.get("capture_promotion_enabled") is not False
@@ -1137,6 +1212,7 @@ class MatchDetailCampaignLedger:
             "browser_started": False,
             "navigation_enabled": False,
             "real_access_adapter_enabled": False,
+            "real_access_adapter_implemented": True,
             "capture_promotion_enabled": False,
         }
 
@@ -1170,6 +1246,7 @@ class MatchDetailCampaignLedger:
                 "browser_started": False,
                 "navigation_enabled": False,
                 "real_access_adapter_enabled": False,
+                "real_access_adapter_implemented": True,
                 "capture_promotion_enabled": False,
             }
         if campaign_dir.is_symlink() or not campaign_dir.is_dir():
