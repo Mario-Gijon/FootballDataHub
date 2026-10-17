@@ -1,10 +1,11 @@
 import type { TeamFollow } from "../api/contracts";
 import { ProfileImage } from "./TeamRosterShared";
 import type { FollowMode } from "./TeamFollowLegend";
+import { InternalPlayerLink } from "./InternalPlayerLink";
 
 export { type FollowMode };
 
-export function TeamFollowMatrix({ follow, mode }: { follow: TeamFollow; mode: FollowMode }) {
+export function TeamFollowMatrix({ follow, mode, onNavigate }: { follow: TeamFollow; mode: FollowMode; onNavigate: (path: string) => void }) {
   const minutesByCell = new Map(follow.minutes.map((item) => [`${item.player_id}:${item.match_id}`, item]));
   const metricsByCell = new Map<string, TeamFollow["metrics"]>();
   for (const metric of follow.metrics) {
@@ -27,11 +28,13 @@ export function TeamFollowMatrix({ follow, mode }: { follow: TeamFollow; mode: F
       </tr></thead>
       <tbody>{follow.players.map((player) => <tr data-player-id={player.player_id} key={player.player_id}>
         <th className="follow-player-cell" scope="row">
-          <ProfileImage src={player.photo_url} name={player.display_name} className="follow-player-photo" />
-          <span className="follow-player-copy">
-            {player.profile_url ? <a href={player.profile_url} target="_blank" rel="noreferrer">{player.display_name}</a> : <strong>{player.display_name}</strong>}
+          <InternalPlayerLink className="follow-player-link" playerId={player.player_id} onNavigate={onNavigate}>
+            <ProfileImage src={player.photo_url} name={player.display_name} className="follow-player-photo" />
+            <span className="follow-player-copy">
+            <span>{player.display_name}</span>
             {player.jersey_number !== null && <small>Dorsal {player.jersey_number}</small>}
-          </span>
+            </span>
+          </InternalPlayerLink>
         </th>
         {follow.matchdays.map((day) => {
           const match = matchByDay.get(day)!;

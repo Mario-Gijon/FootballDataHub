@@ -6,7 +6,9 @@ import {
   PlayerIdentity,
   positionCodeLabel,
   ProfileImage,
+  readRosterSort,
   SortableHeader,
+  storeRosterSort,
   sortRosterRows,
   type SortDirection,
 } from "./TeamRosterShared";
@@ -15,12 +17,14 @@ interface Props {
   roster: TeamRoster;
   query: string;
   onQueryChange: (query: string) => void;
+  onNavigate: (path: string) => void;
 }
 
 type PlayerSortKey = "jersey_number" | "display_name" | "full_name" | "birth_date" | "birthplace" | "birthplace_province" | "source_position_code";
+const playerSortKeys: PlayerSortKey[] = ["jersey_number", "display_name", "full_name", "birth_date", "birthplace", "birthplace_province", "source_position_code"];
 
-export function TeamRosterBiography({ roster, query, onQueryChange }: Props) {
-  const [sort, setSort] = useState<{ key: PlayerSortKey; direction: SortDirection } | null>(null);
+export function TeamRosterBiography({ roster, query, onQueryChange, onNavigate }: Props) {
+  const [sort, setSort] = useState<{ key: PlayerSortKey; direction: SortDirection } | null>(() => readRosterSort(roster.team.team_id, "biography", playerSortKeys));
   const memberships = useMemo(() => new Map(roster.memberships.map((membership) => [membership.player_id, membership])), [roster.memberships]);
   const filteredPlayers = roster.players.filter((player) => matchesRosterSearch(
     player,
@@ -32,7 +36,11 @@ export function TeamRosterBiography({ roster, query, onQueryChange }: Props) {
     : filteredPlayers;
 
   function toggleSort(key: PlayerSortKey) {
-    setSort((current) => ({ key, direction: current?.key === key && current.direction === "ascending" ? "descending" : "ascending" }));
+    setSort((current) => {
+      const next = { key, direction: current?.key === key && current.direction === "ascending" ? "descending" as const : "ascending" as const };
+      storeRosterSort(roster.team.team_id, "biography", next);
+      return next;
+    });
   }
 
   const sorted = (key: PlayerSortKey) => sort?.key === key ? sort.direction : null;
@@ -60,7 +68,7 @@ export function TeamRosterBiography({ roster, query, onQueryChange }: Props) {
           <tbody>{visiblePlayers.map((player) => {
             const membership = memberships.get(player.player_id);
             return <tr data-player-id={player.player_id} key={player.player_id}>
-              <td><PlayerIdentity player={player} showFullName={false} /></td>
+              <td><PlayerIdentity player={player} showFullName={false} onNavigate={onNavigate} /></td>
               <td>{membership?.jersey_number ?? "—"}</td>
               <td>{player.full_name ?? "—"}</td>
               <td>{formatSpanishDate(player.birth_date)}</td>

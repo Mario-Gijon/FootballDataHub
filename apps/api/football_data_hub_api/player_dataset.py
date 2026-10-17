@@ -275,7 +275,7 @@ class PlayerDirectoryBundle:
                 source_sha256=source_ref.get("sha256"),
                 source_record_index=source_ref.get("record_index") if type(source_ref.get("record_index")) is int else None,
             ))
-        views = _project_individual_views(compact) if compact else []
+        views = _project_individual_views(compact, self.players_by_id) if compact else []
         warnings: list[str] = []
         if player.get("identity_conflicts"):
             warnings.append("El inventario conserva discrepancias de identidad; no se han resuelto por nombre.")
@@ -547,7 +547,11 @@ def _load_compact_generation(
     return manifest, CompactDocumentStore(generation_root, entries)
 
 
-def _project_individual_views(document: dict[str, Any]) -> list[PlayerIndividualViewResponse]:
+def _project_individual_views(
+    document: dict[str, Any],
+    players_by_id: Mapping[int, dict[str, Any]] | None = None,
+) -> list[PlayerIndividualViewResponse]:
+    players_by_id = players_by_id or {}
     result = []
     sources = document.get("view_sources", {})
     views = document.get("views", {})
@@ -586,7 +590,7 @@ def _project_individual_views(document: dict[str, Any]) -> list[PlayerIndividual
             captured_at=source.get("captured_at_utc"),
             source_sha256=source.get("html_sha256"),
             scope_note=scope_note,
-            tables=[_project_table(table) for table in tables_source if isinstance(table, dict)],
+            tables=[_project_table(table, players_by_id) for table in tables_source if isinstance(table, dict)],
             profile=payload.get("profile") if isinstance(payload.get("profile"), dict) else None,
             coverage=coverage if isinstance(coverage, dict) else None,
             historical_matches=[
@@ -634,7 +638,11 @@ def _source_status_description(value: Any) -> str:
     return descriptions.get(value, "La cobertura de esta captura no está certificada.")
 
 
-def _project_table(table: dict[str, Any]) -> PlayerCompactTableResponse:
+def _project_table(
+    table: dict[str, Any],
+    players_by_id: Mapping[int, dict[str, Any]] | None = None,
+) -> PlayerCompactTableResponse:
+    players_by_id = players_by_id or {}
     source_role = table.get("table_role")
     columns_source = table.get("columns")
     columns = []
@@ -706,6 +714,10 @@ def _project_table(table: dict[str, Any]) -> PlayerCompactTableResponse:
             context=context,
             cells=cells,
             source_fields={key: value for key, value in record.items() if key != "column_values"},
+            internal_player_id=(
+                _verified_rival_player_id(record, players_by_id)
+                if source_role == "opponent_player_statistics" else None
+            ),
         ))
     role = source_role
     if not isinstance(role, str) or not role.strip():
@@ -763,6 +775,8 @@ def _project_historical_match(item: dict[str, Any]) -> dict[str, Any]:
         "side": item.get("player_team_side_raw"),
         "home_goals": item.get("home_goals") if type(item.get("home_goals")) is int else None,
         "away_goals": item.get("away_goals") if type(item.get("away_goals")) is int else None,
+        "home_team_id": _positive_source_id(item.get("home_club_id_raw")),
+        "away_team_id": _positive_source_id(item.get("away_club_id_raw")),
         "minutes": item.get("minutes") if type(item.get("minutes")) is int else None,
         "match_state": item.get("match_state"),
         "appearance_status": appearance,
@@ -770,6 +784,44 @@ def _project_historical_match(item: dict[str, Any]) -> dict[str, Any]:
         "match_statistics": match_statistics,
         "source_fields": item,
     }
+
+
+def _verified_rival_player_id(
+    record: dict[str, Any],
+    players_by_id: Mapping[int, dict[str, Any]],
+) -> int | None:
+    """Return an inventory ID only when the rival ID and exact profile URL agree."""
+    if record.get("rival_kind") != "player":
+        return None
+    rival_id = record.get("rival_id")
+    if not isinstance(rival_id, str) or not re.fullmatch(r"j([1-9]\d*)", rival_id):
+        return None
+    player_id = int(rival_id[1:])
+    inventory_record = players_by_id.get(player_id)
+    if inventory_record is None:
+        return None
+    rival_url = _safe_bdfutbol_url(record.get("rival_url"))
+    inventory_url = _safe_bdfutbol_url(inventory_record.get("profile_url"))
+    if rival_url is None or inventory_url is None:
+        return None
+    rival_parts = urlsplit(rival_url)
+    inventory_parts = urlsplit(inventory_url)
+    expected_path = f"/es/j/j{player_id}.html"
+    if (
+        rival_parts.path != expected_path
+        or inventory_parts.path != expected_path
+        or rival_parts.netloc != inventory_parts.netloc
+    ):
+        return None
+    return player_id
+
+
+def _positive_source_id(value: Any) -> int | None:
+    if type(value) is int and value > 0:
+        return value
+    if isinstance(value, str) and re.fullmatch(r"[1-9]\d*", value.strip()):
+        return int(value.strip())
+    return None
 
 
 def _player_metric_records(

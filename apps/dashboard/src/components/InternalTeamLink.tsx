@@ -1,4 +1,5 @@
-import type { AnchorHTMLAttributes, MouseEvent } from "react";
+import type { AnchorHTMLAttributes } from "react";
+import { navigateOnPlainClick } from "../domain/internal-navigation";
 import { teamPath } from "../domain/teams";
 
 type InternalTeamLinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href" | "onClick"> & {
@@ -12,12 +13,6 @@ export function InternalTeamLink({ teamId, onNavigate, children, ...anchorProps 
   return <a
     {...anchorProps}
     href={path}
-    onClick={(event: MouseEvent<HTMLAnchorElement>) => {
-      const target = event.currentTarget.target;
-      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey
-        || (target !== "" && target !== "_self") || event.currentTarget.hasAttribute("download")) return;
-      event.preventDefault();
-      onNavigate(path);
-    }}
+    onClick={(event) => navigateOnPlainClick(event, path, onNavigate)}
   >{children}</a>;
 }

@@ -40,6 +40,28 @@ class TopDatasetLoadError(ValueError):
 TOP_BOOTSTRAP_SCHEMA_VERSION = 3
 
 
+def project_top_player_links(
+    bootstrap: TopBootstrapResponse, verified_player_ids: set[int]
+) -> tuple[TopBootstrapResponse, str]:
+    """Expose internal player links only for IDs present in the verified inventory."""
+
+    players = [
+        player.model_copy(update={
+            "internal_player_id": player.player_id if player.player_id in verified_player_ids else None
+        })
+        for player in bootstrap.players
+    ]
+    foreigners = [
+        player.model_copy(update={
+            "internal_player_id": player.player_id if player.player_id in verified_player_ids else None
+        })
+        for player in bootstrap.foreigners
+    ]
+    payload = bootstrap.model_copy(update={"players": players, "foreigners": foreigners})
+    digest = hashlib.sha256(payload.model_dump_json().encode("utf-8")).hexdigest()[:24]
+    return payload, f'"top-player-inventory-v1-{digest}"'
+
+
 @dataclass(frozen=True, slots=True)
 class TopDatasetBundle:
     bootstrap: TopBootstrapResponse

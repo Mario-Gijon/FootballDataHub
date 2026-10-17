@@ -1,12 +1,14 @@
 import { useState, type CSSProperties } from "react";
 import type { TeamRoster } from "../api/contracts";
+import { InternalPlayerLink } from "./InternalPlayerLink";
 
 interface Props {
   roster: TeamRoster;
   playersById: Map<number, TeamRoster["players"][number]>;
+  onNavigate: (path: string) => void;
 }
 
-export function TeamTacticalPitch({ roster, playersById }: Props) {
+export function TeamTacticalPitch({ roster, playersById, onNavigate }: Props) {
   const tactic = roster.tactical_visualization;
 
   return (
@@ -36,10 +38,10 @@ export function TeamTacticalPitch({ roster, playersById }: Props) {
                 if (!player) return null;
                 const placement: CSSProperties = { left: `${position.horizontal * 100}%`, top: `${position.vertical * 100}%` };
                 return (
-                  <article className="tactical-player-marker" data-player-id={player.player_id} key={player.player_id} style={placement}>
+                  <InternalPlayerLink className="tactical-player-marker" data-player-id={player.player_id} key={player.player_id} playerId={player.player_id} onNavigate={onNavigate} style={placement}>
                     <TacticalPlayerPhoto src={player.photo_url} name={player.display_name} />
                     <span>{player.display_name}</span>
-                  </article>
+                  </InternalPlayerLink>
                 );
               })}
             </div>

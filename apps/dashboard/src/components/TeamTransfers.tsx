@@ -3,6 +3,7 @@ import { loadTeamTransfers, TeamTransfersApiError, type TeamTransfersLoadResult 
 import type { Team, TeamTransferRecord, TeamTransfers as TeamTransfersData } from "../api/contracts";
 import { ProfileImage } from "./TeamRosterShared";
 import { InternalTeamLink } from "./InternalTeamLink";
+import { InternalPlayerLink } from "./InternalPlayerLink";
 
 export function TeamTransfers({ teamId, season, teams, onNavigate }: { teamId: number; season: string; teams: readonly Team[]; onNavigate: (path: string) => void }) {
   const [result, setResult] = useState<TeamTransfersLoadResult | null>(null);
@@ -110,8 +111,10 @@ function TransferTable({
 function TransferRow({ row, teams, onNavigate }: { row: TeamTransferRecord; teams: readonly Team[]; onNavigate: (path: string) => void }) {
   const relatedTeam = row.other_team_id === null ? undefined : teams.find((team) => team.team_id === row.other_team_id);
   return <tr>
-    <td><ProfileImage src={row.player_photo_url} name={row.player_display_name} className="team-transfer-photo" /></td>
-    <td><a href={row.player_profile_url} target="_blank" rel="noreferrer">{row.player_display_name}</a></td>
+    <td><InternalPlayerLink className="team-transfer-player-photo-link" playerId={row.player_id} onNavigate={onNavigate} aria-label={`Abrir ficha de ${row.player_display_name}`}>
+      <ProfileImage src={row.player_photo_url} name={row.player_display_name} className="team-transfer-photo" />
+    </InternalPlayerLink></td>
+    <td><InternalPlayerLink playerId={row.player_id} onNavigate={onNavigate}>{row.player_display_name}</InternalPlayerLink></td>
     <td>{row.player_full_name ?? "—"}</td>
     <td>{row.age_years ?? "—"}</td>
     <td>{row.source_position_code ? `Código ${row.source_position_code} · sin equivalencia validada` : "—"}</td>

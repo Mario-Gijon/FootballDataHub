@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from football_data_hub_api.player_dataset import PlayerDatasetLoadError, _project_table
+from football_data_hub_api.player_dataset import (
+    PlayerDatasetLoadError,
+    _project_historical_match,
+    _project_table,
+)
 
 
 def test_projection_uses_verified_marker_columns_and_grouped_headers() -> None:
@@ -94,3 +98,45 @@ def test_projection_preserves_aligned_career_summary_row_metadata() -> None:
     assert row.source_fields["summary_label_raw"] == "Total"
     assert row.source_fields["summary_label_span"] == 6
     assert [cell.raw_value for cell in row.cells][6:] == ["100", "7846"]
+
+
+def test_rival_projection_adds_internal_player_link_only_when_id_url_and_inventory_agree() -> None:
+    players = {
+        23751: {"profile_url": "https://www.bdfutbol.com/es/j/j23751.html"},
+    }
+    projected = _project_table({
+        "table_role": "opponent_player_statistics",
+        "columns": [{"header_original": "Jugador", "source_index": 0}],
+        "records": [
+            {
+                "rival_kind": "player", "rival_id": "j23751",
+                "rival_url": "https://www.bdfutbol.com/es/j/j23751.html",
+                "rival_name_raw": "Manu Pedreño", "column_values": [["Manu Pedreño", None, None]],
+            },
+            {
+                "rival_kind": "player", "rival_id": "j23751",
+                "rival_url": "https://www.bdfutbol.com/es/j/j99999.html",
+                "rival_name_raw": "Contradictorio", "column_values": [["Contradictorio", None, None]],
+            },
+            {
+                "rival_kind": "coach", "rival_id": "j23751",
+                "rival_url": "https://www.bdfutbol.com/es/j/j23751.html",
+                "rival_name_raw": "No es futbolista", "column_values": [["No es futbolista", None, None]],
+            },
+            {
+                "rival_kind": "player", "rival_id": "j77777",
+                "rival_url": "https://www.bdfutbol.com/es/j/j77777.html",
+                "rival_name_raw": "No está inventariado", "column_values": [["No está inventariado", None, None]],
+            },
+        ],
+    }, players)
+
+    assert [row.internal_player_id for row in projected.rows] == [23751, None, None, None]
+
+
+def test_historical_match_projection_preserves_only_positive_numeric_club_ids() -> None:
+    projected = _project_historical_match({
+        "match_id": "m-1", "home_club_id_raw": "49", "away_club_id_raw": "e48",
+    })
+    assert projected["home_team_id"] == 49
+    assert projected["away_team_id"] is None

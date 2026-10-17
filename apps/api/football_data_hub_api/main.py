@@ -46,6 +46,7 @@ from football_data_hub_api.top_dataset import (
     TopDatasetBundle,
     TopDatasetLoadError,
     load_top_dataset,
+    project_top_player_links,
 )
 from football_data_hub_api.team_roster_dataset import (
     TeamRosterRegistry,
@@ -359,12 +360,14 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
     def group_top_bootstrap(
         group: str, request: Request, response: Response
     ) -> TopBootstrapResponse | Response:
-        return _conditional_response(
-            request,
-            response,
-            _require_section(request, "top_datasets", "top_dataset_errors", group, "Destacados"),
-            group,
-        )
+        bundle = _require_section(request, "top_datasets", "top_dataset_errors", group, "Destacados")
+        directory = request.app.state.player_directory
+        verified_ids = set(directory.players_by_id) if directory is not None else set()
+        payload, etag = project_top_player_links(bundle.bootstrap, verified_ids)
+        response.headers["ETag"] = etag
+        if _etag_matches(request.headers.get("if-none-match"), etag):
+            return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": etag})
+        return payload
 
     @app.get(
         "/api/v1/groups/{group}/referees/bootstrap",
@@ -576,10 +579,13 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
     )
     def group2_top_bootstrap(request: Request, response: Response) -> TopBootstrapResponse | Response:
         bundle = _require_section(request, "top_datasets", "top_dataset_errors", "2", "Destacados")
-        response.headers["ETag"] = bundle.etag
-        if _etag_matches(request.headers.get("if-none-match"), bundle.etag):
-            return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": bundle.etag})
-        return bundle.bootstrap
+        directory = request.app.state.player_directory
+        verified_ids = set(directory.players_by_id) if directory is not None else set()
+        payload, etag = project_top_player_links(bundle.bootstrap, verified_ids)
+        response.headers["ETag"] = etag
+        if _etag_matches(request.headers.get("if-none-match"), etag):
+            return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": etag})
+        return payload
 
     @app.get(
         "/api/v1/group2/referees/bootstrap",

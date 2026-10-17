@@ -1,6 +1,7 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
 import type { PlayerDetail } from "../api/contracts";
+import type { CatalogTeam } from "../domain/teams";
 import { PlayerIndividualViews } from "../components/PlayerIndividualViews";
 
 type PlayerView = PlayerDetail["verified_individual_views"][number];
@@ -43,6 +44,7 @@ function row(values: Array<string | number | null>, sourceFields: Record<string,
     context,
     cells: values.map((rawValue) => ({ raw_value: rawValue, normalized_integer: typeof rawValue === "number" ? rawValue : null, value_status: null })),
     source_fields: sourceFields,
+    internal_player_id: null,
   };
 }
 
@@ -51,6 +53,7 @@ function matchFixture(patch: Partial<PlayerView["historical_matches"][number]> =
     match_id: "m-1", match_url: "https://www.bdfutbol.com/es/p/p.php?id=1", date: "2026-09-01", date_raw: null,
     season: "2026-27", competition: "Primera Federación", round_label: "Jornada 1",
     player_team: "Real Jaén", opponent_team: "Rival", side: "home", home_goals: 2, away_goals: 1,
+    home_team_id: null, away_team_id: null,
     minutes: 90, match_state: "played", appearance_status: "APPEARED_PER_SOURCE_FLAGS", participation: "Titular",
     match_statistics: [
       { label: "Partidos titular", raw_value: 1, normalized_integer: 1 },
@@ -64,6 +67,8 @@ function matchFixture(patch: Partial<PlayerView["historical_matches"][number]> =
 }
 
 describe("PlayerIndividualViews", () => {
+  afterEach(cleanup);
+
   it("muestra cuatro apartados deportivos, estadística agrupada y logros semánticos", () => {
     const career = tableFixture("career_trajectory", [
       column("Temporada", 0), column("Equipo", 1), column("Ascenso o descenso", 2), column("Otras competiciones", 3),
@@ -179,5 +184,47 @@ describe("PlayerIndividualViews", () => {
     expect(totalRow?.querySelector("td[colspan='3']")?.textContent).toBe("Total");
     expect(within(totalRow as HTMLElement).getByText("51")).toBeTruthy();
     expect(within(totalRow as HTMLElement).getByText("2850")).toBeTruthy();
+  });
+
+  it("enlaza clubes y jugadores solo con IDs presentes y coherentes en los catálogos", () => {
+    const catalogTeam = {
+      team_id: 49, name: "Real Jaén", crest_url: null,
+      team_url: "https://www.bdfutbol.com/es/t/t2026-2749.html",
+      group: "2", season: "2026-27", captureId: "capture",
+    } as unknown as CatalogTeam;
+    const career = tableFixture("career_trajectory", [column("Temporada", 0), column("Equipo", 1)], [row(["2026-27", "Real Jaén"], {
+      team_season_reference: "t2026-2749",
+      team_season_url: "https://www.bdfutbol.com/es/t/t2026-2749.html",
+    })]);
+    const rivals = tableFixture("opponent_player_statistics", [column("Nombre", 0), column("Goles", 1)], [
+      { ...row(["Iván Rival", 2], { rival_name_raw: "Iván Rival" }), internal_player_id: 23751 },
+      row(["Jugador sin inventario", 1], { rival_name_raw: "Jugador sin inventario" }),
+    ]);
+    const views = [
+      viewFixture("profile", { tables: career }),
+      viewFixture("matches", { historical_matches: [matchFixture({
+        home_team_id: 49,
+        away_team_id: 90001,
+        source_fields: { source_record_index: 0, home_team_raw: "Real Jaén", away_team_raw: "Club histórico" },
+      })] }),
+      viewFixture("rivals", { tables: rivals }),
+    ];
+    const paths: string[] = [];
+    render(<PlayerIndividualViews views={views} teams={[catalogTeam]} onNavigate={(path) => paths.push(path)} />);
+
+    const careerTeam = screen.getByRole("link", { name: "Real Jaén" });
+    expect(careerTeam).toHaveAttribute("href", "/teams/49");
+    fireEvent.click(careerTeam);
+    expect(paths).toEqual(["/teams/49"]);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Partidos" }));
+    const matchPanel = screen.getByRole("tabpanel", { name: "Partidos" });
+    expect(within(matchPanel).getByRole("link", { name: "Real Jaén" })).toHaveAttribute("href", "/teams/49");
+    expect(within(matchPanel).getByText("Club histórico").closest("a")).toBeNull();
+    expect(within(matchPanel).getByRole("link", { name: "Ver partido ↗" })).toHaveAttribute("target", "_blank");
+
+    fireEvent.click(screen.getByRole("tab", { name: "Rivales" }));
+    expect(screen.getByRole("link", { name: "Iván Rival" })).toHaveAttribute("href", "/players/23751");
+    expect(screen.getByText("Jugador sin inventario").closest("a")).toBeNull();
   });
 });

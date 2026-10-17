@@ -34,10 +34,10 @@ describe("PlayersPage directory presentation", () => {
       }],
     } satisfies PlayerDirectory);
 
-    render(<PlayersPage playerId={null} onNavigate={() => undefined} />);
+    render(<PlayersPage playerId={null} teams={[]} onNavigate={() => undefined} />);
 
-    expect(await screen.findByRole("link", { name: /Manu Pedreño/ })).toBeTruthy();
-    expect(document.body.textContent).toContain("Jaén · II");
+    expect(await screen.findByRole("link", { name: /Manu Pedreño/ })).toHaveAttribute("href", "/players/23751");
+    expect(screen.getByRole("link", { name: "Jaén · Grupo II" })).toHaveAttribute("href", "/teams/49");
     expect(document.body.textContent).not.toMatch(/vistas publicadas|perfil compacto|inventario generado|IDs inventariados|pertenencia observada|transferencia/iu);
     expect(document.body.textContent).not.toMatch(/captura|SHA-256|generación-internal|acquisition|procedencia/iu);
   });

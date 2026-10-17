@@ -1,9 +1,25 @@
 import { useState, type ReactNode } from "react";
 import type { TeamRoster } from "../api/contracts";
+import { InternalPlayerLink } from "./InternalPlayerLink";
 
 export type RosterPlayer = TeamRoster["players"][number];
 export type SortDirection = "ascending" | "descending";
 export type SortValue = string | number | null | undefined;
+
+export function readRosterSort<Key extends string>(teamId: number, view: string, allowedKeys: readonly Key[]): { key: Key; direction: SortDirection } | null {
+  try {
+    const stored = JSON.parse(window.sessionStorage.getItem(`football-data-hub:team-roster-sort:${teamId}:${view}`) ?? "null") as { key?: unknown; direction?: unknown } | null;
+    return stored && typeof stored.key === "string" && allowedKeys.includes(stored.key as Key)
+      && (stored.direction === "ascending" || stored.direction === "descending")
+      ? { key: stored.key as Key, direction: stored.direction }
+      : null;
+  } catch { return null; }
+}
+
+export function storeRosterSort(teamId: number, view: string, sort: { key: string; direction: SortDirection }): void {
+  try { window.sessionStorage.setItem(`football-data-hub:team-roster-sort:${teamId}:${view}`, JSON.stringify(sort)); }
+  catch { /* Sorting remains usable when session storage is unavailable. */ }
+}
 
 const indicatorColors: Record<string, string> = {
   played_in_first_division: "first-division",
@@ -108,22 +124,24 @@ export function PlayerIdentity({
   indicatorCodes = [],
   secondary,
   showFullName = true,
+  onNavigate,
 }: {
   player: RosterPlayer;
   indicatorCodes?: string[];
   secondary?: ReactNode;
   showFullName?: boolean;
+  onNavigate: (path: string) => void;
 }) {
-  return <span className="roster-player-identity">
+  return <InternalPlayerLink className="roster-player-identity roster-player-identity-link" playerId={player.player_id} onNavigate={onNavigate} aria-label={player.display_name}>
     <ProfileImage src={player.photo_url} name={player.display_name} className="roster-photo" />
     <span className="roster-player-name">
-      {player.profile_url ? <a href={player.profile_url} target="_blank" rel="noreferrer">{player.display_name}</a> : <strong>{player.display_name}</strong>}
+      <span className="roster-player-display-name">{player.display_name}</span>
       {secondary ?? (showFullName && player.full_name && player.full_name !== player.display_name ? <small>{player.full_name}</small> : null)}
       {indicatorCodes.length > 0 && <span className="roster-player-indicators" aria-label="Indicadores publicados por BDFutbol">
         {indicatorCodes.map((code) => <span className={`roster-indicator-dot is-${indicatorColors[code] ?? "unknown"}`} key={code} title={code} />)}
       </span>}
     </span>
-  </span>;
+  </InternalPlayerLink>;
 }
 
 function initials(name: string): string {

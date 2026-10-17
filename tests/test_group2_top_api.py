@@ -20,6 +20,7 @@ from football_data_hub_api.top_dataset import (
     TopDatasetLoadError,
     _validate_foreigners_coverage,
     load_top_dataset,
+    project_top_player_links,
 )
 
 TOP_ROOT = PROJECT_ROOT / "data/exports/bdfutbol/group2_top/20261010T155145.195266Z-c5b031a6"
@@ -297,12 +298,11 @@ def test_top_bootstrap_has_verified_counts_nulls_and_etag() -> None:
         assert len(payload["foreigners_summary"]["country_options"]) == 44
         assert payload["foreigners_summary"]["denominator_count"] is None
         foreign_player = payload["foreigners"][0]
-        assert set(foreign_player) == {"player_id", "statistics"}
+        assert set(foreign_player) == {"player_id", "internal_player_id", "statistics"}
+        assert foreign_player["internal_player_id"] is None
         assert foreign_player["statistics"]["goals"] == 0
         assert payload["rankings"][0]["matches_played"] is None
-        assert response.headers["etag"] == (
-            f'"top-v3-{payload["metadata"]["dataset_version"]}"'
-        )
+        assert response.headers["etag"].startswith('"top-player-inventory-v1-')
         assert payload["foreigners_summary"]["coverage_status"] == "complete"
         assert payload["foreigners_summary"]["available_count"] == 101
         assert payload["foreigners_summary"]["missing_count"] == 0
@@ -317,7 +317,7 @@ def test_top_bootstrap_has_verified_counts_nulls_and_etag() -> None:
         assert stale_schema.json()["metadata"]["active_team_capture_id"] == payload[
             "metadata"
         ]["active_team_capture_id"]
-        assert set(stale_schema.json()["foreigners"][0]) == {"player_id", "statistics"}
+        assert set(stale_schema.json()["foreigners"][0]) == {"player_id", "internal_player_id", "statistics"}
 
         cached = client.get(
             "/api/v1/group2/top/bootstrap",
@@ -325,6 +325,29 @@ def test_top_bootstrap_has_verified_counts_nulls_and_etag() -> None:
         )
         assert cached.status_code == 304
         assert cached.content == b""
+
+
+def test_top_player_links_require_an_exact_inventory_id() -> None:
+    source = load_top_dataset(settings()).bootstrap
+    known_id = source.players[0].player_id
+    unknown_id = max(player.player_id for player in source.players) + 999_999
+    source = source.model_copy(update={
+        "players": [
+            source.players[0].model_copy(update={"player_id": unknown_id}),
+            *source.players[1:],
+        ],
+        "foreigners": [
+            source.foreigners[0].model_copy(update={"player_id": known_id}),
+            *source.foreigners[1:],
+        ],
+    })
+
+    payload, etag = project_top_player_links(source, {known_id})
+
+    assert payload.players[0].player_id == unknown_id
+    assert payload.players[0].internal_player_id is None
+    assert payload.foreigners[0].internal_player_id == known_id
+    assert etag.startswith('"top-player-inventory-v1-')
 
 
 def test_top_load_failure_does_not_break_classification_or_results(tmp_path: Path) -> None:

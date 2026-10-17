@@ -203,9 +203,9 @@ export function TeamOverview({ team, data, teamCatalog, activeSection, onNavigat
         </section>
       )}
       {activeSection === "roster" && !rosterLoading && !rosterError && rosterResult?.status === "available" && (
-        <TeamRosterSection key={`${team.team_id}:${rosterResult.roster.metadata.capture_id}`} roster={rosterResult.roster} />
+        <TeamRosterSection key={`${team.team_id}:${rosterResult.roster.metadata.capture_id}`} roster={rosterResult.roster} onNavigate={onNavigate} />
       )}
-      {activeSection === "follow" && <TeamFollow key={`${team.team_id}:${team.season}`} teamId={team.team_id} season={team.season} />}
+      {activeSection === "follow" && <TeamFollow key={`${team.team_id}:${team.season}`} teamId={team.team_id} season={team.season} onNavigate={onNavigate} />}
       {activeSection === "transfers" && <TeamTransfers key={`${team.team_id}:${team.season}`} teamId={team.team_id} season={team.season} teams={teamCatalog} onNavigate={onNavigate} />}
       {activeSection === "matches" && <TeamMatches key={`${team.team_id}:${data.metadata.capture_id}`} team={team} data={data} onNavigate={onNavigate} />}
     </main>

@@ -13,18 +13,19 @@ const modeOptions: Array<{ mode: RosterMode; label: string }> = [
 
 interface Props {
   roster: TeamRoster;
+  onNavigate?: (path: string) => void;
 }
 
-export function TeamRosterSection({ roster }: Props) {
+export function TeamRosterSection({ roster, onNavigate = () => undefined }: Props) {
   const teamId = roster.team.team_id;
   const [modeState, setModeState] = useState<{ teamId: number; mode: RosterMode }>(() => ({ teamId, mode: readMode(teamId) }));
-  const [queryState, setQueryState] = useState<{ teamId: number; value: string }>(() => ({ teamId, value: "" }));
+  const [queryState, setQueryState] = useState<{ teamId: number; value: string }>(() => ({ teamId, value: readQuery(teamId) }));
   const mode = modeState.teamId === teamId ? modeState.mode : readMode(teamId);
-  const query = queryState.teamId === teamId ? queryState.value : "";
+  const query = queryState.teamId === teamId ? queryState.value : readQuery(teamId);
 
   useEffect(() => {
     if (modeState.teamId !== teamId) setModeState({ teamId, mode: readMode(teamId) });
-    if (queryState.teamId !== teamId) setQueryState({ teamId, value: "" });
+    if (queryState.teamId !== teamId) setQueryState({ teamId, value: readQuery(teamId) });
   }, [modeState.teamId, queryState.teamId, teamId]);
 
   function selectMode(nextMode: RosterMode) {
@@ -38,6 +39,8 @@ export function TeamRosterSection({ roster }: Props) {
 
   function changeQuery(value: string) {
     setQueryState({ teamId, value });
+    try { window.sessionStorage.setItem(queryStorageKey(teamId), value); }
+    catch { /* Search remains usable when session storage is unavailable. */ }
   }
 
   return <section className="team-roster" aria-label="Plantilla del equipo">
@@ -57,9 +60,9 @@ export function TeamRosterSection({ roster }: Props) {
     </div>
 
     <div aria-labelledby={`roster-mode-${mode}`} className="roster-view" id="team-roster-view" role="tabpanel">
-      {mode === "alignment" && <TeamRosterAlignment roster={roster} query={query} onQueryChange={changeQuery} />}
-      {mode === "roster" && <TeamRosterBiography roster={roster} query={query} onQueryChange={changeQuery} />}
-      {mode === "analysis" && <TeamRosterAnalysis roster={roster} query={query} onQueryChange={changeQuery} />}
+      {mode === "alignment" && <TeamRosterAlignment roster={roster} query={query} onQueryChange={changeQuery} onNavigate={onNavigate} />}
+      {mode === "roster" && <TeamRosterBiography roster={roster} query={query} onQueryChange={changeQuery} onNavigate={onNavigate} />}
+      {mode === "analysis" && <TeamRosterAnalysis roster={roster} query={query} onQueryChange={changeQuery} onNavigate={onNavigate} />}
       {roster.warnings.map((warning) => <p className="roster-warning" key={warning}>{warning}</p>)}
     </div>
   </section>;
@@ -76,6 +79,15 @@ function readMode(teamId: number): RosterMode {
 
 function storageKey(teamId: number): string {
   return `football-data-hub:team-roster-mode:${teamId}`;
+}
+
+function queryStorageKey(teamId: number): string {
+  return `football-data-hub:team-roster-query:${teamId}`;
+}
+
+function readQuery(teamId: number): string {
+  try { return window.sessionStorage.getItem(queryStorageKey(teamId)) ?? ""; }
+  catch { return ""; }
 }
 
 function handleModeKeyDown(event: KeyboardEvent<HTMLButtonElement>, currentMode: RosterMode, selectMode: (mode: RosterMode) => void) {

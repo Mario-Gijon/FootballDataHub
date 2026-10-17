@@ -1,7 +1,9 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
 import type { PlayerDetail } from "../api/contracts";
 import { PlayerIdentityPanel } from "../components/PlayerIdentityPanel";
+
+const team = { team_id: 49, name: "Jaén", crest_url: null, team_url: "https://www.bdfutbol.com/es/t/t2026-2749.html", group: "2", season: "2026-27", captureId: "capture" } as const;
 
 const detail = {
   player: {
@@ -36,8 +38,10 @@ const detail = {
 } as unknown as PlayerDetail;
 
 describe("PlayerIdentityPanel", () => {
+  afterEach(cleanup);
+
   it("presenta primero la identidad individual y mantiene país de nacimiento separado de nacionalidad", () => {
-    render(<PlayerIdentityPanel detail={detail} onNavigate={() => undefined} />);
+    render(<PlayerIdentityPanel detail={detail} teams={[team]} onNavigate={() => undefined} />);
 
     expect(screen.getByRole("heading", { name: "Manu Pedreño" })).toBeTruthy();
     expect(screen.getByText("Antonio Manuel Moñino Pedreño")).toBeTruthy();
@@ -51,7 +55,7 @@ describe("PlayerIdentityPanel", () => {
   });
 
   it("no muestra conflictos ni datos internos de procedencia en la ficha pública", () => {
-    render(<PlayerIdentityPanel detail={detail} onNavigate={() => undefined} />);
+    render(<PlayerIdentityPanel detail={detail} teams={[team]} onNavigate={() => undefined} />);
     expect(screen.queryByText(/diferencias entre fuentes/i)).toBeNull();
     expect(screen.queryByText(/inventario «/i)).toBeNull();
     expect(screen.queryByText(/SHA-256|captura individual|procedencia/i)).toBeNull();
@@ -63,11 +67,22 @@ describe("PlayerIdentityPanel", () => {
       ...detail,
       club_reference: { status: "observed", team_id: 49, team_name: "Jaén", group: "II", observed_at: null, reason: "latest_unique_membership_observation" },
     } as unknown as PlayerDetail;
-    render(<PlayerIdentityPanel detail={confirmed} onNavigate={(path) => paths.push(path)} />);
+    render(<PlayerIdentityPanel detail={confirmed} teams={[team]} onNavigate={(path) => paths.push(path)} />);
 
     const teamLink = screen.getByRole("link", { name: "Jaén · Grupo II" });
     expect(teamLink.getAttribute("href")).toBe("/teams/49");
     fireEvent.click(teamLink);
     expect(paths).toEqual(["/teams/49"]);
+  });
+
+  it("mantiene como texto una referencia confirmada que no está en el catálogo de temporada", () => {
+    const confirmed = {
+      ...detail,
+      club_reference: { status: "observed", team_id: 209, team_name: "Jaén", group: "II", observed_at: null, reason: "historic" },
+    } as unknown as PlayerDetail;
+    render(<PlayerIdentityPanel detail={confirmed} teams={[team]} onNavigate={() => undefined} />);
+
+    expect(screen.getByText("Jaén · Grupo II").tagName).toBe("SPAN");
+    expect(screen.queryByRole("link", { name: "Jaén · Grupo II" })).toBeNull();
   });
 });

@@ -574,6 +574,8 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .player-card-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; margin: 9px 0 5px; color: var(--text-subtle); font-size: 9px; }
 .player-card-teams { display: flex; flex-wrap: wrap; gap: 5px; }
 .player-card-teams span { color: var(--text-muted); font-size: 9px; }
+.player-card-teams a { color: inherit; text-decoration: none; }
+.player-card-teams a:hover, .player-card-teams a:focus-visible { color: var(--purple-bright); text-decoration: underline; }
 .players-empty { grid-column: 1 / -1; padding: 24px; color: var(--text-subtle); text-align: center; }
 .players-pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 16px 0; color: var(--text-muted); font-size: 10px; }
 .players-pagination button { min-height: 31px; padding: 0 12px; border: 1px solid var(--line); border-radius: 5px; color: var(--text); background: var(--surface-raised); cursor: pointer; font-size: 10px; }
@@ -583,6 +585,8 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .player-detail-photo, .player-detail-photo.profile-image-fallback { width: 88px; height: 88px; flex: 0 0 88px; border: 1px solid var(--line); border-radius: 50%; object-fit: cover; background: var(--surface-raised); font-size: 20px; }
 .player-detail-hero h1 { margin: 4px 0; color: var(--text); font-family: "Manrope", sans-serif; font-size: clamp(24px, 3vw, 34px); letter-spacing: -.035em; }
 .player-detail-hero p { margin: 3px 0 8px; color: var(--text-muted); font-size: 11px; }
+.player-reference-team a, .player-source-table a { color: var(--purple-light); text-decoration: none; }
+.player-reference-team a:hover, .player-reference-team a:focus-visible, .player-source-table a:hover, .player-source-table a:focus-visible { color: var(--purple-bright); text-decoration: underline; }
 .player-detail-tags { margin: 7px 0; }
 .external-player-link { display: inline-block; margin-top: 4px; color: var(--purple-bright); font-size: 10px; text-decoration: none; }
 .player-detail-grid { display: grid; grid-template-columns: minmax(250px, .85fr) minmax(0, 1.5fr); align-items: start; gap: 9px; margin-bottom: 9px; }
@@ -1280,8 +1284,9 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .follow-player-cell { display: flex; align-items: center; gap: 8px; }
 .follow-player-photo, .follow-player-photo.profile-image-fallback { width: 29px; height: 29px; flex: 0 0 29px; display: grid; place-items: center; overflow: hidden; border: 1px solid var(--line-soft); border-radius: 50%; color: var(--text-muted); background: var(--surface-raised); font-size: 9px; object-fit: cover; }
 .follow-player-copy { min-width: 0; display: grid; gap: 2px; }
-.follow-player-copy a, .follow-player-copy strong { max-width: 150px; overflow: hidden; color: var(--text); font-size: 11px; font-weight: 600; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
-.follow-player-copy a:hover { color: var(--accent); }
+.follow-player-link { min-width: 0; display: inline-flex; align-items: center; gap: 8px; color: inherit; text-decoration: none; }
+.follow-player-copy > span { max-width: 150px; overflow: hidden; color: var(--text); font-size: 11px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.follow-player-link:hover .follow-player-copy > span, .follow-player-link:focus-visible .follow-player-copy > span { color: var(--accent); }
 .follow-player-copy small { color: var(--text-subtle); font-size: 9px; font-weight: 450; }
 .follow-cell-content { display: inline-flex; align-items: center; justify-content: center; gap: 4px; flex-wrap: wrap; }
 .follow-minute-value { color: var(--text); font-variant-numeric: tabular-nums; }
@@ -1303,7 +1308,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
   .team-follow-matrix th, .team-follow-matrix td { min-width: 68px; height: 41px; padding: 4px; }
   .team-follow-matrix .follow-player-heading, .team-follow-matrix .follow-player-cell { width: 154px; min-width: 154px; }
   .follow-player-photo, .follow-player-photo.profile-image-fallback { width: 25px; height: 25px; flex-basis: 25px; }
-  .follow-player-copy a, .follow-player-copy strong { max-width: 105px; font-size: 10px; }
+  .follow-player-copy > span { max-width: 105px; font-size: 10px; }
   .team-follow-matrix thead th > small { max-width: 62px; }
 }
 .roster-mode-tabs { width: fit-content; max-width: 100%; display: flex; gap: 3px; padding: 3px; border: 1px solid var(--line-soft); border-radius: 8px; background: rgb(18 20 23 / 76%); }
@@ -1314,9 +1319,10 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .roster-coaches, .roster-alignment-group, .roster-table-panel, .roster-indicator-legend, .tactical-panel { min-width: 0; padding: 14px; border: 1px solid var(--glass-border); border-radius: 10px; background: var(--surface); backdrop-filter: blur(10px); }
 .profile-image-fallback { display: grid; place-items: center; color: var(--text-muted); font-family: var(--mono); font-size: 11px; }
 .roster-player-identity { min-width: 0; display: inline-flex; align-items: center; gap: 8px; }
+.roster-player-identity-link { color: inherit; text-decoration: none; }
+.roster-player-identity-link:hover .roster-player-display-name, .roster-player-identity-link:focus-visible .roster-player-display-name { color: var(--purple-light); }
 .roster-player-name { min-width: 0; display: grid; gap: 2px; }
-.roster-player-name > a, .roster-player-name > strong { overflow: hidden; color: var(--text); font-size: 10px; font-weight: 600; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
-.roster-player-name > a:hover { color: var(--purple-light); }
+.roster-player-name > a, .roster-player-name > strong, .roster-player-name > .roster-player-display-name { overflow: hidden; color: var(--text); font-size: 10px; font-weight: 600; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
 .roster-player-name > small { overflow: hidden; color: var(--text-subtle); font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
 .roster-search { width: min(360px, 100%); display: grid; gap: 5px; color: var(--text-subtle); font-family: var(--mono); font-size: 9px; letter-spacing: .04em; text-transform: uppercase; }
 .roster-search input { width: 100%; min-height: 36px; padding: 0 10px; border: 1px solid var(--line); border-radius: 6px; outline: none; color: var(--text); background: var(--surface-deep); font-family: "DM Sans", sans-serif; font-size: 11px; letter-spacing: normal; text-transform: none; }
@@ -1351,7 +1357,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .roster-analysis-table tbody td { min-width: 72px; }
 .roster-analysis-table .roster-player-identity { min-width: 185px; }
 .roster-photo, .roster-photo.profile-image-fallback { width: 29px; height: 33px; flex: 0 0 29px; border: 1px solid var(--line-soft); border-radius: 4px; object-fit: cover; background: var(--surface-raised); }
-.roster-table .roster-player-name > a, .roster-table .roster-player-name > strong { font-size: 10px; }
+.roster-table .roster-player-name > a, .roster-table .roster-player-name > strong, .roster-table .roster-player-name > .roster-player-display-name { font-size: 10px; }
 .roster-table .roster-player-name > small { max-width: 220px; font-size: 8px; }
 .roster-no-results { height: 62px; color: var(--text-subtle); text-align: center !important; }
 .roster-warning { margin: 0; padding: 8px 10px; border-left: 2px solid var(--purple); color: var(--text-subtle); background: rgb(134 82 183 / 7%); font-size: 9px; line-height: 1.45; }
@@ -1374,7 +1380,9 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .team-tactical-markings { fill: none; stroke: rgb(245 249 242 / 78%); stroke-width: .38; }
 .team-tactical-markings .tactical-center-spot { fill: rgb(245 249 242 / 88%); stroke: none; }
 .team-tactical-markers { pointer-events: none; }
-.tactical-player-marker { position: absolute; width: clamp(54px, 10%, 94px); display: grid; justify-items: center; gap: 2px; transform: translate(-50%, -50%); text-align: center; }
+.tactical-player-marker { position: absolute; width: clamp(54px, 10%, 94px); display: grid; justify-items: center; gap: 2px; transform: translate(-50%, -50%); color: var(--text); text-align: center; text-decoration: none; pointer-events: auto; }
+.tactical-player-marker:focus-visible, .roster-player-identity-link:focus-visible, .follow-player-link:focus-visible, .team-transfer-player-photo-link:focus-visible, .top-player-link:focus-visible, .player-card-link:focus-visible { outline: 2px solid var(--purple-light); outline-offset: 2px; border-radius: 4px; }
+.tactical-player-marker:hover > span:last-child, .tactical-player-marker:focus-visible > span:last-child { background: #141719; }
 .tactical-player-photo, .tactical-player-photo.profile-image-fallback { width: clamp(25px, 3.8vw, 38px); height: clamp(25px, 3.8vw, 38px); border: 2px solid rgb(247 246 239 / 94%); border-radius: 50%; object-fit: cover; background: var(--surface-raised); box-shadow: 0 2px 8px rgb(0 0 0 / 42%); }
 .tactical-player-marker > span:last-child { max-width: 100%; overflow: hidden; padding: 1px 4px; border-radius: 3px; color: #fff; background: rgb(14 17 17 / 78%); font-size: 9px; font-weight: 650; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
 .tactical-disclaimer { margin: 0; color: var(--text-subtle); font-size: 10px; line-height: 1.45; text-align: center; }

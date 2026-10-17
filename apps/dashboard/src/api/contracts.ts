@@ -533,6 +533,7 @@ export const TopCategorySchema = z.enum([
 
 const TopPlayerSchema = z.object({
   player_id: positiveInteger,
+  internal_player_id: positiveInteger.nullable().optional(),
   display_name: z.string().min(1),
   full_name: z.string().nullable(),
   profile_url: z.string().url().nullable(),
@@ -574,6 +575,7 @@ const TopProgressSchema = z.object({
 
 const TopForeignPlayerSchema = z.object({
   player_id: positiveInteger,
+  internal_player_id: positiveInteger.nullable().optional(),
   statistics: z.object({
     matches_played: nullableInteger,
     minutes_played: nullableInteger,
@@ -1282,6 +1284,7 @@ const PlayerViewSchema = z.object({
       context: z.record(z.string(), PlayerCellScalarSchema),
       cells: z.array(z.object({ raw_value: PlayerCellScalarSchema, normalized_integer: nullableInteger, value_status: z.string().nullable() }).strict()),
       source_fields: PlayerSourceFieldsSchema,
+      internal_player_id: positiveInteger.nullable(),
     }).strict()),
   }).strict()),
   profile: PlayerSourceFieldsSchema.nullable(),
@@ -1290,7 +1293,7 @@ const PlayerViewSchema = z.object({
     match_id: z.string().nullable(), match_url: z.string().url().nullable(), date: dateOnly, date_raw: z.string().nullable(),
     season: z.string().nullable(), competition: z.string().nullable(), round_label: z.string().nullable(),
     player_team: z.string().nullable(), opponent_team: z.string().nullable(), side: z.string().nullable(),
-    home_goals: nullableInteger, away_goals: nullableInteger,
+    home_goals: nullableInteger, away_goals: nullableInteger, home_team_id: positiveInteger.nullable(), away_team_id: positiveInteger.nullable(),
     minutes: nullableInteger, match_state: z.string().nullable(), appearance_status: z.string().nullable(),
     participation: z.string(),
     match_statistics: z.array(z.object({ label: z.string().min(1), raw_value: PlayerCellScalarSchema, normalized_integer: nullableInteger }).strict()),
@@ -1300,7 +1303,7 @@ const PlayerViewSchema = z.object({
     match_id: z.string().nullable(), match_url: z.string().url().nullable(), date: dateOnly, date_raw: z.string().nullable(),
     season: z.string().nullable(), competition: z.string().nullable(), round_label: z.string().nullable(),
     player_team: z.string().nullable(), opponent_team: z.string().nullable(), side: z.string().nullable(),
-    home_goals: nullableInteger, away_goals: nullableInteger,
+    home_goals: nullableInteger, away_goals: nullableInteger, home_team_id: positiveInteger.nullable(), away_team_id: positiveInteger.nullable(),
     minutes: nullableInteger, match_state: z.string().nullable(), appearance_status: z.string().nullable(),
     participation: z.string(),
     match_statistics: z.array(z.object({ label: z.string().min(1), raw_value: PlayerCellScalarSchema, normalized_integer: nullableInteger }).strict()),
@@ -1310,7 +1313,7 @@ const PlayerViewSchema = z.object({
     match_id: z.string().nullable(), match_url: z.string().url().nullable(), date: dateOnly, date_raw: z.string().nullable(),
     season: z.string().nullable(), competition: z.string().nullable(), round_label: z.string().nullable(),
     player_team: z.string().nullable(), opponent_team: z.string().nullable(), side: z.string().nullable(),
-    home_goals: nullableInteger, away_goals: nullableInteger,
+    home_goals: nullableInteger, away_goals: nullableInteger, home_team_id: positiveInteger.nullable(), away_team_id: positiveInteger.nullable(),
     minutes: nullableInteger, match_state: z.string().nullable(), appearance_status: z.string().nullable(),
     participation: z.string(),
     match_statistics: z.array(z.object({ label: z.string().min(1), raw_value: PlayerCellScalarSchema, normalized_integer: nullableInteger }).strict()),

@@ -92,7 +92,7 @@ export default function App() {
   useEffect(() => {
     const groupsToLoad = route.kind === "competitions"
       ? [activeGroup]
-      : route.kind === "teams" || route.kind === "team"
+      : route.kind === "teams" || route.kind === "team" || route.kind === "players" || route.kind === "player"
         ? groups
         : [];
     for (const group of groupsToLoad) {
@@ -333,7 +333,7 @@ export default function App() {
       )}
       {(route.kind === "players" || route.kind === "player") && (
         <Suspense fallback={<LoadingPage />}>
-          <PlayersPage playerId={route.kind === "player" ? route.playerId : null} onNavigate={navigate} />
+          <PlayersPage playerId={route.kind === "player" ? route.playerId : null} teams={directory.teams} onNavigate={navigate} />
         </Suspense>
       )}
       {route.kind === "team" && teamGroup && baseData[teamGroup] && (

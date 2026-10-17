@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { TeamRoster } from "../api/contracts";
 import { TeamTacticalPitch } from "./TeamTacticalPitch";
+import { InternalPlayerLink } from "./InternalPlayerLink";
 
 const statisticColumns = [
   ["matches_played", "PJ", "Partidos jugados"],
@@ -28,9 +29,10 @@ interface Props {
 interface AlignmentProps extends Props {
   query: string;
   onQueryChange: (query: string) => void;
+  onNavigate: (path: string) => void;
 }
 
-export function TeamRosterAlignment({ roster, query, onQueryChange }: AlignmentProps) {
+export function TeamRosterAlignment({ roster, query, onQueryChange, onNavigate }: AlignmentProps) {
   const playersById = useMemo(() => new Map(roster.players.map((player) => [player.player_id, player])), [roster.players]);
   const membershipsById = useMemo(() => new Map(roster.memberships.map((membership) => [membership.player_id, membership])), [roster.memberships]);
   const statisticsById = useMemo(() => new Map(roster.statistics.map((stat) => [stat.player_id, stat])), [roster.statistics]);
@@ -68,7 +70,7 @@ export function TeamRosterAlignment({ roster, query, onQueryChange }: AlignmentP
                   return (
                     <tr data-player-id={player.player_id} key={player.player_id}>
                       <td>{showValue(membership?.jersey_number)}</td>
-                      <td><PlayerIdentity player={player} indicatorCodes={player.verified_indicators} /></td>
+                      <td><PlayerIdentity player={player} indicatorCodes={player.verified_indicators} onNavigate={onNavigate} /></td>
                       <td>{showValue(player.age_years)}</td>
                       {statisticColumns.map(([field]) => <td key={field}>{showValue(statistics?.[field])}</td>)}
                     </tr>
@@ -97,7 +99,7 @@ export function TeamRosterAlignment({ roster, query, onQueryChange }: AlignmentP
       {renderPlayerGroup("Suplentes")}
 
       <IndicatorLegend observedIndicators={observedIndicators} />
-      <TeamTacticalPitch roster={roster} playersById={playersById} />
+      <TeamTacticalPitch roster={roster} playersById={playersById} onNavigate={onNavigate} />
     </section>
   );
 }
@@ -136,11 +138,11 @@ function CoachesTable({ roster }: Props) {
   );
 }
 
-function PlayerIdentity({ player, indicatorCodes }: { player: TeamRoster["players"][number]; indicatorCodes: string[] }) {
-  return <span className="roster-player-identity">
+function PlayerIdentity({ player, indicatorCodes, onNavigate }: { player: TeamRoster["players"][number]; indicatorCodes: string[]; onNavigate: (path: string) => void }) {
+  return <InternalPlayerLink className="roster-player-identity roster-player-identity-link" playerId={player.player_id} onNavigate={onNavigate} aria-label={player.display_name}>
     <ProfileImage src={player.photo_url} name={player.display_name} className="roster-photo" />
     <span className="roster-player-name">
-      {player.profile_url ? <a href={player.profile_url} target="_blank" rel="noreferrer">{player.display_name}</a> : <strong>{player.display_name}</strong>}
+      <span className="roster-player-display-name">{player.display_name}</span>
       {player.full_name && player.full_name !== player.display_name && <small>{player.full_name}</small>}
       {indicatorCodes.length > 0 && <span className="roster-player-indicators" aria-label="Indicadores publicados por BDFutbol">
         {indicatorDefinitions.filter((item) => indicatorCodes.includes(item.code)).map((item) => <span
@@ -151,7 +153,7 @@ function PlayerIdentity({ player, indicatorCodes }: { player: TeamRoster["player
         />)}
       </span>}
     </span>
-  </span>;
+  </InternalPlayerLink>;
 }
 
 function IndicatorLegend({ observedIndicators }: { observedIndicators: Set<string> }) {

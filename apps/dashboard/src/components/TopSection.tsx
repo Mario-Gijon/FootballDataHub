@@ -17,6 +17,7 @@ import type {
   TopProgressSeries,
 } from "../api/contracts";
 import { InternalTeamLink } from "./InternalTeamLink";
+import { InternalPlayerLink } from "./InternalPlayerLink";
 
 interface TopSectionProps {
   data: TopBootstrap | null;
@@ -165,7 +166,7 @@ function TopDashboard({ data, teams, onNavigate, idSuffix }: { data: TopBootstra
                   return (
                     <tr key={`${ranking.category}:${ranking.player_id}`}>
                       <td className="top-rank-number">{ranking.rank}</td>
-                      <td><PlayerLink player={player} /></td>
+                      <td><PlayerLink player={player} onNavigate={onNavigate} /></td>
                       <td>{player.nationality ?? <span className="muted-dash">—</span>}</td>
                       <td>{player.position_name ?? <span className="muted-dash">—</span>}</td>
                       {!categoriesWithoutProgress.has(category) && <td>{formatNullable(player.age_years)}</td>}
@@ -293,7 +294,7 @@ function ForeignersTable({ data, percentageLabel, teamsById, onNavigate }: { dat
           </tr></thead>
           <tbody>{filtered.map(({ foreign, player }) => (
             <tr key={foreign.player_id}>
-              <td><PlayerLink player={player} /></td>
+              <td><PlayerLink player={player} onNavigate={onNavigate} /></td>
               <td>{player.nationality ?? <span className="muted-dash">—</span>}</td>
               <td>{player.position_name ?? <span className="muted-dash">—</span>}</td>
               <td className="foreign-number">{formatNullable(player.age_years)}</td>
@@ -318,12 +319,13 @@ function defaultPlayerSelections(series: TopProgressSeries[]): Record<TopCategor
   ])) as Record<TopCategory, number[]>;
 }
 
-function PlayerLink({ player }: { player: TopPlayer }) {
+function PlayerLink({ player, onNavigate }: { player: TopPlayer; onNavigate: (path: string) => void }) {
   const label = player.full_name ?? player.display_name;
-  return <a className="top-player-link" href={player.profile_url ?? undefined} target={player.profile_url ? "_blank" : undefined} rel={player.profile_url ? "noreferrer" : undefined}>
-    {player.photo_url ? <img className="top-player-photo" src={player.photo_url} alt="" loading="lazy" /> : <span className="top-player-photo-fallback" aria-hidden="true">{player.display_name.slice(0, 1)}</span>}
-    <span>{label}</span>
-  </a>;
+  const content = <>{player.photo_url ? <img className="top-player-photo" src={player.photo_url} alt="" loading="lazy" /> : <span className="top-player-photo-fallback" aria-hidden="true">{player.display_name.slice(0, 1)}</span>}
+    <span>{label}</span></>;
+  return player.internal_player_id === player.player_id
+    ? <InternalPlayerLink className="top-player-link" playerId={player.internal_player_id} onNavigate={onNavigate}>{content}</InternalPlayerLink>
+    : <span className="top-player-link">{content}</span>;
 }
 
 function TopTeamLink({ player, teamsById, warnings, onNavigate }: {

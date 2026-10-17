@@ -4,10 +4,12 @@ import {
   matchesRosterSearch,
   PlayerIdentity,
   positionCodeLabel,
+  readRosterSort,
   RosterSearch,
   showRosterValue,
   SortableHeader,
   sortRosterRows,
+  storeRosterSort,
   type SortDirection,
   type SortValue,
 } from "./TeamRosterShared";
@@ -16,6 +18,7 @@ interface Props {
   roster: TeamRoster;
   query: string;
   onQueryChange: (query: string) => void;
+  onNavigate: (path: string) => void;
 }
 
 const statisticColumns = [
@@ -40,9 +43,10 @@ const statisticColumns = [
 
 type StatisticKey = typeof statisticColumns[number][0];
 type SortKey = "jersey_number" | "display_name" | "source_position_code" | StatisticKey;
+const sortKeys: SortKey[] = ["jersey_number", "display_name", "source_position_code", ...statisticColumns.map(([key]) => key)];
 
-export function TeamRosterAnalysis({ roster, query, onQueryChange }: Props) {
-  const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection } | null>(null);
+export function TeamRosterAnalysis({ roster, query, onQueryChange, onNavigate }: Props) {
+  const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection } | null>(() => readRosterSort(roster.team.team_id, "analysis", sortKeys));
   const memberships = useMemo(() => new Map(roster.memberships.map((membership) => [membership.player_id, membership])), [roster.memberships]);
   const statistics = useMemo(() => new Map(roster.statistics.map((item) => [item.player_id, item])), [roster.statistics]);
   const filteredPlayers = roster.players.filter((player) => matchesRosterSearch(
@@ -55,7 +59,11 @@ export function TeamRosterAnalysis({ roster, query, onQueryChange }: Props) {
     : filteredPlayers;
 
   function toggleSort(key: SortKey) {
-    setSort((current) => ({ key, direction: current?.key === key && current.direction === "ascending" ? "descending" : "ascending" }));
+    setSort((current) => {
+      const next = { key, direction: current?.key === key && current.direction === "ascending" ? "descending" as const : "ascending" as const };
+      storeRosterSort(roster.team.team_id, "analysis", next);
+      return next;
+    });
   }
 
   const sorted = (key: SortKey) => sort?.key === key ? sort.direction : null;
@@ -79,7 +87,7 @@ export function TeamRosterAnalysis({ roster, query, onQueryChange }: Props) {
             const membership = memberships.get(player.player_id);
             const playerStatistics = statistics.get(player.player_id);
             return <tr data-player-id={player.player_id} key={player.player_id}>
-              <td><PlayerIdentity player={player} /></td>
+              <td><PlayerIdentity player={player} onNavigate={onNavigate} /></td>
               <td>{showRosterValue(membership?.jersey_number)}</td>
               <td><span title="BDFutbol publica un código numérico; su equivalencia táctica no está verificada.">{positionCodeLabel(player.source_position_code)}</span></td>
               {statisticColumns.map(([key, , title]) => <td key={key} title={title}>{showRosterValue(playerStatistics?.[key])}</td>)}

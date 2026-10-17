@@ -824,6 +824,7 @@ class PlayerTableRowResponse(ApiModel):
     context: dict[str, PlayerScalar]
     cells: list[PlayerTableCellResponse]
     source_fields: dict[str, Any] = Field(default_factory=dict)
+    internal_player_id: StrictInt | None = Field(default=None, gt=0)
 
 
 class PlayerMatchStatisticResponse(ApiModel):
@@ -854,6 +855,8 @@ class PlayerHistoricalMatchResponse(ApiModel):
     side: str | None
     home_goals: OptionalInt = None
     away_goals: OptionalInt = None
+    home_team_id: StrictInt | None = Field(default=None, gt=0)
+    away_team_id: StrictInt | None = Field(default=None, gt=0)
     minutes: StrictInt | None
     match_state: str | None
     appearance_status: str | None
@@ -1051,6 +1054,8 @@ class TopCaptureMetadata(TopApiModel):
 
 class TopPlayerResponse(TopApiModel):
     player_id: StrictInt = Field(gt=0)
+    # Set only by the API after corroborating the source ID against the local player inventory.
+    internal_player_id: StrictInt | None = None
     display_name: str = Field(min_length=1)
     full_name: str | None
     profile_url: str | None
@@ -1107,6 +1112,8 @@ class TopForeignStatistics(TopApiModel):
 
 class TopForeignPlayerResponse(TopApiModel):
     player_id: StrictInt = Field(gt=0)
+    # Set only by the API after corroborating the source ID against the local player inventory.
+    internal_player_id: StrictInt | None = None
     statistics: TopForeignStatistics
 
 

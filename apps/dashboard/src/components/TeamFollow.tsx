@@ -11,7 +11,7 @@ const modes: Array<{ id: FollowMode; label: string }> = [
   { id: "tot", label: "Todo" },
 ];
 
-export function TeamFollow({ teamId, season }: { teamId: number; season: string }) {
+export function TeamFollow({ teamId, season, onNavigate }: { teamId: number; season: string; onNavigate: (path: string) => void }) {
   const [result, setResult] = useState<TeamFollowLoadResult | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -93,12 +93,12 @@ export function TeamFollow({ teamId, season }: { teamId: number; season: string 
         <h2>Seguimiento aún no adquirido</h2>
         <p>El resto de la ficha del equipo permanece disponible.</p>
       </section>}
-      {!loading && !error && result?.status === "available" && <FollowContent follow={result.follow} mode={mode} />}
+      {!loading && !error && result?.status === "available" && <FollowContent follow={result.follow} mode={mode} onNavigate={onNavigate} />}
     </div>
   </section>;
 }
 
-function FollowContent({ follow, mode }: { follow: TeamFollowData; mode: FollowMode }) {
+function FollowContent({ follow, mode, onNavigate }: { follow: TeamFollowData; mode: FollowMode; onNavigate: (path: string) => void }) {
   const coverage = new Map(follow.coverage.map((item) => [item.state, item]));
   const requiredState = mode === "p" ? "p" : mode;
   const missingMode = mode !== "tot" && !coverage.get(requiredState)?.available;
@@ -116,7 +116,7 @@ function FollowContent({ follow, mode }: { follow: TeamFollowData; mode: FollowM
     <section className="team-profile-panel team-follow-panel" aria-label="Matriz de Seguimiento">
       <TeamFollowLegend mode={mode} />
       {partialTodo && <p className="follow-coverage-note" role="status">La captura permite mostrar los minutos. Tarjetas y goles no están disponibles todavía para este equipo.</p>}
-      <TeamFollowMatrix follow={follow} mode={mode} />
+      <TeamFollowMatrix follow={follow} mode={mode} onNavigate={onNavigate} />
     </section>
     <CoverageSummary follow={follow} />
     {follow.warnings.map((warning) => <p className="follow-warning" key={warning}>{warning}</p>)}

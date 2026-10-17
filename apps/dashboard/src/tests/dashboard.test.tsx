@@ -392,11 +392,12 @@ const topBootstrap = {
     graph_available: ["goals", "minutes", "yellow_cards", "red_cards"].includes(categoryBySourceValue[option.value]),
     see_all_available: option.value === "1" && topCapture.see_all_available_for_goals,
   })),
-  players: topPlayers.records,
+  players: topPlayers.records.map((player) => ({ ...player, internal_player_id: player.player_id })),
   rankings: topRankings.records,
   progress: topProgress.records,
   foreigners: topForeigners.records.map((player, index) => ({
     player_id: player.player_id,
+    internal_player_id: player.player_id,
     statistics: {
       ...player.statistics,
       // Isolated UI fixture to distinguish a genuine zero from missing data.
@@ -957,7 +958,7 @@ describe("dashboard de clasificación", () => {
     expect(window.location.pathname).toBe("/players/28577");
     expect(await screen.findByRole("heading", { name: "Nacho Castillo" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "BDFutbol ↗" })).toHaveAttribute("target", "_blank");
-    expect(screen.getByRole("link", { name: "Real Jaén · Grupo II" })).toHaveAttribute("href", "/teams/49");
+    expect(await screen.findByRole("link", { name: "Jaén · Grupo II" })).toHaveAttribute("href", "/teams/49");
     expect(screen.getByRole("heading", { name: "Trayectoria y rendimiento" })).toBeInTheDocument();
     expect(screen.getAllByRole("tab")).toHaveLength(4);
     expect(document.body.textContent).not.toMatch(/SHA-256|captura|procedencia|inventario|fuente.*discrepa|no certifica|four_views_verified|roster_membership_observed/i);
@@ -970,7 +971,7 @@ describe("dashboard de clasificación", () => {
     render(<App />);
     expect(await screen.findByRole("heading", { name: "Nacho Castillo" })).toBeInTheDocument();
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/api/v1/players/28577"))).toBe(true);
-    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/api/v1/groups/2/bootstrap"))).toBe(false);
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/api/v1/groups/2/bootstrap"))).toBe(true);
   });
 
   it("construye el directorio con ambos bootstraps y filtra sin nuevas solicitudes", async () => {
@@ -1036,6 +1037,30 @@ describe("dashboard de clasificación", () => {
     expect(screen.getByRole("link", { name: "BDFutbol ↗" })).toHaveAttribute("target", "_blank");
   });
 
+  it("recupera la pestaña y la búsqueda de Plantilla al volver de una ficha de jugador", async () => {
+    window.sessionStorage.clear();
+    window.history.replaceState({}, "", "/teams/49/roster");
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "Jaén" })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("tab", { name: "Plantilla" }));
+    const dorsalSort = screen.getByRole("button", { name: "Ordenar por Dorsal" });
+    fireEvent.click(dorsalSort);
+    expect(dorsalSort.closest("th")).toHaveAttribute("aria-sort", "ascending");
+    const search = screen.getByRole("textbox", { name: "Buscar en la plantilla" });
+    fireEvent.change(search, { target: { value: "Nacho" } });
+    const playerLink = await screen.findByRole("link", { name: /Nacho Castillo/ });
+    fireEvent.click(playerLink);
+    expect(await screen.findByRole("heading", { name: "Nacho Castillo" })).toBeInTheDocument();
+
+    window.history.replaceState({}, "", "/teams/49/roster");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    const rosterTab = await screen.findByRole("tab", { name: "Plantilla" });
+    expect(rosterTab).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByRole("textbox", { name: "Buscar en la plantilla" })).toHaveValue("Nacho");
+    expect(document.querySelectorAll(".roster-biography-table tbody tr[data-player-id]")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Ordenar por Dorsal" }).closest("th")).toHaveAttribute("aria-sort", "ascending");
+  });
+
   it("enlaza local, visitante y matriz a fichas internas sin convertir marcadores en enlaces de equipo", async () => {
     const { container } = render(<App />);
     await screen.findByRole("heading", { name: "General" });
@@ -1086,10 +1111,30 @@ describe("dashboard de clasificación", () => {
     const teamLink = document.querySelector<HTMLAnchorElement>(".top-team-link[href^='/teams/']");
     expect(teamLink).toBeInTheDocument();
     expect(teamLink?.getAttribute("href")).toMatch(/^\/teams\/\d+$/);
-    expect(document.querySelector(".top-player-link[target='_blank']")).toBeInTheDocument();
+    expect(document.querySelector(".top-player-link[href^='/players/']")).toBeInTheDocument();
     fireEvent.click(teamLink!);
     expect(window.location.pathname).toBe(teamLink?.getAttribute("href"));
     expect(await screen.findByRole("heading", { name: "Resumen deportivo" })).toBeInTheDocument();
+  });
+
+  it("mantiene como texto un jugador de Destacados sin ID corroborado en el inventario", async () => {
+    const unverifiedTop = structuredClone(topBootstrap);
+    const visibleRanking = unverifiedTop.rankings.find((ranking) => ranking.category === "goals")!;
+    const firstPlayer = unverifiedTop.players.find((player) => player.player_id === visibleRanking.player_id)!;
+    firstPlayer.internal_player_id = null;
+    fetchMock.mockImplementation((input: RequestInfo | URL) => Promise.resolve(
+      String(input).endsWith("/top/bootstrap") ? response(200, unverifiedTop) : response(200, payloadFor(input)),
+    ));
+    render(<App />);
+    await screen.findByRole("heading", { name: "General" });
+    fireEvent.click(screen.getByRole("tab", { name: "Destacados" }));
+    await screen.findByRole("heading", { name: "Destacados" });
+
+    const playerName = firstPlayer.full_name ?? firstPlayer.display_name;
+    const targetRow = [...document.querySelectorAll(".top-ranking-table tbody tr")]
+      .find((row) => row.textContent?.includes(playerName));
+    expect(targetRow).toBeDefined();
+    expect(targetRow?.querySelector("a[href^='/players/']")).toBeNull();
   });
 
   it("enlaza clubes de Récords y Rachas a perfiles internos, manteniendo externo el marcador", async () => {
@@ -1803,7 +1848,7 @@ describe("dashboard de clasificación", () => {
       .map((row) => row.children[6]?.textContent?.trim());
     const lastTwoPlayerIds = () => Array.from(table.querySelectorAll("tbody tr"))
       .slice(-2)
-      .map((row) => Number(row.querySelector("a")?.getAttribute("href")?.match(/j(\d+)\.html$/)?.[1]));
+      .map((row) => Number(row.querySelector("a")?.getAttribute("href")?.match(/\/players\/(\d+)$/)?.[1]));
     const expectedNullPlayerIds = sortableFixture.foreigners.slice(-2)
       .map(({ player_id }) => player_id)
       .sort((left, right) => left - right);
@@ -1964,6 +2009,8 @@ describe("dashboard de clasificación", () => {
     expect(screen.getByRole("heading", { name: "Titulares" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Suplentes" })).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Representación aproximada de la táctica" }).querySelectorAll("[data-player-id]")).toHaveLength(11);
+    const tacticalLink = screen.getByRole("group", { name: "Representación aproximada de la táctica" }).querySelector<HTMLAnchorElement>("a.tactical-player-marker");
+    expect(tacticalLink).toHaveAttribute("href", `/players/${tacticalLink?.dataset.playerId}`);
     expect(screen.getByRole("tab", { name: "Alineación" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("tab", { name: "Plantilla" })).toHaveAttribute("aria-selected", "false");
     expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/teams/48/seasons/2026-27/roster"))).toHaveLength(1);
@@ -1982,6 +2029,7 @@ describe("dashboard de clasificación", () => {
     expect(bioRows).toHaveLength(25);
     expect(bioRows[0]?.dataset.playerId).toBe(String(roster.players[0]?.player_id));
     const firstPlayer = roster.players[0]!;
+    expect(bioRows[0]?.querySelector("a[href^='/players/']")).toHaveAttribute("href", `/players/${firstPlayer.player_id}`);
     const birthDate = firstPlayer.birth_date ? `${firstPlayer.birth_date.slice(8, 10)}/${firstPlayer.birth_date.slice(5, 7)}/${firstPlayer.birth_date.slice(0, 4)}` : "—";
     expect(bioRows[0]?.cells[3]).toHaveTextContent(birthDate);
     expect(bioRows[0]?.cells[2]).toHaveTextContent(firstPlayer.full_name ?? "—");
@@ -2018,6 +2066,7 @@ describe("dashboard de clasificación", () => {
     ]) expect(within(analysisTable).getByRole("button", { name: `Ordenar por ${header}` })).toBeInTheDocument();
     const firstStatistics = roster.statistics.find((item) => item.player_id === firstPlayer.player_id)!;
     const firstAnalysisRow = analysisRows.find((row) => row.dataset.playerId === String(firstPlayer.player_id))!;
+    expect(firstAnalysisRow.querySelector("a[href^='/players/']")).toHaveAttribute("href", `/players/${firstPlayer.player_id}`);
     expect(firstAnalysisRow.cells[3 + 6]).toHaveTextContent(String(firstStatistics.minutes_played));
     expect(firstAnalysisRow.cells[3 + 11]).toHaveTextContent(String(firstStatistics.penalty_goals));
     expect(firstAnalysisRow.cells[3 + 16]).toHaveTextContent(String(firstStatistics.team_losses));
@@ -2103,6 +2152,8 @@ describe("dashboard de clasificación", () => {
 
     expect(await screen.findByRole("heading", { name: "Seguimiento" })).toBeInTheDocument();
     const matrix = await screen.findByTestId("team-follow-matrix");
+    const followPlayerLink = matrix.querySelector<HTMLAnchorElement>("a.follow-player-link");
+    expect(followPlayerLink?.getAttribute("href")).toMatch(/^\/players\/\d+$/);
     const sectionNavigation = screen.getByRole("navigation", { name: "Secciones de Jaén" });
     expect(within(sectionNavigation).getAllByRole("link").map((link) => link.textContent)).toEqual(["Resumen", "Plantilla", "Seguimiento", "Traspasos", "Partidos"]);
     expect(screen.getByRole("tab", { name: "Partidos" })).toHaveAttribute("aria-selected", "true");
@@ -2163,8 +2214,8 @@ describe("dashboard de clasificación", () => {
     const bajas = await screen.findByRole("region", { name: "Bajas" });
     expect(within(altas).getAllByRole("row")).toHaveLength(15);
     expect(within(bajas).getAllByRole("row")).toHaveLength(21);
-    expect(within(altas).getByRole("link", { name: "Álex Pérez" })).toHaveAttribute("href", "https://www.bdfutbol.com/es/j/j304042.html");
-    expect(within(bajas).getByRole("link", { name: "Rabanillo" })).toHaveAttribute("href", "https://www.bdfutbol.com/es/j/j22537.html");
+    expect(within(altas).getByRole("link", { name: "Álex Pérez" })).toHaveAttribute("href", "/players/304042");
+    expect(within(bajas).getByRole("link", { name: "Rabanillo" })).toHaveAttribute("href", "/players/22537");
     expect(within(bajas).getAllByText("—").length).toBeGreaterThan(0);
     expect(within(bajas).getAllByText("Código por · sin equivalencia validada").length).toBeGreaterThan(0);
     const photo = altas.querySelector('img[src="https://www.bdfutbol.com/i/m/304042.png"]');
@@ -2191,7 +2242,7 @@ describe("dashboard de clasificación", () => {
 
     window.history.replaceState({}, "", "/teams/48/transfers");
     window.dispatchEvent(new PopStateEvent("popstate"));
-    expect(await screen.findByRole("link", { name: "Parera" })).toHaveAttribute("href", "https://www.bdfutbol.com/es/j/j23024.html");
+    expect(await screen.findByRole("link", { name: "Parera" })).toHaveAttribute("href", "/players/23024");
     expect(screen.queryByRole("link", { name: "Rabanillo" })).not.toBeInTheDocument();
     expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/teams/48/seasons/2026-27/transfers"))).toHaveLength(1);
 

@@ -1,5 +1,8 @@
 import { useState } from "react";
 import type { PlayerDetail } from "../api/contracts";
+import type { CatalogTeam } from "../domain/teams";
+import { InternalPlayerLink } from "./InternalPlayerLink";
+import { InternalTeamLink } from "./InternalTeamLink";
 
 type PlayerView = PlayerDetail["verified_individual_views"][number];
 type PlayerTable = PlayerView["tables"][number];
@@ -29,8 +32,20 @@ const roleLabels: Record<string, string> = {
   additional_sports_table: "Otros registros deportivos",
 };
 
-export function PlayerIndividualViews({ views, movement = null }: { views: PlayerView[]; movement?: PlayerDetail["last_observed_movement"] }) {
-  const [selected, setSelected] = useState<(typeof viewOrder)[number]>("profile");
+export function PlayerIndividualViews({
+  playerId = null,
+  views,
+  movement = null,
+  teams = [],
+  onNavigate = () => undefined,
+}: {
+  views: PlayerView[];
+  playerId?: number | null;
+  movement?: PlayerDetail["last_observed_movement"];
+  teams?: readonly CatalogTeam[];
+  onNavigate?: (path: string) => void;
+}) {
+  const [selected, setSelected] = useState<(typeof viewOrder)[number]>(() => readSelectedView(playerId));
   const byName = new Map(views.map((view) => [view.view, view]));
   const view = byName.get(selected);
   if (!view) return null;
@@ -47,23 +62,35 @@ export function PlayerIndividualViews({ views, movement = null }: { views: Playe
           aria-controls="player-view-panel"
           aria-selected={selected === name}
           className={selected === name ? "is-active" : ""}
-          onClick={() => setSelected(name)}
+          onClick={() => {
+            setSelected(name);
+            storePlayerState(playerId, "view", name);
+          }}
         >{viewTitle[name]}</button>)}
       </nav>
     </header>
     <div id="player-view-panel" className="player-view-content" role="tabpanel" aria-labelledby={`player-tab-${selected}`}>
-      {selected === "profile" && <CareerView view={view} movement={movement} />}
+      {selected === "profile" && <CareerView view={view} movement={movement} teams={teams} onNavigate={onNavigate} />}
       {selected === "statistics" && <StatisticsView view={view} />}
-      {selected === "matches" && <MatchesView view={view} />}
-      {selected === "rivals" && <RivalsView view={view} />}
+      {selected === "matches" && <MatchesView view={view} playerId={playerId} teams={teams} onNavigate={onNavigate} />}
+      {selected === "rivals" && <RivalsView view={view} teams={teams} onNavigate={onNavigate} />}
     </div>
   </section>;
 }
 
-function CareerView({ view, movement }: { view: PlayerView; movement: PlayerDetail["last_observed_movement"] }) {
+function CareerView({ view, movement, teams, onNavigate }: {
+  view: PlayerView;
+  movement: PlayerDetail["last_observed_movement"];
+  teams: readonly CatalogTeam[];
+  onNavigate: (path: string) => void;
+}) {
+  const teamsById = new Map(teams.map((team) => [team.team_id, team]));
   return <>
-    <DataTables tables={view.tables} empty="No hay temporadas de trayectoria disponibles." />
-    {movement && <p className="player-movement-line"><strong>Movimiento registrado · {movement.season}:</strong> {movement.from_team_name} → {movement.to_team_name}</p>}
+    <DataTables tables={view.tables} empty="No hay temporadas de trayectoria disponibles." teams={teams} onNavigate={onNavigate} />
+    {movement && <p className="player-movement-line"><strong>Movimiento registrado · {movement.season}:</strong>{" "}
+      {teamReference(movement.from_team_id, movement.from_team_name, teamsById, onNavigate)}{" → "}
+      {teamReference(movement.to_team_id, movement.to_team_name, teamsById, onNavigate)}
+    </p>}
   </>;
 }
 
@@ -88,9 +115,9 @@ function StatisticsView({ view }: { view: PlayerView }) {
   </>;
 }
 
-function MatchesView({ view }: { view: PlayerView }) {
-  const [season, setSeason] = useState("all");
-  const [competition, setCompetition] = useState("all");
+function MatchesView({ view, playerId, teams, onNavigate }: { view: PlayerView; playerId: number | null; teams: readonly CatalogTeam[]; onNavigate: (path: string) => void }) {
+  const [season, setSeason] = useState(() => readPlayerState(playerId, "season"));
+  const [competition, setCompetition] = useState(() => readPlayerState(playerId, "competition"));
   const records = [
     ...view.historical_matches,
     ...view.summoned_without_participation,
@@ -103,32 +130,43 @@ function MatchesView({ view }: { view: PlayerView }) {
     && (competition === "all" || record.competition === competition),
   );
   return <>
-    <DataTables tables={view.tables} empty="No hay resúmenes de partidos disponibles." />
+    <DataTables tables={view.tables} empty="No hay resúmenes de partidos disponibles." teams={teams} onNavigate={onNavigate} />
     <div className="player-match-filters" aria-label="Filtrar partidos">
-      <label>Temporada<select aria-label="Temporada" value={season} onChange={(event) => setSeason(event.currentTarget.value)}>
+      <label>Temporada<select aria-label="Temporada" value={season} onChange={(event) => {
+        setSeason(event.currentTarget.value);
+        storePlayerState(playerId, "season", event.currentTarget.value);
+      }}>
         <option value="all">Todas</option>{seasons.map((value) => <option key={value} value={value}>{value}</option>)}
       </select></label>
-      <label>Competición<select aria-label="Competición" value={competition} onChange={(event) => setCompetition(event.currentTarget.value)}>
+      <label>Competición<select aria-label="Competición" value={competition} onChange={(event) => {
+        setCompetition(event.currentTarget.value);
+        storePlayerState(playerId, "competition", event.currentTarget.value);
+      }}>
         <option value="all">Todas</option>{competitions.map((value) => <option key={value} value={value}>{value}</option>)}
       </select></label>
     </div>
-    <MatchRecords records={filtered} />
+    <MatchRecords records={filtered} teams={teams} onNavigate={onNavigate} />
   </>;
 }
 
-function RivalsView({ view }: { view: PlayerView }) {
-  return <DataTables tables={view.tables} empty="No hay estadísticas de rivales disponibles." />;
+function RivalsView({ view, teams, onNavigate }: { view: PlayerView; teams: readonly CatalogTeam[]; onNavigate: (path: string) => void }) {
+  return <DataTables tables={view.tables} empty="No hay estadísticas de rivales disponibles." teams={teams} onNavigate={onNavigate} />;
 }
 
-function DataTables({ tables, empty }: { tables: PlayerTable[]; empty: string }) {
+function DataTables({ tables, empty, teams = [], onNavigate = () => undefined }: {
+  tables: PlayerTable[];
+  empty: string;
+  teams?: readonly CatalogTeam[];
+  onNavigate?: (path: string) => void;
+}) {
   const publishable = tables.filter((table) => table.columns.length > 0);
   if (publishable.length === 0) return <p className="player-data-empty">{empty}</p>;
   return <div className="player-source-tables">
-    {publishable.map((table, index) => <SourceTable key={`${table.table_id ?? table.table_role}-${table.source_table_index ?? table.schema_id ?? "table"}-${index}`} table={table} />)}
+    {publishable.map((table, index) => <SourceTable key={`${table.table_id ?? table.table_role}-${table.source_table_index ?? table.schema_id ?? "table"}-${index}`} table={table} teams={teams} onNavigate={onNavigate} />)}
   </div>;
 }
 
-function SourceTable({ table }: { table: PlayerTable }) {
+function SourceTable({ table, teams, onNavigate }: { table: PlayerTable; teams: readonly CatalogTeam[]; onNavigate: (path: string) => void }) {
   const caption = tableCaption(table);
   if (!caption) return null;
   return <section className="player-source-table">
@@ -151,13 +189,13 @@ function SourceTable({ table }: { table: PlayerTable }) {
               {table.columns.map((column, columnIndex) => {
                 const sourceIndex = column.source_index ?? columnIndex;
                 if (sourceIndex < summarySpan) return null;
-                return <td key={`${sourceIndex}-${column.label}`}>{tableCellValue(row, column, columnIndex)}</td>;
+                return <td key={`${sourceIndex}-${column.label}`}>{tableCellValue(row, column, columnIndex, table, teams, onNavigate)}</td>;
               })}
             </tr>;
           }
           return <tr key={rowIndex}>
             {table.columns.map((column, columnIndex) => <td key={`${column.source_index ?? columnIndex}-${column.label}`}>
-              {tableCellValue(row, column, columnIndex)}
+              {tableCellValue(row, column, columnIndex, table, teams, onNavigate)}
             </td>)}
           </tr>;
         })}</tbody>
@@ -166,15 +204,35 @@ function SourceTable({ table }: { table: PlayerTable }) {
   </section>;
 }
 
-function tableCellValue(row: PlayerTable["rows"][number], column: PlayerTable["columns"][number], columnIndex: number): string {
+function tableCellValue(
+  row: PlayerTable["rows"][number],
+  column: PlayerTable["columns"][number],
+  columnIndex: number,
+  table: PlayerTable,
+  teams: readonly CatalogTeam[],
+  onNavigate: (path: string) => void,
+) {
   const sourceIndex = column.source_index ?? columnIndex;
   const cell = row.cells[sourceIndex];
   const value = cell?.normalized_integer ?? cell?.raw_value;
-  return display(value) || careerMarker(row, column.label);
+  const text = display(value) || careerMarker(row, column.label);
+  const playerId = table.table_role === "opponent_player_statistics" ? row.internal_player_id : null;
+  if (playerId !== null && typeof playerId === "number"
+    && text === row.source_fields.rival_name_raw) {
+    return <InternalPlayerLink playerId={playerId} onNavigate={onNavigate}>{text}</InternalPlayerLink>;
+  }
+  if (table.table_role === "career_trajectory" && column.label.toLocaleLowerCase("es") === "equipo") {
+    const teamId = verifiedCareerTeamId(row);
+    if (teamId !== null && teams.some((team) => team.team_id === teamId)) {
+      return <InternalTeamLink teamId={teamId} onNavigate={onNavigate}>{text}</InternalTeamLink>;
+    }
+  }
+  return text;
 }
 
-function MatchRecords({ records }: { records: PlayerMatch[] }) {
+function MatchRecords({ records, teams, onNavigate }: { records: PlayerMatch[]; teams: readonly CatalogTeam[]; onNavigate: (path: string) => void }) {
   if (records.length === 0) return <p className="player-data-empty">No hay partidos disponibles.</p>;
+  const teamsById = new Map(teams.map((team) => [team.team_id, team]));
   const statisticLabels = [...new Set(records.flatMap((record) => record.match_statistics.map((item) => item.label)))];
   return <section className="player-source-table player-match-table-section">
     <h3>Partidos de la trayectoria</h3>
@@ -189,9 +247,9 @@ function MatchRecords({ records }: { records: PlayerMatch[] }) {
         <tbody>{records.map((record, index) => <tr key={`${record.match_id ?? "match"}-${index}`}>
           <td>{record.date ?? record.date_raw ?? "—"}</td>
           <td>{record.season ?? "—"}</td><td>{record.competition ?? "—"}</td><td>{record.round_label ?? "—"}</td>
-          <td>{record.player_team && record.side === "home" ? record.player_team : teamName(record, "home")}</td>
+          <td>{teamReference(record.home_team_id, record.player_team && record.side === "home" ? record.player_team : teamName(record, "home"), teamsById, onNavigate)}</td>
           <td>{score(record.home_goals, record.away_goals)}</td>
-          <td>{record.player_team && record.side === "away" ? record.player_team : teamName(record, "away")}</td>
+          <td>{teamReference(record.away_team_id, record.player_team && record.side === "away" ? record.player_team : teamName(record, "away"), teamsById, onNavigate)}</td>
           <td>{record.participation}</td>
           {statisticLabels.map((label) => <td key={label}>{display(record.match_statistics.find((item) => item.label === label)?.normalized_integer ?? record.match_statistics.find((item) => item.label === label)?.raw_value)}</td>)}
           <td>{record.match_url && <a href={record.match_url} target="_blank" rel="noreferrer">Ver partido ↗</a>}</td>
@@ -225,6 +283,32 @@ function teamName(record: PlayerMatch, side: "home" | "away"): string {
   return typeof value === "string" && value ? value : "—";
 }
 
+function verifiedCareerTeamId(row: PlayerTable["rows"][number]): number | null {
+  const reference = row.source_fields.team_season_reference;
+  const url = row.source_fields.team_season_url;
+  if (typeof reference !== "string" || typeof url !== "string") return null;
+  let path: string;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:" || !["bdfutbol.com", "www.bdfutbol.com"].includes(parsed.hostname)) return null;
+    path = parsed.pathname;
+  } catch { return null; }
+  const match = /^\/es\/t\/t\d{4}-\d{2}([1-9]\d*)\.html$/u.exec(path);
+  if (!match || reference !== path.split("/").pop()?.replace(/\.html$/u, "")) return null;
+  const teamId = Number(match[1]);
+  return Number.isSafeInteger(teamId) && teamId > 0 ? teamId : null;
+}
+
+function teamReference(
+  teamId: number | null,
+  name: string,
+  teamsById: Map<number, CatalogTeam>,
+  onNavigate: (path: string) => void,
+) {
+  const team = teamId === null ? undefined : teamsById.get(teamId);
+  return team ? <InternalTeamLink teamId={team.team_id} onNavigate={onNavigate}>{name}</InternalTeamLink> : name;
+}
+
 function score(home: number | null, away: number | null): string {
   return home === null || away === null ? "—" : `${home}–${away}`;
 }
@@ -233,4 +317,24 @@ function display(value: unknown): string {
   if (value === null || value === undefined || value === "") return "";
   if (typeof value === "object") return "";
   return String(value);
+}
+
+type StoredPlayerStateKey = "view" | "season" | "competition";
+const playerViews = new Set<string>(viewOrder);
+
+function readSelectedView(playerId: number | null): (typeof viewOrder)[number] {
+  const value = readPlayerState(playerId, "view");
+  return playerViews.has(value) ? value as (typeof viewOrder)[number] : "profile";
+}
+
+function readPlayerState(playerId: number | null, key: StoredPlayerStateKey): string {
+  if (playerId === null) return key === "view" ? "profile" : "all";
+  try { return window.sessionStorage.getItem(`football-data-hub:player:${playerId}:${key}`) ?? (key === "view" ? "profile" : "all"); }
+  catch { return key === "view" ? "profile" : "all"; }
+}
+
+function storePlayerState(playerId: number | null, key: StoredPlayerStateKey, value: string): void {
+  if (playerId === null) return;
+  try { window.sessionStorage.setItem(`football-data-hub:player:${playerId}:${key}`, value); }
+  catch { /* The selected view remains usable without session storage. */ }
 }
