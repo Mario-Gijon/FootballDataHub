@@ -37,7 +37,7 @@ function tableFixture(role: string, rawValue: string | number) {
     table_id: role,
     schema_id: "schema-1",
     columns: [{
-      label: "Valor", title: null, hidden_in_source: false, source_index: 0, group_header: null, data_colid: "val",
+      label: "Valor", source_header: "Valor", title: null, hidden_in_source: false, source_index: 0, group_header: null, data_colid: "val",
     }],
     rows: [{
       context: { season_raw: "2025-26" },
@@ -51,7 +51,10 @@ describe("PlayerIndividualViews", () => {
   it("presenta la trayectoria, estadísticas, resúmenes, convocatorias y datos de rivales por apartados", () => {
     const views: PlayerView[] = [
       viewFixture("profile", {
-        profile: { display_name_raw: "Nacho Castillo", position_raw: "Centrocampista", height_raw: "183 cm" },
+        profile: {
+          display_name_raw: "Nacho Castillo", position_raw: "Centrocampista", height_raw: "183 cm",
+          career_completeness: "CAREER_ROWS_PRESENT_NOT_CERTIFIED_COMPLETE",
+        },
         tables: tableFixture("career_trajectory", 12),
       }),
       viewFixture("statistics", { tables: tableFixture("statistics_by_team", 0) }),
@@ -76,26 +79,63 @@ describe("PlayerIndividualViews", () => {
     ];
     render(<PlayerIndividualViews views={views} />);
 
-    expect(screen.getByText("Nacho Castillo")).toBeTruthy();
-    expect(screen.getByText("Centrocampista")).toBeTruthy();
-    expect(screen.getByText("183 cm")).toBeTruthy();
+    expect(screen.queryByText("Nacho Castillo")).toBeNull();
+    expect(screen.queryByText("Centrocampista")).toBeNull();
+    expect(screen.queryByText("183 cm")).toBeNull();
+    expect(screen.getByText(/el histórico no está certificado como completo/i)).toBeTruthy();
     expect(screen.getByText("12")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("tab", { name: /Estadísticas/ }));
-    expect(screen.getByText("statistics by team")).toBeTruthy();
+    expect(screen.getByText("Estadísticas por equipo")).toBeTruthy();
     expect(screen.getAllByText("0").length).toBeGreaterThan(0);
     fireEvent.click(screen.getByText("Ver campos (3)"));
     expect(screen.getAllByText("Real Jaén").length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("tab", { name: /Partidos/ }));
-    expect(screen.getByText(/Exhaustividad: SNAPSHOT_SCOPE_ONLY_NOT_CERTIFIED_COMPLETE/)).toBeTruthy();
+    expect(screen.getByText(/Cobertura: Los datos corresponden al alcance de esta captura/i)).toBeTruthy();
     expect(screen.getByText("1-0")).toBeTruthy();
     expect(screen.getByText("Convocatorias sin participación")).toBeTruthy();
     expect(screen.getByText(/SUMMONED_WITHOUT_APPEARANCE_PER_SOURCE_FLAG/)).toBeTruthy();
-    expect(screen.getByText("match summary by season")).toBeTruthy();
+    expect(screen.getByText("Resumen de partidos por temporada")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("tab", { name: /Rivales/ }));
     const panel = screen.getByRole("tabpanel", { name: "Rivales" });
-    expect(within(panel).getByText("opponent team statistics")).toBeTruthy();
+    expect(within(panel).getByText("Estadísticas por rival")).toBeTruthy();
+  });
+
+  it("uses a neutral label for an unknown column and keeps source identifiers in provenance", () => {
+    const unknownTable = {
+      table_role: "unmapped_source_role",
+      source_table_index: 2,
+      table_id: "private-source-table-id",
+      schema_id: "source-schema-4",
+      columns: [{
+        label: "Sin encabezado", source_header: null, title: null, hidden_in_source: false,
+        source_index: 3, group_header: null, data_colid: null,
+      }],
+      rows: [{
+        context: {},
+        cells: [
+          { raw_value: null, normalized_integer: null, value_status: null },
+          { raw_value: null, normalized_integer: null, value_status: null },
+          { raw_value: null, normalized_integer: null, value_status: null },
+          { raw_value: "valor original", normalized_integer: null, value_status: null },
+        ],
+        source_fields: {},
+      }],
+    };
+    render(<PlayerIndividualViews views={[viewFixture("profile", { tables: [unknownTable] })]} />);
+
+    expect(screen.getByText("Trayectoria observada")).toBeTruthy();
+    expect(screen.getByText("Sin encabezado")).toBeTruthy();
+    expect(screen.queryByText("Tabla de datos capturados")).toBeNull();
+    expect(screen.queryByText("Dato de origen 4")).toBeNull();
+    expect(screen.queryByText("Campo sin rótulo (4)")).toBeNull();
+    const table = screen.getByText("Trayectoria observada").closest("section");
+    expect(table?.querySelector("h3")?.textContent).toBe("Trayectoria observada");
+    const provenance = within(table as HTMLElement).getByText("Ver procedencia");
+    expect(provenance).toBeDefined();
+    expect(provenance.closest("details")?.textContent).toContain("unmapped_source_role");
+    expect(provenance.closest("details")?.textContent).toContain("source-schema-4");
   });
 });

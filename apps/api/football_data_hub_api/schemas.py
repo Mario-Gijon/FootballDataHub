@@ -696,6 +696,98 @@ class PlayerMatchMetricResponse(ApiModel):
     captured_at: datetime | None
 
 
+class PlayerIdentityConflictResponse(ApiModel):
+    field: str = Field(min_length=1)
+    inventory_value: str
+    individual_profile_value: str
+    selected_source: Literal["inventory"]
+
+
+class PlayerIdentityResponse(ApiModel):
+    display_name: str | None
+    full_name: str | None
+    birth_date: date | None
+    age_years: OptionalInt = Field(default=None, ge=0)
+    birth_place: str | None
+    birth_place_raw: str | None
+    birthplace_province: str | None
+    country_of_birth: str | None
+    nationality: str | None
+    position_name: str | None
+    height_cm: StrictInt | StrictFloat | None
+    height_raw: str | None
+    weight_kg: StrictInt | StrictFloat | None
+    weight_raw: str | None
+    field_sources: dict[str, Literal["inventory", "individual_profile", "unavailable"]]
+    inventory_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    individual_profile_source_url: str | None
+    individual_profile_captured_at: datetime | None
+    individual_profile_sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+    conflicts: list[PlayerIdentityConflictResponse]
+
+
+class PlayerMembershipHistoryResponse(ApiModel):
+    team_id: StrictInt = Field(gt=0)
+    team_name: str = Field(min_length=1)
+    group: Literal["I", "II"]
+    season: Literal["2026-27"]
+    captured_at: datetime | None
+    capture_id: str | None
+    jersey_number: OptionalInt
+    squad_group_label: str | None
+    source_views: list[str]
+
+
+class PlayerTransferEvidenceResponse(ApiModel):
+    capture_id: str | None
+    captured_at: datetime | None
+    source_sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+    source_record_index: OptionalInt
+    team_id: StrictInt = Field(gt=0)
+    group: Literal["I", "II"] | None
+    direction: Literal["incoming", "outgoing"]
+
+
+class PlayerClubReferenceResponse(ApiModel):
+    status: Literal["observed", "not_confirmed"]
+    team_id: StrictInt | None
+    team_name: str | None
+    group: Literal["I", "II"] | None
+    observed_at: datetime | None
+    reason: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_observed_club(self) -> PlayerClubReferenceResponse:
+        fields = (self.team_id, self.team_name, self.group)
+        if self.status == "observed" and any(value is None for value in fields):
+            raise ValueError("Un club observado requiere ID, nombre y grupo.")
+        if self.status == "not_confirmed" and any(value is not None for value in fields):
+            raise ValueError("Un club no confirmado no puede publicar una identidad elegida.")
+        return self
+
+
+class PlayerClubMovementResponse(ApiModel):
+    from_team_id: StrictInt = Field(gt=0)
+    from_team_name: str = Field(min_length=1)
+    from_group: Literal["I", "II"] | None
+    to_team_id: StrictInt = Field(gt=0)
+    to_team_name: str = Field(min_length=1)
+    to_group: Literal["I", "II"] | None
+    season: Literal["2026-27"]
+    transfer_date: date | None
+    observed_at: datetime | None
+    evidence_count: StrictInt = Field(ge=1)
+    evidence: list[PlayerTransferEvidenceResponse] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_movement(self) -> PlayerClubMovementResponse:
+        if self.from_team_id == self.to_team_id:
+            raise ValueError("Un movimiento no puede conectar un equipo consigo mismo.")
+        if self.evidence_count != len(self.evidence):
+            raise ValueError("El recuento de evidencias del movimiento no coincide.")
+        return self
+
+
 class PlayerTransferReferenceResponse(ApiModel):
     team_id: StrictInt = Field(gt=0)
     team_name: str | None
@@ -705,10 +797,16 @@ class PlayerTransferReferenceResponse(ApiModel):
     other_team_id: StrictInt | None
     source_position_code: str | None
     age_years: OptionalInt
+    transfer_date: date | None
+    capture_id: str | None
+    captured_at: datetime | None
+    source_sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+    source_record_index: OptionalInt
 
 
 class PlayerTableColumnResponse(ApiModel):
     label: str = Field(min_length=1)
+    source_header: str | None
     title: str | None
     hidden_in_source: bool
     source_index: StrictInt | None = None
@@ -779,11 +877,16 @@ class PlayerIndividualViewResponse(ApiModel):
 class PlayerDetailResponse(ApiModel):
     metadata: PlayerDirectoryMetadataResponse
     player: PlayerIndexRecordResponse
+    identity: PlayerIdentityResponse
+    club_reference: PlayerClubReferenceResponse
+    last_observed_movement: PlayerClubMovementResponse | None
+    movement_resolution: Literal["identified", "ambiguous", "none"]
     birth_place: str | None
     birthplace_province: str | None
     nationality_flag_url: str | None
     verified_indicators: list[str]
     associations: list[PlayerTeamAssociationResponse]
+    membership_history: list[PlayerMembershipHistoryResponse]
     transfer_references: list[PlayerTransferReferenceResponse]
     season_statistics: list[PlayerSeasonStatisticResponse]
     match_minutes: list[PlayerMatchMetricResponse]

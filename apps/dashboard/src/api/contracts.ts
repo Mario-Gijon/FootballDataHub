@@ -1176,6 +1176,79 @@ const PlayerDirectoryMetadataSchema = z.object({
   inventory_sha256: z.string().regex(/^[a-f0-9]{64}$/),
 }).strict();
 
+const PlayerIdentitySchema = z.object({
+  display_name: z.string().nullable(),
+  full_name: z.string().nullable(),
+  birth_date: dateOnly,
+  age_years: nullableInteger,
+  birth_place: z.string().nullable(),
+  birth_place_raw: z.string().nullable(),
+  birthplace_province: z.string().nullable(),
+  country_of_birth: z.string().nullable(),
+  nationality: z.string().nullable(),
+  position_name: z.string().nullable(),
+  height_cm: z.number().positive().nullable(),
+  height_raw: z.string().nullable(),
+  weight_kg: z.number().positive().nullable(),
+  weight_raw: z.string().nullable(),
+  field_sources: z.record(z.string(), z.enum(["inventory", "individual_profile", "unavailable"])),
+  inventory_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  individual_profile_source_url: z.string().url().nullable(),
+  individual_profile_captured_at: z.string().datetime({ offset: true }).nullable(),
+  individual_profile_sha256: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
+  conflicts: z.array(z.object({
+    field: z.string().min(1),
+    inventory_value: z.string(),
+    individual_profile_value: z.string(),
+    selected_source: z.literal("inventory"),
+  }).strict()),
+}).strict();
+
+const PlayerClubReferenceSchema = z.object({
+  status: z.enum(["observed", "not_confirmed"]),
+  team_id: positiveInteger.nullable(),
+  team_name: z.string().nullable(),
+  group: z.enum(["I", "II"]).nullable(),
+  observed_at: z.string().datetime({ offset: true }).nullable(),
+  reason: z.string().min(1),
+}).strict();
+
+const PlayerTransferEvidenceSchema = z.object({
+  capture_id: z.string().nullable(),
+  captured_at: z.string().datetime({ offset: true }).nullable(),
+  source_sha256: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
+  source_record_index: nullableInteger,
+  team_id: positiveInteger,
+  group: z.enum(["I", "II"]).nullable(),
+  direction: z.enum(["incoming", "outgoing"]),
+}).strict();
+
+const PlayerClubMovementSchema = z.object({
+  from_team_id: positiveInteger,
+  from_team_name: z.string().min(1),
+  from_group: z.enum(["I", "II"]).nullable(),
+  to_team_id: positiveInteger,
+  to_team_name: z.string().min(1),
+  to_group: z.enum(["I", "II"]).nullable(),
+  season: z.literal("2026-27"),
+  transfer_date: dateOnly,
+  observed_at: z.string().datetime({ offset: true }).nullable(),
+  evidence_count: z.number().int().min(1),
+  evidence: z.array(PlayerTransferEvidenceSchema).min(1),
+}).strict();
+
+const PlayerMembershipHistorySchema = z.object({
+  team_id: positiveInteger,
+  team_name: z.string().min(1),
+  group: z.enum(["I", "II"]),
+  season: z.literal("2026-27"),
+  captured_at: z.string().datetime({ offset: true }).nullable(),
+  capture_id: z.string().nullable(),
+  jersey_number: nullableInteger,
+  squad_group_label: z.string().nullable(),
+  source_views: z.array(z.string()),
+}).strict();
+
 export const PlayerDirectorySchema = z.object({
   metadata: PlayerDirectoryMetadataSchema,
   available_teams: z.array(z.object({ team_id: positiveInteger, team_name: z.string(), group: z.enum(["I", "II"]) }).strict()),
@@ -1202,7 +1275,7 @@ const PlayerViewSchema = z.object({
     table_id: z.string().nullable(),
     schema_id: z.string().nullable(),
     columns: z.array(z.object({
-      label: z.string(), title: z.string().nullable(), hidden_in_source: z.boolean(),
+      label: z.string(), source_header: z.string().nullable(), title: z.string().nullable(), hidden_in_source: z.boolean(),
       source_index: z.number().int().nullable(), group_header: z.string().nullable(), data_colid: z.string().nullable(),
     }).strict()),
     rows: z.array(z.object({
@@ -1247,15 +1320,22 @@ const PlayerViewSchema = z.object({
 export const PlayerDetailSchema = z.object({
   metadata: PlayerDirectoryMetadataSchema,
   player: PlayerIndexRecordSchema,
+  identity: PlayerIdentitySchema,
+  club_reference: PlayerClubReferenceSchema,
+  last_observed_movement: PlayerClubMovementSchema.nullable(),
+  movement_resolution: z.enum(["identified", "ambiguous", "none"]),
   birth_place: z.string().nullable(),
   birthplace_province: z.string().nullable(),
   nationality_flag_url: z.string().url().nullable(),
   verified_indicators: z.array(z.string()),
   associations: z.array(PlayerAssociationSchema),
+  membership_history: z.array(PlayerMembershipHistorySchema),
   transfer_references: z.array(z.object({
     team_id: positiveInteger, team_name: z.string().nullable(), group: z.enum(["I", "II"]),
     direction: z.enum(["incoming", "outgoing"]), other_team_name: z.string().nullable(), other_team_id: positiveInteger.nullable(),
-    source_position_code: z.string().nullable(), age_years: nullableInteger,
+    source_position_code: z.string().nullable(), age_years: nullableInteger, transfer_date: dateOnly,
+    capture_id: z.string().nullable(), captured_at: z.string().datetime({ offset: true }).nullable(),
+    source_sha256: z.string().regex(/^[a-f0-9]{64}$/).nullable(), source_record_index: nullableInteger,
   }).strict()),
   season_statistics: z.array(z.object({
     team_id: positiveInteger, team_name: z.string().nullable(), group: z.enum(["I", "II"]),

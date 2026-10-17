@@ -161,6 +161,40 @@ def test_real_player_inventory_compact_and_three_verified_cases() -> None:
                 assert api_records[0].minutes == source_records[0].get("minutes")
         assert projected["profile"].profile == compact["views"]["profile"]["profile"]
 
+    manu = bundle.detail(23751)
+    assert manu is not None
+    assert manu.identity.display_name == "Manu Pedreño"
+    assert manu.identity.full_name == "Antonio Manuel Moñino Pedreño"
+    assert manu.identity.birth_date.isoformat() == "2000-10-09"
+    assert manu.identity.birth_place == "Los Garres"
+    assert manu.identity.birth_place_raw == "Los Garres ( Murcia )"
+    assert manu.identity.birthplace_province == "Murcia"
+    assert manu.identity.country_of_birth == "España"
+    assert manu.identity.nationality is None
+    assert manu.identity.position_name == "Central"
+    assert manu.identity.height_cm == 190
+    assert manu.identity.weight_kg == 81
+    assert manu.identity.individual_profile_sha256 == "a0c34d3186881bb61c443fd378516e5d216955a1a17f43eaf48853c35203b870"
+    assert manu.club_reference.status == "not_confirmed"
+    assert manu.club_reference.team_id is None
+    assert sorted((item.team_id, item.team_name, item.group) for item in manu.membership_history) == [
+        (178, "UD Logroñés", "I"),
+        (414, "UD Ibiza", "II"),
+    ]
+    assert manu.last_observed_movement is not None
+    assert (
+        manu.last_observed_movement.from_team_id,
+        manu.last_observed_movement.from_team_name,
+        manu.last_observed_movement.from_group,
+        manu.last_observed_movement.to_team_id,
+        manu.last_observed_movement.to_team_name,
+        manu.last_observed_movement.to_group,
+    ) == (414, "UD Ibiza", "II", 178, "UD Logroñés", "I")
+    assert manu.last_observed_movement.transfer_date is None
+    assert len(manu.transfer_references) == 2
+    assert all(item.transfer_date is None for item in manu.transfer_references)
+    assert not manu.identity.conflicts
+
     transfer_only_detail = bundle.detail(transfer_only["player_id"])
     assert transfer_only_detail is not None
     assert transfer_only_detail.player.association_status == "transfer_reference_only"

@@ -12,6 +12,27 @@ const viewTitle: Record<(typeof viewOrder)[number], string> = {
   rivals: "Rivales",
 };
 
+const roleLabels: Record<string, string> = {
+  career_trajectory: "Trayectoria por temporada y club",
+  career_totals: "Totales de trayectoria",
+  match_summary_by_season: "Resumen de partidos por temporada",
+  match_summary_by_team: "Resumen de partidos por equipo",
+  match_summary_by_competition: "Resumen de partidos por competición",
+  statistics_by_team: "Estadísticas por equipo",
+  statistics_by_competition: "Estadísticas por competición",
+  opponent_team_statistics: "Estadísticas por rival",
+  opponent_competition_statistics: "Estadísticas por competición y rival",
+};
+
+const statusLabels: Record<string, string> = {
+  CAREER_ROWS_PRESENT_NOT_CERTIFIED_COMPLETE: "Hay filas de trayectoria en la captura; el histórico no está certificado como completo.",
+  NOT_CERTIFIED_COMPLETE: "La fuente no certifica que este histórico esté completo.",
+  SNAPSHOT_SCOPE_ONLY_NOT_CERTIFIED_COMPLETE: "Los datos corresponden al alcance de esta captura; no se certifica exhaustividad.",
+  CAPTURED_ROWS: "Se muestran las filas observadas en la captura guardada.",
+  PARSED: "La captura se pudo interpretar; esto no certifica que incluya todos los datos.",
+  CAPTURED_VALID: "Captura validada para la vista individual.",
+};
+
 export function PlayerIndividualViews({ views }: { views: PlayerView[] }) {
   const [selected, setSelected] = useState<(typeof viewOrder)[number]>("profile");
   const byName = new Map(views.map((view) => [view.view, view]));
@@ -30,7 +51,7 @@ export function PlayerIndividualViews({ views }: { views: PlayerView[] }) {
       </nav>
     </header>
     <div className="player-view-content" role="tabpanel" aria-label={viewTitle[selected]}>
-      <p className="player-view-scope">{view.scope_note}{view.coverage && typeof view.coverage.data_scope === "string" ? ` · ${view.coverage.data_scope}` : ""}</p>
+      <p className="player-view-scope">{readableStatus(view.scope_note)}</p>
       {selected === "profile" && <CareerView view={view} />}
       {selected === "statistics" && <StatisticsView view={view} />}
       {selected === "matches" && <MatchesView view={view} />}
@@ -42,22 +63,14 @@ export function PlayerIndividualViews({ views }: { views: PlayerView[] }) {
 
 function CareerView({ view }: { view: PlayerView }) {
   const profile = view.profile;
-  const availableFields: Array<[string, unknown]> = profile ? [
-    ["Nombre", profile.display_name_raw], ["Nombre completo", profile.full_name_raw],
-    ["Nacimiento", profile.birth_date_raw], ["Lugar de nacimiento", profile.birth_place_raw],
-    ["País de nacimiento", profile.country_of_birth_raw], ["Demarcación", profile.position_raw],
-    ["Altura", profile.height_raw], ["Peso", profile.weight_raw],
-  ] : [];
-  const fields = availableFields.filter(([, value]) => value !== null && value !== undefined && value !== "");
   return <>
-    {fields.length > 0 && <dl className="player-personal-facts">{fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{String(value)}</dd></div>)}</dl>}
-    {typeof profile?.career_completeness === "string" && <p className="player-data-note">Cobertura de trayectoria: {profile.career_completeness}. La fuente no certifica que el histórico sea exhaustivo.</p>}
-    <DataTables tables={view.tables} empty="La captura no contiene filas de trayectoria estructuradas." />
+    {typeof profile?.career_completeness === "string" && <p className="player-data-note">{readableStatus(profile.career_completeness)}</p>}
+    <DataTables tables={view.tables} empty="La captura no contiene filas de trayectoria estructuradas." fallbackCaption="Trayectoria observada" />
   </>;
 }
 
 function StatisticsView({ view }: { view: PlayerView }) {
-  return <DataTables tables={view.tables} empty="La captura no contiene tablas estadísticas estructuradas." />;
+  return <DataTables tables={view.tables} empty="La captura no contiene tablas estadísticas estructuradas." fallbackCaption="Estadísticas observadas" />;
 }
 
 function MatchesView({ view }: { view: PlayerView }) {
@@ -71,8 +84,8 @@ function MatchesView({ view }: { view: PlayerView }) {
       <span><strong>{other.length}</strong> otros registros</span>
       {view.window_p_record_count !== null && <span><strong>{view.window_p_record_count}</strong> filas procesadas en la captura</span>}
     </div>
-    {(view.exhaustiveness_status || view.detail_coverage) && <p className="player-data-note">{[view.detail_coverage, `Exhaustividad: ${view.exhaustiveness_status ?? "no determinada"}`].filter(Boolean).join(" · ")}</p>}
-    <DataTables tables={view.tables} empty="La captura no contiene resúmenes de partidos estructurados." />
+    {(view.exhaustiveness_status || view.detail_coverage) && <p className="player-data-note">Cobertura: {[view.detail_coverage, view.exhaustiveness_status].filter((value): value is string => Boolean(value)).map(readableStatus).join(" · ")}</p>}
+    <DataTables tables={view.tables} empty="La captura no contiene resúmenes de partidos estructurados." fallbackCaption="Resumen de partidos observado" />
     <MatchRecords title="Partidos con participación" records={played} />
     <MatchRecords title="Convocatorias sin participación" records={summoned} />
     <MatchRecords title="Otros registros de partidos" records={other} />
@@ -80,21 +93,25 @@ function MatchesView({ view }: { view: PlayerView }) {
 }
 
 function RivalsView({ view }: { view: PlayerView }) {
-  return <DataTables tables={view.tables} empty="La captura no contiene tablas de rivales estructuradas." />;
+  return <DataTables tables={view.tables} empty="La captura no contiene tablas de rivales estructuradas." fallbackCaption="Rendimiento frente a rivales" />;
 }
 
-function DataTables({ tables, empty }: { tables: PlayerTable[]; empty: string }) {
+function DataTables({ tables, empty, fallbackCaption }: { tables: PlayerTable[]; empty: string; fallbackCaption: string }) {
   if (tables.length === 0) return <p className="player-data-empty">{empty}</p>;
-  return <div className="player-source-tables">{tables.map((table, index) => <SourceTable key={`${table.table_id ?? table.table_role}-${table.schema_id ?? index}`} table={table} />)}</div>;
+  return <div className="player-source-tables">{tables.map((table, index) => <SourceTable key={`${table.table_id ?? table.table_role}-${table.schema_id ?? index}`} table={table} fallbackCaption={fallbackCaption} />)}</div>;
 }
 
-function SourceTable({ table }: { table: PlayerTable }) {
-  const caption = table.table_role.replaceAll("_", " ");
+function SourceTable({ table, fallbackCaption }: { table: PlayerTable; fallbackCaption: string }) {
+  const caption = roleLabels[table.table_role] ?? fallbackCaption;
   return <section className="player-source-table">
-    <header><h3>{caption}</h3><span>{table.rows.length} filas{table.source_table_index !== null ? ` · tabla ${table.source_table_index + 1} de origen` : ""}</span></header>
+    <header><h3>{caption}</h3><span>{table.rows.length} filas
+      <details className="player-source-table-details"><summary>Ver procedencia</summary><dl><div><dt>Rol original</dt><dd>{table.table_role}</dd></div>{table.source_table_index !== null && <div><dt>Posición original de la tabla</dt><dd>{table.source_table_index + 1}</dd></div>}{table.table_id && <div><dt>ID de tabla</dt><dd>{table.table_id}</dd></div>}{table.schema_id && <div><dt>Esquema de origen</dt><dd>{table.schema_id}</dd></div>}</dl></details>
+    </span></header>
     {table.rows.length === 0 ? <p className="player-data-empty">No hay filas observadas en esta tabla.</p> : <div className="player-table-scroll"><table className="player-data-table"><thead><tr>
-      {table.columns.map((column, index) => <th key={`${column.source_index ?? index}-${column.label}`} title={[column.group_header, column.title].filter(Boolean).join(" · ") || undefined}>{column.label}</th>)}
-      <th>Otros campos de origen</th>
+      {table.columns.map((column, index) => <th key={`${column.source_index ?? index}-${column.label}`} title={[column.group_header, column.title].filter(Boolean).join(" · ") || undefined}>
+        {column.label}{!column.source_header?.trim() && <details className="player-column-provenance"><summary aria-label={`Procedencia de ${column.label}`}>i</summary><span>La fuente no incluye un encabezado interpretable. Columna de origen {column.source_index === null ? index + 1 : column.source_index + 1}.{column.title && ` Título original: ${column.title}.`}{column.group_header && ` Grupo: ${column.group_header}.`}{column.data_colid && ` Identificador original: ${column.data_colid}.`}</span></details>}
+      </th>)}
+      <th>Datos de origen</th>
     </tr></thead><tbody>{table.rows.map((row, rowIndex) => <tr key={rowIndex}>
       {table.columns.map((column, columnIndex) => {
         const cell = row.cells[column.source_index ?? columnIndex];
@@ -127,4 +144,11 @@ function display(value: unknown): string {
   if (value === null || value === undefined || value === "") return "—";
   if (typeof value === "object") return JSON.stringify(value);
   return String(value);
+}
+
+function readableStatus(value: string): string {
+  if (statusLabels[value]) return statusLabels[value];
+  if (Object.values(statusLabels).includes(value)) return value;
+  if (/^[A-Z0-9_]+$/.test(value)) return "Cobertura o estado de captura no certificado como exhaustivo.";
+  return value;
 }

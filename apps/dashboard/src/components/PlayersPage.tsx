@@ -2,6 +2,8 @@ import { useEffect, useState, type MouseEvent } from "react";
 import { loadPlayerDetail, loadPlayerDirectory } from "../api/client";
 import type { PlayerDetail, PlayerDirectory, PlayerIndexRecord } from "../api/contracts";
 import { ProfileImage } from "./TeamRosterShared";
+import { PlayerClubHistory, PlayerIdentityPanel } from "./PlayerIdentityPanel";
+import { playerIdentityHighlights } from "./playerIdentityPresentation";
 import { PlayerIndividualViews } from "./PlayerIndividualViews";
 
 interface Props {
@@ -121,27 +123,26 @@ function PlayerDetailPage({ detail, loading, error, onNavigate }: { detail: Play
   if (loading) return <main className="dashboard-main players-page"><div className="state-card" role="status">Cargando ficha…</div></main>;
   if (error || !detail) return <main className="dashboard-main players-page"><section className="state-card error-card" role="alert"><a href="/players" onClick={(event) => navigate(event, "/players", onNavigate)}>← Jugadores</a><h1>No se pudo cargar la ficha</h1><p>{error || "El jugador no está en el inventario."}</p></section></main>;
   const { player } = detail;
-  const name = player.display_name || `ID ${player.player_id}`;
+  const identity = detail.identity;
+  const name = identity.display_name || player.display_name || `ID ${player.player_id}`;
+  const identityHighlights = playerIdentityHighlights(detail);
   return <main className="dashboard-main players-page player-detail-page">
     <a className="player-back-link" href="/players" onClick={(event) => navigate(event, "/players", onNavigate)}>← Volver a Jugadores</a>
     <header className="player-detail-hero">
       <ProfileImage src={player.photo_url} name={name} className="player-detail-photo" />
       <div><span className="section-kicker">FICHA DE JUGADOR · ID {player.player_id}</span><h1>{name}</h1>
-        {player.full_name && player.full_name !== player.display_name && <p>{player.full_name}</p>}
-        <div className="player-detail-tags"><span>{statusLabel(player)}</span><span>{player.profile_status === "four_views_verified" ? "Cuatro vistas individuales publicadas" : player.profile_status === "partial_individual_views" ? "Vistas individuales parciales" : "Sin compacto individual publicado"}</span></div>
+        {identity.full_name && identity.full_name !== name && <p>{identity.full_name}</p>}
+        <div className="player-detail-tags"><span>{statusLabel(player)}</span><span>{player.profile_status === "four_views_verified" ? "Cuatro vistas individuales publicadas" : player.profile_status === "partial_individual_views" ? "Vistas individuales parciales" : "Sin compacto individual publicado"}</span>{identityHighlights.map((value) => <span className="player-identity-highlight" key={value}>{value}</span>)}</div>
         {player.profile_url && <a className="external-player-link" href={player.profile_url} target="_blank" rel="noreferrer">Perfil original de BDFutbol ↗</a>}
       </div>
     </header>
     <section className="player-detail-grid">
-      <article className="player-info-panel"><h2>Identidad y relaciones</h2>
-        <dl><dt>Fecha de nacimiento</dt><dd>{player.birth_date ? formatDateOnly(player.birth_date) : "—"}</dd><dt>Edad publicada</dt><dd>{player.age_years ?? "—"}</dd><dt>Lugar de nacimiento</dt><dd>{[detail.birth_place, detail.birthplace_province].filter(Boolean).join(", ") || "—"}</dd><dt>Nacionalidad</dt><dd>{player.nationality ?? "—"}</dd><dt>Posición</dt><dd>{player.position_name ?? "—"}</dd><dt>Grupo observado</dt><dd>{player.groups.map((item) => `Grupo ${item}`).join(" · ") || "—"}</dd></dl>
-        <h3>Equipos relacionados</h3>{detail.associations.length ? <ul className="player-association-list">{detail.associations.map((association) => <li key={`${association.group}-${association.team_id}`}><strong>{association.team_name}</strong><span>Grupo {association.group} · {association.evidence_types.map(associationLabel).join(" · ")}</span></li>)}</ul> : <p>No hay relaciones de equipo observadas.</p>}
-      </article>
+      <PlayerIdentityPanel detail={detail} />
       <article className="player-info-panel"><h2>Estadísticas de temporada disponibles</h2>{detail.season_statistics.length ? <div className="player-table-scroll"><table className="player-data-table"><thead><tr><th>Equipo</th><th>PJ</th><th>Tit.</th><th>Min.</th><th>Goles</th><th>TA</th><th>TR</th></tr></thead><tbody>{detail.season_statistics.map((stat, index) => <tr key={`${stat.group}-${stat.team_id}-${stat.source_view}-${index}`}><td>{stat.team_name ?? "—"} · {stat.group}</td><td>{show(stat.matches_played)}</td><td>{show(stat.starts)}</td><td>{show(stat.minutes_played)}</td><td>{show(stat.goals)}</td><td>{show(stat.yellow_cards)}</td><td>{show(stat.red_cards)}</td></tr>)}</tbody></table></div> : <p>No hay estadísticas normalizadas disponibles.</p>}
         <h3>Datos por partido</h3><p className="player-data-note">Se muestran solo valores numéricos presentes en las capturas de Seguimiento.</p>{detail.match_minutes.length + detail.match_metrics.length ? <div className="player-table-scroll"><table className="player-data-table"><thead><tr><th>Jornada</th><th>Equipo</th><th>Métrica</th><th>Valor</th><th>Estado fuente</th></tr></thead><tbody>{[...detail.match_minutes, ...detail.match_metrics].map((metric, index) => <tr key={`${metric.group}-${metric.team_id}-${metric.match_id}-${metric.metric}-${index}`}><td>J{metric.matchday}</td><td>{metric.team_name ?? "—"}</td><td>{metricLabel(metric.metric)}</td><td>{metric.value}</td><td>{metric.source_state || "—"}</td></tr>)}</tbody></table></div> : <p>No hay registros por partido disponibles.</p>}
       </article>
     </section>
-    {detail.transfer_references.length > 0 && <section className="player-info-panel"><h2>Referencias de traspasos</h2><ul className="player-association-list">{detail.transfer_references.map((item, index) => <li key={`${item.team_id}-${item.group}-${item.direction}-${index}`}><strong>{item.direction === "incoming" ? "Alta" : "Baja"} · {item.team_name ?? "Equipo no indicado"}</strong><span>{item.other_team_name ?? "Origen o destino no observado"} · Grupo {item.group}{item.age_years === null ? "" : ` · ${item.age_years} años`}</span></li>)}</ul></section>}
+    <PlayerClubHistory detail={detail} />
     <PlayerIndividualViews views={detail.verified_individual_views} />
     {detail.warnings.map((warning, index) => <p className="roster-warning" key={index}>{warning}</p>)}
   </main>;
@@ -156,7 +157,5 @@ function navigate(event: MouseEvent<HTMLAnchorElement>, path: string, onNavigate
 function messageOf(error: unknown): string { return error instanceof Error ? error.message : "Error desconocido."; }
 function show(value: string | number | boolean | null): string { return value === null || value === undefined || value === "" ? "—" : String(value); }
 function formatDate(value: string | null): string { return value ? new Intl.DateTimeFormat("es-ES", { dateStyle: "medium", timeZone: "Europe/Madrid" }).format(new Date(value)) : "—"; }
-function formatDateOnly(value: string): string { const [year, month, day] = value.split("-").map(Number); return `${day}/${month}/${year}`; }
 function statusLabel(player: PlayerIndexRecord): string { return player.association_status === "roster_membership_observed" ? "Pertenencia de plantilla observada" : "Referencia únicamente en traspasos"; }
-function associationLabel(value: string): string { return value === "membership" ? "Plantilla observada" : "Referencia de traspaso"; }
 function metricLabel(value: string | null): string { return value ? ({ minutes_played: "Minutos", goals: "Goles", yellow_cards: "Amarillas", red_cards: "Rojas", assists: "Asistencias" } as Record<string, string>)[value] ?? value : "—"; }

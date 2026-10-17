@@ -14,7 +14,13 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 from urllib.parse import urlsplit
 
+from football_data_hub_api.player_identity import (
+    derive_last_observed_movement,
+    derive_player_club_reference,
+    project_player_identity,
+)
 from football_data_hub_api.schemas import (
+    PlayerMembershipHistoryResponse,
     PlayerDetailResponse,
     PlayerDirectoryMetadataResponse,
     PlayerDirectoryResponse,
@@ -165,6 +171,35 @@ class PlayerDirectoryBundle:
             return None
         index_record = self._index_record(player)
         associations = index_record.team_associations
+        compact = self.compact_documents.get(player_id)
+        identity = project_player_identity(
+            player,
+            compact,
+            inventory_sha256=self.metadata.inventory_sha256,
+        )
+        raw_transfers = [
+            item for item in player.get("transfer_references", [])
+            if isinstance(item, dict) and isinstance(item.get("record"), dict)
+        ]
+        memberships = list(self.memberships_by_player.get(player_id, ()))
+        club_reference = derive_player_club_reference(memberships, raw_transfers)
+        last_movement, movement_resolution = derive_last_observed_movement(
+            raw_transfers, [item.model_dump() for item in associations]
+        )
+        membership_history = [
+            PlayerMembershipHistoryResponse(
+                team_id=item["team_id"],
+                team_name=item["team_name"],
+                group=item["group"],
+                season="2026-27",
+                captured_at=(item.get("source_ref") or {}).get("captured_at_utc"),
+                capture_id=(item.get("source_ref") or {}).get("capture_id"),
+                jersey_number=item.get("jersey_number") if type(item.get("jersey_number")) is int else None,
+                squad_group_label=item.get("squad_group_label") if isinstance(item.get("squad_group_label"), str) else None,
+                source_views=list(item.get("source_views") or []),
+            )
+            for item in memberships
+        ]
         membership_team = {
             (item["team_id"], item["group"]): item["team_name"]
             for item in self.memberships_by_player.get(player_id, ())
@@ -197,10 +232,9 @@ class PlayerDirectoryBundle:
             player.get("match_minutes", []), membership_team, associations
         )
         transfers = []
-        for item in player.get("transfer_references", []):
+        for item in raw_transfers:
             record = item.get("record", {})
-            if not isinstance(record, dict):
-                continue
+            source_ref = item.get("source_ref") if isinstance(item.get("source_ref"), dict) else {}
             key = (record.get("team_id"), record.get("group"))
             if type(record.get("team_id")) is not int or record.get("group") not in {"I", "II"}:
                 continue
@@ -213,26 +247,41 @@ class PlayerDirectoryBundle:
                 other_team_id=record.get("other_team_id"),
                 source_position_code=record.get("source_position_code"),
                 age_years=record.get("age_years"),
+                transfer_date=record.get("transfer_date"),
+                capture_id=source_ref.get("capture_id"),
+                captured_at=source_ref.get("captured_at_utc"),
+                source_sha256=source_ref.get("sha256"),
+                source_record_index=source_ref.get("record_index") if type(source_ref.get("record_index")) is int else None,
             ))
-        compact = self.compact_documents.get(player_id)
         views = _project_individual_views(compact) if compact else []
         warnings: list[str] = []
         if player.get("identity_conflicts"):
             warnings.append("El inventario conserva discrepancias de identidad; no se han resuelto por nombre.")
+        if identity.conflicts:
+            warnings.append("El inventario y la ficha individual discrepan en algunos campos; se conserva la precedencia documentada.")
         if compact is None:
             warnings.append("La generación compacta publicada no incluye un perfil individual para este jugador; sus vistas no se interpretan como vacías.")
         elif compact.get("status") != "COMPLETE_BASE_VIEWS":
             warnings.append("La captura individual es parcial; las vistas ausentes no se interpretan como vacías.")
         if player.get("association_status") == "roster_membership_observed":
             warnings.append("La pertenencia se observó en capturas de la temporada; no certifica que siga vigente hoy.")
+        if club_reference.status == "not_confirmed":
+            warnings.append("No se puede confirmar un club actual a partir de las capturas disponibles.")
+        if movement_resolution == "ambiguous":
+            warnings.append("Las referencias de traspaso no permiten ordenar un último movimiento de forma fiable.")
         return PlayerDetailResponse(
             metadata=self.metadata,
             player=index_record,
+            identity=identity,
+            club_reference=club_reference,
+            last_observed_movement=last_movement,
+            movement_resolution=movement_resolution,
             birth_place=player.get("birthplace"),
             birthplace_province=player.get("birthplace_province"),
             nationality_flag_url=_safe_bdfutbol_url(player.get("nationality_flag_url")),
             verified_indicators=list(player.get("verified_indicators") or []),
             associations=associations,
+            membership_history=membership_history,
             transfer_references=transfers,
             season_statistics=statistics,
             match_minutes=minutes,
@@ -502,11 +551,13 @@ def _project_individual_views(document: dict[str, Any]) -> list[PlayerIndividual
         scope_note = "Datos estructurados de la captura individual."
         if view == "matches":
             scope_note = (
-                "Registros estructurados de la vista capturada; exhaustividad: "
-                f"{payload.get('exhaustiveness_status') or 'no determinada'}."
+                "Registros de partidos observados en la captura. "
+                + _source_status_description(payload.get("exhaustiveness_status"))
             )
         elif isinstance(coverage, dict):
-            scope_note = str(coverage.get("data_scope") or coverage.get("parse_status") or scope_note)
+            scope_note = _source_status_description(
+                coverage.get("data_scope") or coverage.get("parse_status")
+            )
         result.append(PlayerIndividualViewResponse(
             view=view,
             source_url=source_url,
@@ -543,18 +594,37 @@ def _project_individual_views(document: dict[str, Any]) -> list[PlayerIndividual
     return result
 
 
+def _source_status_description(value: Any) -> str:
+    descriptions = {
+        "CAREER_ROWS_PRESENT_NOT_CERTIFIED_COMPLETE": (
+            "La captura contiene filas de trayectoria; el histórico no está certificado como completo."
+        ),
+        "NOT_CERTIFIED_COMPLETE": "La fuente no certifica que este histórico esté completo.",
+        "SNAPSHOT_SCOPE_ONLY_NOT_CERTIFIED_COMPLETE": (
+            "Los datos corresponden al alcance de esta captura; no se certifica exhaustividad."
+        ),
+        "CAPTURED_ROWS": "Se muestran las filas observadas en la captura guardada.",
+        "PARSED": "La captura se pudo interpretar; esto no certifica que incluya todos los datos.",
+        "CAPTURED_VALID": "Captura validada para la vista individual.",
+    }
+    if not isinstance(value, str) or not value.strip():
+        return "La cobertura de esta captura no está determinada."
+    return descriptions.get(value, "La cobertura de esta captura no está certificada.")
+
+
 def _project_table(table: dict[str, Any]) -> PlayerCompactTableResponse:
     columns_source = table.get("columns")
     columns = []
     if isinstance(columns_source, list):
-        for index, column in enumerate(columns_source):
+        for column in columns_source:
             if not isinstance(column, dict):
                 continue
-            label = column.get("header_original") or column.get("header_title_raw") or column.get("data_colid_raw")
+            label = column.get("header_original") or column.get("header_title_raw")
             if not isinstance(label, str) or not label.strip():
-                label = f"Campo sin rótulo ({index + 1})"
+                label = "Sin encabezado"
             columns.append(PlayerTableColumnResponse(
                 label=label.strip(),
+                source_header=column.get("header_original") if isinstance(column.get("header_original"), str) else None,
                 title=column.get("header_title_raw") if isinstance(column.get("header_title_raw"), str) else None,
                 hidden_in_source=column.get("hidden_by_inline_style") is True,
                 source_index=column.get("source_index") if type(column.get("source_index")) is int else column.get("column_index") if type(column.get("column_index")) is int else None,
@@ -591,7 +661,7 @@ def _project_table(table: dict[str, Any]) -> PlayerCompactTableResponse:
     role = table.get("table_role")
     if not isinstance(role, str) or not role.strip():
         first_record = next((item for item in table.get("records", []) if isinstance(item, dict)), {})
-        role = first_record.get("summary_dimension") or table.get("table_id") or "Tabla de BDFutbol"
+        role = first_record.get("summary_dimension") or table.get("table_id") or "source_table"
     return PlayerCompactTableResponse(
         table_role=str(role),
         source_table_index=table.get("source_table_index") if type(table.get("source_table_index")) is int else None,
