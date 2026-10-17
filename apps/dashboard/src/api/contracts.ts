@@ -1036,6 +1036,214 @@ export const StatisticsBootstrapSchema = z.object({
   limitations: z.array(z.string()),
 }).strict();
 
+const MatchGenerationRecordSchema = z.object({
+  internal_id: z.string().min(1),
+  source_match_id: z.string().min(1),
+  matchday: z.number().int().min(1).max(38),
+  matchday_date: dateOnly,
+  source_match_date: dateOnly,
+  home_team_id: positiveInteger,
+  away_team_id: positiveInteger,
+  home_goals: nullableInteger,
+  away_goals: nullableInteger,
+  home_yellow_cards: nullableInteger,
+  away_yellow_cards: nullableInteger,
+  home_red_cards: nullableInteger,
+  away_red_cards: nullableInteger,
+  status: z.enum(["played", "unplayed", "incomplete"]),
+  unplayed_state: z.enum(["scheduled", "result_unavailable_at_capture", "unknown"]).nullable(),
+  postponed_by_source_rule: z.boolean().nullable(),
+  source_match_url: z.string().url().nullable(),
+  stadium_id: z.string().nullable(),
+  stadium_name: z.string().nullable(),
+  stadium_url: z.string().url().nullable(),
+  referee_id: z.string().nullable(),
+  referee_name: z.string().nullable(),
+  referee_url: z.string().url().nullable(),
+}).strict().superRefine((match, context) => {
+  if (match.home_team_id === match.away_team_id) {
+    context.addIssue({ code: "custom", message: "El partido no puede enfrentar al mismo equipo." });
+  }
+  if (match.status === "played" && (match.home_goals === null || match.away_goals === null || match.unplayed_state !== null)) {
+    context.addIssue({ code: "custom", message: "El resultado disputado requiere marcador completo." });
+  }
+  if (match.status === "unplayed" && (match.home_goals !== null || match.away_goals !== null || match.unplayed_state === null)) {
+    context.addIssue({ code: "custom", message: "El partido pendiente debe conservar el marcador null y su estado." });
+  }
+});
+
+const MatchGenerationGroupSchema = z.object({
+  group: z.enum(["I", "II"]),
+  source_capture_id: z.string().min(1),
+  source_captured_at: z.string().datetime({ offset: true }),
+  teams: z.array(TeamSchema),
+  matches: z.array(MatchGenerationRecordSchema),
+  scheduled_matchdays: z.array(z.number().int().min(1).max(38)),
+  counts: z.object({
+    teams: z.number().int().nonnegative(),
+    matches: z.number().int().nonnegative(),
+    played: z.number().int().nonnegative(),
+    unplayed: z.number().int().nonnegative(),
+    incomplete: z.number().int().nonnegative(),
+  }).strict(),
+}).strict().superRefine((group, context) => {
+  if (group.group === "I" || group.group === "II") {
+    if (group.counts.teams !== group.teams.length || group.counts.matches !== group.matches.length) {
+      context.addIssue({ code: "custom", message: "Los recuentos del grupo no coinciden." });
+    }
+    const ids = new Set(group.teams.map((team) => team.team_id));
+    const matchIds = new Set(group.matches.map((match) => match.internal_id));
+    if (ids.size !== group.teams.length || matchIds.size !== group.matches.length) {
+      context.addIssue({ code: "custom", message: "El grupo contiene IDs duplicados." });
+    }
+    if (group.matches.some((match) => !ids.has(match.home_team_id) || !ids.has(match.away_team_id))) {
+      context.addIssue({ code: "custom", message: "Un partido referencia un equipo ausente." });
+    }
+    const actual = {
+      played: group.matches.filter((match) => match.status === "played").length,
+      unplayed: group.matches.filter((match) => match.status === "unplayed").length,
+      incomplete: group.matches.filter((match) => match.status === "incomplete").length,
+    };
+    if (Object.keys(actual).some((key) => actual[key as keyof typeof actual] !== group.counts[key as keyof typeof group.counts])) {
+      context.addIssue({ code: "custom", message: "Los recuentos por estado no coinciden." });
+    }
+  }
+});
+
+export const MatchResultsBootstrapSchema = z.object({
+  metadata: z.object({
+    schema_version: z.literal(1),
+    source: z.literal("BDFutbol"),
+    competition: z.literal("Primera Federación"),
+    season: z.literal("2026-27"),
+    generation_id: z.string().min(1),
+    generation_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    captured_at: z.string().datetime({ offset: true }),
+    team_count: z.number().int().nonnegative(),
+    match_count: z.number().int().nonnegative(),
+    played_count: z.number().int().nonnegative(),
+    unplayed_count: z.number().int().nonnegative(),
+    incomplete_count: z.number().int().nonnegative(),
+  }).strict(),
+  groups: z.object({ I: MatchGenerationGroupSchema, II: MatchGenerationGroupSchema }).strict(),
+}).strict().superRefine((payload, context) => {
+  const teams = payload.groups.I.counts.teams + payload.groups.II.counts.teams;
+  const matches = payload.groups.I.counts.matches + payload.groups.II.counts.matches;
+  const played = payload.groups.I.counts.played + payload.groups.II.counts.played;
+  const unplayed = payload.groups.I.counts.unplayed + payload.groups.II.counts.unplayed;
+  const incomplete = payload.groups.I.counts.incomplete + payload.groups.II.counts.incomplete;
+  if (payload.metadata.team_count !== teams || payload.metadata.match_count !== matches
+    || payload.metadata.played_count !== played || payload.metadata.unplayed_count !== unplayed
+    || payload.metadata.incomplete_count !== incomplete) {
+    context.addIssue({ code: "custom", message: "Los totales de la generación no coinciden con sus grupos." });
+  }
+});
+
+const PlayerAssociationSchema = z.object({
+  team_id: positiveInteger,
+  team_name: z.string().min(1),
+  group: z.enum(["I", "II"]),
+  evidence_types: z.array(z.enum(["membership", "transfer_reference"])),
+}).strict();
+
+const PlayerIndexRecordSchema = z.object({
+  player_id: positiveInteger,
+  display_name: z.string().min(1).nullable(),
+  full_name: z.string().nullable(),
+  profile_url: z.string().url().nullable(),
+  photo_url: z.string().url().nullable(),
+  birth_date: dateOnly,
+  age_years: nullableInteger,
+  nationality: z.string().nullable(),
+  position_name: z.string().nullable(),
+  groups: z.array(z.enum(["I", "II"])),
+  association_status: z.enum(["roster_membership_observed", "transfer_reference_only"]),
+  team_associations: z.array(PlayerAssociationSchema),
+  profile_status: z.enum(["four_views_verified", "partial_individual_views", "inventory_only"]),
+}).strict();
+
+const PlayerDirectoryMetadataSchema = z.object({
+  season: z.literal("2026-27"),
+  inventory_generated_at: z.string().datetime({ offset: true }),
+  inventory_player_count: z.number().int().nonnegative(),
+  complete_individual_profile_count: z.number().int().nonnegative(),
+  partial_individual_profile_count: z.number().int().nonnegative(),
+  inventory_only_count: z.number().int().nonnegative(),
+  roster_membership_count: z.number().int().nonnegative(),
+  transfer_only_count: z.number().int().nonnegative(),
+  compact_generation_id: z.string().nullable(),
+  compact_generated_at: z.string().datetime({ offset: true }).nullable(),
+  inventory_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+}).strict();
+
+export const PlayerDirectorySchema = z.object({
+  metadata: PlayerDirectoryMetadataSchema,
+  available_teams: z.array(z.object({ team_id: positiveInteger, team_name: z.string(), group: z.enum(["I", "II"]) }).strict()),
+  query: z.string(),
+  group: z.enum(["I", "II"]).nullable(),
+  team_id: positiveInteger.nullable(),
+  page: z.number().int().min(1),
+  page_size: z.number().int().min(1).max(100),
+  total: z.number().int().nonnegative(),
+  players: z.array(PlayerIndexRecordSchema),
+}).strict();
+
+const PlayerCellScalarSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
+const PlayerViewSchema = z.object({
+  view: z.enum(["profile", "statistics", "matches", "rivals"]),
+  source_url: z.string().url(),
+  captured_at: z.string().datetime({ offset: true }).nullable(),
+  source_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  scope_note: z.string(),
+  tables: z.array(z.object({
+    table_role: z.string(),
+    source_table_index: z.number().int().nullable(),
+    columns: z.array(z.object({ label: z.string(), title: z.string().nullable(), hidden_in_source: z.boolean() }).strict()),
+    rows: z.array(z.object({
+      context: z.record(z.string(), PlayerCellScalarSchema),
+      cells: z.array(z.object({ raw_value: PlayerCellScalarSchema, normalized_integer: nullableInteger, value_status: z.string().nullable() }).strict()),
+    }).strict()),
+  }).strict()),
+  historical_matches: z.array(z.object({
+    match_id: z.string().nullable(), match_url: z.string().url().nullable(), date: dateOnly, date_raw: z.string().nullable(),
+    season: z.string().nullable(), competition: z.string().nullable(), round_label: z.string().nullable(),
+    player_team: z.string().nullable(), opponent_team: z.string().nullable(), side: z.string().nullable(),
+    minutes: nullableInteger, match_state: z.string().nullable(), appearance_status: z.string().nullable(),
+  }).strict()),
+}).strict();
+
+export const PlayerDetailSchema = z.object({
+  metadata: PlayerDirectoryMetadataSchema,
+  player: PlayerIndexRecordSchema,
+  birth_place: z.string().nullable(),
+  birthplace_province: z.string().nullable(),
+  nationality_flag_url: z.string().url().nullable(),
+  verified_indicators: z.array(z.string()),
+  associations: z.array(PlayerAssociationSchema),
+  transfer_references: z.array(z.object({
+    team_id: positiveInteger, team_name: z.string().nullable(), group: z.enum(["I", "II"]),
+    direction: z.enum(["incoming", "outgoing"]), other_team_name: z.string().nullable(), other_team_id: positiveInteger.nullable(),
+    source_position_code: z.string().nullable(), age_years: nullableInteger,
+  }).strict()),
+  season_statistics: z.array(z.object({
+    team_id: positiveInteger, team_name: z.string().nullable(), group: z.enum(["I", "II"]),
+    matches_played: nullableInteger, starts: nullableInteger, minutes_played: nullableInteger, goals: nullableInteger,
+    assists: nullableInteger, yellow_cards: nullableInteger, red_cards: nullableInteger, source_view: z.string().nullable(),
+  }).strict()),
+  match_minutes: z.array(z.object({
+    team_id: positiveInteger, team_name: z.string().nullable(), group: z.enum(["I", "II"]), match_id: z.string().nullable(),
+    matchday: z.number().int().min(1).max(38), metric: z.string().nullable(), value: z.number().int().nonnegative(),
+    raw_value: z.string().nullable(), source_state: z.string().nullable(), captured_at: z.string().datetime({ offset: true }).nullable(),
+  }).strict()),
+  match_metrics: z.array(z.object({
+    team_id: positiveInteger, team_name: z.string().nullable(), group: z.enum(["I", "II"]), match_id: z.string().nullable(),
+    matchday: z.number().int().min(1).max(38), metric: z.string().nullable(), value: z.number().int().nonnegative(),
+    raw_value: z.string().nullable(), source_state: z.string().nullable(), captured_at: z.string().datetime({ offset: true }).nullable(),
+  }).strict()),
+  verified_individual_views: z.array(PlayerViewSchema),
+  warnings: z.array(z.string()),
+}).strict();
+
 export type Team = z.infer<typeof TeamSchema>;
 export type Match = z.infer<typeof MatchSchema>;
 export type ProgressRecord = z.infer<typeof ProgressSchema>;
@@ -1052,3 +1260,9 @@ export type Referee = z.infer<typeof RefereeSchema>;
 export type RefereeStatistics = z.infer<typeof RefereeStatisticsSchema>;
 export type RefereeBootstrap = z.infer<typeof RefereeBootstrapSchema>;
 export type StatisticsBootstrap = z.infer<typeof StatisticsBootstrapSchema>;
+export type MatchResultsBootstrap = z.infer<typeof MatchResultsBootstrapSchema>;
+export type MatchResultsGroup = MatchResultsBootstrap["groups"]["I"];
+export type MatchGenerationRecord = z.infer<typeof MatchGenerationRecordSchema>;
+export type PlayerDirectory = z.infer<typeof PlayerDirectorySchema>;
+export type PlayerIndexRecord = z.infer<typeof PlayerIndexRecordSchema>;
+export type PlayerDetail = z.infer<typeof PlayerDetailSchema>;

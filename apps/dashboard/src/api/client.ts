@@ -5,6 +5,9 @@ import {
   TeamRosterSchema,
   TeamFollowSchema,
   TeamTransfersSchema,
+  MatchResultsBootstrapSchema,
+  PlayerDirectorySchema,
+  PlayerDetailSchema,
   TopBootstrapSchema,
   type Bootstrap,
   type RefereeBootstrap,
@@ -12,6 +15,9 @@ import {
   type TeamRoster,
   type TeamFollow,
   type TeamTransfers,
+  type MatchResultsBootstrap,
+  type PlayerDirectory,
+  type PlayerDetail,
   type TopBootstrap,
 } from "./contracts";
 import type { ZodType } from "zod";
@@ -256,6 +262,45 @@ export const loadGroup2TopBootstrap = (signal?: AbortSignal) => loadGroupTopBoot
 export const loadGroup2RefereesBootstrap = (signal?: AbortSignal) => loadGroupRefereesBootstrap("2", signal);
 export const loadGroup2StatisticsBootstrap = (signal?: AbortSignal) => loadGroupStatisticsBootstrap("2", signal);
 
+export function loadMatchResultsBootstrap(signal?: AbortSignal): Promise<MatchResultsBootstrap> {
+  return loadEndpoint(
+    "/api/v1/matches/bootstrap", MatchResultsBootstrapSchema, signal,
+    "No se pudo conectar con la API de Resultados.",
+    "La generación de Resultados no coincide con el contrato del dashboard.",
+  );
+}
+
+export interface PlayerDirectoryQuery {
+  q?: string;
+  group?: "I" | "II";
+  teamId?: number;
+  page?: number;
+  pageSize?: number;
+}
+
+export async function loadPlayerDirectory(query: PlayerDirectoryQuery = {}, signal?: AbortSignal): Promise<PlayerDirectory> {
+  const params = new URLSearchParams();
+  if (query.q?.trim()) params.set("q", query.q.trim());
+  if (query.group) params.set("group", query.group);
+  if (query.teamId) params.set("team_id", String(query.teamId));
+  params.set("page", String(query.page ?? 1));
+  params.set("page_size", String(query.pageSize ?? 25));
+  const suffix = params.toString();
+  return loadEndpoint(
+    `/api/v1/players${suffix ? `?${suffix}` : ""}`, PlayerDirectorySchema, signal,
+    "No se pudo conectar con la API de jugadores.",
+    "El inventario de jugadores no coincide con el contrato del dashboard.",
+  );
+}
+
+export async function loadPlayerDetail(playerId: number, signal?: AbortSignal): Promise<PlayerDetail> {
+  return loadEndpoint(
+    `/api/v1/players/${playerId}`, PlayerDetailSchema, signal,
+    "No se pudo conectar con la API de jugadores.",
+    "La ficha del jugador no coincide con el contrato del dashboard.",
+  );
+}
+
 async function loadEndpoint<T>(
   path: string,
   schema: ZodType<T>,
@@ -271,6 +316,7 @@ async function loadEndpoint<T>(
     if (error instanceof DOMException && error.name === "AbortError") throw error;
     throw new Error(connectionError);
   }
+  if (signal?.aborted) throw new DOMException("La solicitud fue cancelada.", "AbortError");
   if (!response.ok) {
     const detail = response.status === 503 && path.includes("/statistics/")
       ? "Estadísticas no está disponible: su captura no coincide con Resultados o no superó la validación."
@@ -287,8 +333,10 @@ async function loadEndpoint<T>(
   try {
     payload = await response.json();
   } catch {
+    if (signal?.aborted) throw new DOMException("La solicitud fue cancelada.", "AbortError");
     throw new Error("La API devolvió una respuesta que no es JSON válido.");
   }
+  if (signal?.aborted) throw new DOMException("La solicitud fue cancelada.", "AbortError");
   const parsed = schema.safeParse(payload);
   if (!parsed.success) {
     if (import.meta.env.DEV) {

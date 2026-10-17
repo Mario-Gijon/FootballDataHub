@@ -4,21 +4,25 @@ import {
   loadGroupRefereesBootstrap,
   loadGroupStatisticsBootstrap,
   loadGroupTopBootstrap,
+  loadMatchResultsBootstrap,
   type CompetitionGroup,
 } from "./api/client";
 import type {
   Bootstrap,
+  Match,
   RefereeBootstrap,
   StatisticsBootstrap,
   TopBootstrap,
+  MatchResultsBootstrap,
 } from "./api/contracts";
 import { MainNavigation } from "./components/MainNavigation";
 import { TeamsDirectory } from "./components/TeamsDirectory";
 import { TeamOverview } from "./components/TeamOverview";
+const PlayersPage = lazy(() => import("./components/PlayersPage").then((module) => ({ default: module.PlayersPage })));
 import { ClassificationControls } from "./components/ClassificationControls";
 const ProgressChart = lazy(() => import("./components/ProgressChart").then((module) => ({ default: module.ProgressChart })));
 import { StandingsTable } from "./components/StandingsTable";
-import { ResultsSection, type ResultsMatchday } from "./components/ResultsSection";
+import { ResultsSection, type ResultsMatchday, type ResultsViewData } from "./components/ResultsSection";
 import { RefereesSection } from "./components/RefereesSection";
 const StatisticsSection = lazy(() => import("./components/StatisticsSection").then((module) => ({ default: module.StatisticsSection })));
 const TopSection = lazy(() => import("./components/TopSection").then((module) => ({ default: module.TopSection })));
@@ -60,6 +64,10 @@ export default function App() {
   const [refereesData, setRefereesData] = useState<GroupValues<RefereeBootstrap | null>>({ "1": null, "2": null });
   const [refereesState, setRefereesState] = useState<GroupValues<LoadState>>({ "1": "idle", "2": "idle" });
   const [refereesErrors, setRefereesErrors] = useState<GroupValues<string>>({ "1": "", "2": "" });
+  const [matchResultsData, setMatchResultsData] = useState<MatchResultsBootstrap | null>(null);
+  const [matchResultsState, setMatchResultsState] = useState<LoadState>("idle");
+  const [matchResultsError, setMatchResultsError] = useState("");
+  const [matchResultsRequestVersion, setMatchResultsRequestVersion] = useState(0);
   const pending = useRef(new Set<string>());
   const navigate = useCallback((path: string) => {
     if (window.location.pathname !== path) window.history.pushState({}, "", path);
@@ -131,6 +139,8 @@ export default function App() {
   const teamName = selectedTeam?.name;
   const pageTitle = route.kind === "teams"
     ? "Equipos · FootballDataHub"
+    : route.kind === "players" || route.kind === "player"
+      ? `${route.kind === "player" ? "Jugador" : "Jugadores"} · FootballDataHub`
     : route.kind === "team"
       ? `${teamName ?? "Equipo"} · FootballDataHub`
       : route.kind === "not-found"
@@ -141,7 +151,7 @@ export default function App() {
 
   useEffect(() => {
     const group = activeGroup;
-    if (activeSection !== "top" || topData[group] || topState[group] !== "idle") return;
+    if (route.kind !== "competitions" || activeSection !== "top" || topData[group] || topState[group] !== "idle") return;
     const key = `${group}:top`;
     if (pending.current.has(key)) return;
     pending.current.add(key);
@@ -157,11 +167,11 @@ export default function App() {
         setTopState((current) => ({ ...current, [group]: "error" }));
       })
       .finally(() => pending.current.delete(key));
-  }, [activeGroup, activeSection, topData, topState]);
+  }, [activeGroup, activeSection, route.kind, topData, topState]);
 
   useEffect(() => {
     const group = activeGroup;
-    if (activeSection !== "statistics" || statisticsData[group] || statisticsState[group] !== "idle") return;
+    if (route.kind !== "competitions" || activeSection !== "statistics" || statisticsData[group] || statisticsState[group] !== "idle") return;
     const key = `${group}:statistics`;
     if (pending.current.has(key)) return;
     pending.current.add(key);
@@ -177,11 +187,11 @@ export default function App() {
         setStatisticsState((current) => ({ ...current, [group]: "error" }));
       })
       .finally(() => pending.current.delete(key));
-  }, [activeGroup, activeSection, statisticsData, statisticsState]);
+  }, [activeGroup, activeSection, route.kind, statisticsData, statisticsState]);
 
   useEffect(() => {
     const group = activeGroup;
-    if (activeSection !== "referees" || refereesState[group] !== "idle") return;
+    if (route.kind !== "competitions" || activeSection !== "referees" || refereesState[group] !== "idle") return;
     const key = `${group}:referees`;
     if (pending.current.has(key)) return;
     pending.current.add(key);
@@ -197,14 +207,39 @@ export default function App() {
         setRefereesState((current) => ({ ...current, [group]: "error" }));
       })
       .finally(() => pending.current.delete(key));
-  }, [activeGroup, activeSection, refereesState]);
+  }, [activeGroup, activeSection, route.kind, refereesState]);
+
+  useEffect(() => {
+    if (route.kind !== "competitions" || activeSection !== "results" || matchResultsData || matchResultsState !== "idle") return;
+    setMatchResultsState("loading");
+    setMatchResultsError("");
+    const controller = new AbortController();
+    let settled = false;
+    void loadMatchResultsBootstrap(controller.signal)
+      .then((payload) => {
+        settled = true;
+        setMatchResultsData(payload);
+        setMatchResultsState("ready");
+      })
+      .catch((error: unknown) => {
+        settled = true;
+        if (!controller.signal.aborted) {
+          setMatchResultsError(messageOf(error, "No se pudieron cargar los Resultados."));
+          setMatchResultsState("error");
+        }
+      });
+    return () => {
+      controller.abort();
+      if (!settled) setMatchResultsState("idle");
+    };
+  }, [activeSection, matchResultsData, matchResultsRequestVersion, route.kind]);
 
   return (
     <div className="app-shell" id="top">
       <header className="topbar">
         <div className="topbar-inner">
           <Brand onNavigate={navigate} />
-          <MainNavigation activePage={route.kind === "competitions" ? "competitions" : "teams"} onNavigate={navigate} />
+          <MainNavigation activePage={route.kind === "competitions" ? "competitions" : route.kind === "teams" || route.kind === "team" ? "teams" : "players"} onNavigate={navigate} />
           {route.kind === "competitions" && <div className="topbar-competition">
             <span>Primera Federación</span>
             <span className="topbar-divider" aria-hidden="true">/</span>
@@ -245,6 +280,13 @@ export default function App() {
               <GroupDashboard
                 group={group}
                 data={data}
+                matchResultsData={matchResultsData}
+                matchResultsState={matchResultsState}
+                matchResultsError={matchResultsError}
+                onMatchResultsRetry={() => {
+                  setMatchResultsState("idle");
+                  setMatchResultsRequestVersion((current) => current + 1);
+                }}
                 teamCatalog={directory.teams}
                 onNavigate={navigate}
                 activeSection={activeSection}
@@ -289,6 +331,11 @@ export default function App() {
           onNavigate={navigate}
         />
       )}
+      {(route.kind === "players" || route.kind === "player") && (
+        <Suspense fallback={<LoadingPage />}>
+          <PlayersPage playerId={route.kind === "player" ? route.playerId : null} onNavigate={navigate} />
+        </Suspense>
+      )}
       {route.kind === "team" && teamGroup && baseData[teamGroup] && (
         <TeamOverview
           key={route.teamId}
@@ -325,12 +372,20 @@ export default function App() {
 type AppRoute =
   | { kind: "competitions" }
   | { kind: "teams" }
+  | { kind: "players" }
+  | { kind: "player"; playerId: number }
   | { kind: "team"; teamId: number; section: "summary" | "roster" | "follow" | "transfers" | "matches" }
   | { kind: "not-found" };
 
 function parseRoute(pathname: string): AppRoute {
   if (pathname === "/" || pathname === "") return { kind: "competitions" };
   if (/^\/teams\/?$/.test(pathname)) return { kind: "teams" };
+  if (/^\/players\/?$/.test(pathname)) return { kind: "players" };
+  const playerMatch = pathname.match(/^\/players\/(\d+)\/?$/);
+  if (playerMatch) {
+    const playerId = Number(playerMatch[1]);
+    if (Number.isSafeInteger(playerId) && playerId > 0) return { kind: "player", playerId };
+  }
   const match = pathname.match(/^\/teams\/(\d+)(?:\/(roster|follow|transfers|matches))?\/?$/);
   if (match) {
     const teamId = Number(match[1]);
@@ -380,6 +435,10 @@ function TeamRouteState({
 interface GroupDashboardProps {
   group: CompetitionGroup;
   data: Bootstrap;
+  matchResultsData: MatchResultsBootstrap | null;
+  matchResultsState: LoadState;
+  matchResultsError: string;
+  onMatchResultsRetry: () => void;
   teamCatalog: readonly CatalogTeam[];
   onNavigate: (path: string) => void;
   activeSection: Section;
@@ -401,6 +460,10 @@ interface GroupDashboardProps {
 function GroupDashboard({
   group,
   data,
+  matchResultsData,
+  matchResultsState,
+  matchResultsError,
+  onMatchResultsRetry,
   teamCatalog,
   onNavigate,
   activeSection,
@@ -476,13 +539,15 @@ function GroupDashboard({
       </section>
 
       <div hidden={activeSection !== "results"}>
-        <ResultsSection
-          data={data}
-          matchday={resultsMatchday}
-          onMatchdayChange={setResultsMatchday}
-          onNavigate={onNavigate}
-          idSuffix={suffix}
-        />
+        {matchResultsState === "loading" || matchResultsState === "idle" ? <div className="state-card" role="status">Cargando generación de Resultados…</div>
+          : matchResultsState === "error" ? <section className="state-card error-card" role="alert"><h1>Resultados no disponibles</h1><p>{matchResultsError}</p><button className="primary-button" type="button" onClick={onMatchResultsRetry}>Reintentar</button></section>
+            : matchResultsData ? <ResultsSection
+              data={resultViewData(matchResultsData, group)}
+              matchday={resultsMatchday}
+              onMatchdayChange={setResultsMatchday}
+              onNavigate={onNavigate}
+              idSuffix={suffix}
+            /> : null}
       </div>
       <div hidden={activeSection !== "top"}>
         <Suspense fallback={<div className="chart-loading" role="status">Cargando Destacados…</div>}>
@@ -551,6 +616,46 @@ function buildMatchdayOptions(data: Bootstrap) {
     date: dates.get(number) ?? null,
     hasResults: results.has(number),
   }));
+}
+
+function resultViewData(generation: MatchResultsBootstrap, group: CompetitionGroup): ResultsViewData {
+  const code = group === "1" ? "I" : "II";
+  const source = generation.groups[code];
+  return {
+    metadata: {
+      captured_at: source.source_captured_at,
+      scheduled_matchdays: source.scheduled_matchdays,
+      generation_id: generation.metadata.generation_id,
+      generation_sha256: generation.metadata.generation_sha256,
+      source_capture_id: source.source_capture_id,
+      counts: source.counts,
+    },
+    teams: source.teams,
+    matches: source.matches.map((match): Match => ({
+      match_id: match.source_match_id,
+      matchday: match.matchday,
+      matchday_date: match.matchday_date,
+      source_match_date: match.source_match_date,
+      home_team_id: match.home_team_id,
+      away_team_id: match.away_team_id,
+      home_goals: match.home_goals,
+      away_goals: match.away_goals,
+      home_yellow_cards: match.home_yellow_cards,
+      away_yellow_cards: match.away_yellow_cards,
+      home_red_cards: match.home_red_cards,
+      away_red_cards: match.away_red_cards,
+      status: match.status,
+      unplayed_state: match.unplayed_state,
+      postponed_by_source_rule: match.postponed_by_source_rule,
+      source_match_url: match.source_match_url,
+      stadium_id: match.stadium_id,
+      stadium_name: match.stadium_name,
+      stadium_url: match.stadium_url,
+      referee_id: match.referee_id,
+      referee_name: match.referee_name,
+      referee_url: match.referee_url,
+    })),
+  };
 }
 
 function formatCaptureDate(value: string): string {

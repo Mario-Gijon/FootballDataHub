@@ -85,6 +85,12 @@ class ApiSettings:
     group: str = "II"
     group1_settings: GroupDatasetSettings | None = None
     team_profiles_index_path: Path | None = None
+    local_data_root: Path | None = None
+    match_generation_root: Path | None = None
+    player_inventory_root: Path | None = None
+    player_compact_root: Path | None = None
+    player_team_captures_root: Path | None = None
+    player_published_index_path: Path | None = None
 
     def for_group(self, group: str | int) -> GroupDatasetSettings:
         """Return a group-specific view without mutating or copying any dataset."""
@@ -118,6 +124,12 @@ class ApiSettings:
 
     @classmethod
     def from_env(cls) -> ApiSettings:
+        local_root_value = os.getenv("FDH_LOCAL_DATA_ROOT")
+        local_data_root = (
+            _resolve_path(Path(local_root_value), PROJECT_ROOT)
+            if local_root_value
+            else None
+        )
         data_root = _resolve_path(
             Path(os.getenv("FDH_DATA_ROOT", str(DEFAULT_DATA_ROOT))), PROJECT_ROOT
         )
@@ -280,6 +292,32 @@ class ApiSettings:
                 Path(os.getenv("FDH_TEAM_PROFILES_INDEX", str(DEFAULT_TEAM_PROFILES_INDEX))),
                 PROJECT_ROOT,
             ),
+            local_data_root=local_data_root,
+            match_generation_root=_optional_data_path(
+                "FDH_MATCH_GENERATION_ROOT",
+                local_data_root,
+                "matches/generations/match-00-4ad1d610507e425d",
+            ),
+            player_inventory_root=_optional_data_path(
+                "FDH_PLAYER_INVENTORY_ROOT",
+                local_data_root,
+                "players/inventory-2026-27",
+            ),
+            player_compact_root=_optional_data_path(
+                "FDH_PLAYER_COMPACT_ROOT",
+                local_data_root,
+                "players/compact-2026-27",
+            ),
+            player_team_captures_root=_optional_data_path(
+                "FDH_PLAYER_TEAM_CAPTURES_ROOT",
+                local_data_root,
+                "team-captures",
+            ),
+            player_published_index_path=_optional_data_path(
+                "FDH_PLAYER_PUBLISHED_INDEX",
+                local_data_root,
+                "published/team_profiles_2026-27.json",
+            ),
             cors_origins=tuple(
                 origin.strip()
                 for origin in os.getenv("FDH_CORS_ORIGINS", "").split(",")
@@ -310,3 +348,14 @@ def _configured_path(variable: str, root: Path, default_relative: str) -> Path:
 def _configured_optional_path(variable: str, root: Path) -> Path | None:
     configured = os.getenv(variable)
     return _resolve_path(Path(configured), root) if configured else None
+
+
+def _optional_data_path(
+    variable: str, data_root: Path | None, default_relative: str
+) -> Path | None:
+    configured = os.getenv(variable)
+    if configured:
+        return _resolve_path(Path(configured), PROJECT_ROOT)
+    if data_root is not None:
+        return (data_root / default_relative).resolve()
+    return None

@@ -1,16 +1,29 @@
 import { useMemo } from "react";
-import type { Bootstrap, Team } from "../api/contracts";
+import type { Match, Team } from "../api/contracts";
 import { buildResultsMatrix, listResults, type ListedMatch, type MatchOutcome } from "../domain/results";
 import { InternalTeamLink } from "./InternalTeamLink";
 
 export type ResultsMatchday = number | "all";
 
 interface ResultsSectionProps {
-  data: Bootstrap;
+  data: ResultsViewData;
   matchday: ResultsMatchday;
   onMatchdayChange: (value: ResultsMatchday) => void;
   onNavigate: (path: string) => void;
   idSuffix?: string;
+}
+
+export interface ResultsViewData {
+  metadata: {
+    captured_at: string;
+    scheduled_matchdays: number[];
+    generation_id: string;
+    generation_sha256: string;
+    source_capture_id: string;
+    counts: { teams: number; matches: number; played: number; unplayed: number; incomplete: number };
+  };
+  teams: Team[];
+  matches: Match[];
 }
 
 export function ResultsSection({ data, matchday, onMatchdayChange, onNavigate, idSuffix = "" }: ResultsSectionProps) {
@@ -35,6 +48,7 @@ export function ResultsSection({ data, matchday, onMatchdayChange, onNavigate, i
       <div className="competition-hero results-hero">
         <h1>Resultados</h1>
         <div className="dataset-meta" aria-label="Cobertura de resultados">
+          <span>Generación MATCH-00 · {data.metadata.generation_id}</span>
           <span>{playedCount} con marcador</span>
           <time dateTime={data.metadata.captured_at}>Actualizado {formatCaptureDate(data.metadata.captured_at)}</time>
         </div>

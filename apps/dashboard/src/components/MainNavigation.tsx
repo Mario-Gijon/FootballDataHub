@@ -1,6 +1,6 @@
 import type { MouseEvent } from "react";
 
-export type MainPage = "competitions" | "teams";
+export type MainPage = "competitions" | "teams" | "players";
 
 interface Props {
   activePage: MainPage;
@@ -18,6 +18,7 @@ export function MainNavigation({ activePage, onNavigate }: Props) {
     <nav className="main-navigation" aria-label="Navegación principal">
       <a href="/" aria-current={activePage === "competitions" ? "page" : undefined} className={activePage === "competitions" ? "is-active" : ""} onClick={(event) => navigate(event, "/")}>Competiciones</a>
       <a href="/teams" aria-current={activePage === "teams" ? "page" : undefined} className={activePage === "teams" ? "is-active" : ""} onClick={(event) => navigate(event, "/teams")}>Equipos</a>
+      <a href="/players" aria-current={activePage === "players" ? "page" : undefined} className={activePage === "players" ? "is-active" : ""} onClick={(event) => navigate(event, "/players")}>Jugadores</a>
     </nav>
   );
 }

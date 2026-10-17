@@ -59,7 +59,7 @@ import { buildTopProgressData, TopSection } from "../components/TopSection";
 import { TeamRosterSection } from "../components/TeamRoster";
 import { ProfileImage } from "../components/TeamRosterShared";
 import { clearTeamProfileCache } from "../api/client";
-import type { RefereeBootstrap, StatisticsBootstrap, TeamFollow, TeamRoster, TeamTransfers, TopBootstrap } from "../api/contracts";
+import type { MatchResultsBootstrap, RefereeBootstrap, StatisticsBootstrap, TeamFollow, TeamRoster, TeamTransfers, TopBootstrap } from "../api/contracts";
 import { RefereeBootstrapSchema, StatisticsBootstrapSchema, TeamFollowSchema, TeamRosterSchema, TeamTransfersSchema, TopBootstrapSchema } from "../api/contracts";
 import App from "../App";
 
@@ -158,6 +158,101 @@ const apiBootstrap = {
   },
 };
 
+function resultGroup(group: "I" | "II", bootstrap: Bootstrap, captured: { capture_id: string; captured_at_utc: string }) {
+  return {
+    group,
+    source_capture_id: captured.capture_id,
+    source_captured_at: captured.captured_at_utc,
+    teams: bootstrap.teams,
+    matches: bootstrap.matches.map((match) => ({
+      internal_id: `${group}-${match.match_id}`,
+      source_match_id: match.match_id,
+      matchday: match.matchday,
+      matchday_date: match.matchday_date,
+      source_match_date: match.source_match_date,
+      home_team_id: match.home_team_id,
+      away_team_id: match.away_team_id,
+      home_goals: match.home_goals,
+      away_goals: match.away_goals,
+      home_yellow_cards: match.home_yellow_cards,
+      away_yellow_cards: match.away_yellow_cards,
+      home_red_cards: match.home_red_cards,
+      away_red_cards: match.away_red_cards,
+      status: match.status,
+      unplayed_state: match.unplayed_state,
+      postponed_by_source_rule: match.postponed_by_source_rule,
+      source_match_url: match.source_match_url,
+      stadium_id: match.stadium_id,
+      stadium_name: match.stadium_name,
+      stadium_url: match.stadium_url,
+      referee_id: match.referee_id,
+      referee_name: match.referee_name,
+      referee_url: match.referee_url,
+    })),
+    scheduled_matchdays: bootstrap.metadata.scheduled_matchdays,
+    counts: {
+      teams: bootstrap.teams.length,
+      matches: bootstrap.matches.length,
+      played: bootstrap.matches.filter((match) => match.status === "played").length,
+      unplayed: bootstrap.matches.filter((match) => match.status === "unplayed").length,
+      incomplete: bootstrap.matches.filter((match) => match.status === "incomplete").length,
+    },
+  };
+}
+
+const playerMetadata = {
+  season: "2026-27",
+  inventory_generated_at: "2026-10-14T12:31:48.863106+00:00",
+  inventory_player_count: 2,
+  complete_individual_profile_count: 1,
+  partial_individual_profile_count: 0,
+  inventory_only_count: 1,
+  roster_membership_count: 1,
+  transfer_only_count: 1,
+  compact_generation_id: "ui-01-player-fixture",
+  compact_generated_at: "2026-10-17T12:00:00+00:00",
+  inventory_sha256: "b".repeat(64),
+};
+const playerDirectoryFixture = {
+  metadata: playerMetadata,
+  available_teams: [{ team_id: 49, team_name: "Real Jaén", group: "II" }],
+  query: "",
+  group: null,
+  team_id: null,
+  page: 1,
+  page_size: 25,
+  total: 2,
+  players: [
+    { player_id: 28577, display_name: "Nacho Castillo", full_name: "Nacho Castillo", profile_url: "https://www.bdfutbol.com/es/j/j28577.html", photo_url: "https://www.bdfutbol.com/i/m/28577.png", birth_date: null, age_years: null, nationality: "España", position_name: "Delantero", groups: ["II"], association_status: "roster_membership_observed", team_associations: [{ team_id: 49, team_name: "Real Jaén", group: "II", evidence_types: ["membership"] }], profile_status: "four_views_verified" },
+    { player_id: 70001, display_name: "Jugador Referenciado", full_name: null, profile_url: "https://www.bdfutbol.com/es/j/j70001.html", photo_url: null, birth_date: null, age_years: null, nationality: null, position_name: null, groups: ["II"], association_status: "transfer_reference_only", team_associations: [{ team_id: 49, team_name: "Real Jaén", group: "II", evidence_types: ["transfer_reference"] }], profile_status: "inventory_only" },
+  ],
+};
+const playerDetailFixture = {
+  metadata: playerMetadata,
+  player: playerDirectoryFixture.players[0],
+  birth_place: null,
+  birthplace_province: null,
+  nationality_flag_url: null,
+  verified_indicators: [],
+  associations: playerDirectoryFixture.players[0].team_associations,
+  transfer_references: [],
+  season_statistics: [],
+  match_minutes: [],
+  match_metrics: [],
+  verified_individual_views: (["profile", "statistics", "matches", "rivals"] as const).map((view) => ({
+    view,
+    source_url: view === "profile" || view === "statistics"
+      ? "https://www.bdfutbol.com/es/j/j28577.html"
+      : "https://www.bdfutbol.com/es/p/j28577.html",
+    captured_at: "2026-10-16T12:00:00+00:00",
+    source_sha256: "c".repeat(64),
+    scope_note: "Fixture de prueba; no representa un snapshot real.",
+    tables: [],
+    historical_matches: [],
+  })),
+  warnings: ["La pertenencia se observó en capturas de la temporada; no certifica que siga vigente hoy."],
+};
+
 const categoryBySourceValue: Record<string, string> = {
   "1": "goals", "2": "minutes", "3": "yellow_cards", "4": "red_cards", "8": "youngest", "9": "oldest",
 };
@@ -216,6 +311,27 @@ const group1Bootstrap = {
       position_change: row.position_change,
       sports_zone: row.sports_zone,
     })),
+  },
+};
+
+const matchResultsBootstrap: MatchResultsBootstrap = {
+  metadata: {
+    schema_version: 1,
+    source: "BDFutbol",
+    competition: "Primera Federación",
+    season: "2026-27",
+    generation_id: "ui-01-test-generation",
+    generation_sha256: "a".repeat(64),
+    captured_at: captureSource.captured_at_utc,
+    team_count: 40,
+    match_count: 760,
+    played_count: group1Matches.counts.played + matchesSource.counts.played,
+    unplayed_count: group1Matches.counts.unplayed + matchesSource.counts.unplayed,
+    incomplete_count: group1Matches.counts.incomplete + matchesSource.counts.incomplete,
+  },
+  groups: {
+    I: resultGroup("I", group1Bootstrap, group1Capture),
+    II: resultGroup("II", apiBootstrap, captureSource),
   },
 };
 const topBootstrap = {
@@ -476,6 +592,22 @@ const fetchMock = vi.fn();
 
 function payloadFor(input: RequestInfo | URL): unknown {
   const url = String(input);
+  if (url.endsWith("/api/v1/matches/bootstrap")) return matchResultsBootstrap;
+  if (/^\/api\/v1\/players\/\d+$/.test(url)) return playerDetailFixture;
+  if (url.startsWith("/api/v1/players")) {
+    const params = new URL(url, window.location.origin).searchParams;
+    const query = params.get("q")?.toLocaleLowerCase("es-ES") ?? "";
+    const group = params.get("group");
+    const teamId = Number(params.get("team_id")) || null;
+    const page = Number(params.get("page")) || 1;
+    const pageSize = Number(params.get("page_size")) || 25;
+    const players = playerDirectoryFixture.players.filter((player) =>
+      (!query || `${player.display_name ?? ""} ${player.full_name ?? ""}`.toLocaleLowerCase("es-ES").includes(query))
+      && (!group || player.groups.includes(group as "I" | "II"))
+      && (!teamId || player.team_associations.some((team) => team.team_id === teamId)),
+    );
+    return { ...playerDirectoryFixture, query: params.get("q") ?? "", group, team_id: teamId, page, page_size: pageSize, total: players.length, players: players.slice((page - 1) * pageSize, page * pageSize) };
+  }
   const group = url.includes("/groups/1/") ? "1" : "2";
   const transfersPath = url.match(/\/api\/v1\/teams\/(\d+)\/seasons\/2026-27\/transfers$/);
   if (transfersPath) return teamTransfersPayload(Number(transfersPath[1]));
@@ -784,6 +916,39 @@ afterEach(() => {
 });
 
 describe("dashboard de clasificación", () => {
+  it("abre Jugadores, busca por nombre y navega a una ficha individual interna", async () => {
+    render(<App />);
+    await screen.findByRole("heading", { name: "General" });
+    fireEvent.click(screen.getByRole("link", { name: "Jugadores" }));
+
+    expect(await screen.findByRole("heading", { name: "Jugadores" })).toBeInTheDocument();
+    await screen.findByLabelText("Cobertura del inventario");
+    expect(screen.getByLabelText("Cobertura del inventario")).toHaveTextContent("2");
+    expect(screen.getByText("Referencia de traspaso")).toBeInTheDocument();
+    const search = screen.getByRole("searchbox", { name: "Buscar jugador" });
+    fireEvent.change(search, { target: { value: "Nacho" } });
+    const playerLink = await screen.findByRole("link", { name: /Nacho Castillo/ });
+    expect(playerLink).toHaveAttribute("href", "/players/28577");
+    expect(screen.queryByText("Jugador Referenciado")).not.toBeInTheDocument();
+
+    fireEvent.click(playerLink);
+    expect(window.location.pathname).toBe("/players/28577");
+    expect(await screen.findByRole("heading", { name: "Nacho Castillo" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Perfil original de BDFutbol ↗" })).toHaveAttribute("target", "_blank");
+    expect(screen.getByText(/no certifica que siga vigente hoy/)).toBeInTheDocument();
+    expect(screen.getByText("Vistas individuales verificadas")).toBeInTheDocument();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/api/v1/players/28577"))).toBe(true);
+    expect(fetchMock.mock.calls.every(([url]) => !String(url).includes("bdfutbol.com"))).toBe(true);
+  });
+
+  it("permite abrir directamente una ficha de jugador por URL", async () => {
+    window.history.replaceState({}, "", "/players/28577");
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "Nacho Castillo" })).toBeInTheDocument();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/api/v1/players/28577"))).toBe(true);
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/api/v1/groups/2/bootstrap"))).toBe(false);
+  });
+
   it("construye el directorio con ambos bootstraps y filtra sin nuevas solicitudes", async () => {
     render(<App />);
     await screen.findByRole("heading", { name: "Clasificación" });
@@ -851,6 +1016,7 @@ describe("dashboard de clasificación", () => {
     const { container } = render(<App />);
     await screen.findByRole("heading", { name: "General" });
     fireEvent.click(screen.getByRole("tab", { name: "Resultados" }));
+    await screen.findByRole("heading", { name: "Resultados" });
     const matchRow = container.querySelector<HTMLElement>(".results-match-row")!;
     const match = apiBootstrap.matches.find((item) => String(item.match_id) === matchRow.dataset.matchId);
     const teamLinks = matchRow.querySelectorAll<HTMLAnchorElement>(".result-team-link");
@@ -868,6 +1034,7 @@ describe("dashboard de clasificación", () => {
     render(<App />);
     await screen.findByRole("heading", { name: "General" });
     fireEvent.click(screen.getByRole("tab", { name: "Resultados" }));
+    await screen.findByRole("heading", { name: "Resultados" });
     const awayLink = document.querySelectorAll<HTMLAnchorElement>(".results-match-row .result-team-link")[1]!;
     fireEvent.click(awayLink);
     expect(window.location.pathname).toBe(awayLink.getAttribute("href"));
@@ -878,6 +1045,7 @@ describe("dashboard de clasificación", () => {
     const matrixView = render(<App />);
     await screen.findByRole("heading", { name: "General" });
     fireEvent.click(screen.getByRole("tab", { name: "Resultados" }));
+    await screen.findByRole("heading", { name: "Resultados" });
     const matrixRowLink = matrixView.container.querySelector<HTMLAnchorElement>(".matrix-row-team a[href='/teams/49']");
     const matrixColumnLink = matrixView.container.querySelector<HTMLAnchorElement>(".matrix-column-team a[href='/teams/49']");
     expect(matrixRowLink).toBeInTheDocument();
@@ -952,7 +1120,7 @@ describe("dashboard de clasificación", () => {
   });
 
   it("muestra rutas inexistentes sin solicitar bootstraps deportivos", async () => {
-    window.history.replaceState({}, "", "/players");
+    window.history.replaceState({}, "", "/no-existe");
     render(<App />);
     expect(await screen.findByRole("heading", { name: "No encontramos esta página" })).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
@@ -1218,13 +1386,26 @@ describe("dashboard de clasificación", () => {
     expect(screen.getByText("Nuevo Mirador")).toBeInTheDocument();
     expect(screen.getByText("Caro Mogío")).toBeInTheDocument();
     expect(container.querySelectorAll('.results-match-row.is-jaen-match')).toHaveLength(1);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/matches/bootstrap", expect.anything());
+    expect(screen.getByText(/Generación MATCH-00/)).toBeInTheDocument();
+  });
+
+  it("mantiene Resultados en su endpoint MATCH-00 separado del bootstrap de Clasificación", async () => {
+    render(<App />);
+    await screen.findByRole("heading", { name: "General" });
+    fireEvent.click(screen.getByRole("tab", { name: "Resultados" }));
+    expect(await screen.findByRole("heading", { name: "Resultados" })).toBeInTheDocument();
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/matches/bootstrap"))).toHaveLength(1);
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/groups/2/bootstrap"))).toHaveLength(1);
+    expect(screen.getByText(/Generación MATCH-00/)).toBeInTheDocument();
   });
 
   it("cambia jornadas, permite Todas y conserva resultados y matriz sin nuevas peticiones", async () => {
     const { container } = render(<App />);
     await screen.findByRole("heading", { name: "General" });
     fireEvent.click(screen.getByRole("tab", { name: "Resultados" }));
+    await screen.findByRole("heading", { name: "Resultados" });
     const selector = screen.getByLabelText("Jornada de resultados");
 
     fireEvent.change(selector, { target: { value: "1" } });
@@ -1251,7 +1432,7 @@ describe("dashboard de clasificación", () => {
     expect(container.querySelectorAll(".results-matrix .matrix-result-cell")).toHaveLength(380);
     expect(container.querySelectorAll(".results-matrix .matrix-diagonal")).toHaveLength(20);
     expect(container.querySelectorAll(".results-matrix .is-pending")).toHaveLength(321);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("conserva los filtros de Clasificación al cambiar de sección", async () => {
@@ -1267,7 +1448,7 @@ describe("dashboard de clasificación", () => {
     expect(screen.getByLabelText("Tipo de rango")).toHaveValue("dates");
     expect(screen.getByLabelText("Fecha inicial")).toHaveValue("2026-09-05");
     expect(screen.getByLabelText("Fecha final")).toHaveValue("2026-09-20");
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("cambia entre grupos con cinco secciones, caché y filtros independientes", async () => {
@@ -1313,16 +1494,16 @@ describe("dashboard de clasificación", () => {
 
     fireEvent.change(groupPicker, { target: { value: "2" } });
     expect(await screen.findByText("PRIMERA FEDERACIÓN · GRUPO II")).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(6);
+    expect(fetchMock).toHaveBeenCalledTimes(7);
     fireEvent.change(groupPicker, { target: { value: "1" } });
     expect(await screen.findByText("PRIMERA FEDERACIÓN · GRUPO I")).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(6);
+    expect(fetchMock).toHaveBeenCalledTimes(7);
 
     fireEvent.click(within(group1View).getByRole("tab", { name: "Clasificación" }));
     expect(within(group1View).getByLabelText("Tipo de rango")).toHaveValue("rounds");
     expect(within(group1View).getByLabelText("Jornada inicial")).toHaveValue("2");
     expect(within(group1View).getByLabelText("Jornada final")).toHaveValue("4");
-    expect(fetchMock).toHaveBeenCalledTimes(6);
+    expect(fetchMock).toHaveBeenCalledTimes(7);
   }, 15000);
 
   it("aísla un fallo de Árbitros de Grupo I y carga el ámbito válido de Grupo II", async () => {
@@ -1396,7 +1577,9 @@ describe("dashboard de clasificación", () => {
     fetchMock.mockImplementation((input: RequestInfo | URL) => Promise.resolve(
       String(input).endsWith("/api/v1/groups/2/referees/bootstrap")
         ? response(200, refereeBootstrap)
-        : response(200, apiBootstrap),
+        : String(input).endsWith("/api/v1/matches/bootstrap")
+          ? response(200, matchResultsBootstrap)
+          : response(200, apiBootstrap),
     ));
     expect(RefereeBootstrapSchema.safeParse(refereeBootstrap).success).toBe(true);
     render(<App />);
@@ -1424,7 +1607,7 @@ describe("dashboard de clasificación", () => {
     expect(await screen.findByRole("heading", { name: "Resultados" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "Árbitros" }));
     expect(screen.getByLabelText("Grupo")).toHaveValue("group1");
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it("presenta datos nulos y ceros reales, enlaza la ficha y deja nulos al final en ambos órdenes", async () => {
@@ -1488,7 +1671,9 @@ describe("dashboard de clasificación", () => {
     fetchMock.mockImplementation((input: RequestInfo | URL) => Promise.resolve(
       String(input).endsWith("/api/v1/groups/2/top/bootstrap")
         ? response(200, topBootstrap)
-        : response(200, apiBootstrap),
+        : String(input).endsWith("/api/v1/matches/bootstrap")
+          ? response(200, matchResultsBootstrap)
+          : response(200, apiBootstrap),
     ));
     const { container } = render(<App />);
     await screen.findByRole("heading", { name: "General" });
@@ -1527,12 +1712,13 @@ describe("dashboard de clasificación", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
 
     fireEvent.click(screen.getByRole("tab", { name: "Resultados" }));
+    await screen.findByRole("heading", { name: "Resultados" });
     fireEvent.change(screen.getByLabelText("Jornada de resultados"), { target: { value: "all" } });
     fireEvent.click(screen.getByRole("tab", { name: "Destacados" }));
     expect(await screen.findByRole("heading", { name: "Destacados" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "Resultados" }));
     expect(screen.getByLabelText("Jornada de resultados")).toHaveValue("all");
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it("reintenta solo la carga de Destacados y no recarga sus datos al volver a entrar", async () => {

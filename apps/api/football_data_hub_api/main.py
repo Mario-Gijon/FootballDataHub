@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncIterator
 
-from fastapi import FastAPI, HTTPException, Request, Response, status
+from fastapi import FastAPI, HTTPException, Query, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from football_data_hub_api.config import (
@@ -26,6 +26,9 @@ from football_data_hub_api.schemas import (
     BootstrapResponse,
     DatasetMetadata,
     HealthResponse,
+    MatchGenerationBootstrapResponse,
+    PlayerDetailResponse,
+    PlayerDirectoryResponse,
     ReadinessResponse,
     RefereeBootstrapResponse,
     StatisticsBootstrapResponse,
@@ -56,6 +59,16 @@ from football_data_hub_api.team_transfers_dataset import (
     TeamTransfersRegistry,
     load_team_transfers_registry,
 )
+from football_data_hub_api.match_results_dataset import (
+    MatchResultsBundle,
+    MatchResultsLoadError,
+    load_match_results_dataset,
+)
+from football_data_hub_api.player_dataset import (
+    PlayerDatasetLoadError,
+    PlayerDirectoryBundle,
+    load_player_directory,
+)
 
 logger = logging.getLogger("football_data_hub_api")
 GROUP_CODES = {"1": "I", "2": "II"}
@@ -78,6 +91,10 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         app.state.team_roster_registry = TeamRosterRegistry({}, {}, {}, None, {})
         app.state.team_follow_registry = TeamFollowRegistry({}, {}, {}, None, {})
         app.state.team_transfers_registry = TeamTransfersRegistry({}, {}, {}, None, {})
+        app.state.match_results = None
+        app.state.match_results_error = None
+        app.state.player_directory = None
+        app.state.player_directory_error = None
 
         group_settings = {}
         for group in ("1", "2"):
@@ -181,6 +198,38 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
             app.state.team_transfers_registry = TeamTransfersRegistry(
                 app.state.team_roster_registry.known_teams, {}, {}, str(exc), unavailable_groups
             )
+
+        if configured.match_generation_root is not None and configured.local_data_root is not None:
+            try:
+                app.state.match_results = load_match_results_dataset(
+                    configured.match_generation_root,
+                    data_root=configured.local_data_root,
+                )
+            except (MatchResultsLoadError, OSError, ValueError, KeyError, TypeError) as exc:
+                app.state.match_results_error = exc
+                logger.exception("La generación de Resultados MATCH-00 no está disponible")
+        else:
+            app.state.match_results_error = ValueError("No se configuró una generación MATCH-00 local.")
+
+        player_paths = (
+            configured.player_inventory_root,
+            configured.player_compact_root,
+            configured.player_team_captures_root,
+            configured.player_published_index_path,
+        )
+        if all(path is not None for path in player_paths):
+            try:
+                app.state.player_directory = load_player_directory(
+                    inventory_root=configured.player_inventory_root,
+                    compact_root=configured.player_compact_root,
+                    team_captures_root=configured.player_team_captures_root,
+                    published_index_path=configured.player_published_index_path,
+                )
+            except (PlayerDatasetLoadError, OSError, ValueError, KeyError, TypeError) as exc:
+                app.state.player_directory_error = exc
+                logger.exception("El inventario de jugadores no está disponible")
+        else:
+            app.state.player_directory_error = ValueError("No se configuraron las fuentes locales de jugadores.")
         yield
 
     app = FastAPI(
@@ -214,6 +263,76 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
             capture_id=bundle.bootstrap.metadata.capture_id,
             dataset_version=bundle.bootstrap.metadata.dataset_version,
         )
+
+    @app.get(
+        "/api/v1/matches/bootstrap",
+        response_model=MatchGenerationBootstrapResponse,
+        tags=["matches"],
+        summary="Calendario y resultados de la generación verificada MATCH-00",
+    )
+    def match_results_bootstrap(
+        request: Request, response: Response
+    ) -> MatchGenerationBootstrapResponse | Response:
+        bundle: MatchResultsBundle | None = request.app.state.match_results
+        if bundle is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "code": "match_results_unavailable",
+                    "message": "La generación local de Resultados no está disponible o no superó la validación.",
+                },
+            )
+        response.headers["ETag"] = bundle.etag
+        if _etag_matches(request.headers.get("if-none-match"), bundle.etag):
+            return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": bundle.etag})
+        return bundle.bootstrap
+
+    @app.get(
+        "/api/v1/players",
+        response_model=PlayerDirectoryResponse,
+        tags=["players"],
+        summary="Buscar y paginar jugadores del inventario verificado",
+    )
+    def players_directory(
+        request: Request,
+        response: Response,
+        q: str = Query(default="", max_length=120),
+        group: str | None = Query(default=None, pattern="^(I|II)$"),
+        team_id: int | None = Query(default=None, gt=0),
+        page: int = Query(default=1, ge=1),
+        page_size: int = Query(default=25, ge=1, le=100),
+    ) -> PlayerDirectoryResponse | Response:
+        bundle = _require_player_directory(request)
+        payload = bundle.list_players(
+            query=q, group=group, team_id=team_id, page=page, page_size=page_size
+        )
+        etag = _payload_etag("players-directory-v1", payload.model_dump_json())
+        response.headers["ETag"] = etag
+        if _etag_matches(request.headers.get("if-none-match"), etag):
+            return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": etag})
+        return payload
+
+    @app.get(
+        "/api/v1/players/{player_id}",
+        response_model=PlayerDetailResponse,
+        tags=["players"],
+        summary="Ficha del inventario para un ID de jugador",
+    )
+    def player_detail(
+        player_id: int, request: Request, response: Response
+    ) -> PlayerDetailResponse | Response:
+        bundle = _require_player_directory(request)
+        payload = bundle.detail(player_id)
+        if payload is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"code": "player_unknown", "message": "No hay un jugador con ese ID en el inventario."},
+            )
+        etag = _payload_etag("player-detail-v1", payload.model_dump_json())
+        response.headers["ETag"] = etag
+        if _etag_matches(request.headers.get("if-none-match"), etag):
+            return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": etag})
+        return payload
 
     @app.get(
         "/api/v1/groups/{group}/bootstrap",
@@ -511,6 +630,24 @@ def _require_group_dataset(request: Request, group: str) -> DatasetBundle:
             detail = f"{detail} Diagnóstico: {error}"
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=detail)
     return bundle
+
+
+def _require_player_directory(request: Request) -> PlayerDirectoryBundle:
+    bundle: PlayerDirectoryBundle | None = request.app.state.player_directory
+    if bundle is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "code": "player_inventory_unavailable",
+                "message": "El inventario local de jugadores no está disponible o no superó la validación.",
+            },
+        )
+    return bundle
+
+
+def _payload_etag(prefix: str, representation: str) -> str:
+    digest = hashlib.sha256(representation.encode("utf-8")).hexdigest()[:24]
+    return f'"{prefix}-{digest}"'
 
 
 def _require_section(

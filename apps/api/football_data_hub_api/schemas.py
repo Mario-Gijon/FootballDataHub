@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime
 import re
 from typing import Literal
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, StrictFloat, StrictInt, model_validator
 
@@ -476,6 +476,312 @@ class MatchResponse(ApiModel):
                 raise ValueError("Un partido sin disputar debe conservar marcadores null")
             if self.unplayed_state is None:
                 raise ValueError("Un partido sin disputar requiere unplayed_state")
+        return self
+
+
+class MatchGenerationRecordResponse(ApiModel):
+    internal_id: str = Field(min_length=1)
+    source_match_id: str = Field(min_length=1)
+    matchday: StrictInt = Field(ge=1, le=38)
+    matchday_date: date | None
+    source_match_date: date | None
+    home_team_id: StrictInt = Field(gt=0)
+    away_team_id: StrictInt = Field(gt=0)
+    home_goals: OptionalInt
+    away_goals: OptionalInt
+    home_yellow_cards: OptionalInt
+    away_yellow_cards: OptionalInt
+    home_red_cards: OptionalInt
+    away_red_cards: OptionalInt
+    status: Literal["played", "unplayed", "incomplete"]
+    unplayed_state: Literal[
+        "scheduled", "result_unavailable_at_capture", "unknown"
+    ] | None
+    postponed_by_source_rule: bool | None
+    source_match_url: str | None
+    stadium_id: str | None
+    stadium_name: str | None
+    stadium_url: str | None
+    referee_id: str | None
+    referee_name: str | None
+    referee_url: str | None
+
+    @model_validator(mode="after")
+    def validate_source_match(self) -> MatchGenerationRecordResponse:
+        if self.home_team_id == self.away_team_id:
+            raise ValueError("Un encuentro no puede enfrentar al mismo equipo.")
+        if self.status == "played":
+            if self.home_goals is None or self.away_goals is None or self.unplayed_state is not None:
+                raise ValueError("El resultado disputado requiere marcador completo.")
+        elif self.status == "unplayed":
+            if self.home_goals is not None or self.away_goals is not None or self.unplayed_state is None:
+                raise ValueError("El encuentro pendiente debe conservar marcador null.")
+        elif self.unplayed_state is not None:
+            raise ValueError("Un encuentro incompleto no puede usar estado pendiente.")
+        if self.source_match_url is not None:
+            parsed = urlsplit(self.source_match_url)
+            if (
+                parsed.scheme != "https"
+                or parsed.hostname != "www.bdfutbol.com"
+                or parsed.path != "/es/p/p.php"
+                or parse_qs(parsed.query).get("id") != [self.source_match_id]
+            ):
+                raise ValueError("La URL de partido no coincide con su ID BDFutbol.")
+        return self
+
+
+class MatchGenerationTeamResponse(ApiModel):
+    team_id: StrictInt = Field(gt=0)
+    name: str = Field(min_length=1)
+    team_url: str | None
+    crest_url: str | None
+
+
+class MatchGenerationCountsResponse(ApiModel):
+    teams: StrictInt = Field(ge=0)
+    matches: StrictInt = Field(ge=0)
+    played: StrictInt = Field(ge=0)
+    unplayed: StrictInt = Field(ge=0)
+    incomplete: StrictInt = Field(ge=0)
+
+
+class MatchGenerationGroupResponse(ApiModel):
+    group: Literal["I", "II"]
+    source_capture_id: str = Field(min_length=1)
+    source_captured_at: datetime
+    teams: list[MatchGenerationTeamResponse]
+    matches: list[MatchGenerationRecordResponse]
+    scheduled_matchdays: list[StrictInt]
+    counts: MatchGenerationCountsResponse
+
+    @model_validator(mode="after")
+    def validate_group_dataset(self) -> MatchGenerationGroupResponse:
+        team_ids = {team.team_id for team in self.teams}
+        match_ids = [match.internal_id for match in self.matches]
+        if len(team_ids) != len(self.teams) or len(match_ids) != len(set(match_ids)):
+            raise ValueError("El grupo contiene IDs de equipo o partido repetidos.")
+        if any(
+            match.home_team_id not in team_ids or match.away_team_id not in team_ids
+            for match in self.matches
+        ):
+            raise ValueError("Un partido referencia un equipo fuera de su grupo.")
+        if self.counts.teams != len(self.teams) or self.counts.matches != len(self.matches):
+            raise ValueError("Los recuentos no coinciden con las colecciones del grupo.")
+        actual = {
+            "played": sum(match.status == "played" for match in self.matches),
+            "unplayed": sum(match.status == "unplayed" for match in self.matches),
+            "incomplete": sum(match.status == "incomplete" for match in self.matches),
+        }
+        if any(getattr(self.counts, key) != value for key, value in actual.items()):
+            raise ValueError("Los recuentos por estado no coinciden con los partidos.")
+        if self.scheduled_matchdays != sorted(set(self.scheduled_matchdays)):
+            raise ValueError("Las jornadas deben ser únicas y estar ordenadas.")
+        return self
+
+
+class MatchGenerationMetadataResponse(ApiModel):
+    schema_version: Literal[1]
+    source: Literal["BDFutbol"]
+    competition: Literal["Primera Federación"]
+    season: Literal["2026-27"]
+    generation_id: str = Field(min_length=1)
+    generation_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    captured_at: datetime
+    team_count: StrictInt = Field(ge=0)
+    match_count: StrictInt = Field(ge=0)
+    played_count: StrictInt = Field(ge=0)
+    unplayed_count: StrictInt = Field(ge=0)
+    incomplete_count: StrictInt = Field(ge=0)
+
+
+class MatchGenerationBootstrapResponse(ApiModel):
+    metadata: MatchGenerationMetadataResponse
+    groups: dict[Literal["I", "II"], MatchGenerationGroupResponse]
+
+    @model_validator(mode="after")
+    def validate_generation_scope(self) -> MatchGenerationBootstrapResponse:
+        if set(self.groups) != {"I", "II"}:
+            raise ValueError("La generación debe contener Grupo I y Grupo II.")
+        teams = sum(group.counts.teams for group in self.groups.values())
+        matches = sum(group.counts.matches for group in self.groups.values())
+        if teams != self.metadata.team_count or matches != self.metadata.match_count:
+            raise ValueError("Los totales de generación no coinciden con los grupos.")
+        return self
+
+
+PlayerScalar = str | int | float | bool | None
+
+
+class PlayerTeamAssociationResponse(ApiModel):
+    team_id: StrictInt = Field(gt=0)
+    team_name: str = Field(min_length=1)
+    group: Literal["I", "II"]
+    evidence_types: list[Literal["membership", "transfer_reference"]]
+
+
+class PlayerIndexRecordResponse(ApiModel):
+    player_id: StrictInt = Field(gt=0)
+    display_name: str | None
+    full_name: str | None
+    profile_url: str | None
+    photo_url: str | None
+    birth_date: date | None
+    age_years: OptionalInt = Field(default=None, ge=0)
+    nationality: str | None
+    position_name: str | None
+    groups: list[Literal["I", "II"]]
+    association_status: Literal["roster_membership_observed", "transfer_reference_only"]
+    team_associations: list[PlayerTeamAssociationResponse]
+    profile_status: Literal[
+        "four_views_verified", "partial_individual_views", "inventory_only"
+    ]
+
+
+class PlayerTeamFilterResponse(ApiModel):
+    team_id: StrictInt = Field(gt=0)
+    team_name: str = Field(min_length=1)
+    group: Literal["I", "II"]
+
+
+class PlayerDirectoryMetadataResponse(ApiModel):
+    season: Literal["2026-27"]
+    inventory_generated_at: datetime
+    inventory_player_count: StrictInt = Field(ge=0)
+    complete_individual_profile_count: StrictInt = Field(ge=0)
+    partial_individual_profile_count: StrictInt = Field(ge=0)
+    inventory_only_count: StrictInt = Field(ge=0)
+    roster_membership_count: StrictInt = Field(ge=0)
+    transfer_only_count: StrictInt = Field(ge=0)
+    compact_generation_id: str | None
+    compact_generated_at: datetime | None
+    inventory_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+
+
+class PlayerDirectoryResponse(ApiModel):
+    metadata: PlayerDirectoryMetadataResponse
+    available_teams: list[PlayerTeamFilterResponse]
+    query: str
+    group: Literal["I", "II"] | None
+    team_id: StrictInt | None
+    page: StrictInt = Field(ge=1)
+    page_size: StrictInt = Field(ge=1, le=100)
+    total: StrictInt = Field(ge=0)
+    players: list[PlayerIndexRecordResponse]
+
+
+class PlayerSeasonStatisticResponse(ApiModel):
+    team_id: StrictInt = Field(gt=0)
+    team_name: str | None
+    group: Literal["I", "II"]
+    matches_played: OptionalInt
+    starts: OptionalInt
+    minutes_played: OptionalInt
+    goals: OptionalInt
+    assists: OptionalInt
+    yellow_cards: OptionalInt
+    red_cards: OptionalInt
+    source_view: str | None
+
+
+class PlayerMatchMetricResponse(ApiModel):
+    team_id: StrictInt = Field(gt=0)
+    team_name: str | None
+    group: Literal["I", "II"]
+    match_id: str | None
+    matchday: StrictInt = Field(ge=1, le=38)
+    metric: str | None
+    value: StrictInt = Field(ge=0)
+    raw_value: str | None
+    source_state: str | None
+    captured_at: datetime | None
+
+
+class PlayerTransferReferenceResponse(ApiModel):
+    team_id: StrictInt = Field(gt=0)
+    team_name: str | None
+    group: Literal["I", "II"]
+    direction: Literal["incoming", "outgoing"]
+    other_team_name: str | None
+    other_team_id: StrictInt | None
+    source_position_code: str | None
+    age_years: OptionalInt
+
+
+class PlayerTableColumnResponse(ApiModel):
+    label: str = Field(min_length=1)
+    title: str | None
+    hidden_in_source: bool
+
+
+class PlayerTableCellResponse(ApiModel):
+    raw_value: PlayerScalar
+    normalized_integer: StrictInt | None
+    value_status: str | None
+
+
+class PlayerTableRowResponse(ApiModel):
+    context: dict[str, PlayerScalar]
+    cells: list[PlayerTableCellResponse]
+
+
+class PlayerCompactTableResponse(ApiModel):
+    table_role: str
+    source_table_index: StrictInt | None
+    columns: list[PlayerTableColumnResponse]
+    rows: list[PlayerTableRowResponse]
+
+
+class PlayerHistoricalMatchResponse(ApiModel):
+    match_id: str | None
+    match_url: str | None
+    date: date | None
+    date_raw: str | None
+    season: str | None
+    competition: str | None
+    round_label: str | None
+    player_team: str | None
+    opponent_team: str | None
+    side: str | None
+    minutes: StrictInt | None
+    match_state: str | None
+    appearance_status: str | None
+
+
+class PlayerIndividualViewResponse(ApiModel):
+    view: Literal["profile", "statistics", "matches", "rivals"]
+    source_url: str
+    captured_at: datetime | None
+    source_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    scope_note: str
+    tables: list[PlayerCompactTableResponse]
+    historical_matches: list[PlayerHistoricalMatchResponse]
+
+
+class PlayerDetailResponse(ApiModel):
+    metadata: PlayerDirectoryMetadataResponse
+    player: PlayerIndexRecordResponse
+    birth_place: str | None
+    birthplace_province: str | None
+    nationality_flag_url: str | None
+    verified_indicators: list[str]
+    associations: list[PlayerTeamAssociationResponse]
+    transfer_references: list[PlayerTransferReferenceResponse]
+    season_statistics: list[PlayerSeasonStatisticResponse]
+    match_minutes: list[PlayerMatchMetricResponse]
+    match_metrics: list[PlayerMatchMetricResponse]
+    verified_individual_views: list[PlayerIndividualViewResponse]
+    warnings: list[str]
+
+    @model_validator(mode="after")
+    def validate_player_detail(self) -> PlayerDetailResponse:
+        if self.player.profile_status == "four_views_verified":
+            views = {item.view for item in self.verified_individual_views}
+            if views != {"profile", "statistics", "matches", "rivals"}:
+                raise ValueError("Un perfil completo debe incluir las cuatro vistas verificadas.")
+        elif self.player.profile_status == "inventory_only" and self.verified_individual_views:
+            raise ValueError("Un jugador sin compacto verificado no puede declarar vistas completas.")
+        elif self.player.profile_status == "partial_individual_views" and not self.verified_individual_views:
+            raise ValueError("Un perfil parcial debe incluir al menos una vista verificada.")
         return self
 
 
