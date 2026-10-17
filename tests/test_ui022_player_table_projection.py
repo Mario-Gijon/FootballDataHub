@@ -63,3 +63,34 @@ def test_projection_rejects_an_uninterpreted_blank_column_instead_of_dropping_it
             "columns": [{"header_original": "", "classes_raw": ["unrecognized-column"], "source_index": 7}],
             "records": [{"column_values": [["dato", None, None]]}],
         })
+
+
+def test_projection_preserves_aligned_career_summary_row_metadata() -> None:
+    projected = _project_table({
+        "table_role": "career_totals",
+        "columns": [
+            {"header_original": label, "source_index": index}
+            for index, label in enumerate(("Temp", "Equipo", "País", "Logro", "Div", "Edad", "PJ", "Min"))
+        ],
+        "records": [{
+            "row_role": "total",
+            "summary_label_raw": "Total",
+            "summary_label_column_index": 4,
+            "summary_label_span": 6,
+            "column_values": [
+                ["", None, "MISSING_OR_PLACEHOLDER"],
+                ["", None, "MISSING_OR_PLACEHOLDER"],
+                ["", None, "MISSING_OR_PLACEHOLDER"],
+                ["", None, "MISSING_OR_PLACEHOLDER"],
+                ["Total", None, "RAW_ONLY"],
+                ["", None, "MISSING_OR_PLACEHOLDER"],
+                ["100", 100, "INTEGER_NORMALIZED"],
+                ["7846", 7846, "INTEGER_NORMALIZED"],
+            ],
+        }],
+    })
+
+    row = projected.rows[0]
+    assert row.source_fields["summary_label_raw"] == "Total"
+    assert row.source_fields["summary_label_span"] == 6
+    assert [cell.raw_value for cell in row.cells][6:] == ["100", "7846"]

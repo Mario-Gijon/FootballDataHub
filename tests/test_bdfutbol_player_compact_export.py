@@ -11,7 +11,7 @@ from football_data_hub.providers.bdfutbol.players.compact_export import (
     build_compact_player_generation,
     compact_player_page,
 )
-from football_data_hub.providers.bdfutbol.players.models import PlayerMatchesPage
+from football_data_hub.providers.bdfutbol.players.models import PlayerMatchesPage, PlayerTrajectoryPage
 
 
 def _save_view(root: Path, view: str) -> str:
@@ -98,6 +98,57 @@ def test_compact_projection_separates_appearances_and_calls_without_dom_layout()
     assert "tables" not in compact
     assert "filter_controls" not in compact
     assert compact["exhaustiveness_status"] == "SNAPSHOT_SCOPE_ONLY_NOT_CERTIFIED_COMPLETE"
+
+
+def test_compact_career_totals_keeps_colspan_cells_at_their_source_columns() -> None:
+    headers = ("Temp", "Equipo", "País", "Ascenso", "Div", "Edad", "PJ", "Min")
+    columns = [
+        {
+            "column_index": index,
+            "header_original": label,
+            "header_title_raw": "Partidos Jugados" if label == "PJ" else None,
+            "group_header_raw": None,
+            "header_data_colid_raw": None,
+            "header_classes_raw": [],
+            "header_hidden_by_inline_style": False,
+            "raw_value": "Total" if index == 4 else "100" if index == 6 else "7846" if index == 7 else "",
+            "normalized_integer": 100 if index == 6 else 7846 if index == 7 else None,
+            "value_status": "INTEGER_NORMALIZED" if index in {6, 7} else "RAW_ONLY" if index == 4 else "MISSING_OR_PLACEHOLDER",
+        }
+        for index, label in enumerate(headers)
+    ]
+    page = PlayerTrajectoryPage(
+        player_id=12345,
+        source_player_key="j12345",
+        view="profile",
+        requested_url="https://www.bdfutbol.com/es/j/j12345.html",
+        final_url="https://www.bdfutbol.com/es/j/j12345.html",
+        page_title_raw="Test Player | BDFutbol",
+        source={},
+        filter_controls=[],
+        tables=[],
+        relationships=[],
+        coverage={},
+        profile={"display_name_raw": "Test Player", "career_rows": [], "career_totals_raw": []},
+        career_rows=[],
+        career_totals=[{
+            "row_role": "total",
+            "summary_label_raw": "Total",
+            "summary_label_column_index": 4,
+            "summary_label_span": 6,
+            "columns": columns,
+        }],
+    )
+
+    compact = compact_player_page(page, {"html_sha256": "a" * 64})
+    table = compact["career_totals_tables"][0]
+
+    assert [column["source_index"] for column in table["columns"]] == list(range(8))
+    assert table["records"][0]["summary_label_raw"] == "Total"
+    assert table["records"][0]["summary_label_span"] == 6
+    assert table["records"][0]["column_values"][4][0] == "Total"
+    assert table["records"][0]["column_values"][6][0] == "100"
+    assert table["records"][0]["column_values"][7][0] == "7846"
 
 
 def test_generation_consolidates_verified_views_across_runs_atomically(tmp_path: Path) -> None:

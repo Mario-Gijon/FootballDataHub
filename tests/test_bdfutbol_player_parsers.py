@@ -214,6 +214,55 @@ def test_profile_career_rows_keep_verified_achievement_and_competition_markers()
     assert "colTrofeu" in career["columns"][3]["classes_raw"]
 
 
+@pytest.mark.parametrize(
+    ("header_labels", "total_cells", "expected_span", "expected_values", "first_metric_header"),
+    [
+        (
+            ("Temp", "Equipo", "País", "Ascenso", "Div", "Edad", "PJ", "Minutos"),
+            '<td></td><td colspan="3"></td><td colspan="2">Total</td>'
+            '<td class="colPJ">100</td><td class="colMin">7846</td>',
+            6,
+            {6: "100", 7: "7846"},
+            "PJ",
+        ),
+        (
+            ("Temp", "Equipo", "País", "Div", "Edad", "PJ", "Minutos"),
+            '<td colspan="5">Totales</td><td>7</td><td>540</td>',
+            5,
+            {5: "7", 6: "540"},
+            "PJ",
+        ),
+    ],
+)
+def test_career_totals_expand_colspan_and_keep_metric_source_columns(
+    header_labels: tuple[str, ...],
+    total_cells: str,
+    expected_span: int,
+    expected_values: dict[int, str],
+    first_metric_header: str,
+) -> None:
+    headers = "".join(f"<th>{label}</th>" for label in header_labels)
+    html = (
+        "<html><head><title>Test Player, Test Full Name | BDFutbol</title></head><body>"
+        "<h1>Test Player</h1><a href='/es/j/j12345.html'>Perfil</a>"
+        f'<table class="taula_estil traject"><thead><tr>{headers}</tr></thead><tbody>'
+        f'<tr class="font-weight-bold total_traj">{total_cells}</tr>'
+        "</tbody></table></body></html>"
+    )
+    url = "https://www.bdfutbol.com/es/j/j12345.html"
+    page = parse_player_html(
+        html, _metadata("profile", 12345, html, url),
+        expected_player_id=12345, expected_names=("Test Player",),
+    )
+
+    total = page.career_totals[0]
+    assert total["summary_label_raw"] in {"Total", "Totales"}
+    assert total["summary_label_span"] == expected_span
+    assert len(total["columns"]) == len(header_labels)
+    assert {index: total["columns"][index]["raw_value"] for index in expected_values} == expected_values
+    assert total["columns"][expected_span]["header_original"] == first_metric_header
+
+
 def test_window_p_match_values_are_labeled_from_captured_fixture_headers() -> None:
     html, url = _fixture("matches")
     headers = [

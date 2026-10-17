@@ -148,4 +148,36 @@ describe("PlayerIndividualViews", () => {
     expect(screen.getByText("UD Ibiza → UD Logroñés")).toBeTruthy();
     expect(screen.queryByText(/club actual/i)).toBeNull();
   });
+
+  it("presenta la fila Total como resumen y mantiene las métricas bajo sus columnas", () => {
+    const totals = tableFixture("career_totals", [
+      column("Temporada", 0), column("Equipo", 1), column("País", 2),
+      column("Ascenso o descenso", 3), column("División", 4), column("Edad", 5),
+      column("Partidos Jugados", 6), column("Minutos", 7),
+    ], [row(["", "", "", "", "", "", 100, 7846], {
+      row_role: "total", summary_label_raw: "Total", summary_label_span: 6,
+    })]);
+    render(<PlayerIndividualViews views={[viewFixture("profile", { tables: totals })]} />);
+
+    const summary = screen.getByRole("heading", { name: "Totales de trayectoria" }).parentElement;
+    const totalRow = summary?.querySelector("tbody tr");
+    expect(totalRow?.querySelector("td[colspan='6']")?.textContent).toBe("Total");
+    expect(within(totalRow as HTMLElement).getByText("100")).toBeTruthy();
+    expect(within(totalRow as HTMLElement).getByText("7846")).toBeTruthy();
+    expect(totalRow?.children).toHaveLength(3);
+  });
+
+  it("corrige también la alineación dispersa de los compactos ya publicados", () => {
+    const legacyTotals = tableFixture("career_totals", [
+      column("Temporada", 0), column("Equipo", 1), column("División", 2),
+      column("Partidos Jugados", 3), column("Minutos", 4),
+    ], [row(["", "", "Total", 51, 2850], { row_role: "total" })]);
+    const { container } = render(<PlayerIndividualViews views={[viewFixture("profile", { tables: legacyTotals })]} />);
+
+    const table = container.querySelector(".player-source-table table");
+    const totalRow = table?.querySelector("tbody tr");
+    expect(totalRow?.querySelector("td[colspan='3']")?.textContent).toBe("Total");
+    expect(within(totalRow as HTMLElement).getByText("51")).toBeTruthy();
+    expect(within(totalRow as HTMLElement).getByText("2850")).toBeTruthy();
+  });
 });

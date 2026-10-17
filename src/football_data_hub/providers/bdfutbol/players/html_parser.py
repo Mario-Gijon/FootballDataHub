@@ -11,7 +11,7 @@ from urllib.parse import parse_qs, urljoin, urlsplit
 
 from bs4 import BeautifulSoup, Tag
 
-PLAYER_PARSER_VERSION = "1.1.0"
+PLAYER_PARSER_VERSION = "1.2.0"
 PLAYER_SCHEMA_VERSION = "football_data_hub.bdfutbol.player_pages.v2"
 PLAYER_VIEWS = ("profile", "statistics", "matches", "rivals")
 _PLAYER_URL = re.compile(r"/es/(?:j/j|p/jr?|p/j)(\d+)\.html$")
@@ -512,6 +512,57 @@ def _profile_data(soup: BeautifulSoup, tables: list[dict[str, Any]], base_url: s
         header_by_index = {item["column_index"]: item for item in headers}
         for row in trajectory_table["rows"]:
             if row["row_role"] == "total":
+                source_cells = row.get("cells", [])
+                cells_by_index = {
+                    cell["column_index"]: cell
+                    for cell in source_cells
+                    if isinstance(cell, dict) and type(cell.get("column_index")) is int
+                }
+                label_cell = next(
+                    (
+                        cell for cell in source_cells
+                        if isinstance(cell, dict)
+                        and re.match(r"^total(?:es)?(?:\s|$)", str(cell.get("raw_value") or "").strip(), re.I)
+                    ),
+                    None,
+                )
+                label_raw = str(label_cell["raw_value"]).strip() if label_cell else None
+                label_start = label_cell.get("column_index") if label_cell else None
+                first_metric_index = next(
+                    (
+                        cell["column_index"] for cell in source_cells
+                        if isinstance(cell, dict)
+                        and cell is not label_cell
+                        and type(cell.get("column_index")) is int
+                        and (label_start is None or cell["column_index"] > label_start)
+                        and str(cell.get("raw_value") or "").strip()
+                    ),
+                    trajectory_table["column_width_max"],
+                )
+                summary_span = first_metric_index if label_cell else None
+                if label_cell:
+                    summary_span = max(
+                        int(summary_span or 0),
+                        int(label_start or 0) + int(label_cell.get("colspan") or 1),
+                    )
+                aligned_columns = []
+                for index in range(trajectory_table["column_width_max"]):
+                    cell = cells_by_index.get(index)
+                    header = header_by_index.get(index, {})
+                    aligned_columns.append({
+                        "column_index": index,
+                        "header_original": header.get("header_original"),
+                        "header_title_raw": header.get("header_title_raw"),
+                        "group_header_raw": header.get("group_header_raw"),
+                        "header_data_colid_raw": header.get("data_colid_raw"),
+                        "header_classes_raw": header.get("classes_raw", []),
+                        "header_hidden_by_inline_style": header.get("hidden_by_inline_style"),
+                        "source_cell_colspan": cell.get("colspan") if cell else None,
+                        "raw_value": cell.get("raw_value") if cell else "",
+                        "normalized_integer": cell.get("normalized_integer") if cell else None,
+                        "value_status": cell.get("value_status", "MISSING_OR_PLACEHOLDER") if cell else "MISSING_OR_PLACEHOLDER",
+                        "marker_labels_raw": cell.get("marker_labels_raw", []) if cell else [],
+                    })
                 total_rows.append({
                     **row,
                     "table_id": trajectory_table.get("table_id"),
@@ -519,6 +570,10 @@ def _profile_data(soup: BeautifulSoup, tables: list[dict[str, Any]], base_url: s
                     "source_table_index": trajectory_table.get("table_index"),
                     "table_caption_raw": trajectory_table.get("caption_raw"),
                     "cells": _cells_with_headers(row, trajectory_table),
+                    "columns": aligned_columns,
+                    "summary_label_raw": label_raw,
+                    "summary_label_column_index": label_start,
+                    "summary_label_span": summary_span,
                 })
                 continue
             values = {cell["column_index"]: cell for cell in row["cells"]}

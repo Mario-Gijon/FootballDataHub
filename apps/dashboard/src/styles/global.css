@@ -1455,6 +1455,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .player-data-table td { padding: 9px 12px; border-top: 1px solid rgb(255 255 255 / 5%); color: var(--text-muted); font-size: 12px; }
 .player-data-table tbody tr:nth-child(even) { background: rgb(255 255 255 / 2%); }
 .player-data-table tbody tr:hover { background: rgb(255 255 255 / 4%); }
+.player-data-table tbody .player-total-row td:first-child { color: var(--text); font-weight: 700; }
 .player-data-empty { margin: 0; padding: 18px; border: 1px solid rgb(255 255 255 / 7%); border-radius: 8px; color: var(--text-muted); background: rgb(27 30 34 / 66%); font-size: 13px; }
 .player-match-table-section .player-data-table { min-width: 1600px; }
 .player-match-table-section .player-data-table td { white-space: nowrap; }

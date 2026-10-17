@@ -136,17 +136,41 @@ function SourceTable({ table }: { table: PlayerTable }) {
     {table.rows.length === 0 ? <p className="player-data-empty">No hay datos en esta tabla.</p> : <div className="player-table-scroll">
       <table className="player-data-table">
         <thead><tr>{table.columns.map((column, index) => <th key={`${column.source_index ?? index}-${column.label}`}>{column.label}</th>)}</tr></thead>
-        <tbody>{table.rows.map((row, rowIndex) => <tr key={rowIndex}>
-          {table.columns.map((column, columnIndex) => {
-            const sourceIndex = column.source_index ?? columnIndex;
-            const cell = row.cells[sourceIndex];
-            const value = cell?.normalized_integer ?? cell?.raw_value;
-            return <td key={`${sourceIndex}-${column.label}`}>{display(value) || careerMarker(row, column.label)}</td>;
-          })}
-        </tr>)}</tbody>
+        <tbody>{table.rows.map((row, rowIndex) => {
+          const isCareerTotal = table.table_role === "career_totals" && row.source_fields.row_role === "total";
+          const summaryCellIndex = row.cells.findIndex((cell) =>
+            typeof cell.raw_value === "string" && /^total(?:es)?(?:\s|$)/iu.test(cell.raw_value.trim()),
+          );
+          const summaryLabel = row.source_fields.summary_label_raw
+            ?? (summaryCellIndex >= 0 ? row.cells[summaryCellIndex].raw_value : null);
+          const declaredSpan = row.source_fields.summary_label_span;
+          const summarySpan = typeof declaredSpan === "number" ? declaredSpan : summaryCellIndex + 1;
+          if (isCareerTotal && typeof summaryLabel === "string" && summarySpan > 0) {
+            return <tr key={rowIndex} className="player-total-row">
+              <td colSpan={Math.min(summarySpan, table.columns.length)}>{summaryLabel.trim() || "Total"}</td>
+              {table.columns.map((column, columnIndex) => {
+                const sourceIndex = column.source_index ?? columnIndex;
+                if (sourceIndex < summarySpan) return null;
+                return <td key={`${sourceIndex}-${column.label}`}>{tableCellValue(row, column, columnIndex)}</td>;
+              })}
+            </tr>;
+          }
+          return <tr key={rowIndex}>
+            {table.columns.map((column, columnIndex) => <td key={`${column.source_index ?? columnIndex}-${column.label}`}>
+              {tableCellValue(row, column, columnIndex)}
+            </td>)}
+          </tr>;
+        })}</tbody>
       </table>
     </div>}
   </section>;
+}
+
+function tableCellValue(row: PlayerTable["rows"][number], column: PlayerTable["columns"][number], columnIndex: number): string {
+  const sourceIndex = column.source_index ?? columnIndex;
+  const cell = row.cells[sourceIndex];
+  const value = cell?.normalized_integer ?? cell?.raw_value;
+  return display(value) || careerMarker(row, column.label);
 }
 
 function MatchRecords({ records }: { records: PlayerMatch[] }) {
