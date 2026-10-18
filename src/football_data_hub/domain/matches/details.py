@@ -20,9 +20,12 @@ MatchEventKind = Literal[
     "red_card",
     "second_yellow",
     "substitution",
+    "substitution_in",
+    "substitution_out",
     "other",
 ]
 AppearanceRole = Literal["starter", "substitute", "unknown"]
+ParticipationStatus = Literal["entered", "no_entry_marker", "not_applicable"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,6 +72,9 @@ class MatchPlayerAppearance:
     player_name: str | None = None
     shirt_number: int | None = None
     position_code: str | None = None
+    profile_url: str | None = None
+    photo_url: str | None = None
+    participation_status: ParticipationStatus | None = None
     started_at_minute: int | None = None
     ended_at_minute: int | None = None
     source_reference: str | None = None
@@ -81,6 +87,8 @@ class MatchTeam:
     name: str | None = None
     coach_id: str | None = None
     coach_name: str | None = None
+    coach_profile_url: str | None = None
+    coach_photo_url: str | None = None
     starters: tuple[MatchPlayerAppearance, ...] | None = None
     substitutes: tuple[MatchPlayerAppearance, ...] | None = None
 
@@ -101,6 +109,8 @@ class MatchEvent:
     related_player_name: str | None = None
     is_penalty: bool | None = None
     is_own_goal: bool | None = None
+    score_after_home: int | None = None
+    score_after_away: int | None = None
     source_text: str | None = None
     source_reference: str | None = None
 
@@ -220,6 +230,8 @@ def validate_match_detail_contract(detail: MatchDetail) -> tuple[str, ...]:
         "red_card",
         "second_yellow",
         "substitution",
+        "substitution_in",
+        "substitution_out",
         "other",
     )
     for index, event in enumerate(detail.events or ()):

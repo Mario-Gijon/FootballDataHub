@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -67,6 +68,11 @@ from football_data_hub_api.match_results_dataset import (
     build_match_page,
     load_match_results_dataset,
 )
+from football_data_hub_api.match_details_dataset import (
+    MatchDetailsLoadError,
+    load_local_discovery_preview,
+    load_published_match_details,
+)
 from football_data_hub_api.player_dataset import (
     PlayerDatasetLoadError,
     PlayerDirectoryBundle,
@@ -96,6 +102,8 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         app.state.team_transfers_registry = TeamTransfersRegistry({}, {}, {}, None, {})
         app.state.match_results = None
         app.state.match_results_error = None
+        app.state.match_detail_documents = {}
+        app.state.match_detail_publication_error = None
         app.state.player_directory = None
         app.state.player_directory_error = None
 
@@ -233,6 +241,28 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
                 logger.exception("El inventario de jugadores no está disponible")
         else:
             app.state.player_directory_error = ValueError("No se configuraron las fuentes locales de jugadores.")
+
+        if (
+            app.state.match_results is not None
+            and configured.match_details_published_root is not None
+            and configured.match_details_store_root is not None
+            and configured.match_generation_root is not None
+            and configured.local_data_root is not None
+        ):
+            try:
+                player_ids = set(app.state.player_directory.players_by_id) if app.state.player_directory else set()
+                app.state.match_detail_documents = load_published_match_details(
+                    configured.match_details_published_root,
+                    store_root=configured.match_details_store_root,
+                    generation_root=configured.match_generation_root,
+                    data_root=configured.local_data_root,
+                    match_bundle=app.state.match_results,
+                    player_ids=player_ids,
+                )
+            except (MatchDetailsLoadError, OSError, ValueError, KeyError, TypeError) as exc:
+                app.state.match_detail_publication_error = exc
+                app.state.match_detail_documents = {}
+                logger.exception("Los detalles publicados no superaron la validación; Resultados sigue disponible")
         yield
 
     app = FastAPI(
@@ -308,7 +338,11 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
                     "message": "La generación local de Resultados no está disponible o no superó la validación.",
                 },
             )
-        page = build_match_page(bundle, internal_id)
+        page = build_match_page(
+            bundle,
+            internal_id,
+            details=getattr(request.app.state, "match_detail_documents", {}).get(internal_id),
+        )
         if page is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -324,6 +358,46 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         if _etag_matches(request.headers.get("if-none-match"), page_etag):
             return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": page_etag})
         return page
+
+    @app.get(
+        "/__local-preview/matches/{internal_id}",
+        response_model=MatchPageResponse,
+        include_in_schema=False,
+    )
+    def local_match_preview(internal_id: str, request: Request) -> MatchPageResponse:
+        """Loopback-only read-only presentation of an explicitly configured discovery artifact."""
+
+        client_host = request.client.host if request.client is not None else None
+        try:
+            is_loopback = client_host is not None and ipaddress.ip_address(client_host).is_loopback
+        except ValueError:
+            is_loopback = False
+        if not is_loopback or configured.match_local_preview_artifact is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"code": "preview_not_enabled"})
+        bundle: MatchResultsBundle | None = request.app.state.match_results
+        if (
+            bundle is None
+            or configured.match_generation_root is None
+            or configured.local_data_root is None
+        ):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"code": "preview_not_available"})
+        player_directory = request.app.state.player_directory
+        player_ids = set(player_directory.players_by_id) if player_directory is not None else set()
+        try:
+            return load_local_discovery_preview(
+                configured.match_local_preview_artifact,
+                internal_id=internal_id,
+                generation_root=configured.match_generation_root,
+                data_root=configured.local_data_root,
+                match_bundle=bundle,
+                player_ids=player_ids,
+            )
+        except (MatchDetailsLoadError, OSError, ValueError, KeyError, TypeError) as exc:
+            logger.exception("No se pudo construir la vista previa local del partido")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"code": "preview_not_available"},
+            ) from exc
 
     @app.get(
         "/api/v1/players",

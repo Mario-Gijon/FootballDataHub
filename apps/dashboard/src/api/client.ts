@@ -296,10 +296,17 @@ export function loadMatchPage(internalId: string): Promise<MatchPage> {
   return pending;
 }
 
-async function requestMatchPage(internalId: string): Promise<MatchPage> {
+export function loadLocalMatchPreview(internalId: string): Promise<MatchPage> {
+  return requestMatchPage(internalId, true);
+}
+
+async function requestMatchPage(internalId: string, localPreview = false): Promise<MatchPage> {
   let response: Response;
   try {
-    response = await fetch(`${apiBase}/api/v1/matches/${encodeURIComponent(internalId)}`, {
+    const path = localPreview
+      ? `/__local-preview/matches/${encodeURIComponent(internalId)}`
+      : `/api/v1/matches/${encodeURIComponent(internalId)}`;
+    response = await fetch(`${apiBase}${path}`, {
       headers: { Accept: "application/json" },
     });
   } catch {

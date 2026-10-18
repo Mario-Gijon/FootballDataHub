@@ -1160,6 +1160,8 @@ const MatchPublishedPlayerSchema = z.object({
   shirt_number: nullableInteger,
   position: z.string().nullable(),
   role: z.enum(["starter", "substitute"]),
+  participation_status: z.enum(["entered", "no_entry_marker", "not_applicable"]).nullable(),
+  player_profile_available: z.boolean(),
 }).strict();
 
 const MatchPublishedCoachSchema = z.object({
@@ -1170,13 +1172,14 @@ const MatchPublishedCoachSchema = z.object({
 }).strict();
 
 const MatchPublishedSideSchema = z.object({
+  team_id: positiveInteger,
   coach: MatchPublishedCoachSchema.nullable(),
   starters: z.array(MatchPublishedPlayerSchema).nullable(),
   substitutes: z.array(MatchPublishedPlayerSchema).nullable(),
 }).strict();
 
 const MatchPublishedEventSchema = z.object({
-  event_kind: z.enum(["goal", "penalty", "own_goal", "yellow_card", "red_card", "second_yellow", "substitution", "other"]),
+  event_kind: z.enum(["goal", "penalty", "own_goal", "yellow_card", "red_card", "second_yellow", "substitution", "substitution_in", "substitution_out", "other"]),
   minute: z.string().nullable(),
   team_id: positiveInteger,
   player_id: nullableInteger,
@@ -1185,10 +1188,14 @@ const MatchPublishedEventSchema = z.object({
   related_player_name: z.string().nullable(),
   is_penalty: z.boolean().nullable(),
   is_own_goal: z.boolean().nullable(),
+  score_after_home: nullableInteger,
+  score_after_away: nullableInteger,
+  player_profile_available: z.boolean(),
+  related_player_profile_available: z.boolean(),
 }).strict();
 
 const MatchPublishedDetailsSchema = z.object({
-  publication_status: z.literal("approved"),
+  publication_status: z.enum(["approved", "preview_only"]),
   validation_status: z.literal("valid"),
   source: z.literal("BDFutbol"),
   internal_id: z.string().min(1),
@@ -1196,6 +1203,11 @@ const MatchPublishedDetailsSchema = z.object({
   source_generation_id: z.string().min(1),
   source_capture_id: z.string().min(1),
   source_html_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  match_date: dateOnly,
+  home_team_id: positiveInteger,
+  away_team_id: positiveInteger,
+  home_goals: z.number().int().nonnegative(),
+  away_goals: z.number().int().nonnegative(),
   home: MatchPublishedSideSchema,
   away: MatchPublishedSideSchema,
   events: z.array(MatchPublishedEventSchema).nullable(),
@@ -1203,7 +1215,7 @@ const MatchPublishedDetailsSchema = z.object({
 
 export const MatchPageSchema = z.object({
   metadata: z.object({
-    contract_version: z.literal(1),
+    contract_version: z.literal(2),
     source: z.literal("BDFutbol"),
     competition: z.literal("Primera Federación"),
     season: z.literal("2026-27"),
@@ -1231,7 +1243,7 @@ export const MatchPageSchema = z.object({
     referee_url: z.string().url().nullable(),
     source_match_url: z.string().url().nullable(),
   }).strict(),
-  detail_status: z.enum(["not_available", "available"]),
+  detail_status: z.enum(["not_available", "available", "preview_only"]),
   details: MatchPublishedDetailsSchema.nullable(),
 }).strict().superRefine((page, context) => {
   const expectedId = `pf-${page.metadata.season}-group-${page.metadata.group.toLowerCase()}-bdfutbol-${page.match.source_match_id}`;
@@ -1250,13 +1262,26 @@ export const MatchPageSchema = z.object({
   if (page.match.status === "incomplete" && (page.match.home_goals !== null || page.match.away_goals !== null)) {
     context.addIssue({ code: "custom", message: "Un partido incompleto no puede mostrar un marcador parcial." });
   }
-  if ((page.detail_status === "available") !== (page.details !== null)) {
+  if ((page.detail_status === "not_available") !== (page.details === null)) {
     context.addIssue({ code: "custom", message: "El estado y el contenido de los detalles no coinciden." });
+  }
+  if (page.details && (
+    (page.detail_status === "available" && page.details.publication_status !== "approved") ||
+    (page.detail_status === "preview_only" && page.details.publication_status !== "preview_only")
+  )) {
+    context.addIssue({ code: "custom", message: "El estado y la aprobación de los detalles no coinciden." });
   }
   if (page.details && (page.details.internal_id !== page.match.internal_id
     || page.details.source_match_id !== page.match.source_match_id
     || page.details.source_generation_id !== page.metadata.generation_id
-    || page.details.source_capture_id !== page.metadata.source_capture_id)) {
+    || page.details.source_capture_id !== page.metadata.source_capture_id
+    || page.details.home_team_id !== page.match.home_team.team_id
+    || page.details.away_team_id !== page.match.away_team.team_id
+    || page.details.home.team_id !== page.match.home_team.team_id
+    || page.details.away.team_id !== page.match.away_team.team_id
+    || page.details.home_goals !== page.match.home_goals
+    || page.details.away_goals !== page.match.away_goals
+    || (page.match.source_match_date !== null && page.details.match_date !== page.match.source_match_date))) {
     context.addIssue({ code: "custom", message: "Los detalles no pertenecen al partido y generación solicitados." });
   }
   if (page.details?.events?.some((event) => event.team_id !== page.match.home_team.team_id && event.team_id !== page.match.away_team.team_id)) {

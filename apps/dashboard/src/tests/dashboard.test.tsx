@@ -370,7 +370,7 @@ function matchPageFixture(internalId: string): MatchPage | null {
     if (!homeTeam || !awayTeam) return null;
     return {
       metadata: {
-        contract_version: 1,
+        contract_version: 2,
         source: "BDFutbol",
         competition: "Primera Federación",
         season: "2026-27",

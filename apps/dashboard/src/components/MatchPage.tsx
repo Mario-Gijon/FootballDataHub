@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { loadMatchPage, MatchPageApiError } from "../api/client";
+import { loadLocalMatchPreview, loadMatchPage, MatchPageApiError } from "../api/client";
 import type { MatchPage as MatchPageData } from "../api/contracts";
 import { navigateOnPlainClick } from "../domain/internal-navigation";
 import { InternalTeamLink } from "./InternalTeamLink";
 import { InternalPlayerLink } from "./InternalPlayerLink";
 import { TeamCrest } from "./TeamCard";
+import { ProfileImage } from "./TeamRosterShared";
 
 type PublishedDetails = NonNullable<MatchPageData["details"]>;
 type PublishedPlayer = NonNullable<PublishedDetails["home"]["starters"]>[number];
@@ -12,11 +13,12 @@ type MatchEventKind = NonNullable<PublishedDetails["events"]>[number]["event_kin
 
 interface Props {
   internalId: string;
+  localPreview?: boolean;
   onNavigate: (path: string) => void;
   onReturnToResults: () => void;
 }
 
-export function MatchPage({ internalId, onNavigate, onReturnToResults }: Props) {
+export function MatchPage({ internalId, localPreview = false, onNavigate, onReturnToResults }: Props) {
   const [page, setPage] = useState<MatchPageData | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -26,7 +28,7 @@ export function MatchPage({ internalId, onNavigate, onReturnToResults }: Props) 
     setPage(null);
     setError("");
     setLoading(true);
-    void loadMatchPage(internalId)
+    void (localPreview ? loadLocalMatchPreview(internalId) : loadMatchPage(internalId))
       .then((result) => { if (current) setPage(result); })
       .catch((reason: unknown) => {
         if (!current) return;
@@ -37,7 +39,7 @@ export function MatchPage({ internalId, onNavigate, onReturnToResults }: Props) 
       })
       .finally(() => { if (current) setLoading(false); });
     return () => { current = false; };
-  }, [internalId]);
+  }, [internalId, localPreview]);
 
   return (
     <main className="dashboard-main match-page">
@@ -66,6 +68,9 @@ function MatchPageContent({ page, onNavigate }: { page: MatchPageData; onNavigat
   ));
 
   return <>
+    {page.detail_status === "preview_only" && <div className="match-local-preview-banner" role="status">
+      Vista previa local · datos exploratorios, no publicados
+    </div>}
     <header className="match-page-hero">
       <div className="match-page-context">PRIMERA FEDERACIÓN · GRUPO {metadata.group} · TEMPORADA {formatSeason(metadata.season)}</div>
       <div className="match-page-scoreboard">
@@ -146,14 +151,16 @@ function PublishedMatchDetails({
         <LineupSide name={awayName} side={details.away} onNavigate={onNavigate} />
       </div>}
     {details.events?.length ? <ol className="match-events">
-      {details.events.map((event, index) => <li key={`${event.event_kind}:${event.minute ?? "unknown"}:${event.team_id}:${index}`}>
+      {sortMatchEvents(details.events).map((event, index) => <li key={`${event.event_kind}:${event.minute ?? "unknown"}:${event.team_id}:${index}`}>
         <time>{event.minute ?? "—"}</time>
         <span>{eventLabel(event.event_kind)}</span>
         <span>{event.team_id === homeTeamId ? homeName : event.team_id === awayTeamId ? awayName : ""}</span>
-        <span>{event.player_id && event.player_name
+        <span>{event.player_name && event.player_id && event.player_profile_available
           ? <InternalPlayerLink playerId={event.player_id} onNavigate={onNavigate}>{event.player_name}</InternalPlayerLink>
           : event.player_name ?? ""}</span>
-        {event.related_player_name && <span>↔ {event.related_player_id
+        {event.score_after_home !== null && event.score_after_away !== null &&
+          <span className="match-event-score">{event.score_after_home}–{event.score_after_away}</span>}
+        {event.related_player_name && <span className="match-event-related">{event.related_player_id && event.related_player_profile_available
           ? <InternalPlayerLink playerId={event.related_player_id} onNavigate={onNavigate}>{event.related_player_name}</InternalPlayerLink>
           : event.related_player_name}</span>}
       </li>)}
@@ -179,20 +186,42 @@ function LineupSide({
 
 function PlayerList({ players, onNavigate }: { players: PublishedPlayer[]; onNavigate: (path: string) => void }) {
   return <ul>{players.map((player, index) => <li key={`${player.player_id ?? player.display_name}:${index}`}>
+    <ProfileImage src={player.photo_url} name={player.display_name} className="match-player-photo" />
     {player.shirt_number !== null && <span className="match-player-number">{player.shirt_number}</span>}
-    {player.player_id
+    {player.player_id && player.player_profile_available
       ? <InternalPlayerLink playerId={player.player_id} onNavigate={onNavigate}>{player.display_name}</InternalPlayerLink>
       : <span>{player.display_name}</span>}
     {player.position && <small>{player.position}</small>}
+    {player.role === "substitute" && player.participation_status === "entered" && <small>Entró</small>}
+    {player.role === "substitute" && player.participation_status === "no_entry_marker" && <small>Sin entrada registrada</small>}
   </li>)}</ul>;
 }
 
 function eventLabel(kind: MatchEventKind): string {
   const labels: Record<string, string> = {
-    goal: "Gol", penalty: "Penalti", own_goal: "Gol en propia puerta", yellow_card: "Tarjeta amarilla",
-    red_card: "Tarjeta roja", second_yellow: "Segunda amarilla", substitution: "Sustitución", other: "Evento",
+    goal: "Gol", penalty: "Gol de penalti", own_goal: "Gol en propia puerta", yellow_card: "Tarjeta amarilla",
+    red_card: "Tarjeta roja", second_yellow: "Segunda amarilla", substitution: "Sustitución",
+    substitution_in: "Entró", substitution_out: "Salió", other: "Evento",
   };
   return labels[kind] ?? "Evento";
+}
+
+function sortMatchEvents<T extends { minute: string | null }>(events: T[]): T[] {
+  return events.map((event, index) => ({ event, index, minute: event.minute ? parseMinute(event.minute) : null }))
+    .sort((left, right) => {
+      if (left.minute === null || right.minute === null) {
+        return left.minute === right.minute ? left.index - right.index : left.minute === null ? 1 : -1;
+      }
+      return left.minute[0] - right.minute[0]
+        || left.minute[1] - right.minute[1]
+        || left.index - right.index;
+    })
+    .map(({ event }) => event);
+}
+
+function parseMinute(value: string): [number, number] | null {
+  const match = /^(\d+)(?:\+(\d+))?\s*['’]?$/.exec(value.trim());
+  return match ? [Number(match[1]), Number(match[2] ?? 0)] : null;
 }
 
 function formatDate(value: string): string {

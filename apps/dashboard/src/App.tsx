@@ -361,6 +361,7 @@ export default function App() {
       {route.kind === "match" && <MatchPage
         key={route.internalId}
         internalId={route.internalId}
+        localPreview={new URLSearchParams(window.location.search).get("preview") === "local"}
         onNavigate={navigate}
         onReturnToResults={() => {
           setActiveGroup(route.group);

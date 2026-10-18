@@ -14,6 +14,7 @@ from football_data_hub.providers.bdfutbol.match_details.inventory import (
 from football_data_hub_api.schemas import (
     MatchGenerationBootstrapResponse,
     MatchPageResponse,
+    MatchPublishedDetailsResponse,
 )
 
 
@@ -28,9 +29,15 @@ class MatchResultsBundle:
 
 
 def build_match_page(
-    bundle: MatchResultsBundle, internal_id: str
+    bundle: MatchResultsBundle,
+    internal_id: str,
+    *,
+    details: MatchPublishedDetailsResponse | None = None,
 ) -> MatchPageResponse | None:
     """Project one identity-checked fixture; exploratory artifacts are never read here."""
+
+    if details is not None and details.publication_status != "approved":
+        raise MatchResultsLoadError("El endpoint público solo acepta detalles aprobados.")
 
     bootstrap = bundle.bootstrap
     for group_code, group in bootstrap.groups.items():
@@ -47,7 +54,7 @@ def build_match_page(
             raise MatchResultsLoadError("El partido apunta a un equipo ausente en MATCH-00.")
         return MatchPageResponse.model_validate({
             "metadata": {
-                "contract_version": 1,
+                "contract_version": 2,
                 "source": bootstrap.metadata.source,
                 "competition": bootstrap.metadata.competition,
                 "season": bootstrap.metadata.season,
@@ -75,9 +82,8 @@ def build_match_page(
                 "referee_url": match.referee_url,
                 "source_match_url": match.source_match_url,
             },
-            # Only a future, separately approved publication loader may populate this field.
-            "detail_status": "not_available",
-            "details": None,
+            "detail_status": "available" if details is not None else "not_available",
+            "details": details.model_dump() if details is not None else None,
         })
     return None
 

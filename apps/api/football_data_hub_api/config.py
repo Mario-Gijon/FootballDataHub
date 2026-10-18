@@ -91,6 +91,9 @@ class ApiSettings:
     player_compact_root: Path | None = None
     player_team_captures_root: Path | None = None
     player_published_index_path: Path | None = None
+    match_details_store_root: Path | None = None
+    match_details_published_root: Path | None = None
+    match_local_preview_artifact: Path | None = None
 
     def for_group(self, group: str | int) -> GroupDatasetSettings:
         """Return a group-specific view without mutating or copying any dataset."""
@@ -317,6 +320,21 @@ class ApiSettings:
                 "FDH_PLAYER_PUBLISHED_INDEX",
                 local_data_root,
                 "published/team_profiles_2026-27.json",
+            ),
+            match_details_store_root=_optional_data_path(
+                "FDH_MATCH_DETAILS_STORE_ROOT",
+                local_data_root,
+                "matches/details",
+            ),
+            match_details_published_root=_optional_data_path(
+                "FDH_MATCH_DETAILS_PUBLISHED_ROOT",
+                local_data_root,
+                "matches/details/published",
+            ),
+            match_local_preview_artifact=(
+                _resolve_path(Path(os.environ["FDH_MATCH_LOCAL_PREVIEW_ARTIFACT"]), PROJECT_ROOT)
+                if os.getenv("FDH_MATCH_LOCAL_PREVIEW_ARTIFACT")
+                else None
             ),
             cors_origins=tuple(
                 origin.strip()

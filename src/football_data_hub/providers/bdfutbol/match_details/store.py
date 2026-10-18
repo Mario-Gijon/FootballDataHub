@@ -1183,6 +1183,42 @@ class MatchDetailStore:
             raise MatchDetailStoreError("Metadatos de equipos/grupo incompatibles")
         return internal_id, metadata
 
+    def verify_capture_read_only(
+        self, inventory: dict[str, Any], capture_id: str
+    ) -> dict[str, Any]:
+        """Load one immutable capture after the same full checks used by reconciliation.
+
+        This intentionally does not inspect or change checkpoint state. A discovery
+        stop remains active for acquisition, while an independently approved
+        publication can still verify an earlier immutable VALID capture.
+        """
+
+        if not _CAPTURE_ID.fullmatch(capture_id):
+            raise MatchDetailStoreError("capture_id no seguro")
+        records = _inventory_records(inventory)
+        inventory_id = str(inventory["inventory_id"])
+        capture_path = self.root / "captures" / inventory_id / capture_id
+        for path in (self.root, self.root / "captures", self.root / "captures" / inventory_id, capture_path):
+            if path.is_symlink():
+                raise MatchDetailStoreError("La ruta de captura contiene un symlink")
+        internal_id, metadata = self._verify_capture(capture_path, inventory_id, records)
+        detail_path = capture_path / "match_detail.json"
+        manifest_path = capture_path / "manifest.json"
+        detail_payload = _read_object(detail_path)
+        try:
+            typed_detail = match_detail_from_payload(detail_payload)
+        except (TypeError, ValueError) as exc:
+            raise MatchDetailStoreError("No se puede rehidratar el detalle verificado") from exc
+        return {
+            "internal_id": internal_id,
+            "detail": typed_detail,
+            "metadata": metadata,
+            "match_detail_sha256": _sha256(detail_path.read_bytes()),
+            "source_html_sha256": _sha256((capture_path / "raw/source.html").read_bytes()),
+            "snapshot_manifest_sha256": _sha256(manifest_path.read_bytes()),
+            "capture_path": capture_path,
+        }
+
     def reconcile(self, inventory: dict[str, Any]) -> dict[str, Any]:
         """Reconstruye un índice en memoria y rehash todos los snapshots antes de usarlos."""
 

@@ -637,6 +637,8 @@ class MatchPublishedPlayerResponse(ApiModel):
     shirt_number: OptionalInt = Field(default=None, ge=0)
     position: str | None
     role: Literal["starter", "substitute"]
+    participation_status: Literal["entered", "no_entry_marker", "not_applicable"] | None = None
+    player_profile_available: bool = False
 
 
 class MatchPublishedCoachResponse(ApiModel):
@@ -647,6 +649,7 @@ class MatchPublishedCoachResponse(ApiModel):
 
 
 class MatchPublishedSideResponse(ApiModel):
+    team_id: StrictInt = Field(gt=0)
     coach: MatchPublishedCoachResponse | None
     starters: list[MatchPublishedPlayerResponse] | None
     substitutes: list[MatchPublishedPlayerResponse] | None
@@ -655,7 +658,7 @@ class MatchPublishedSideResponse(ApiModel):
 class MatchPublishedEventResponse(ApiModel):
     event_kind: Literal[
         "goal", "penalty", "own_goal", "yellow_card", "red_card",
-        "second_yellow", "substitution", "other",
+        "second_yellow", "substitution", "substitution_in", "substitution_out", "other",
     ]
     minute: str | None
     team_id: StrictInt = Field(gt=0)
@@ -665,12 +668,16 @@ class MatchPublishedEventResponse(ApiModel):
     related_player_name: str | None
     is_penalty: bool | None
     is_own_goal: bool | None
+    score_after_home: OptionalInt = Field(default=None, ge=0)
+    score_after_away: OptionalInt = Field(default=None, ge=0)
+    player_profile_available: bool = False
+    related_player_profile_available: bool = False
 
 
 class MatchPublishedDetailsResponse(ApiModel):
     """Public projection for details explicitly validated and approved for publication."""
 
-    publication_status: Literal["approved"]
+    publication_status: Literal["approved", "preview_only"]
     validation_status: Literal["valid"]
     source: Literal["BDFutbol"]
     internal_id: str = Field(min_length=1)
@@ -678,13 +685,18 @@ class MatchPublishedDetailsResponse(ApiModel):
     source_generation_id: str = Field(min_length=1)
     source_capture_id: str = Field(min_length=1)
     source_html_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    match_date: date | None
+    home_team_id: StrictInt = Field(gt=0)
+    away_team_id: StrictInt = Field(gt=0)
+    home_goals: StrictInt = Field(ge=0)
+    away_goals: StrictInt = Field(ge=0)
     home: MatchPublishedSideResponse
     away: MatchPublishedSideResponse
     events: list[MatchPublishedEventResponse] | None
 
 
 class MatchPageMetadataResponse(ApiModel):
-    contract_version: Literal[1]
+    contract_version: Literal[2]
     source: Literal["BDFutbol"]
     competition: Literal["Primera Federación"]
     season: Literal["2026-27"]
@@ -744,7 +756,7 @@ class MatchPageRecordResponse(ApiModel):
 class MatchPageResponse(ApiModel):
     metadata: MatchPageMetadataResponse
     match: MatchPageRecordResponse
-    detail_status: Literal["not_available", "available"]
+    detail_status: Literal["not_available", "available", "preview_only"]
     details: MatchPublishedDetailsResponse | None
 
     @model_validator(mode="after")
@@ -757,13 +769,25 @@ class MatchPageResponse(ApiModel):
             f"{self.match.source_match_id}"
         ):
             raise ValueError("El ID interno no coincide con la identidad del partido.")
-        if (self.detail_status == "available") != (self.details is not None):
+        if (self.detail_status == "not_available") == (self.details is not None):
             raise ValueError("El estado de detalles no coincide con el contenido publicado.")
+        if self.details is not None and (
+            (self.detail_status == "available" and self.details.publication_status != "approved")
+            or (self.detail_status == "preview_only" and self.details.publication_status != "preview_only")
+        ):
+            raise ValueError("El estado de detalles no coincide con su aprobación.")
         if self.details is not None and (
             self.details.internal_id != self.match.internal_id
             or self.details.source_match_id != self.match.source_match_id
             or self.details.source_generation_id != self.metadata.generation_id
             or self.details.source_capture_id != self.metadata.source_capture_id
+            or self.details.home_team_id != self.match.home_team.team_id
+            or self.details.away_team_id != self.match.away_team.team_id
+            or self.details.home.team_id != self.match.home_team.team_id
+            or self.details.away.team_id != self.match.away_team.team_id
+            or self.details.home_goals != self.match.home_goals
+            or self.details.away_goals != self.match.away_goals
+            or (self.match.source_match_date is not None and self.details.match_date != self.match.source_match_date)
         ):
             raise ValueError("Los detalles aprobados no corresponden a la generación y partido solicitados.")
         if self.details is not None and any(
