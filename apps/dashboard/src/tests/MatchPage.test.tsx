@@ -76,6 +76,17 @@ function page(publicationStatus: "approved" | "preview_only"): MatchPageData {
   };
 }
 
+type MatchEvent = NonNullable<NonNullable<MatchPageData["details"]>["events"]>[number];
+
+function event(kind: MatchEvent["event_kind"], minute: string | null, teamId: number, playerId: number | null = null, playerName: string | null = null): MatchEvent {
+  return {
+    event_kind: kind, minute, team_id: teamId, player_id: playerId, player_name: playerName,
+    related_player_id: null, related_player_name: null, is_penalty: null, is_own_goal: null,
+    score_after_home: null, score_after_away: null, player_profile_available: false,
+    related_player_profile_available: false,
+  };
+}
+
 describe("MatchPage details", () => {
   beforeEach(() => {
     loadMatchPage.mockReset();
@@ -97,7 +108,8 @@ describe("MatchPage details", () => {
     expect(loadLocalMatchPreview).toHaveBeenCalledWith("pf-2026-27-group-ii-bdfutbol-272582");
     expect(screen.getAllByRole("link", { name: "Siverio" })[0]).toHaveAttribute("href", "/players/1001");
     const lineupRows = Array.from(container.querySelectorAll(".match-lineup-side li"));
-    expect(lineupRows.find((row) => row.textContent?.includes("Suplente"))).toHaveTextContent("Entró");
+    expect(within(lineupRows.find((row) => row.textContent?.includes("Suplente")) as HTMLElement)
+      .getByLabelText("Entró, 90+1 minuto")).toBeInTheDocument();
     expect(lineupRows.find((row) => row.textContent?.includes("Sin entrada"))).toHaveTextContent("Sin entrada registrada");
     expect(container.querySelector('img[src="https://www.bdfutbol.com/i/m/1001.jpg"]')).toBeInTheDocument();
 
@@ -107,10 +119,12 @@ describe("MatchPage details", () => {
     expect(events[0]).toHaveTextContent("15");
     expect(events[0]).toHaveTextContent("Gol de penalti");
     expect(events[0]).toHaveTextContent("1–1");
-    expect(events[2]).toHaveTextContent("90+1");
-    expect(events[2]).toHaveTextContent("Entró");
-    expect(events[3]).toHaveTextContent("90+1");
-    expect(events[3]).toHaveTextContent("Salió");
+    const substitution = events.find((item) => item.classList.contains("match-substitution-row"));
+    expect(substitution).toHaveTextContent("90+1");
+    expect(substitution).toHaveTextContent("Entraron");
+    expect(substitution).toHaveTextContent("Salieron");
+    expect(substitution).toHaveTextContent("Suplente");
+    expect(substitution).toHaveTextContent("Siverio");
     expect(screen.queryByText(/↔/)).not.toBeInTheDocument();
   });
 
@@ -138,6 +152,8 @@ describe("MatchPage details", () => {
     published.details!.source_match_id = "272525";
     published.details!.home_team_id = 204;
     published.details!.away_team_id = 61;
+    published.details!.home.team_id = 204;
+    published.details!.away.team_id = 61;
     published.details!.home_goals = 0;
     published.details!.away_goals = 0;
 
@@ -160,6 +176,8 @@ describe("MatchPage details", () => {
     };
     published.details!.home.starters = Array.from({ length: 11 }, (_, index) => makePlayer(3000 + index, "starter", "Teruel"));
     published.details!.away.starters = Array.from({ length: 11 }, (_, index) => makePlayer(3100 + index, "starter", "Castilla"));
+    published.details!.home.starters[10]!.display_name = "Belevonis";
+    published.details!.away.starters[0]!.display_name = "Rachad";
     published.details!.home.substitutes = Array.from({ length: 7 }, (_, index) => makePlayer(3200 + index, "substitute", "Teruel"));
     published.details!.away.substitutes = Array.from({ length: 10 }, (_, index) => makePlayer(3300 + index, "substitute", "Castilla"));
 
@@ -173,9 +191,12 @@ describe("MatchPage details", () => {
     published.details!.events = [
       ...Array.from({ length: 9 }, (_, index) => makeEvent("substitution_in", `${10 + index}`, 204)),
       ...Array.from({ length: 9 }, (_, index) => makeEvent("substitution_out", `${10 + index}`, 204)),
-      ...Array.from({ length: 4 }, (_, index) => makeEvent("yellow_card", `${60 + index}`, 61)),
-      makeEvent("red_card", "80", 61),
-      makeEvent("missed_penalty", "43", 204),
+      ...Array.from({ length: 4 }, (_, index) => ({
+        ...makeEvent("yellow_card", `${60 + index}`, 61), player_id: 3100 + index,
+        player_name: `Castilla jugador ${index + 1}`, player_profile_available: true,
+      })),
+      { ...makeEvent("red_card", "90", 204), player_id: 3010, player_name: "Belevonis" },
+      { ...makeEvent("missed_penalty", "43", 61), player_id: 3100, player_name: "Rachad" },
     ];
     loadMatchPage.mockResolvedValue(published);
 
@@ -191,9 +212,17 @@ describe("MatchPage details", () => {
     expect(screen.queryByText(/Vista previa local/)).not.toBeInTheDocument();
     expect(screen.getByText("Entrenador Teruel")).toBeInTheDocument();
     expect(screen.getByText("Entrenador Castilla")).toBeInTheDocument();
-    expect(screen.getByText("Penalti fallado")).toBeInTheDocument();
+    const highlights = screen.getByRole("region", { name: "Momentos del partido" });
+    expect(within(highlights).getByText("Penalti fallado")).toBeInTheDocument();
+    expect(within(highlights).getByText("Expulsión")).toBeInTheDocument();
+    expect(within(highlights).getByText(/Rachad · Real Madrid Castilla/)).toBeInTheDocument();
+    expect(within(highlights).getByText(/Belevonis · Teruel/)).toBeInTheDocument();
+    expect(within(highlights).queryByText(/roja directa/i)).not.toBeInTheDocument();
+    expect(container.querySelectorAll(".match-lineup-side")[1]?.querySelector(".match-player-row .match-event-yellow_card")).toBeInTheDocument();
+    expect(container.querySelectorAll(".match-lineup-side")[0]?.querySelector(".match-player-row .match-event-red_card")).toBeInTheDocument();
     expect(container.querySelectorAll(".match-lineup-side ul li")).toHaveLength(39);
-    expect(container.querySelectorAll(".match-events li")).toHaveLength(24);
+    expect(container.querySelectorAll(".match-events > li")).toHaveLength(15);
+    expect(screen.getByText("24 acontecimientos")).toBeInTheDocument();
     expect(screen.queryByText("Los detalles de este encuentro todavía no están disponibles.")).not.toBeInTheDocument();
   });
 
@@ -228,7 +257,99 @@ describe("MatchPage details", () => {
     />);
 
     expect(await screen.findByLabelText("Resultado 0 a 0")).toBeInTheDocument();
-    expect(screen.getByText("Penalti fallado")).toBeInTheDocument();
-    expect(screen.getByText("Rachad")).toBeInTheDocument();
+    expect(screen.getAllByText("Penalti fallado").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Rachad").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("orders added-time events stably and preserves every source event", async () => {
+    const match = page("approved");
+    match.details!.events = [
+      event("yellow_card", "45+2", 49, 1001, "Siverio"),
+      event("goal", "45", 94, null, "Gol sin ID"),
+      event("second_yellow", "45+2", 94, null, "Expulsado"),
+      event("own_goal", "90+6", 49, null, "Autogol"),
+      event("missed_penalty", null, 94, null, "Sin minuto"),
+    ];
+    loadMatchPage.mockResolvedValue(match);
+    const { container } = render(<MatchPage internalId={match.match.internal_id} onNavigate={vi.fn()} onReturnToResults={vi.fn()} />);
+    await screen.findByRole("heading", { name: "Cronología" });
+    const rows = Array.from(container.querySelectorAll(".match-events > li"));
+    expect(rows).toHaveLength(5);
+    expect(rows.map((row) => row.querySelector("time")?.textContent)).toEqual(["45", "45+2", "45+2", "90+6", "—"]);
+    expect(rows[1]).toHaveTextContent("Tarjeta amarilla");
+    expect(rows[2]).toHaveTextContent("Segunda amarilla · expulsión");
+    expect(rows[3]).toHaveTextContent("Gol en propia puerta");
+    expect(rows[4]).toHaveTextContent("Penalti fallado");
+  });
+
+  it("annotates lineup players only when both team ID and verified player ID match", async () => {
+    const match = page("approved");
+    match.details!.events = [
+      { ...event("goal", "24", 49, 1001, "Siverio"), player_profile_available: false },
+      { ...event("yellow_card", "55", 94, 1001, "Nombre coincidente"), player_profile_available: true },
+      event("substitution_in", "60", 49, null, "Sin ID"),
+    ];
+    loadMatchPage.mockResolvedValue(match);
+    const { container } = render(<MatchPage internalId={match.match.internal_id} onNavigate={vi.fn()} onReturnToResults={vi.fn()} />);
+    await screen.findByRole("heading", { name: "Alineaciones" });
+    const homeRow = Array.from(container.querySelectorAll(".match-lineup-side")[0]!.querySelectorAll(".match-player-row"))
+      .find((row) => row.textContent?.includes("Siverio"));
+    expect(homeRow).toBeDefined();
+    expect(within(homeRow as HTMLElement).getAllByLabelText("Gol, 24 minuto")).toHaveLength(1);
+    expect(within(homeRow as HTMLElement).queryByLabelText("Tarjeta amarilla, 55 minuto")).not.toBeInTheDocument();
+    expect(homeRow).not.toHaveTextContent("60");
+  });
+
+  it("groups multiple same-minute substitutions by team without pairing players", async () => {
+    const match = page("approved");
+    match.details!.events = [
+      event("substitution_out", "60", 49, 4001, "Sale uno"),
+      event("substitution_out", "60", 49, 4002, "Sale dos"),
+      event("substitution_in", "60", 49, 4003, "Entra uno"),
+      event("substitution_in", "60", 49, 4004, "Entra dos"),
+      event("substitution_in", "60", 94, 5001, "Visitante entra"),
+      event("substitution_out", "60", 94, 5002, "Visitante sale"),
+    ];
+    loadMatchPage.mockResolvedValue(match);
+    const { container } = render(<MatchPage internalId={match.match.internal_id} onNavigate={vi.fn()} onReturnToResults={vi.fn()} />);
+    await screen.findByRole("heading", { name: "Cronología" });
+    const rows = Array.from(container.querySelectorAll(".match-events > .match-substitution-row"));
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toHaveTextContent("Real Jaén");
+    expect(rows[0]).toHaveTextContent("Sale uno");
+    expect(rows[0]).toHaveTextContent("Sale dos");
+    expect(rows[0]).toHaveTextContent("Entra uno");
+    expect(rows[0]).toHaveTextContent("Entra dos");
+    expect(rows[1]).toHaveTextContent("Villarreal B");
+    expect(rows[1]).toHaveTextContent("Visitante sale");
+    expect(rows[1]).toHaveTextContent("Visitante entra");
+    expect(container.textContent).not.toContain("→");
+    expect(rows[0]?.querySelectorAll(".match-substitution-list")).toHaveLength(2);
+  });
+
+  it("does not claim a pending match is finished and preserves the no-details state", async () => {
+    const pending = page("approved");
+    pending.match.status = "unplayed";
+    pending.match.home_goals = null;
+    pending.match.away_goals = null;
+    pending.details = null;
+    pending.detail_status = "not_available";
+    loadMatchPage.mockResolvedValue(pending);
+    render(<MatchPage internalId={pending.match.internal_id} onNavigate={vi.fn()} onReturnToResults={vi.fn()} />);
+    expect(await screen.findByText("Pendiente")).toBeInTheDocument();
+    expect(screen.queryByText("Finalizado")).not.toBeInTheDocument();
+    expect(screen.getByText("Los detalles de este encuentro todavía no están disponibles.")).toBeInTheDocument();
+  });
+
+  it("uses the published played status for Finalizado even when its score is incomplete", async () => {
+    const incompletePlayed = page("approved");
+    incompletePlayed.match.home_goals = null;
+    incompletePlayed.match.away_goals = null;
+    incompletePlayed.details = null;
+    incompletePlayed.detail_status = "not_available";
+    loadMatchPage.mockResolvedValue(incompletePlayed);
+    render(<MatchPage internalId={incompletePlayed.match.internal_id} onNavigate={vi.fn()} onReturnToResults={vi.fn()} />);
+    expect(await screen.findByText("Finalizado")).toBeInTheDocument();
+    expect(screen.getByText("Datos incompletos")).toBeInTheDocument();
   });
 });

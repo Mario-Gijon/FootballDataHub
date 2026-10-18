@@ -10,6 +10,7 @@ import { ProfileImage } from "./TeamRosterShared";
 type PublishedDetails = NonNullable<MatchPageData["details"]>;
 type PublishedPlayer = NonNullable<PublishedDetails["home"]["starters"]>[number];
 type MatchEventKind = NonNullable<PublishedDetails["events"]>[number]["event_kind"];
+type MatchEvent = NonNullable<PublishedDetails["events"]>[number];
 
 interface Props {
   internalId: string;
@@ -57,7 +58,8 @@ export function MatchPage({ internalId, localPreview = false, onNavigate, onRetu
 
 function MatchPageContent({ page, onNavigate }: { page: MatchPageData; onNavigate: (path: string) => void }) {
   const { match, metadata } = page;
-  const played = match.status === "played" && match.home_goals !== null && match.away_goals !== null;
+  const played = match.status === "played";
+  const hasFinalScore = played && match.home_goals !== null && match.away_goals !== null;
   const date = match.source_match_date ?? match.matchday_date;
   const dateLabel = match.source_match_date ? "Fecha" : "Fecha de jornada";
   const details = page.details;
@@ -79,10 +81,10 @@ function MatchPageContent({ page, onNavigate }: { page: MatchPageData; onNavigat
           <span>{match.home_team.name}</span>
         </InternalTeamLink>
         <div
-          className={`match-page-score ${played ? "is-played" : match.status === "unplayed" ? "is-pending" : "is-incomplete"}`}
-          aria-label={played ? `Resultado ${match.home_goals} a ${match.away_goals}` : match.status === "unplayed" ? "Partido pendiente" : "Marcador incompleto"}
+          className={`match-page-score ${hasFinalScore ? "is-played" : match.status === "unplayed" ? "is-pending" : "is-incomplete"}`}
+          aria-label={hasFinalScore ? `Resultado ${match.home_goals} a ${match.away_goals}` : match.status === "unplayed" ? "Partido pendiente" : "Marcador incompleto"}
         >
-          {played ? <><strong>{match.home_goals}</strong><span>–</span><strong>{match.away_goals}</strong></>
+          {hasFinalScore ? <><strong>{match.home_goals}</strong><span>–</span><strong>{match.away_goals}</strong></>
             : <span>{match.status === "unplayed" ? "Pendiente" : "Datos incompletos"}</span>}
         </div>
         <InternalTeamLink className="match-page-team" teamId={match.away_team.team_id} onNavigate={onNavigate}>
@@ -90,11 +92,19 @@ function MatchPageContent({ page, onNavigate }: { page: MatchPageData; onNavigat
           <span>{match.away_team.name}</span>
         </InternalTeamLink>
       </div>
-      <div className="match-page-subtitle">Jornada {match.matchday}{date ? ` · ${dateLabel.toLowerCase()} ${formatDate(date)}` : ""}</div>
+      <div className="match-page-subtitle">
+        {played && <span className="match-finished-label">Finalizado</span>}
+        Jornada {match.matchday}{date ? ` · ${dateLabel.toLowerCase()} ${formatDate(date)}` : ""}
+      </div>
     </header>
 
-    <section className="match-page-panel" aria-labelledby="match-info-title">
-      <div className="section-heading"><div><span className="section-kicker">ENCUENTRO</span><h1 id="match-info-title">Información del partido</h1></div></div>
+    {hasPublishedContent && details && details.events?.length
+      ? <MatchHighlights events={details.events} homeName={match.home_team.name} awayName={match.away_team.name}
+        homeTeamId={match.home_team.team_id} awayTeamId={match.away_team.team_id} onNavigate={onNavigate} />
+      : null}
+
+    <section className="match-page-panel match-info-panel" aria-labelledby="match-info-title">
+      <div className="match-info-heading"><div><span className="section-kicker">ENCUENTRO</span><h1 id="match-info-title">Información del partido</h1></div></div>
       <dl className="match-info-grid">
         <div><dt>Jornada</dt><dd>{match.matchday}</dd></div>
         <div><dt>Grupo</dt><dd>{metadata.group}</dd></div>
@@ -118,6 +128,7 @@ function MatchPageContent({ page, onNavigate }: { page: MatchPageData; onNavigat
         awayName={match.away_team.name}
         homeTeamId={match.home_team.team_id}
         awayTeamId={match.away_team.team_id}
+        played={played}
         onNavigate={onNavigate}
       />
       : <p className="match-details-unavailable" role="status">Los detalles de este encuentro todavía no están disponibles.</p>}
@@ -130,6 +141,7 @@ function PublishedMatchDetails({
   awayName,
   homeTeamId,
   awayTeamId,
+  played,
   onNavigate,
 }: {
   details: PublishedDetails;
@@ -137,70 +149,235 @@ function PublishedMatchDetails({
   awayName: string;
   homeTeamId: number;
   awayTeamId: number;
+  played: boolean;
   onNavigate: (path: string) => void;
 }) {
   return <section className="match-page-panel match-details-panel" aria-labelledby="match-details-title">
-    <div className="section-heading"><div><span className="section-kicker">DATOS DEPORTIVOS</span><h2 id="match-details-title">Alineaciones y eventos</h2></div></div>
-    {(details.home.coach || details.away.coach) && <div className="match-coaches">
-      {details.home.coach && <p><span>Entrenador local</span><strong>{details.home.coach.display_name}</strong></p>}
-      {details.away.coach && <p><span>Entrenador visitante</span><strong>{details.away.coach.display_name}</strong></p>}
-    </div>}
+    <div className="section-heading"><div><span className="section-kicker">DATOS DEPORTIVOS</span><h2 id="match-details-title">Alineaciones</h2></div></div>
     {(details.home.starters?.length || details.home.substitutes?.length || details.away.starters?.length || details.away.substitutes?.length) &&
       <div className="match-lineups">
-        <LineupSide name={homeName} side={details.home} onNavigate={onNavigate} />
-        <LineupSide name={awayName} side={details.away} onNavigate={onNavigate} />
+        <LineupSide name={homeName} side={details.home} teamId={homeTeamId} events={details.events ?? []} onNavigate={onNavigate} />
+        <LineupSide name={awayName} side={details.away} teamId={awayTeamId} events={details.events ?? []} onNavigate={onNavigate} />
       </div>}
-    {details.events?.length ? <ol className="match-events">
-      {sortMatchEvents(details.events).map((event, index) => <li key={`${event.event_kind}:${event.minute ?? "unknown"}:${event.team_id}:${index}`}>
-        <time>{event.minute ?? "—"}</time>
-        <span>{eventLabel(event.event_kind)}</span>
-        <span>{event.team_id === homeTeamId ? homeName : event.team_id === awayTeamId ? awayName : ""}</span>
-        <span>{event.player_name && event.player_id && event.player_profile_available
-          ? <InternalPlayerLink playerId={event.player_id} onNavigate={onNavigate}>{event.player_name}</InternalPlayerLink>
-          : event.player_name ?? ""}</span>
-        {event.score_after_home !== null && event.score_after_away !== null &&
-          <span className="match-event-score">{event.score_after_home}–{event.score_after_away}</span>}
-        {event.related_player_name && <span className="match-event-related">{event.related_player_id && event.related_player_profile_available
-          ? <InternalPlayerLink playerId={event.related_player_id} onNavigate={onNavigate}>{event.related_player_name}</InternalPlayerLink>
-          : event.related_player_name}</span>}
-      </li>)}
-    </ol> : null}
+    {details.events?.length ? <section className="match-timeline" aria-labelledby="match-timeline-title">
+      <div className="section-heading"><div><span className="section-kicker">PARTIDO</span><h2 id="match-timeline-title">Cronología</h2></div>
+        <span className="match-event-count">{details.events.length} {details.events.length === 1 ? "acontecimiento" : "acontecimientos"}</span>
+      </div>
+      <ol className="match-events">{buildTimelineItems(details.events).map((item) => item.type === "substitutions"
+        ? <SubstitutionTimelineItem key={item.key} item={item} homeName={homeName} awayName={awayName}
+          homeTeamId={homeTeamId} awayTeamId={awayTeamId} onNavigate={onNavigate} />
+        : <EventTimelineItem key={item.key} event={item.event} homeName={homeName} awayName={awayName}
+          homeTeamId={homeTeamId} awayTeamId={awayTeamId} played={played} onNavigate={onNavigate} />)}</ol>
+    </section> : null}
   </section>;
 }
 
 function LineupSide({
   name,
   side,
+  teamId,
+  events,
   onNavigate,
 }: {
   name: string;
   side: NonNullable<MatchPageData["details"]>["home"];
+  teamId: number;
+  events: MatchEvent[];
   onNavigate: (path: string) => void;
 }) {
   return <section className="match-lineup-side" aria-label={`Alineación de ${name}`}>
     <h3>{name}</h3>
-    {side.starters?.length ? <div><h4>Titulares</h4><PlayerList players={side.starters} onNavigate={onNavigate} /></div> : null}
-    {side.substitutes?.length ? <div><h4>Suplentes</h4><PlayerList players={side.substitutes} onNavigate={onNavigate} /></div> : null}
+    {side.coach && <p className="match-lineup-coach"><span>Entrenador</span><strong>{side.coach.display_name}</strong></p>}
+    {side.starters?.length ? <div className="match-lineup-group"><h4>Titulares <span>{side.starters.length}</span></h4>
+      <PlayerList players={side.starters} teamId={teamId} sideTeamId={side.team_id} events={events} onNavigate={onNavigate} /></div> : null}
+    {side.substitutes?.length ? <div className="match-lineup-group is-substitutes"><h4>Suplentes <span>{side.substitutes.length}</span></h4>
+      <PlayerList players={side.substitutes} teamId={teamId} sideTeamId={side.team_id} events={events} onNavigate={onNavigate} /></div> : null}
   </section>;
 }
 
-function PlayerList({ players, onNavigate }: { players: PublishedPlayer[]; onNavigate: (path: string) => void }) {
-  return <ul>{players.map((player, index) => <li key={`${player.player_id ?? player.display_name}:${index}`}>
-    <ProfileImage src={player.photo_url} name={player.display_name} className="match-player-photo" />
-    {player.shirt_number !== null && <span className="match-player-number">{player.shirt_number}</span>}
-    {player.player_id && player.player_profile_available
-      ? <InternalPlayerLink playerId={player.player_id} onNavigate={onNavigate}>{player.display_name}</InternalPlayerLink>
-      : <span>{player.display_name}</span>}
-    {player.position && <small>{player.position}</small>}
-    {player.role === "substitute" && player.participation_status === "entered" && <small>Entró</small>}
-    {player.role === "substitute" && player.participation_status === "no_entry_marker" && <small>Sin entrada registrada</small>}
-  </li>)}</ul>;
+function PlayerList({ players, teamId, sideTeamId, events, onNavigate }: {
+  players: PublishedPlayer[];
+  teamId: number;
+  sideTeamId: number;
+  events: MatchEvent[];
+  onNavigate: (path: string) => void;
+}) {
+  const verifiedTeam = sideTeamId === teamId;
+  return <ul>{players.map((player, index) => {
+    const annotations = verifiedTeam && player.player_id !== null
+      ? events.filter((event) => event.team_id === teamId && event.player_id === player.player_id && event.player_id !== null)
+      : [];
+    return <li className="match-player-row" key={`${player.player_id ?? player.display_name}:${index}`}>
+      <ProfileImage src={player.photo_url} name={player.display_name} className="match-player-photo" />
+      {player.shirt_number !== null && <span className="match-player-number">{player.shirt_number}</span>}
+      <span className="match-player-identity">{player.player_id && player.player_profile_available
+        ? <InternalPlayerLink playerId={player.player_id} onNavigate={onNavigate}>{player.display_name}</InternalPlayerLink>
+        : <span>{player.display_name}</span>}
+        {player.position && <small className="match-player-position">{player.position}</small>}
+      </span>
+      <span className="match-player-annotations">
+        {annotations.map((event, eventIndex) => <PlayerEventMarker key={`${event.event_kind}:${event.minute}:${eventIndex}`} event={event} />)}
+      </span>
+      {player.role === "substitute" && player.participation_status === "no_entry_marker" && <span className="match-participation-note">Sin entrada registrada</span>}
+      {player.role === "substitute" && player.participation_status === "entered" && !annotations.some((event) => event.event_kind === "substitution_in") &&
+        <span className="match-participation-note">Entrada registrada</span>}
+    </li>;
+  })}</ul>;
+}
+
+function MatchHighlights({ events, homeName, awayName, homeTeamId, awayTeamId, onNavigate }: {
+  events: MatchEvent[];
+  homeName: string;
+  awayName: string;
+  homeTeamId: number;
+  awayTeamId: number;
+  onNavigate: (path: string) => void;
+}) {
+  const highlights = sortMatchEvents(events.filter((event) => isHighlight(event.event_kind)));
+  if (!highlights.length) return null;
+  return <section className="match-page-panel match-highlights" aria-labelledby="match-highlights-title">
+    <div className="section-heading"><div><span className="section-kicker">LO MÁS DESTACADO</span><h2 id="match-highlights-title">Momentos del partido</h2></div>
+      <span className="match-event-count">{highlights.length}</span>
+    </div>
+    <ol>{highlights.map((event, index) => <li className={`match-highlight match-event-${event.event_kind}`} key={`${event.event_kind}:${event.minute}:${event.team_id}:${index}`}>
+      <time>{event.minute ?? "—"}</time>
+      <EventGlyph kind={event.event_kind} />
+      <span className="match-highlight-copy"><strong>{eventLabel(event.event_kind)}</strong>
+        <span>{event.player_name && event.player_id && event.player_profile_available
+          ? <InternalPlayerLink playerId={event.player_id} onNavigate={onNavigate}>{event.player_name}</InternalPlayerLink>
+          : event.player_name ?? "Jugador no indicado"}
+          {event.team_id === homeTeamId ? ` · ${homeName}` : event.team_id === awayTeamId ? ` · ${awayName}` : ""}
+        </span>
+      </span>
+      {event.score_after_home !== null && event.score_after_away !== null &&
+        <span className="match-event-score" aria-label={`Marcador ${event.score_after_home} a ${event.score_after_away}`}>{event.score_after_home}–{event.score_after_away}</span>}
+    </li>)}</ol>
+  </section>;
+}
+
+type TimelineItem =
+  | { type: "event"; event: MatchEvent; key: string }
+  | { type: "substitutions"; minute: string | null; teamId: number; events: MatchEvent[]; key: string };
+
+function buildTimelineItems(events: MatchEvent[]): TimelineItem[] {
+  const sorted = sortMatchEvents(events);
+  const result: TimelineItem[] = [];
+  const substitutionGroups = new Map<string, Extract<TimelineItem, { type: "substitutions" }>>();
+  sorted.forEach((event, index) => {
+    if (event.event_kind !== "substitution_in" && event.event_kind !== "substitution_out") {
+      result.push({ type: "event", event, key: `event:${index}:${event.event_kind}:${event.minute ?? "unknown"}` });
+      return;
+    }
+    const minuteKey = event.minute === null ? "unknown" : parseMinute(event.minute)?.join("+") ?? `raw:${event.minute.trim()}`;
+    const key = `${event.team_id}:${minuteKey}`;
+    const existing = substitutionGroups.get(key);
+    if (existing) existing.events.push(event);
+    else {
+      const item: Extract<TimelineItem, { type: "substitutions" }> = {
+        type: "substitutions", minute: event.minute, teamId: event.team_id, events: [event], key: `substitution:${key}:${index}`,
+      };
+      substitutionGroups.set(key, item);
+      result.push(item);
+    }
+  });
+  return result;
+}
+
+function SubstitutionTimelineItem({ item, homeName, awayName, homeTeamId, awayTeamId, onNavigate }: {
+  item: Extract<TimelineItem, { type: "substitutions" }>;
+  homeName: string;
+  awayName: string;
+  homeTeamId: number;
+  awayTeamId: number;
+  onNavigate: (path: string) => void;
+}) {
+  const outgoing = item.events.filter((event) => event.event_kind === "substitution_out");
+  const incoming = item.events.filter((event) => event.event_kind === "substitution_in");
+  const teamName = item.teamId === homeTeamId ? homeName : item.teamId === awayTeamId ? awayName : "Equipo";
+  return <li className={`match-event-row match-substitution-row ${item.teamId === homeTeamId ? "is-home" : item.teamId === awayTeamId ? "is-away" : ""}`}>
+    <time>{item.minute ?? "—"}</time><EventGlyph kind="substitution" />
+    <div className="match-event-main"><strong className="match-event-team">{teamName}</strong>
+      <div className="match-substitution-columns">
+        {outgoing.length > 0 && <SubstitutionList label="Salieron" events={outgoing} onNavigate={onNavigate} />}
+        {incoming.length > 0 && <SubstitutionList label="Entraron" events={incoming} onNavigate={onNavigate} />}
+      </div>
+    </div>
+  </li>;
+}
+
+function SubstitutionList({ label, events, onNavigate }: { label: string; events: MatchEvent[]; onNavigate: (path: string) => void }) {
+  return <div className="match-substitution-list"><span>{label}</span><ul>{events.map((event, index) => <li key={`${event.player_id}:${index}`}>
+    {renderEventPlayer(event, onNavigate)}
+  </li>)}</ul></div>;
+}
+
+function EventTimelineItem({ event, homeName, awayName, homeTeamId, awayTeamId, played, onNavigate }: {
+  event: MatchEvent;
+  homeName: string;
+  awayName: string;
+  homeTeamId: number;
+  awayTeamId: number;
+  played: boolean;
+  onNavigate: (path: string) => void;
+}) {
+  const teamName = event.team_id === homeTeamId ? homeName : event.team_id === awayTeamId ? awayName : "Equipo";
+  const teamClass = event.team_id === homeTeamId ? "is-home" : event.team_id === awayTeamId ? "is-away" : "";
+  return <li className={`match-event-row match-event-${event.event_kind} ${teamClass}`}>
+    <time>{event.minute ?? "—"}</time><EventGlyph kind={event.event_kind} />
+    <div className="match-event-main"><div className="match-event-title"><strong>{eventLabel(event.event_kind)}</strong>
+      {event.score_after_home !== null && event.score_after_away !== null &&
+        <span className="match-event-score" aria-label={`Marcador ${event.score_after_home} a ${event.score_after_away}`}>{event.score_after_home}–{event.score_after_away}</span>}
+    </div>
+      <div className="match-event-meta"><span>{renderEventPlayer(event, onNavigate)}</span><span>{teamName}</span>
+        {event.related_player_name && <span className="match-event-related">Relacionado: {event.related_player_id && event.related_player_profile_available
+          ? <InternalPlayerLink playerId={event.related_player_id} onNavigate={onNavigate}>{event.related_player_name}</InternalPlayerLink>
+          : event.related_player_name}</span>}
+        {!played && <span className="match-not-final-note">Partido no finalizado</span>}
+      </div>
+    </div>
+  </li>;
+}
+
+function renderEventPlayer(event: MatchEvent, onNavigate: (path: string) => void) {
+  if (!event.player_name) return <span>Jugador no indicado</span>;
+  return event.player_id && event.player_profile_available
+    ? <InternalPlayerLink playerId={event.player_id} onNavigate={onNavigate}>{event.player_name}</InternalPlayerLink>
+    : <span>{event.player_name}</span>;
+}
+
+function PlayerEventMarker({ event }: { event: MatchEvent }) {
+  const description = accessibleEventDescription(event);
+  return <span className={`match-player-marker match-event-${event.event_kind}`} aria-label={description} title={description}>
+    <EventGlyph kind={event.event_kind} /><span className="match-marker-minute">{event.minute ?? ""}</span>
+  </span>;
+}
+
+function EventGlyph({ kind }: { kind: MatchEventKind }) {
+  if (kind === "goal" || kind === "penalty" || kind === "own_goal") return <svg className={`match-event-glyph is-${kind}`} viewBox="0 0 16 16" aria-hidden="true">
+    <circle cx="8" cy="8" r="6.5" /><path d="m8 4 2.35 1.7-.9 2.75h-2.9l-.9-2.75L8 4Zm-3.9 1.5L2 6.4m9.9-.9 2.1.9m-7 2.05L5.5 11m5-2.55L13 11m-5-1.25v3.1" />
+  </svg>;
+  if (kind === "yellow_card" || kind === "second_yellow") return <svg className="match-event-glyph is-yellow" viewBox="0 0 12 16" aria-hidden="true"><rect x="1" y="1" width="10" height="14" rx="1.5" /></svg>;
+  if (kind === "red_card") return <svg className="match-event-glyph is-red" viewBox="0 0 12 16" aria-hidden="true"><rect x="1" y="1" width="10" height="14" rx="1.5" /></svg>;
+  if (kind === "substitution" || kind === "substitution_in" || kind === "substitution_out") return <svg className={`match-event-glyph is-${kind}`} viewBox="0 0 16 16" aria-hidden="true">
+    <path d={kind === "substitution_in" ? "M2 8h11m0 0-4-4m4 4-4 4" : kind === "substitution_out" ? "M14 8H3m0 0 4-4m-4 4 4 4" : "M2 5h10m0 0-2.5-2.5M12 5 9.5 7.5M14 11H4m0 0 2.5-2.5M4 11l2.5 2.5"} />
+  </svg>;
+  if (kind === "missed_penalty") return <span className="match-event-glyph is-missed-penalty" aria-hidden="true">!</span>;
+  return <span className="match-event-glyph is-other" aria-hidden="true">·</span>;
+}
+
+function isHighlight(kind: MatchEventKind): boolean {
+  return ["goal", "penalty", "own_goal", "missed_penalty", "red_card", "second_yellow"].includes(kind);
+}
+
+function accessibleEventDescription(event: MatchEvent): string {
+  const minute = event.minute ? `, ${event.minute} minuto` : "";
+  return `${eventLabel(event.event_kind)}${minute}`;
 }
 
 function eventLabel(kind: MatchEventKind): string {
   const labels: Record<string, string> = {
     goal: "Gol", penalty: "Gol de penalti", missed_penalty: "Penalti fallado", own_goal: "Gol en propia puerta", yellow_card: "Tarjeta amarilla",
-    red_card: "Tarjeta roja", second_yellow: "Segunda amarilla", substitution: "Sustitución",
+    red_card: "Expulsión", second_yellow: "Segunda amarilla · expulsión", substitution: "Sustitución",
     substitution_in: "Entró", substitution_out: "Salió", other: "Evento",
   };
   return labels[kind] ?? "Evento";
@@ -212,9 +389,7 @@ function sortMatchEvents<T extends { minute: string | null }>(events: T[]): T[] 
       if (left.minute === null || right.minute === null) {
         return left.minute === right.minute ? left.index - right.index : left.minute === null ? 1 : -1;
       }
-      return left.minute[0] - right.minute[0]
-        || left.minute[1] - right.minute[1]
-        || left.index - right.index;
+      return left.minute[0] - right.minute[0] || left.minute[1] - right.minute[1] || left.index - right.index;
     })
     .map(({ event }) => event);
 }
