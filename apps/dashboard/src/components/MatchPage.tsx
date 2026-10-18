@@ -294,19 +294,24 @@ function SubstitutionTimelineItem({ item, homeName, awayName, homeTeamId, awayTe
   const outgoing = item.events.filter((event) => event.event_kind === "substitution_out");
   const incoming = item.events.filter((event) => event.event_kind === "substitution_in");
   const teamName = item.teamId === homeTeamId ? homeName : item.teamId === awayTeamId ? awayName : "Equipo";
-  return <li className={`match-event-row match-substitution-row ${item.teamId === homeTeamId ? "is-home" : item.teamId === awayTeamId ? "is-away" : ""}`}>
+  return <li className="match-event-row match-substitution-row">
     <time>{item.minute ?? "—"}</time><EventGlyph kind="substitution" />
     <div className="match-event-main"><strong className="match-event-team">{teamName}</strong>
       <div className="match-substitution-columns">
-        {outgoing.length > 0 && <SubstitutionList label="Salieron" events={outgoing} onNavigate={onNavigate} />}
-        {incoming.length > 0 && <SubstitutionList label="Entraron" events={incoming} onNavigate={onNavigate} />}
+        {outgoing.length > 0 && <SubstitutionList label="Salieron" direction="outgoing" events={outgoing} onNavigate={onNavigate} />}
+        {incoming.length > 0 && <SubstitutionList label="Entraron" direction="incoming" events={incoming} onNavigate={onNavigate} />}
       </div>
     </div>
   </li>;
 }
 
-function SubstitutionList({ label, events, onNavigate }: { label: string; events: MatchEvent[]; onNavigate: (path: string) => void }) {
-  return <div className="match-substitution-list"><span>{label}</span><ul>{events.map((event, index) => <li key={`${event.player_id}:${index}`}>
+function SubstitutionList({ label, direction, events, onNavigate }: {
+  label: string;
+  direction: "incoming" | "outgoing";
+  events: MatchEvent[];
+  onNavigate: (path: string) => void;
+}) {
+  return <div className={`match-substitution-list is-${direction}`}><span>{label}</span><ul>{events.map((event, index) => <li key={`${event.player_id}:${index}`}>
     {renderEventPlayer(event, onNavigate)}
   </li>)}</ul></div>;
 }
@@ -321,8 +326,7 @@ function EventTimelineItem({ event, homeName, awayName, homeTeamId, awayTeamId, 
   onNavigate: (path: string) => void;
 }) {
   const teamName = event.team_id === homeTeamId ? homeName : event.team_id === awayTeamId ? awayName : "Equipo";
-  const teamClass = event.team_id === homeTeamId ? "is-home" : event.team_id === awayTeamId ? "is-away" : "";
-  return <li className={`match-event-row match-event-${event.event_kind} ${teamClass}`}>
+  return <li className={`match-event-row match-event-${event.event_kind}`}>
     <time>{event.minute ?? "—"}</time><EventGlyph kind={event.event_kind} />
     <div className="match-event-main"><div className="match-event-title"><strong>{eventLabel(event.event_kind)}</strong>
       {event.score_after_home !== null && event.score_after_away !== null &&

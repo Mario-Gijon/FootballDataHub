@@ -108,8 +108,11 @@ describe("MatchPage details", () => {
     expect(loadLocalMatchPreview).toHaveBeenCalledWith("pf-2026-27-group-ii-bdfutbol-272582");
     expect(screen.getAllByRole("link", { name: "Siverio" })[0]).toHaveAttribute("href", "/players/1001");
     const lineupRows = Array.from(container.querySelectorAll(".match-lineup-side li"));
-    expect(within(lineupRows.find((row) => row.textContent?.includes("Suplente")) as HTMLElement)
-      .getByLabelText("Entró, 90+1 minuto")).toBeInTheDocument();
+    const enteredRow = lineupRows.find((row) => row.textContent?.includes("Suplente")) as HTMLElement;
+    expect(within(enteredRow).getByLabelText("Entró, 90+1 minuto")).toBeInTheDocument();
+    expect(enteredRow.querySelector(".match-event-glyph")).toHaveClass("is-substitution_in");
+    const exitedRow = lineupRows.find((row) => row.textContent?.includes("Siverio")) as HTMLElement;
+    expect(exitedRow.querySelector(".match-event-glyph.is-substitution_out")).toBeInTheDocument();
     expect(lineupRows.find((row) => row.textContent?.includes("Sin entrada"))).toHaveTextContent("Sin entrada registrada");
     expect(container.querySelector('img[src="https://www.bdfutbol.com/i/m/1001.jpg"]')).toBeInTheDocument();
 
@@ -325,6 +328,10 @@ describe("MatchPage details", () => {
     expect(rows[1]).toHaveTextContent("Visitante entra");
     expect(container.textContent).not.toContain("→");
     expect(rows[0]?.querySelectorAll(".match-substitution-list")).toHaveLength(2);
+    expect(rows[0]?.querySelector(".match-event-glyph")).toHaveClass("is-substitution");
+    expect(rows[0]?.querySelector(".match-substitution-list.is-outgoing > span")).toHaveTextContent("Salieron");
+    expect(rows[0]?.querySelector(".match-substitution-list.is-incoming > span")).toHaveTextContent("Entraron");
+    expect(rows.every((row) => !row.classList.contains("is-home") && !row.classList.contains("is-away"))).toBe(true);
   });
 
   it("does not claim a pending match is finished and preserves the no-details state", async () => {

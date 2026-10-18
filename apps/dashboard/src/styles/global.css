@@ -1560,6 +1560,8 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .match-player-position { flex: 0 0 auto; color: var(--text-faint); font-size: 9px; }
 .match-player-annotations { min-width: 0; display: inline-flex; flex: 0 1 auto; align-items: center; gap: 3px; margin-left: auto; }
 .match-player-marker { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 3px; color: var(--text-subtle); font-family: var(--mono); font-size: 9px; white-space: nowrap; }
+.match-player-marker.match-event-substitution_in { color: #94cba4; }
+.match-player-marker.match-event-substitution_out { color: #d99393; }
 .match-marker-minute { line-height: 1; }
 .match-participation-note { flex: 0 0 auto; color: var(--text-faint); font-size: 9px; }
 .match-lineup-side .match-player-photo + .match-player-number + .match-player-identity { flex: 1 1 auto; }
@@ -1567,8 +1569,9 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .match-event-glyph.is-goal, .match-event-glyph.is-penalty, .match-event-glyph.is-own_goal { color: #9ed8b1; }
 .match-event-glyph.is-yellow { width: 10px; height: 14px; flex-basis: 10px; fill: #f3cc69; stroke: #f3cc69; }
 .match-event-glyph.is-red { width: 10px; height: 14px; flex-basis: 10px; fill: #df7777; stroke: #df7777; }
-.match-event-glyph.is-substitution, .match-event-glyph.is-substitution_in { color: #94cba4; }
-.match-event-glyph.is-substitution_out { color: var(--text-subtle); }
+.match-event-glyph.is-substitution { color: var(--text-subtle); }
+.match-event-glyph.is-substitution_in { color: #94cba4; }
+.match-event-glyph.is-substitution_out { color: #d99393; }
 .match-event-glyph.is-missed-penalty { display: inline-grid; place-items: center; border: 1px solid #e8bc65; border-radius: 50%; color: #e8bc65; font-family: var(--mono); font-size: 10px; font-weight: 700; }
 .match-event-glyph.is-other { color: var(--text-subtle); font-size: 20px; line-height: 10px; }
 .match-highlights { padding-bottom: 14px; }
@@ -1588,10 +1591,11 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .match-events { position: relative; display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
 .match-events::before { position: absolute; top: 12px; bottom: 12px; left: 52px; width: 1px; background: var(--line-soft); content: ""; }
 .match-event-row { position: relative; min-width: 0; display: grid; grid-template-columns: 42px 17px minmax(0, 1fr); align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid transparent; border-radius: 7px; color: var(--text-muted); font-size: 11px; }
-.match-event-row.is-home { background: rgb(255 255 255 / 1.5%); }
-.match-event-row.is-away { background: rgb(134 82 183 / 3%); }
+.match-event-row { background: rgb(17 19 22 / 34%); }
 .match-event-row.match-event-goal, .match-event-row.match-event-penalty, .match-event-row.match-event-own_goal { border-color: rgb(102 186 133 / 16%); }
-.match-event-row.match-event-red_card, .match-event-row.match-event-second_yellow { border-color: rgb(220 112 112 / 16%); }
+.match-event-row.match-event-missed_penalty { border-color: rgb(232 188 101 / 20%); }
+.match-event-row.match-event-yellow_card { border-color: rgb(243 204 105 / 16%); }
+.match-event-row.match-event-red_card, .match-event-row.match-event-second_yellow { border-color: rgb(220 112 112 / 18%); }
 .match-event-row > time { z-index: 1; padding: 2px 0; background: var(--surface); text-align: left; }
 .match-event-main { min-width: 0; display: grid; gap: 4px; }
 .match-event-title { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; }
@@ -1605,6 +1609,8 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .match-substitution-columns { display: flex; flex-wrap: wrap; gap: 5px 18px; }
 .match-substitution-list { min-width: min(100%, 190px); display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: baseline; gap: 7px; }
 .match-substitution-list > span { color: var(--text-subtle); font-size: 9px; }
+.match-substitution-list.is-incoming > span { color: #94cba4; }
+.match-substitution-list.is-outgoing > span { color: #d99393; }
 .match-substitution-list ul { display: flex; flex-wrap: wrap; gap: 3px 8px; margin: 0; padding: 0; list-style: none; }
 .match-substitution-list li { color: var(--text-muted); font-size: 10px; }
 .match-substitution-list li + li::before { margin-right: 8px; color: var(--text-faint); content: "·"; }
