@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import type { MatchPage as MatchPageData } from "../api/contracts";
+
+const globalStyles = readFileSync(resolve(process.cwd(), "src/styles/global.css"), "utf8");
 
 const { loadMatchPage, loadLocalMatchPreview } = vi.hoisted(() => ({
   loadMatchPage: vi.fn(),
@@ -113,15 +117,21 @@ describe("MatchPage details", () => {
     expect(enteredRow.querySelector(".match-event-glyph")).toHaveClass("is-substitution_in");
     const exitedRow = lineupRows.find((row) => row.textContent?.includes("Siverio")) as HTMLElement;
     expect(exitedRow.querySelector(".match-event-glyph.is-substitution_out")).toBeInTheDocument();
-    expect(lineupRows.find((row) => row.textContent?.includes("Sin entrada"))).toHaveTextContent("Sin entrada registrada");
+    const noEntryRow = lineupRows.find((row) => row.textContent?.includes("Sin entrada")) as HTMLElement;
+    expect(noEntryRow).not.toHaveTextContent("Sin entrada registrada");
+    expect(noEntryRow.querySelector(".match-participation-note")).not.toBeInTheDocument();
     expect(container.querySelector('img[src="https://www.bdfutbol.com/i/m/1001.jpg"]')).toBeInTheDocument();
 
     const timeline = container.querySelector(".match-events");
     expect(timeline).not.toBeNull();
+    expect(container.querySelector(".match-highlights")).not.toBeInTheDocument();
+    expect(screen.queryByText("Momentos del partido")).not.toBeInTheDocument();
     const events = within(timeline).getAllByRole("listitem");
     expect(events[0]).toHaveTextContent("15");
     expect(events[0]).toHaveTextContent("Gol de penalti");
     expect(events[0]).toHaveTextContent("1–1");
+    expect(within(timeline).getByText("Gol")).toBeInTheDocument();
+    expect(within(timeline).getByText("Gol de penalti")).toBeInTheDocument();
     const substitution = events.find((item) => item.classList.contains("match-substitution-row"));
     expect(substitution).toHaveTextContent("90+1");
     expect(substitution).toHaveTextContent("Entraron");
@@ -215,19 +225,17 @@ describe("MatchPage details", () => {
     expect(screen.queryByText(/Vista previa local/)).not.toBeInTheDocument();
     expect(screen.getByText("Entrenador Teruel")).toBeInTheDocument();
     expect(screen.getByText("Entrenador Castilla")).toBeInTheDocument();
-    const highlights = screen.getByRole("region", { name: "Momentos del partido" });
-    expect(within(highlights).getByText("Penalti fallado")).toBeInTheDocument();
-    expect(within(highlights).getByText("Expulsión")).toBeInTheDocument();
-    expect(within(highlights).getByText("Penalti fallado").closest("li")?.querySelector(".match-event-glyph.is-missed_penalty .missed-penalty-cross")).toBeInTheDocument();
-    expect(within(highlights).getByText(/Rachad · Real Madrid Castilla/)).toBeInTheDocument();
-    expect(within(highlights).getByText(/Belevonis · Teruel/)).toBeInTheDocument();
-    expect(within(highlights).queryByText(/roja directa/i)).not.toBeInTheDocument();
+    expect(container.querySelector(".match-highlights")).not.toBeInTheDocument();
+    expect(screen.queryByText("Momentos del partido")).not.toBeInTheDocument();
     expect(container.querySelectorAll(".match-lineup-side")[1]?.querySelector(".match-player-row .match-event-yellow_card")).toBeInTheDocument();
     expect(container.querySelectorAll(".match-lineup-side")[0]?.querySelector(".match-player-row .match-event-red_card")).toBeInTheDocument();
     expect(container.querySelectorAll(".match-lineup-side ul li")).toHaveLength(39);
     expect(container.querySelector(".match-lineup-side .match-player-marker.match-event-missed_penalty .missed-penalty-cross")).toBeInTheDocument();
     expect(container.querySelectorAll(".match-events > li")).toHaveLength(15);
     expect(container.querySelector(".match-events .match-event-missed_penalty .match-event-glyph.is-missed_penalty .missed-penalty-cross")).toBeInTheDocument();
+    expect(within(container.querySelector(".match-events") as HTMLElement).getByText("Penalti fallado")).toBeInTheDocument();
+    expect(within(container.querySelector(".match-events") as HTMLElement).getByText("Expulsión")).toBeInTheDocument();
+    expect(within(container.querySelector(".match-events") as HTMLElement).getAllByText("Tarjeta amarilla")).toHaveLength(4);
     expect(screen.getByText("24 acontecimientos")).toBeInTheDocument();
     expect(screen.queryByText("Los detalles de este encuentro todavía no están disponibles.")).not.toBeInTheDocument();
   });
@@ -281,6 +289,35 @@ describe("MatchPage details", () => {
     expect(hero).toHaveTextContent("Datos actualizados 14 de octubre de 2026");
     expect(hero).toHaveTextContent("Fuente: BDFutbol");
     expect(within(hero).queryByRole("link", { name: /Ficha en BDFutbol/ })).not.toBeInTheDocument();
+  });
+
+  it("keeps an entered substitute without a verifiable minute and leaves no-entry substitutes unmarked", async () => {
+    const preview = page("preview_only");
+    preview.details!.events = preview.details!.events!.filter((item) => item.event_kind !== "substitution_in");
+    loadLocalMatchPreview.mockResolvedValue(preview);
+
+    const { container } = render(<MatchPage
+      internalId={preview.match.internal_id}
+      localPreview
+      onNavigate={vi.fn()}
+      onReturnToResults={vi.fn()}
+    />);
+    await screen.findByRole("heading", { name: "Alineaciones" });
+
+    const rows = Array.from(container.querySelectorAll(".match-lineup-side li"));
+    const entered = rows.find((row) => row.textContent?.includes("Suplente")) as HTMLElement;
+    const noEntry = rows.find((row) => row.textContent?.includes("Sin entrada")) as HTMLElement;
+    expect(entered).toHaveTextContent("Entrada registrada");
+    expect(entered.querySelector(".match-player-marker.match-event-substitution_in")).not.toBeInTheDocument();
+    expect(noEntry).not.toHaveTextContent("Sin entrada registrada");
+    expect(noEntry.querySelector(".match-participation-note")).not.toBeInTheDocument();
+  });
+
+  it("applies the subtle green timeline border only to goal events", () => {
+    expect(globalStyles).toMatch(/\.match-event-row\.match-event-goal,\s*\.match-event-row\.match-event-penalty,\s*\.match-event-row\.match-event-own_goal\s*\{\s*border-color:\s*rgb\(102 186 133 \/ 16%\)/);
+    expect(globalStyles).not.toMatch(/\.match-event-row\.match-event-(?:missed_penalty|yellow_card|red_card|second_yellow)[^{]*\{[^}]*border-color:/);
+    expect(globalStyles).not.toMatch(/\.match-event-row\.match-substitution-row[^}]*border-color:/);
+    expect(globalStyles).toMatch(/\.match-event-row\s*\{[^}]*border:\s*1px solid transparent/);
   });
 
   it("uses distinct accessible SVGs for goals, scored penalties, missed penalties and own goals", async () => {
@@ -355,7 +392,7 @@ describe("MatchPage details", () => {
 
     expect(await screen.findByLabelText("Resultado 0 a 0")).toBeInTheDocument();
     expect(screen.getAllByText("Penalti fallado").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Rachad").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText("Rachad")).toHaveLength(1);
   });
 
   it("orders added-time events stably and preserves every source event", async () => {
@@ -436,10 +473,11 @@ describe("MatchPage details", () => {
     pending.details = null;
     pending.detail_status = "not_available";
     loadMatchPage.mockResolvedValue(pending);
-    render(<MatchPage internalId={pending.match.internal_id} onNavigate={vi.fn()} onReturnToResults={vi.fn()} />);
+    const { container } = render(<MatchPage internalId={pending.match.internal_id} onNavigate={vi.fn()} onReturnToResults={vi.fn()} />);
     expect(await screen.findByText("Pendiente")).toBeInTheDocument();
     expect(screen.queryByText("Finalizado")).not.toBeInTheDocument();
     expect(screen.getByText("Los detalles de este encuentro todavía no están disponibles.")).toBeInTheDocument();
+    expect(container.querySelector(".match-details-panel, .match-timeline, .match-highlights")).not.toBeInTheDocument();
   });
 
   it("uses the published played status for Finalizado even when its score is incomplete", async () => {

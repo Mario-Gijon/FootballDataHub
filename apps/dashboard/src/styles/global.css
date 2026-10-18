@@ -1547,8 +1547,8 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .match-lineup-side h4 span { color: var(--text-faint); font-family: var(--mono); font-size: 9px; }
 .match-lineup-side ul { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
 .match-lineup-side li.match-player-row { min-width: 0; min-height: 30px; display: flex; align-items: center; gap: 7px; color: var(--text-muted); font-size: 11px; }
-.match-lineup-side li a, .match-events a, .match-highlights a { color: var(--text); text-decoration: none; }
-.match-lineup-side li a:hover, .match-lineup-side li a:focus-visible, .match-events a:hover, .match-events a:focus-visible, .match-highlights a:hover, .match-highlights a:focus-visible { color: var(--purple-bright); text-decoration: underline; }
+.match-lineup-side li a, .match-events a { color: var(--text); text-decoration: none; }
+.match-lineup-side li a:hover, .match-lineup-side li a:focus-visible, .match-events a:hover, .match-events a:focus-visible { color: var(--purple-bright); text-decoration: underline; }
 .match-player-number { min-width: 20px; color: var(--text-subtle); font-family: var(--mono); font-size: 10px; text-align: right; }
 .match-player-photo { width: 24px; height: 24px; flex: 0 0 24px; border-radius: 50%; object-fit: cover; }
 .match-player-photo.profile-image-fallback { display: grid; place-items: center; background: var(--surface-raised); color: var(--text-subtle); font-size: 8px; }
@@ -1577,17 +1577,8 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .match-event-glyph.is-missed_penalty { color: #d0d4dc; }
 .match-event-glyph.is-missed_penalty .missed-penalty-cross { stroke: #df7777; stroke-width: 2.4; }
 .match-event-glyph.is-other { color: var(--text-subtle); font-size: 20px; line-height: 10px; }
-.match-highlights { padding-bottom: 14px; }
-.match-highlights .section-heading { display: flex; align-items: center; justify-content: space-between; }
-.match-highlights ol { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 245px), 1fr)); gap: 7px; margin: 0; padding: 0; list-style: none; }
-.match-highlight { min-width: 0; display: grid; grid-template-columns: 42px 17px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 9px 10px; border: 1px solid var(--line-soft); border-radius: 7px; background: rgb(17 19 22 / 28%); }
-.match-highlight time, .match-events time { color: var(--text-subtle); font-family: var(--mono); font-size: 10px; font-weight: 650; font-variant-numeric: tabular-nums; }
-.match-highlight-copy { min-width: 0; display: grid; gap: 3px; }
-.match-highlight-copy strong { color: var(--text); font-size: 10px; }
-.match-highlight-copy > span { overflow: hidden; color: var(--text-muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.match-events time { color: var(--text-subtle); font-family: var(--mono); font-size: 10px; font-weight: 650; font-variant-numeric: tabular-nums; }
 .match-event-score { color: var(--text); font-family: var(--mono); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.match-highlight.match-event-red_card, .match-highlight.match-event-second_yellow { border-left: 2px solid rgb(220 112 112 / 65%); }
-.match-highlight.match-event-missed_penalty { border-left: 2px solid rgb(232 188 101 / 65%); }
 .match-timeline { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line-soft); }
 .match-timeline .section-heading { display: flex; align-items: end; justify-content: space-between; }
 .match-event-count { color: var(--text-subtle); font-family: var(--mono); font-size: 9px; }
@@ -1596,9 +1587,6 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .match-event-row { position: relative; min-width: 0; display: grid; grid-template-columns: 42px 17px minmax(0, 1fr); align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid transparent; border-radius: 7px; color: var(--text-muted); font-size: 11px; }
 .match-event-row { background: rgb(17 19 22 / 34%); }
 .match-event-row.match-event-goal, .match-event-row.match-event-penalty, .match-event-row.match-event-own_goal { border-color: rgb(102 186 133 / 16%); }
-.match-event-row.match-event-missed_penalty { border-color: rgb(232 188 101 / 20%); }
-.match-event-row.match-event-yellow_card { border-color: rgb(243 204 105 / 16%); }
-.match-event-row.match-event-red_card, .match-event-row.match-event-second_yellow { border-color: rgb(220 112 112 / 18%); }
 .match-event-row > time { z-index: 1; padding: 2px 0; background: var(--surface); text-align: left; }
 .match-event-main { min-width: 0; display: grid; gap: 4px; }
 .match-event-title { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; }
@@ -1645,8 +1633,6 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
   .match-lineup-side { padding: 10px; }
   .match-events::before { left: 43px; }
   .match-event-row { grid-template-columns: 34px 15px minmax(0, 1fr); gap: 8px; padding: 8px 6px; }
-  .match-highlight { grid-template-columns: 37px 15px minmax(0, 1fr) auto; gap: 6px; padding: 8px; }
-  .match-highlight-copy strong, .match-highlight-copy > span { font-size: 9px; }
   .match-substitution-columns { display: grid; }
   .match-substitution-list { min-width: 0; }
   .match-player-annotations { gap: 2px; }
@@ -1659,7 +1645,6 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
   .match-page-team { font-size: 10px; }
   .match-page-score { min-width: 66px; gap: 5px; padding: 7px 6px; font-size: 18px; }
   .match-page-score.is-pending, .match-page-score.is-incomplete { min-width: 62px; font-size: 9px; }
-  .match-highlight { grid-template-columns: 33px 14px minmax(0, 1fr) auto; gap: 5px; }
   .match-event-meta { gap: 3px 7px; }
   .match-event-meta > span + span::before { margin-right: 5px; }
 }

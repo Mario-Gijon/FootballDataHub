@@ -118,11 +118,6 @@ function MatchPageContent({ page, onNavigate }: { page: MatchPageData; onNavigat
       </div>
     </header>
 
-    {hasPublishedContent && details && details.events?.length
-      ? <MatchHighlights events={details.events} homeName={match.home_team.name} awayName={match.away_team.name}
-        homeTeamId={match.home_team.team_id} awayTeamId={match.away_team.team_id} onNavigate={onNavigate} />
-      : null}
-
     {hasPublishedContent && details
       ? <PublishedMatchDetails
         details={details}
@@ -220,41 +215,10 @@ function PlayerList({ players, teamId, sideTeamId, events, onNavigate }: {
       <span className="match-player-annotations">
         {annotations.map((event, eventIndex) => <PlayerEventMarker key={`${event.event_kind}:${event.minute}:${eventIndex}`} event={event} />)}
       </span>
-      {player.role === "substitute" && player.participation_status === "no_entry_marker" && <span className="match-participation-note">Sin entrada registrada</span>}
       {player.role === "substitute" && player.participation_status === "entered" && !annotations.some((event) => event.event_kind === "substitution_in") &&
         <span className="match-participation-note">Entrada registrada</span>}
     </li>;
   })}</ul>;
-}
-
-function MatchHighlights({ events, homeName, awayName, homeTeamId, awayTeamId, onNavigate }: {
-  events: MatchEvent[];
-  homeName: string;
-  awayName: string;
-  homeTeamId: number;
-  awayTeamId: number;
-  onNavigate: (path: string) => void;
-}) {
-  const highlights = sortMatchEvents(events.filter((event) => isHighlight(event.event_kind)));
-  if (!highlights.length) return null;
-  return <section className="match-page-panel match-highlights" aria-labelledby="match-highlights-title">
-    <div className="section-heading"><div><span className="section-kicker">LO MÁS DESTACADO</span><h2 id="match-highlights-title">Momentos del partido</h2></div>
-      <span className="match-event-count">{highlights.length}</span>
-    </div>
-    <ol>{highlights.map((event, index) => <li className={`match-highlight match-event-${event.event_kind}`} key={`${event.event_kind}:${event.minute}:${event.team_id}:${index}`}>
-      <time>{event.minute ?? "—"}</time>
-      <EventGlyph kind={event.event_kind} />
-      <span className="match-highlight-copy"><strong>{eventLabel(event.event_kind)}</strong>
-        <span>{event.player_name && event.player_id && event.player_profile_available
-          ? <InternalPlayerLink playerId={event.player_id} onNavigate={onNavigate}>{event.player_name}</InternalPlayerLink>
-          : event.player_name ?? "Jugador no indicado"}
-          {event.team_id === homeTeamId ? ` · ${homeName}` : event.team_id === awayTeamId ? ` · ${awayName}` : ""}
-        </span>
-      </span>
-      {event.score_after_home !== null && event.score_after_away !== null &&
-        <span className="match-event-score" aria-label={`Marcador ${event.score_after_home} a ${event.score_after_away}`}>{event.score_after_home}–{event.score_after_away}</span>}
-    </li>)}</ol>
-  </section>;
 }
 
 type TimelineItem =
@@ -378,10 +342,6 @@ function EventGlyph({ kind }: { kind: MatchEventKind }) {
     <path d={kind === "substitution_in" ? "M2 8h11m0 0-4-4m4 4-4 4" : kind === "substitution_out" ? "M14 8H3m0 0 4-4m-4 4 4 4" : "M2 5h10m0 0-2.5-2.5M12 5 9.5 7.5M14 11H4m0 0 2.5-2.5M4 11l2.5 2.5"} />
   </svg>;
   return <span className="match-event-glyph is-other" aria-hidden="true">·</span>;
-}
-
-function isHighlight(kind: MatchEventKind): boolean {
-  return ["goal", "penalty", "own_goal", "missed_penalty", "red_card", "second_yellow"].includes(kind);
 }
 
 function accessibleEventDescription(event: MatchEvent): string {
