@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 
 from football_data_hub.providers.bdfutbol.match_details.semantic_parser import (
     MatchDetailParserError,
+    _event_kind,
     parse_match_detail_html,
     parse_saved_artifact,
 )
@@ -125,6 +126,19 @@ def test_preserves_extra_time_minutes_and_recognizes_red_cards():
         item.field_path == "events.red_cards" and item.state == "explicitly_absent"
         for item in observation.evidence
     )
+
+
+@pytest.mark.parametrize(
+    ("icon", "expected"),
+    [
+        ('<div class="PF" title="Penalty Fallado"></div>', "missed_penalty"),
+        ('<div class="TV" title="Expulsión"></div>', "red_card"),
+    ],
+)
+def test_campaign_event_icons_keep_their_verified_semantics(icon, expected):
+    node = BeautifulSoup(icon, "html.parser").div
+    assert node is not None
+    assert _event_kind(node) == expected
 
 
 def test_goal_summary_and_icon_disagreement_is_not_repaired():

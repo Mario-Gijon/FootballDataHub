@@ -15,6 +15,7 @@ FieldState = Literal["observed", "explicitly_absent", "not_observed", "unresolve
 MatchEventKind = Literal[
     "goal",
     "penalty",
+    "missed_penalty",
     "own_goal",
     "yellow_card",
     "red_card",
@@ -225,6 +226,7 @@ def validate_match_detail_contract(detail: MatchDetail) -> tuple[str, ...]:
     valid_event_kinds = (
         "goal",
         "penalty",
+        "missed_penalty",
         "own_goal",
         "yellow_card",
         "red_card",

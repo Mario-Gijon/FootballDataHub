@@ -199,7 +199,7 @@ function PlayerList({ players, onNavigate }: { players: PublishedPlayer[]; onNav
 
 function eventLabel(kind: MatchEventKind): string {
   const labels: Record<string, string> = {
-    goal: "Gol", penalty: "Gol de penalti", own_goal: "Gol en propia puerta", yellow_card: "Tarjeta amarilla",
+    goal: "Gol", penalty: "Gol de penalti", missed_penalty: "Penalti fallado", own_goal: "Gol en propia puerta", yellow_card: "Tarjeta amarilla",
     red_card: "Tarjeta roja", second_yellow: "Segunda amarilla", substitution: "Sustitución",
     substitution_in: "Entró", substitution_out: "Salió", other: "Evento",
   };

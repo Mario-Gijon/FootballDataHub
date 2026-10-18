@@ -1268,6 +1268,65 @@ class MatchDetailCampaignLedger:
                     fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
         raise MatchCampaignIntegrityError("Falta campaign-ledger.lock en un ledger persistido")
 
+    def inspect_persisted_campaign_read_only(
+        self, campaign_dir: Path, *, internal_id: str
+    ) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
+        """Verify a persisted campaign snapshot without creating or changing files.
+
+        This is intended for offline evidence readers. It validates the campaign
+        manifest, review records, candidate event hash chains, artifact hashes,
+        and state transitions using the same rules as the acquisition preflight.
+        """
+
+        _reject_symlink_path(campaign_dir)
+        candidate = campaign_dir.expanduser().absolute()
+        if candidate.is_symlink() or not candidate.is_dir():
+            raise MatchCampaignIntegrityError("La campaña persistida no es un directorio regular")
+        root = candidate.resolve(strict=True)
+        configured_root = self.root.expanduser().resolve(strict=True)
+        if root.parent != configured_root:
+            raise MatchCampaignIntegrityError("La campaña no pertenece al ledger configurado")
+        spec, _ = _read_json(root / "campaign.json", label="campaign.json")
+        if (
+            spec.get("schema_version") != CAMPAIGN_SCHEMA
+            or spec.get("campaign_id") != root.name
+            or not isinstance(spec.get("campaign_basis"), dict)
+            or not isinstance(spec.get("candidates"), list)
+        ):
+            raise MatchCampaignIntegrityError("Identidad del snapshot de campaña inválida")
+        basis = spec["campaign_basis"]
+        source = spec.get("source")
+        if not isinstance(source, dict):
+            raise MatchCampaignIntegrityError("El snapshot de campaña no contiene source")
+        expected_basis = {
+            "inventory_id": source.get("inventory_id"),
+            "inventory_sha256": source.get("inventory_sha256"),
+            "source_generation_id": source.get("generation_id"),
+            "source_generation_manifest_sha256": source.get(
+                "generation_manifest_sha256"
+            ),
+            "selected_internal_ids": [
+                item.get("internal_id")
+                for item in spec["candidates"]
+                if isinstance(item, dict)
+            ],
+        }
+        if (
+            len(expected_basis["selected_internal_ids"]) != len(spec["candidates"])
+            or basis != expected_basis
+            or spec["campaign_id"]
+            != "match-detail-sample-campaign-" + _sha(_canonical(basis))[:16]
+        ):
+            raise MatchCampaignIntegrityError("El basis/campaign_id no coincide con la campaña")
+        self._verify_campaign_dir(root, spec)
+        report = self._preflight_locked(spec, root)
+        if internal_id not in {item["internal_id"] for item in spec["candidates"]}:
+            raise MatchCampaignIntegrityError("El candidato no forma parte de la campaña")
+        events = self._read_events(
+            root / "candidates" / internal_id, spec["campaign_id"], internal_id
+        )
+        return spec, report, events
+
 
 class SimulatedMatchAccessAdapter:
     """Local-only fake adapter. It contains no networking or browser code."""

@@ -2,7 +2,7 @@
 
 ## Estado de los datos
 
-El único HTML deportivo detallado usado en esta tarea es el artefacto local de descubrimiento de `272582`:
+La primera ficha de descubrimiento detallada, `272582`, sigue siendo el artefacto histórico de MATCH-02:
 
 `$FDH_LOCAL_DATA_ROOT/matches/details/diagnostics/match-detail-inventory-8cf339654c80c0ef/20261016T163942.933046Z-eb9b59e1/`
 
@@ -14,6 +14,8 @@ Su HTML tiene 1.504.876 bytes y SHA-256 `9242edad00b43a4e83c649ddad006edb0d1172e
 - Minutos en todos los eventos, incluidos `90+1` y `90+6`.
 
 El parser devuelve `semantic_valid=true`, pero el almacén conserva el estado histórico `INVALID_CONTENT`, `promotion_eligible=false` y el checkpoint detenido. No hay capturas `VALID` ni índice de publicación de detalles. Por tanto, el endpoint público de `272582` continúa respondiendo con `detail_status=not_available`.
+
+La validación offline posterior de la segunda ficha `272525` y su vista previa se documentan en [MATCH-01C-D2](match_01c_d2_offline_validation.md). Ninguna de estas capturas se publica mediante el índice de detalles aprobados.
 
 No hay una captura detallada local de Europa–Jaén (`272523`). El calendario de MATCH-00 y las apariciones en páginas de jugadores no se tratan como una ficha completa del partido.
 
@@ -38,6 +40,8 @@ Configuración:
 Los modelos conservan los eventos de sustitución como `substitution_in` y `substitution_out` separados. La API no crea parejas salvo que el origen tipado proporcione explícitamente un jugador relacionado. Los perfiles internos se enlazan solo cuando el ID existe en el inventario de jugadores cargado por la API. El código de posición no se transforma en una demarcación sin equivalencia validada.
 
 ## Vista previa local de 272582
+
+Para la vista previa de campaña de `272525`, consulta [MATCH-01C-D2](match_01c_d2_offline_validation.md), que detalla su verificación de ledger e identidad y las instrucciones locales.
 
 La ruta pública `/api/v1/matches/{internal_id}` no lee ni admite observaciones. Para una inspección local explícita, se puede configurar `FDH_MATCH_LOCAL_PREVIEW_ARTIFACT` con el directorio del artefacto y abrir:
 

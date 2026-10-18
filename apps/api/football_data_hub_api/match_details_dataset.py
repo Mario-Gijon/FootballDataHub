@@ -25,6 +25,9 @@ from football_data_hub.providers.bdfutbol.match_details.inventory import (
     build_match_detail_inventory,
     load_verified_match_generation,
 )
+from football_data_hub.providers.bdfutbol.match_details.campaign_artifact import (
+    parse_campaign_saved_artifact,
+)
 from football_data_hub.providers.bdfutbol.match_details.store import (
     MatchDetailStore,
     MatchDetailStoreError,
@@ -792,6 +795,7 @@ def build_discovery_preview(
     kind_map = {
         "goal": "goal",
         "penalty_goal": "penalty",
+        "missed_penalty": "missed_penalty",
         "yellow_card": "yellow_card",
         "red_card": "red_card",
         "substitution_in": "substitution_in",
@@ -880,7 +884,32 @@ def load_local_discovery_preview(
     base = build_match_page(match_bundle, internal_id)
     if base is None:
         raise MatchDetailsLoadError("El partido no está disponible en MATCH-00.")
-    observation = parse_saved_artifact(artifact, expected_match=expected)
+    try:
+        artifact_manifest, _ = _read_json(artifact / "manifest.json")
+    except (MatchDetailsLoadError, OSError, ValueError) as exc:
+        raise MatchDetailsLoadError("No se puede leer el manifiesto del artefacto de vista previa") from exc
+    if (
+        artifact_manifest.get("schema_version")
+        == "football_data_hub.match_detail_campaign_artifact_manifest.v1"
+    ):
+        try:
+            observation = parse_campaign_saved_artifact(
+                artifact,
+                expected_match=expected,
+                verified_generation=generation,
+                data_root=data_root,
+            )
+        except (ValueError, OSError, KeyError, TypeError) as exc:
+            raise MatchDetailsLoadError(
+                f"El artefacto de campaña no superó la verificación offline: {exc}"
+            ) from exc
+    elif (
+        artifact_manifest.get("schema_version")
+        == "football_data_hub.match_detail_discovery_manifest.v1"
+    ):
+        observation = parse_saved_artifact(artifact, expected_match=expected)
+    else:
+        raise MatchDetailsLoadError("Tipo de artefacto de vista previa no soportado")
     details = build_discovery_preview(observation, match_page=base, player_ids=player_ids)
     return MatchPageResponse.model_validate({
         **base.model_dump(),

@@ -658,7 +658,8 @@ class MatchPublishedSideResponse(ApiModel):
 class MatchPublishedEventResponse(ApiModel):
     event_kind: Literal[
         "goal", "penalty", "own_goal", "yellow_card", "red_card",
-        "second_yellow", "substitution", "substitution_in", "substitution_out", "other",
+        "missed_penalty", "second_yellow", "substitution", "substitution_in",
+        "substitution_out", "other",
     ]
     minute: str | None
     team_id: StrictInt = Field(gt=0)

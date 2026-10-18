@@ -666,5 +666,11 @@ def test_typed_event_contract_roundtrips_literal_added_time_and_rejects_unknown_
     assert restored.events[0].minute_base == 45
     assert validate_match_detail_contract(restored) == ()
 
+    missed_penalty = replace(
+        detail,
+        events=(replace(detail.events[0], event_kind="missed_penalty"),),
+    )
+    assert validate_match_detail_contract(missed_penalty) == ()
+
     invalid = replace(detail, events=(replace(detail.events[0], event_kind="mystery"),))
     assert "events[0].event_kind" in validate_match_detail_contract(invalid)

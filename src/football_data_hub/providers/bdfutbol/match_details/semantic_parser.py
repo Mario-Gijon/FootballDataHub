@@ -480,8 +480,10 @@ def _event_kind(icon: Tag) -> str:
         ("entra", "entra"): "substitution_in",
         ("g", "gol"): "goal",
         ("gp", "gol de penalty"): "penalty_goal",
+        ("pf", "penalty fallado"): "missed_penalty",
         ("tg", "tarjeta amarilla"): "yellow_card",
         ("tr", "tarjeta roja"): "red_card",
+        ("tv", "expulsión"): "red_card",
     }
     for (class_name, title_name), kind in known.items():
         if class_name in classes and title == title_name:
@@ -947,30 +949,66 @@ def parse_match_detail_html(
     digest = _sha256(source_html)
     if verified_sha256 is not None and digest != verified_sha256:
         raise MatchDetailParserError("El HTML cambió tras verificar el manifiesto")
-    if metadata.get("source_html_sha256") != digest:
-        raise MatchDetailParserError("El hash del HTML no coincide con metadata")
-    if (
-        metadata.get("schema_version") != "football_data_hub.match_detail_discovery_artifact.v1"
-        or metadata.get("artifact_type") != "discovery_only_unverified"
-        or metadata.get("promotion_eligible") is not False
-        or metadata.get("discovery_id") != discovery_id
-        or metadata.get("inventory_id") != inventory_id
-        or metadata.get("source_html_bytes") != len(source_html)
-    ):
-        raise MatchDetailParserError("Metadata no acredita un artefacto discovery-only íntegro")
     source_id, source_url = _expected_identity(expected_match)
-    metadata_expectations = {
-        "requested_url": source_url,
-        "final_url": source_url,
-        "source_match_id": source_id,
-        "season": expected_match.get("season"),
-        "competition": expected_match.get("competition"),
-        "group": expected_match.get("group"),
-        "matchday": expected_match.get("matchday"),
-        "source_generation_id": expected_match.get("source_generation_id"),
-        "source_capture_id": expected_match.get("source_capture_id"),
-        "internal_id": expected_match.get("internal_id"),
-    }
+    metadata_schema = metadata.get("schema_version")
+    if metadata_schema == "football_data_hub.match_detail_discovery_artifact.v1":
+        if metadata.get("source_html_sha256") != digest:
+            raise MatchDetailParserError("El hash del HTML no coincide con metadata histórica")
+        metadata_expectations = {
+            "requested_url": source_url,
+            "final_url": source_url,
+            "source_match_id": source_id,
+            "season": expected_match.get("season"),
+            "competition": expected_match.get("competition"),
+            "group": expected_match.get("group"),
+            "matchday": expected_match.get("matchday"),
+            "source_generation_id": expected_match.get("source_generation_id"),
+            "source_capture_id": expected_match.get("source_capture_id"),
+            "internal_id": expected_match.get("internal_id"),
+        }
+        if (
+            metadata.get("artifact_type") != "discovery_only_unverified"
+            or metadata.get("promotion_eligible") is not False
+            or metadata.get("discovery_id") != discovery_id
+            or metadata.get("inventory_id") != inventory_id
+            or metadata.get("source_html_bytes") != len(source_html)
+        ):
+            raise MatchDetailParserError("Metadata no acredita un artefacto histórico discovery-only íntegro")
+        access_status = metadata.get("access_status")
+        source_not_promotable = (
+            metadata.get("promotion_eligible") is False
+            and metadata.get("artifact_type") == "discovery_only_unverified"
+        )
+    elif metadata_schema == "football_data_hub.match_detail_campaign_discovery.v1":
+        if verified_sha256 is None:
+            raise MatchDetailParserError(
+                "Metadata de campaña requiere hash verificado desde su manifiesto"
+            )
+        metadata_expectations = {
+            "requested_url": source_url,
+            "final_url": source_url,
+            "source_match_id": source_id,
+            "internal_id": expected_match.get("internal_id"),
+        }
+        if (
+            metadata.get("campaign_id") is None
+            or metadata.get("access_classification") != "VALID"
+            or metadata.get("http_status") != 200
+            or metadata.get("challenge_detected") is not False
+            or metadata.get("denial_detected") is not False
+            or metadata.get("capture_promoted") is not False
+            or metadata.get("semantic_identity_verified") is not False
+            or not isinstance(metadata.get("navigation_attempt_id"), str)
+            or not metadata.get("navigation_attempt_id")
+        ):
+            raise MatchDetailParserError("Metadata de campaña no acredita un descubrimiento íntegro y no promovido")
+        access_status = metadata.get("access_classification")
+        source_not_promotable = (
+            metadata.get("capture_promoted") is False
+            and metadata.get("semantic_identity_verified") is False
+        )
+    else:
+        raise MatchDetailParserError("Versión de metadata de descubrimiento desconocida")
     for key, value in metadata_expectations.items():
         if metadata.get(key) != value:
             raise MatchDetailParserError(f"Metadata/catalog mismatch: {key}")
@@ -1039,7 +1077,11 @@ def parse_match_detail_html(
     expected_title_date = ""
     if isinstance(expected_date, str):
         try:
-            expected_title_date = f"{int(expected_date[8:10])}/{int(expected_date[5:7])}/{int(expected_date[:4])}"
+            expected_title_date = (
+                f"{int(expected_date[8:10]):02d}/"
+                f"{int(expected_date[5:7]):02d}/"
+                f"{int(expected_date[:4]):04d}"
+            )
         except (ValueError, IndexError):
             errors.append("catalog_date_format_invalid")
     title_ok = all(
@@ -1341,13 +1383,15 @@ def parse_match_detail_html(
         source_html_sha256=digest,
         parser_version=parser_version,
         captured_at_utc=str(metadata.get("captured_at_utc")),
-        artifact_access_status=str(metadata.get("access_status")),
+        artifact_access_status=str(access_status),
     )
-    if metadata.get("access_status") != "INVALID_CONTENT":
-        warnings.append(f"historical_access_status:{metadata.get('access_status')}")
+    if metadata_schema == "football_data_hub.match_detail_campaign_discovery.v1":
+        warnings.append("campaign_discovery_remains_unpromoted_pending_independent_review")
+    elif access_status != "INVALID_CONTENT":
+        warnings.append(f"historical_access_status:{access_status}")
     else:
         warnings.append("source_artifact_remains_INVALID_CONTENT_and_discovery_only")
-    if metadata.get("promotion_eligible") is not False:
+    if not source_not_promotable:
         errors.append("artifact_promotion_flag_not_false")
 
     critical_evidence_paths = {
@@ -1391,7 +1435,11 @@ def parse_match_detail_html(
             ValidationCheck("eleven_starters_each", len(starters_by_side["home"] or ()) == 11 and len(starters_by_side["away"] or ()) == 11, f"{len(starters_by_side['home'] or ())},{len(starters_by_side['away'] or ())}"),
             ValidationCheck("roster_player_ids_are_unique", not identity_errors, "; ".join(identity_errors) or "unique within and across teams/roles"),
             ValidationCheck("unknown_event_icons_rejected", not unknown_events, f"unknown={len(unknown_events)}"),
-            ValidationCheck("source_not_promotable", source.promotion_eligible is False and metadata.get("artifact_type") == "discovery_only_unverified", str(metadata.get("artifact_type"))),
+            ValidationCheck(
+                "source_not_promotable",
+                source.promotion_eligible is False and source_not_promotable,
+                str(metadata.get("schema_version")),
+            ),
         )
     )
     valid = not errors and all(check.passed for check in checks)

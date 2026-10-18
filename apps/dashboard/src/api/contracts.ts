@@ -1179,7 +1179,7 @@ const MatchPublishedSideSchema = z.object({
 }).strict();
 
 const MatchPublishedEventSchema = z.object({
-  event_kind: z.enum(["goal", "penalty", "own_goal", "yellow_card", "red_card", "second_yellow", "substitution", "substitution_in", "substitution_out", "other"]),
+  event_kind: z.enum(["goal", "penalty", "missed_penalty", "own_goal", "yellow_card", "red_card", "second_yellow", "substitution", "substitution_in", "substitution_out", "other"]),
   minute: z.string().nullable(),
   team_id: positiveInteger,
   player_id: nullableInteger,

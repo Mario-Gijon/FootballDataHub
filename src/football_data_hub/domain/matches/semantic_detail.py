@@ -15,6 +15,7 @@ EvidenceOrigin = Literal["match_detail_dom", "match_catalog", "discovery_metadat
 EventKind = Literal[
     "goal",
     "penalty_goal",
+    "missed_penalty",
     "yellow_card",
     "red_card",
     "substitution_in",

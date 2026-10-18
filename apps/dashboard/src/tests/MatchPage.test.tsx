@@ -121,4 +121,39 @@ describe("MatchPage details", () => {
     await waitFor(() => expect(loadMatchPage).toHaveBeenCalledWith("pf-2026-27-group-ii-bdfutbol-272582"));
     expect(loadLocalMatchPreview).not.toHaveBeenCalled();
   });
+
+  it("renders a local 0–0 preview and a missed-penalty event", async () => {
+    const zeroScorePreview = page("preview_only");
+    zeroScorePreview.match.home_goals = 0;
+    zeroScorePreview.match.away_goals = 0;
+    zeroScorePreview.details!.home_goals = 0;
+    zeroScorePreview.details!.away_goals = 0;
+    zeroScorePreview.details!.events = [{
+      event_kind: "missed_penalty",
+      minute: "43",
+      team_id: 94,
+      player_id: 2001,
+      player_name: "Rachad",
+      related_player_id: null,
+      related_player_name: null,
+      is_penalty: true,
+      is_own_goal: false,
+      score_after_home: null,
+      score_after_away: null,
+      player_profile_available: true,
+      related_player_profile_available: false,
+    }];
+    loadLocalMatchPreview.mockResolvedValue(zeroScorePreview);
+
+    render(<MatchPage
+      internalId="pf-2026-27-group-ii-bdfutbol-272525"
+      localPreview
+      onNavigate={vi.fn()}
+      onReturnToResults={vi.fn()}
+    />);
+
+    expect(await screen.findByLabelText("Resultado 0 a 0")).toBeInTheDocument();
+    expect(screen.getByText("Penalti fallado")).toBeInTheDocument();
+    expect(screen.getByText("Rachad")).toBeInTheDocument();
+  });
 });
