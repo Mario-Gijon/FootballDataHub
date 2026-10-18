@@ -1464,6 +1464,15 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .player-data-table tbody tr:nth-child(even) { background: rgb(255 255 255 / 2%); }
 .player-data-table tbody tr:hover { background: rgb(255 255 255 / 4%); }
 .player-data-table tbody .player-total-row td:first-child { color: var(--text); font-weight: 700; }
+.player-career-totals > h3 { padding-bottom: 12px; }
+.player-career-total { display: grid; gap: 8px; padding: 0 14px 14px; }
+.player-career-total-primary, .player-career-total-secondary { display: grid; grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); gap: 7px; margin: 0; }
+.player-career-total-primary > div { min-width: 0; padding: 10px 12px; border: 1px solid rgb(173 134 211 / 19%); border-radius: 7px; background: rgb(134 82 183 / 10%); }
+.player-career-total-primary dt, .player-career-total-secondary dt { color: var(--text-muted); font-size: 10px; line-height: 1.3; }
+.player-career-total-primary dd { margin: 4px 0 0; color: var(--text); font-size: 21px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.player-career-total-secondary > div { display: flex; min-width: 0; align-items: baseline; justify-content: space-between; gap: 8px; padding: 7px 9px; border: 1px solid rgb(255 255 255 / 5%); border-radius: 6px; background: rgb(255 255 255 / 2%); }
+.player-career-total-secondary dt { overflow-wrap: anywhere; }
+.player-career-total-secondary dd { flex: 0 0 auto; margin: 0; color: var(--text); font-size: 12px; font-weight: 650; font-variant-numeric: tabular-nums; }
 .player-data-empty { margin: 0; padding: 18px; border: 1px solid rgb(255 255 255 / 7%); border-radius: 8px; color: var(--text-muted); background: rgb(27 30 34 / 66%); font-size: 13px; }
 .player-match-table-section .player-data-table { min-width: 1600px; }
 .player-match-table-section .player-data-table td { white-space: nowrap; }
@@ -1490,4 +1499,8 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
   .player-match-filters select { min-width: 0; width: 100%; }
   .player-source-table > h3 { padding: 12px; font-size: 14px; }
   .player-data-table th, .player-data-table td { padding: 8px 9px; font-size: 11px; }
+  .player-career-total { padding: 0 10px 10px; }
+  .player-career-total-primary, .player-career-total-secondary { grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); }
+  .player-career-total-primary > div { padding: 9px 10px; }
+  .player-career-total-primary dd { font-size: 19px; }
 }

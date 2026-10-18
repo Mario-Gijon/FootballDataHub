@@ -169,6 +169,9 @@ function DataTables({ tables, empty, teams = [], onNavigate = () => undefined }:
 function SourceTable({ table, teams, onNavigate }: { table: PlayerTable; teams: readonly CatalogTeam[]; onNavigate: (path: string) => void }) {
   const caption = tableCaption(table);
   if (!caption) return null;
+  if (table.table_role === "career_totals") {
+    return <CareerTotalsTable table={table} caption={caption} />;
+  }
   return <section className="player-source-table">
     <h3>{caption}</h3>
     {table.rows.length === 0 ? <p className="player-data-empty">No hay datos en esta tabla.</p> : <div className="player-table-scroll">
@@ -202,6 +205,92 @@ function SourceTable({ table, teams, onNavigate }: { table: PlayerTable; teams: 
       </table>
     </div>}
   </section>;
+}
+
+function CareerTotalsTable({ table, caption }: { table: PlayerTable; caption: string }) {
+  const totalRows = table.rows.filter(isCareerTotalRow);
+  return <section className="player-source-table player-career-totals">
+    <h3>{caption}</h3>
+    {totalRows.length === 0 ? <p className="player-data-empty">No hay métricas acumuladas disponibles.</p> : totalRows.map((row, rowIndex) => {
+      const metrics = careerTotalMetrics(table, row);
+      const primary = metrics.filter((metric) => metric.primary);
+      const secondary = metrics.filter((metric) => !metric.primary);
+      if (metrics.length === 0) {
+        return <p className="player-data-empty" key={rowIndex}>La captura no contiene métricas acumuladas disponibles.</p>;
+      }
+      return <div className="player-career-total" key={rowIndex}>
+        {primary.length > 0 && <dl className="player-career-total-primary" aria-label="Métricas principales">
+          {primary.map((metric) => <div key={metric.sourceIndex}>
+            <dt>{metric.label}</dt><dd>{metric.value}</dd>
+          </div>)}
+        </dl>}
+        {secondary.length > 0 && <dl className="player-career-total-secondary" aria-label="Otras estadísticas acumuladas">
+          {secondary.map((metric) => <div key={metric.sourceIndex}>
+            <dt>{metric.label}</dt><dd>{metric.value}</dd>
+          </div>)}
+        </dl>}
+      </div>;
+    })}
+  </section>;
+}
+
+function careerTotalMetrics(table: PlayerTable, row: PlayerTable["rows"][number]) {
+  const labelCellIndex = row.cells.findIndex((cell) =>
+    typeof cell.raw_value === "string" && /^total(?:es)?$/iu.test(cell.raw_value.trim()),
+  );
+  const declaredSpan = row.source_fields.summary_label_span;
+  const knownSpan = typeof declaredSpan === "number" && Number.isInteger(declaredSpan) && declaredSpan >= 0
+    ? declaredSpan : 0;
+  const summarySpan = Math.max(knownSpan, labelCellIndex >= 0 ? labelCellIndex + 1 : 0);
+  return table.columns.flatMap((column, columnIndex) => {
+    const sourceIndex = column.source_index ?? columnIndex;
+    if (sourceIndex < summarySpan || isDescriptiveCareerColumn(column)) return [];
+    const cell = row.cells[sourceIndex];
+    if (!cell || cell.value_status === "MISSING_OR_PLACEHOLDER") return [];
+    const raw = cell.raw_value;
+    if (raw === null || raw === undefined || raw === "") return [];
+    if (typeof raw === "string" && ["-", "–", "—"].includes(raw.trim())) return [];
+    const label = column.title?.trim() || column.label.trim();
+    if (!label) return [];
+    const value = cell.normalized_integer ?? raw;
+    const normalizedLabel = normalizeCareerLabel(label);
+    return [{
+      sourceIndex,
+      label,
+      value: display(value),
+      primary: isPrimaryCareerMetric(normalizedLabel),
+    }];
+  });
+}
+
+function isCareerTotalRow(row: PlayerTable["rows"][number]): boolean {
+  if (row.source_fields.row_role === "total") return true;
+  const summary = row.source_fields.summary_label_raw;
+  if (typeof summary === "string" && /^total(?:es)?$/iu.test(summary.trim())) return true;
+  return row.cells.some((cell) => typeof cell.raw_value === "string" && /^total(?:es)?$/iu.test(cell.raw_value.trim()));
+}
+
+function isDescriptiveCareerColumn(column: PlayerTable["columns"][number]): boolean {
+  const labels = [column.title, column.label, column.source_header]
+    .filter((value): value is string => typeof value === "string")
+    .map(normalizeCareerLabel);
+  const descriptive = new Set([
+    "temp", "temporada", "season", "equipo", "team", "pais", "country",
+    "ascenso o descenso", "division", "div", "edad", "age", "dorsal", "nr", "numero", "n.º", "nº", "#",
+    "numero dorsal", "otras competiciones", "other competitions",
+  ]);
+  return labels.some((label) => descriptive.has(label));
+}
+
+function normalizeCareerLabel(value: string): string {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/gu, "").trim().toLocaleLowerCase("es");
+}
+
+function isPrimaryCareerMetric(label: string): boolean {
+  return new Set([
+    "partidos jugados", "partidos", "pj", "partidos titular", "titularidades", "pt",
+    "minutos", "min", "goles", "g",
+  ]).has(label);
 }
 
 function tableCellValue(

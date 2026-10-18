@@ -154,36 +154,71 @@ describe("PlayerIndividualViews", () => {
     expect(screen.queryByText(/club actual/i)).toBeNull();
   });
 
-  it("presenta la fila Total como resumen y mantiene las métricas bajo sus columnas", () => {
-    const totals = tableFixture("career_totals", [
-      column("Temporada", 0), column("Equipo", 1), column("País", 2),
-      column("Ascenso o descenso", 3), column("División", 4), column("Edad", 5),
-      column("Partidos Jugados", 6), column("Minutos", 7),
-    ], [row(["", "", "", "", "", "", 100, 7846], {
+  it("muestra solo métricas acumuladas y conserva las estadísticas de la fila original de BDFutbol", () => {
+    const labels = [
+      "Temporada", "Equipo", "País", "Ascenso o descenso", "División", "Edad",
+      "Partidos Jugados", "Partidos titular", "Partidos completos", "Partidos suplente",
+      "Partidos sustituido", "Partidos incompletos", "Partidos convocado", "Total convocado",
+      "Ganados", "Empatados", "Perdidos", "Minutos", "Tarjetas amarillas", "Tarjetas rojas",
+      "Goles", "Goles penalty", "Goles propia puerta", "Goles encajados", "Dorsal", "Otras competiciones",
+    ];
+    const values: Array<string | number | null> = [
+      "", "", "", "", "Total", "", 170, 117, 34, 53, 81, 134, 14, 184,
+      66, 46, 58, 10084, 25, 2, 29, 2, 0, 0, "", "",
+    ];
+    const totals = tableFixture("career_totals", labels.map((label, index) => column(label, index)), [row(values, {
       row_role: "total", summary_label_raw: "Total", summary_label_span: 6,
     })]);
-    render(<PlayerIndividualViews views={[viewFixture("profile", { tables: totals })]} />);
+    const { container } = render(<PlayerIndividualViews views={[viewFixture("profile", { tables: totals })]} />);
 
-    const summary = screen.getByRole("heading", { name: "Totales de trayectoria" }).parentElement;
-    const totalRow = summary?.querySelector("tbody tr");
-    expect(totalRow?.querySelector("td[colspan='6']")?.textContent).toBe("Total");
-    expect(within(totalRow as HTMLElement).getByText("100")).toBeTruthy();
-    expect(within(totalRow as HTMLElement).getByText("7846")).toBeTruthy();
-    expect(totalRow?.children).toHaveLength(3);
+    expect(screen.getByRole("heading", { name: "Totales de trayectoria" })).toBeTruthy();
+    expect(container.querySelector(".player-career-total-primary")).toBeTruthy();
+    expect(screen.getByText("170")).toBeTruthy();
+    expect(screen.getByText("117")).toBeTruthy();
+    expect(screen.getByText("10084")).toBeTruthy();
+    expect(screen.getByText("29")).toBeTruthy();
+    expect(screen.getByText("Tarjetas amarillas")).toBeTruthy();
+    expect(screen.getByText("25")).toBeTruthy();
+    expect(screen.getByText("Goles propia puerta")).toBeTruthy();
+    expect(screen.getAllByText("0").length).toBeGreaterThanOrEqual(2);
+    for (const descriptive of ["Temporada", "Equipo", "País", "Ascenso o descenso", "División", "Edad", "Dorsal", "Otras competiciones", "Total"]) {
+      expect(screen.queryByText(descriptive, { exact: true })).toBeNull();
+    }
+    expect(container.querySelector(".player-career-totals table")).toBeNull();
   });
 
-  it("corrige también la alineación dispersa de los compactos ya publicados", () => {
+  it("alinea los compactos anteriores cuyo Total aparece en una columna descriptiva", () => {
     const legacyTotals = tableFixture("career_totals", [
       column("Temporada", 0), column("Equipo", 1), column("División", 2),
       column("Partidos Jugados", 3), column("Minutos", 4),
-    ], [row(["", "", "Total", 51, 2850], { row_role: "total" })]);
+    ], [row(["", "", "Total", 51, 2850])]);
     const { container } = render(<PlayerIndividualViews views={[viewFixture("profile", { tables: legacyTotals })]} />);
 
-    const table = container.querySelector(".player-source-table table");
-    const totalRow = table?.querySelector("tbody tr");
-    expect(totalRow?.querySelector("td[colspan='3']")?.textContent).toBe("Total");
-    expect(within(totalRow as HTMLElement).getByText("51")).toBeTruthy();
-    expect(within(totalRow as HTMLElement).getByText("2850")).toBeTruthy();
+    expect(screen.getByText("51")).toBeTruthy();
+    expect(screen.getByText("2850")).toBeTruthy();
+    expect(screen.getByText("Partidos Jugados")).toBeTruthy();
+    expect(screen.queryByText("División", { exact: true })).toBeNull();
+    expect(container.querySelector(".player-career-totals table")).toBeNull();
+  });
+
+  it("respeta estructuras con otro colspan, conserva métricas nuevas y oculta marcadores ausentes", () => {
+    const totals = tableFixture("career_totals", [
+      column("Temporada", 0), column("Equipo", 1), column("División", 2), column("Edad", 3),
+      column("Partidos", 4), column("Asistencias", 5), column("Duelos ganados", 6), column("Dorsal", 7), column("Remates", 8),
+    ], [row(["", "", "", "", 22, 7, 8, 11, "-"], {
+      row_role: "total", summary_label_raw: "Totales", summary_label_span: 4,
+    })]);
+    render(<PlayerIndividualViews views={[viewFixture("profile", { tables: totals })]} />);
+
+    expect(screen.getByText("22")).toBeTruthy();
+    expect(screen.getByText("7")).toBeTruthy();
+    expect(screen.getByText("Asistencias")).toBeTruthy();
+    expect(screen.getByText("Duelos ganados")).toBeTruthy();
+    expect(screen.queryByText("Dorsal", { exact: true })).toBeNull();
+    expect(screen.queryByText("11", { exact: true })).toBeNull();
+    expect(screen.queryByText("Remates", { exact: true })).toBeNull();
+    expect(screen.queryByText("-", { exact: true })).toBeNull();
+    expect(screen.queryByText("Edad", { exact: true })).toBeNull();
   });
 
   it("enlaza clubes y jugadores solo con IDs presentes y coherentes en los catálogos", () => {
