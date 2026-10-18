@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { loadLocalMatchPreview, loadMatchPage, MatchPageApiError } from "../api/client";
-import type { MatchPage as MatchPageData } from "../api/contracts";
+import { loadLocalMatchPreview, loadMatchPage, loadTeamRoster, MatchPageApiError } from "../api/client";
+import type { MatchPage as MatchPageData, TeamRoster } from "../api/contracts";
 import { navigateOnPlainClick } from "../domain/internal-navigation";
 import { InternalTeamLink } from "./InternalTeamLink";
 import { InternalPlayerLink } from "./InternalPlayerLink";
@@ -117,7 +117,17 @@ function MatchPageContent({ page, onNavigate }: { page: MatchPageData; onNavigat
       </div>}
     </header>
 
-    {hasPublishedContent && details
+    {match.status === "unplayed"
+      ? <ExpectedMatchLineups
+        internalId={match.internal_id}
+        season={metadata.season}
+        homeTeamId={match.home_team.team_id}
+        homeName={match.home_team.name}
+        awayTeamId={match.away_team.team_id}
+        awayName={match.away_team.name}
+        onNavigate={onNavigate}
+      />
+      : hasPublishedContent && details
       ? <PublishedMatchDetails
         details={details}
         homeName={match.home_team.name}
@@ -128,6 +138,138 @@ function MatchPageContent({ page, onNavigate }: { page: MatchPageData; onNavigat
         onNavigate={onNavigate}
       />
       : <p className="match-details-unavailable" role="status">Los detalles de este encuentro todavía no están disponibles.</p>}
+  </>;
+}
+
+type ExpectedRosterSideState =
+  | { status: "loading"; teamId: number }
+  | { status: "available"; teamId: number; roster: TeamRoster }
+  | { status: "not_captured"; teamId: number }
+  | { status: "error"; teamId: number };
+
+interface ExpectedLineupState {
+  internalId: string;
+  home: ExpectedRosterSideState;
+  away: ExpectedRosterSideState;
+}
+
+function ExpectedMatchLineups({ internalId, season, homeTeamId, homeName, awayTeamId, awayName, onNavigate }: {
+  internalId: string;
+  season: string;
+  homeTeamId: number;
+  homeName: string;
+  awayTeamId: number;
+  awayName: string;
+  onNavigate: (path: string) => void;
+}) {
+  const [state, setState] = useState<ExpectedLineupState>(() => ({
+    internalId,
+    home: { status: "loading", teamId: homeTeamId },
+    away: { status: "loading", teamId: awayTeamId },
+  }));
+
+  useEffect(() => {
+    let current = true;
+    setState({
+      internalId,
+      home: { status: "loading", teamId: homeTeamId },
+      away: { status: "loading", teamId: awayTeamId },
+    });
+
+    const loadSide = async (side: "home" | "away", teamId: number) => {
+      try {
+        const result = await loadTeamRoster(teamId, season);
+        if (!current) return;
+        const next: ExpectedRosterSideState = result.status === "not_captured"
+          ? { status: "not_captured", teamId }
+          : result.roster.team.team_id === teamId
+            ? { status: "available", teamId, roster: result.roster }
+            : { status: "error", teamId };
+        setState((previous) => previous.internalId === internalId ? { ...previous, [side]: next } : previous);
+      } catch {
+        if (current) {
+          setState((previous) => previous.internalId === internalId
+            ? { ...previous, [side]: { status: "error", teamId } }
+            : previous);
+        }
+      }
+    };
+
+    void loadSide("home", homeTeamId);
+    void loadSide("away", awayTeamId);
+    return () => { current = false; };
+  }, [awayTeamId, homeTeamId, internalId, season]);
+
+  const scopedState = state.internalId === internalId ? state : {
+    internalId,
+    home: { status: "loading", teamId: homeTeamId } as ExpectedRosterSideState,
+    away: { status: "loading", teamId: awayTeamId } as ExpectedRosterSideState,
+  };
+  const bothNotCaptured = scopedState.home.status === "not_captured" && scopedState.away.status === "not_captured";
+
+  return <section className="match-page-panel match-details-panel match-expected-lineups" aria-labelledby="match-details-title">
+    <div className="section-heading">
+      <div><span className="section-kicker">PLANTILLAS DE TEMPORADA</span><h2 id="match-details-title">Alineaciones</h2></div>
+      <span className="match-expected-badge">Alineación esperada</span>
+    </div>
+    <p className="match-expected-disclaimer">Basada en las plantillas publicadas de los equipos. No es una alineación oficial ni una convocatoria confirmada para este encuentro.</p>
+    {bothNotCaptured
+      ? <p className="match-expected-empty" role="status">No hay alineaciones orientativas disponibles para este encuentro.</p>
+      : <div className="match-lineups">
+        <ExpectedLineupSide name={homeName} state={scopedState.home} onNavigate={onNavigate} />
+        <ExpectedLineupSide name={awayName} state={scopedState.away} onNavigate={onNavigate} />
+      </div>}
+  </section>;
+}
+
+function ExpectedLineupSide({ name, state, onNavigate }: {
+  name: string;
+  state: ExpectedRosterSideState;
+  onNavigate: (path: string) => void;
+}) {
+  return <section className="match-lineup-side match-expected-side" aria-label={`Alineación esperada de ${name}`}>
+    <h3>{name}</h3>
+    {state.status === "loading" && <p className="match-expected-side-state" role="status">Cargando plantilla de referencia…</p>}
+    {state.status === "not_captured" && <p className="match-expected-side-state">No hay plantilla de referencia disponible para este equipo.</p>}
+    {state.status === "error" && <p className="match-expected-side-state" role="status">No se pudo cargar la plantilla de referencia.</p>}
+    {state.status === "available" && <ExpectedPlayerGroups roster={state.roster} teamId={state.teamId} onNavigate={onNavigate} />}
+  </section>;
+}
+
+function ExpectedPlayerGroups({ roster, teamId, onNavigate }: {
+  roster: TeamRoster;
+  teamId: number;
+  onNavigate: (path: string) => void;
+}) {
+  const playersById = new Map(roster.players.map((player) => [player.player_id, player]));
+  const membershipsById = new Map(roster.memberships
+    .filter((membership) => membership.team_id === teamId && membership.season === roster.metadata.season)
+    .map((membership) => [membership.player_id, membership]));
+
+  return <>
+    {(["Titulares", "Suplentes"] as const).map((label) => {
+      const group = roster.squad_groups.find((candidate) => candidate.label === label);
+      const players = (group?.player_ids ?? [])
+        .map((playerId) => playersById.get(playerId))
+        .filter((player): player is TeamRoster["players"][number] => player !== undefined);
+      return <div className={`match-lineup-group${label === "Suplentes" ? " is-substitutes" : ""}`} key={label}>
+        <h4>{label} de referencia <span>{players.length}</span></h4>
+        {players.length
+          ? <ul>{players.map((player) => {
+            const name = player.display_name;
+            const jerseyNumber = membershipsById.get(player.player_id)?.jersey_number;
+            const content = player.profile_url
+              ? <InternalPlayerLink playerId={player.player_id} onNavigate={onNavigate}>{name}</InternalPlayerLink>
+              : <span>{name}</span>;
+            return <li className="match-player-row" key={player.player_id}>
+              <ProfileImage src={player.photo_url} name={name} className="match-player-photo" />
+              {jerseyNumber !== null && jerseyNumber !== undefined && <span className="match-player-number">{jerseyNumber}</span>}
+              <span className="match-player-identity">{content}</span>
+            </li>;
+          })}</ul>
+          : <p className="match-expected-group-empty">{group ? "No hay jugadores publicados en esta agrupación." : "La captura no publica esta agrupación."}</p>}
+      </div>;
+    })}
   </>;
 }
 

@@ -1528,6 +1528,12 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .match-page-panel { padding: 17px; }
 .match-page-panel .section-heading { margin-bottom: 13px; }
 .match-page-panel .section-heading h1, .match-page-panel .section-heading h2 { margin: 3px 0 0; color: var(--text); font-family: "Manrope", sans-serif; font-size: 18px; }
+.match-expected-lineups .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.match-expected-badge { flex: 0 0 auto; padding: 4px 8px; border: 1px solid var(--line); border-radius: 99px; background: rgb(36 40 45 / 70%); color: var(--text-muted); font-size: 9px; font-weight: 600; }
+.match-expected-disclaimer { margin: -5px 0 13px; color: var(--text-subtle); font-size: 10px; line-height: 1.5; }
+.match-expected-empty, .match-expected-side-state, .match-expected-group-empty { margin: 0; color: var(--text-subtle); font-size: 10px; line-height: 1.45; }
+.match-expected-side-state { padding: 6px 0; }
+.match-expected-group-empty { padding: 2px 0 5px; }
 .match-page-officials { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: 5px 20px; color: var(--text); font-size: 11px; text-align: center; }
 .match-page-official { min-width: 0; display: inline-flex; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: 4px; }
 .match-page-official-label { color: var(--text-subtle); font-size: 10px; }
@@ -1627,6 +1633,9 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
   .match-page-subtitle { font-size: 10px; }
   .match-page-panel { padding: 12px; }
   .match-page-panel .section-heading h1, .match-page-panel .section-heading h2 { font-size: 16px; }
+  .match-expected-lineups .section-heading { align-items: flex-start; }
+  .match-expected-badge { margin-top: 3px; }
+  .match-expected-disclaimer { font-size: 9px; }
   .match-page-officials { gap: 5px 12px; font-size: 10px; }
   .match-page-official-label, .match-page-official strong { font-size: 10px; }
   .match-page-provenance { gap: 4px 9px; font-size: 8px; }

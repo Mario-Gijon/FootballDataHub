@@ -27,6 +27,7 @@ import type { ZodType } from "zod";
 export type CompetitionGroup = "1" | "2";
 
 const apiBase = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+const TEAM_ROSTER_REQUEST_TIMEOUT_MS = 15_000;
 
 export type TeamRosterLoadResult =
   | { status: "available"; roster: TeamRoster }
@@ -181,18 +182,30 @@ async function requestTeamFollow(teamId: number, season: string): Promise<TeamFo
 
 async function requestTeamRoster(teamId: number, season: string): Promise<TeamRosterLoadResult> {
   let response: Response;
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), TEAM_ROSTER_REQUEST_TIMEOUT_MS);
   try {
     response = await fetch(`${apiBase}/api/v1/teams/${teamId}/seasons/${season}/roster`, {
       headers: { Accept: "application/json" },
+      signal: controller.signal,
     });
   } catch {
+    window.clearTimeout(timeout);
+    if (controller.signal.aborted) {
+      throw new TeamRosterApiError("La petición de Plantilla superó el tiempo de espera.", "timeout", 0);
+    }
     throw new TeamRosterApiError("No se pudo conectar con la API de FootballDataHub.", "connection_error", 0);
   }
   let body: unknown;
   try {
     body = await response.json();
   } catch {
+    if (controller.signal.aborted) {
+      throw new TeamRosterApiError("La petición de Plantilla superó el tiempo de espera.", "timeout", 0);
+    }
     throw new TeamRosterApiError("La API devolvió una respuesta que no es JSON válido.", "invalid_json", response.status);
+  } finally {
+    window.clearTimeout(timeout);
   }
   if (!response.ok) {
     const detail = typeof body === "object" && body !== null && "detail" in body

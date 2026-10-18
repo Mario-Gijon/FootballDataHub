@@ -2,18 +2,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import type { MatchPage as MatchPageData } from "../api/contracts";
+import type { MatchPage as MatchPageData, TeamRoster } from "../api/contracts";
 
 const globalStyles = readFileSync(resolve(process.cwd(), "src/styles/global.css"), "utf8");
 
-const { loadMatchPage, loadLocalMatchPreview } = vi.hoisted(() => ({
+const { loadMatchPage, loadLocalMatchPreview, loadTeamRoster } = vi.hoisted(() => ({
   loadMatchPage: vi.fn(),
   loadLocalMatchPreview: vi.fn(),
+  loadTeamRoster: vi.fn(),
 }));
 
 vi.mock("../api/client", () => ({
   loadMatchPage,
   loadLocalMatchPreview,
+  loadTeamRoster,
   MatchPageApiError: class MatchPageApiError extends Error {},
 }));
 
@@ -80,6 +82,67 @@ function page(publicationStatus: "approved" | "preview_only"): MatchPageData {
   };
 }
 
+function pendingPage(group: "I" | "II", homeTeamId: number, awayTeamId: number, sourceMatchId: string): MatchPageData {
+  const pending = page("approved");
+  const internalId = `pf-2026-27-group-${group.toLocaleLowerCase("en-US")}-bdfutbol-${sourceMatchId}`;
+  pending.metadata.group = group;
+  pending.match.internal_id = internalId;
+  pending.match.source_match_id = sourceMatchId;
+  pending.match.home_team = { team_id: homeTeamId, name: `Local ${homeTeamId}`, team_url: null, crest_url: null };
+  pending.match.away_team = { team_id: awayTeamId, name: `Visitante ${awayTeamId}`, team_url: null, crest_url: null };
+  pending.match.home_goals = null;
+  pending.match.away_goals = null;
+  pending.match.status = "unplayed";
+  pending.match.unplayed_state = "scheduled";
+  pending.details = null;
+  pending.detail_status = "not_available";
+  return pending;
+}
+
+function expectedRoster(teamId: number, group: "I" | "II" = "II"): TeamRoster {
+  const starterId = teamId * 100 + 1;
+  const substituteId = teamId * 100 + 2;
+  return {
+    status: "available",
+    metadata: {
+      contract_version: 2, validation_status: "valid", source: "BDFutbol",
+      url: `https://www.bdfutbol.com/es/t/t2026-271rf${group === "I" ? "1" : "2"}.html`,
+      competition: "Primera Federación", season: "2026-27", group, team_id: teamId,
+      capture_id: `team-${teamId}`, captured_at: "2026-10-14T10:00:00Z",
+      extractor_version: "test", content_sha256: "a".repeat(64),
+    },
+    team: { team_id: teamId, name: `Equipo ${teamId}`, team_url: `https://www.bdfutbol.com/es/t/t2026-271rf${group === "I" ? "1" : "2"}.html`, crest_url: null },
+    coaches: [],
+    players: [
+      {
+        player_id: starterId, display_name: `Titular ${teamId}`, full_name: null,
+        profile_url: `https://www.bdfutbol.com/es/j/j${starterId}.html`,
+        photo_url: `https://www.bdfutbol.com/i/m/${starterId}.jpg`, age_years: null,
+        birth_date: null, birthplace: null, birthplace_province: null,
+        nationality_flag_url: null, source_position_code: null, verified_indicators: [], source_views: [],
+      },
+      {
+        player_id: substituteId, display_name: `Suplente ${teamId}`, full_name: null,
+        profile_url: null, photo_url: null, age_years: null, birth_date: null,
+        birthplace: null, birthplace_province: null, nationality_flag_url: null,
+        source_position_code: null, verified_indicators: [], source_views: [],
+      },
+    ],
+    memberships: [
+      { player_id: starterId, team_id: teamId, season: "2026-27", competition: "Primera Federación", group, jersey_number: 7, squad_group_label: "Titulares", source_views: [] },
+      { player_id: substituteId, team_id: teamId, season: "2026-27", competition: "Primera Federación", group, jersey_number: 18, squad_group_label: "Suplentes", source_views: [] },
+    ],
+    statistics: [],
+    squad_groups: [
+      { label: "Titulares", player_ids: [starterId] },
+      { label: "Suplentes", player_ids: [substituteId] },
+    ],
+    tactical_visualization: null,
+    source_views: [],
+    warnings: [],
+  } as TeamRoster;
+}
+
 type MatchEvent = NonNullable<NonNullable<MatchPageData["details"]>["events"]>[number];
 
 function event(kind: MatchEvent["event_kind"], minute: string | null, teamId: number, playerId: number | null = null, playerName: string | null = null): MatchEvent {
@@ -95,8 +158,10 @@ describe("MatchPage details", () => {
   beforeEach(() => {
     loadMatchPage.mockReset();
     loadLocalMatchPreview.mockReset();
+    loadTeamRoster.mockReset();
     loadMatchPage.mockResolvedValue(page("approved"));
     loadLocalMatchPreview.mockResolvedValue(page("preview_only"));
+    loadTeamRoster.mockResolvedValue({ status: "not_captured" });
   });
 
   it("renders a clearly local preview, photos, verified internal links and separate substitutions", async () => {
@@ -110,6 +175,7 @@ describe("MatchPage details", () => {
 
     expect(await screen.findByText("Vista previa local · datos exploratorios, no publicados")).toBeInTheDocument();
     expect(loadLocalMatchPreview).toHaveBeenCalledWith("pf-2026-27-group-ii-bdfutbol-272582");
+    expect(loadTeamRoster).not.toHaveBeenCalled();
     expect(screen.getAllByRole("link", { name: "Siverio" })[0]).toHaveAttribute("href", "/players/1001");
     const lineupRows = Array.from(container.querySelectorAll(".match-lineup-side li"));
     const enteredRow = lineupRows.find((row) => row.textContent?.includes("Suplente")) as HTMLElement;
@@ -222,6 +288,7 @@ describe("MatchPage details", () => {
     expect(await screen.findByLabelText("Resultado 0 a 0")).toBeInTheDocument();
     expect(loadMatchPage).toHaveBeenCalledWith(internalId);
     expect(loadLocalMatchPreview).not.toHaveBeenCalled();
+    expect(loadTeamRoster).not.toHaveBeenCalled();
     expect(screen.queryByText(/Vista previa local/)).not.toBeInTheDocument();
     expect(screen.getByText("Entrenador Teruel")).toBeInTheDocument();
     expect(screen.getByText("Entrenador Castilla")).toBeInTheDocument();
@@ -274,6 +341,122 @@ describe("MatchPage details", () => {
     expect(sourceLink).toHaveAttribute("target", "_blank");
     expect(sourceLink).toHaveAttribute("rel", "noreferrer");
     expect(hero.querySelectorAll(".match-page-context")).toHaveLength(1);
+  });
+
+  it("shows non-official reference lineups for an unplayed Group I match using only roster IDs", async () => {
+    const pending = pendingPage("I", 48, 49, "270001");
+    loadMatchPage.mockResolvedValue(pending);
+    loadTeamRoster.mockImplementation(async (teamId: number) => ({
+      status: "available",
+      roster: expectedRoster(teamId, "I"),
+    }));
+
+    const { container } = render(<MatchPage internalId={pending.match.internal_id} onNavigate={vi.fn()} onReturnToResults={vi.fn()} />);
+    expect(await screen.findByText("Titular 48")).toBeInTheDocument();
+    expect(screen.getByText("Suplente 49")).toBeInTheDocument();
+    expect(screen.getByText("Alineación esperada")).toBeInTheDocument();
+    expect(screen.getByText("Basada en las plantillas publicadas de los equipos. No es una alineación oficial ni una convocatoria confirmada para este encuentro.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Titular 48" })).toHaveAttribute("href", "/players/4801");
+    expect(container.querySelector('img[src="https://www.bdfutbol.com/i/m/4801.jpg"]')).toBeInTheDocument();
+    expect(container.querySelectorAll(".match-expected-side")).toHaveLength(2);
+    expect(container.querySelectorAll(".match-expected-side .match-player-row")).toHaveLength(4);
+    expect(container.querySelector(".match-timeline")).not.toBeInTheDocument();
+    expect(container.querySelector(".match-events")).not.toBeInTheDocument();
+    expect(screen.queryByText("Cronología")).not.toBeInTheDocument();
+    expect(screen.queryByText("Finalizado")).not.toBeInTheDocument();
+    expect(loadTeamRoster).toHaveBeenCalledTimes(2);
+    expect(loadTeamRoster).toHaveBeenCalledWith(48, "2026-27");
+    expect(loadTeamRoster).toHaveBeenCalledWith(49, "2026-27");
+  });
+
+  it("keeps the available team when the opponent roster was not captured", async () => {
+    const pending = pendingPage("II", 49, 94, "270002");
+    loadMatchPage.mockResolvedValue(pending);
+    loadTeamRoster.mockImplementation(async (teamId: number) => teamId === 49
+      ? { status: "available", roster: expectedRoster(teamId) }
+      : { status: "not_captured" });
+
+    render(<MatchPage internalId={pending.match.internal_id} onNavigate={vi.fn()} onReturnToResults={vi.fn()} />);
+    expect(await screen.findByText("Titular 49")).toBeInTheDocument();
+    expect(screen.getByLabelText("Alineación esperada de Visitante 94")).toBeInTheDocument();
+    expect(screen.getByText("No hay plantilla de referencia disponible para este equipo.")).toBeInTheDocument();
+  });
+
+  it("shows one availability notice when neither reference roster exists", async () => {
+    const pending = pendingPage("II", 49, 94, "270003");
+    loadMatchPage.mockResolvedValue(pending);
+
+    const { container } = render(<MatchPage internalId={pending.match.internal_id} onNavigate={vi.fn()} onReturnToResults={vi.fn()} />);
+    expect(await screen.findByText("No hay alineaciones orientativas disponibles para este encuentro.")).toBeInTheDocument();
+    expect(container.querySelectorAll(".match-expected-empty")).toHaveLength(1);
+    expect(container.querySelectorAll(".match-expected-side")).toHaveLength(0);
+    expect(screen.getByLabelText("Partido pendiente")).toBeInTheDocument();
+  });
+
+  it("never renders match events for an unplayed fixture even if details are present in the payload", async () => {
+    const pending = pendingPage("II", 49, 94, "270008");
+    pending.details = page("approved").details;
+    pending.detail_status = "available";
+    loadMatchPage.mockResolvedValue(pending);
+
+    const { container } = render(<MatchPage internalId={pending.match.internal_id} onNavigate={vi.fn()} onReturnToResults={vi.fn()} />);
+    expect(await screen.findByText("No hay alineaciones orientativas disponibles para este encuentro.")).toBeInTheDocument();
+    expect(container.querySelector(".match-timeline, .match-events, .match-lineups")).not.toBeInTheDocument();
+    expect(screen.queryByText("Entrenador Teruel")).not.toBeInTheDocument();
+    expect(loadTeamRoster).toHaveBeenCalledTimes(2);
+  });
+
+  it("isolates one roster request error without hiding the other team or the match", async () => {
+    const pending = pendingPage("II", 49, 94, "270004");
+    loadMatchPage.mockResolvedValue(pending);
+    loadTeamRoster.mockImplementation(async (teamId: number) => {
+      if (teamId === 94) throw new Error("offline request failure");
+      return { status: "available", roster: expectedRoster(teamId) };
+    });
+
+    render(<MatchPage internalId={pending.match.internal_id} onNavigate={vi.fn()} onReturnToResults={vi.fn()} />);
+    expect(await screen.findByText("Titular 49")).toBeInTheDocument();
+    expect(screen.getByText("No se pudo cargar la plantilla de referencia.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Partido pendiente")).toBeInTheDocument();
+    expect(screen.queryByText("offline request failure")).not.toBeInTheDocument();
+  });
+
+  it("preserves sparse roster groups, absent photos and jerseys without inventing players", async () => {
+    const pending = pendingPage("II", 49, 94, "270005");
+    const sparse = expectedRoster(49);
+    const onlyPlayer = sparse.players[0]!;
+    onlyPlayer.photo_url = null;
+    onlyPlayer.profile_url = null;
+    sparse.players = [onlyPlayer];
+    sparse.memberships = [{ ...sparse.memberships[0]!, jersey_number: null }];
+    sparse.squad_groups = [{ label: "Titulares", player_ids: [onlyPlayer.player_id] }];
+    loadMatchPage.mockResolvedValue(pending);
+    loadTeamRoster.mockImplementation(async (teamId: number) => teamId === 49
+      ? { status: "available", roster: sparse }
+      : { status: "not_captured" });
+
+    const { container } = render(<MatchPage internalId={pending.match.internal_id} onNavigate={vi.fn()} onReturnToResults={vi.fn()} />);
+    expect(await screen.findByText("Titular 49")).toBeInTheDocument();
+    const homeSide = container.querySelector(".match-expected-side") as HTMLElement;
+    expect(homeSide.querySelectorAll(".match-player-row")).toHaveLength(1);
+    expect(within(homeSide).getByLabelText("Sin fotografía para Titular 49")).toBeInTheDocument();
+    expect(within(homeSide).queryByRole("link", { name: "Titular 49" })).not.toBeInTheDocument();
+    expect(homeSide).not.toHaveTextContent("7");
+    expect(within(homeSide).getByText("La captura no publica esta agrupación.")).toBeInTheDocument();
+  });
+
+  it("does not carry expected rosters across match navigation", async () => {
+    const first = pendingPage("I", 48, 49, "270006");
+    const second = pendingPage("II", 204, 61, "270007");
+    loadMatchPage.mockImplementation(async (internalId: string) => internalId === first.match.internal_id ? first : second);
+    loadTeamRoster.mockImplementation(async (teamId: number) => ({ status: "available", roster: expectedRoster(teamId, teamId === 48 ? "I" : "II") }));
+    const { rerender } = render(<MatchPage internalId={first.match.internal_id} onNavigate={vi.fn()} onReturnToResults={vi.fn()} />);
+    expect(await screen.findByText("Titular 48")).toBeInTheDocument();
+
+    rerender(<MatchPage internalId={second.match.internal_id} onNavigate={vi.fn()} onReturnToResults={vi.fn()} />);
+    expect(await screen.findByText("Titular 204")).toBeInTheDocument();
+    expect(screen.queryByText("Titular 48")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Local 204" })).toBeInTheDocument();
   });
 
   it("omits absent officials and labels the matchday date when the real date is unavailable", async () => {
@@ -474,11 +657,12 @@ describe("MatchPage details", () => {
     expect(rows.every((row) => !row.classList.contains("is-home") && !row.classList.contains("is-away"))).toBe(true);
   });
 
-  it("does not claim a pending match is finished and preserves the no-details state", async () => {
+  it("does not claim a pending match is finished and shows one reference-lineup empty state", async () => {
     const pending = page("approved");
     pending.match.status = "unplayed";
     pending.match.home_goals = null;
     pending.match.away_goals = null;
+    pending.match.unplayed_state = "scheduled";
     pending.details = null;
     pending.detail_status = "not_available";
     loadMatchPage.mockResolvedValue(pending);
@@ -486,20 +670,55 @@ describe("MatchPage details", () => {
     expect(await screen.findByText("Pendiente")).toBeInTheDocument();
     expect(screen.queryByText("Finalizado")).not.toBeInTheDocument();
     expect(container.querySelector(".match-page-score-column .match-finished-label")).not.toBeInTheDocument();
-    expect(screen.getByText("Los detalles de este encuentro todavía no están disponibles.")).toBeInTheDocument();
-    expect(container.querySelector(".match-details-panel, .match-timeline, .match-highlights")).not.toBeInTheDocument();
+    expect(await screen.findByText("No hay alineaciones orientativas disponibles para este encuentro.")).toBeInTheDocument();
+    expect(screen.queryByText("Los detalles de este encuentro todavía no están disponibles.")).not.toBeInTheDocument();
+    expect(container.querySelector(".match-timeline, .match-events")).not.toBeInTheDocument();
   });
 
-  it("uses the published played status for Finalizado even when its score is incomplete", async () => {
+  it("keeps a played match without published details in its existing unavailable state", async () => {
+    const played = page("approved");
+    played.details = null;
+    played.detail_status = "not_available";
+    loadMatchPage.mockResolvedValue(played);
+
+    const { container } = render(<MatchPage internalId={played.match.internal_id} onNavigate={vi.fn()} onReturnToResults={vi.fn()} />);
+    expect(await screen.findByText("Los detalles de este encuentro todavía no están disponibles.")).toBeInTheDocument();
+    expect(screen.queryByText("Alineación esperada")).not.toBeInTheDocument();
+    expect(container.querySelector(".match-details-panel, .match-timeline, .match-events")).not.toBeInTheDocument();
+    expect(loadTeamRoster).not.toHaveBeenCalled();
+  });
+
+  it("does not replace the published played status with an expected lineup when its score is incomplete", async () => {
     const incompletePlayed = page("approved");
+    incompletePlayed.match.status = "played";
     incompletePlayed.match.home_goals = null;
     incompletePlayed.match.away_goals = null;
     incompletePlayed.details = null;
     incompletePlayed.detail_status = "not_available";
     loadMatchPage.mockResolvedValue(incompletePlayed);
+
     const { container } = render(<MatchPage internalId={incompletePlayed.match.internal_id} onNavigate={vi.fn()} onReturnToResults={vi.fn()} />);
-    expect(await screen.findByText("Finalizado")).toBeInTheDocument();
-    expect(screen.getByText("Datos incompletos")).toBeInTheDocument();
+    expect(await screen.findByText("Datos incompletos")).toBeInTheDocument();
+    expect(screen.getByText("Finalizado")).toBeInTheDocument();
+    expect(screen.queryByText("Alineación esperada")).not.toBeInTheDocument();
     expect(container.querySelector(".match-page-score-column .match-finished-label")).toBeInTheDocument();
+    expect(loadTeamRoster).not.toHaveBeenCalled();
+  });
+
+  it("keeps incomplete matches incomplete and never requests expected rosters", async () => {
+    const incomplete = page("approved");
+    incomplete.match.status = "incomplete";
+    incomplete.match.home_goals = null;
+    incomplete.match.away_goals = null;
+    incomplete.match.unplayed_state = null;
+    incomplete.details = null;
+    incomplete.detail_status = "not_available";
+    loadMatchPage.mockResolvedValue(incomplete);
+    const { container } = render(<MatchPage internalId={incomplete.match.internal_id} onNavigate={vi.fn()} onReturnToResults={vi.fn()} />);
+    expect(await screen.findByText("Datos incompletos")).toBeInTheDocument();
+    expect(screen.queryByText("Finalizado")).not.toBeInTheDocument();
+    expect(screen.queryByText("Alineación esperada")).not.toBeInTheDocument();
+    expect(container.querySelector(".match-page-score-column .match-finished-label")).not.toBeInTheDocument();
+    expect(loadTeamRoster).not.toHaveBeenCalled();
   });
 });
