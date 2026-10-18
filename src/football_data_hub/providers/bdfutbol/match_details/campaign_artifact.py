@@ -78,14 +78,23 @@ def _same_candidate(candidate: Mapping[str, Any], expected: Mapping[str, Any]) -
     )
 
 
-def _validate_discovery_event_sequence(events: list[dict[str, Any]]) -> None:
-    """Keep the immutable acquisition sequence valid after an operational close."""
+def _validate_discovery_event_sequence(events: list[dict[str, Any]], *, operational_v2: bool = False) -> None:
+    """Keep acquisition evidence valid while allowing versioned offline lifecycle events."""
 
     event_types = [event.get("event_type") for event in events]
-    if event_types[:3] != ["AUTHORIZED", "STARTED", "DISCOVERY_REVIEW_REQUIRED"] or event_types[3:] not in (
-        [],
-        ["REVIEW_COMPLETED"],
-    ):
+    if event_types[:3] != ["AUTHORIZED", "STARTED", "DISCOVERY_REVIEW_REQUIRED"]:
+        raise CampaignArtifactError("La secuencia del candidato no es la adquisición esperada")
+    if operational_v2:
+        allowed = [
+            [], ["VALIDATED"], ["VALIDATED", "DRAFT_PREPARED"],
+            ["VALIDATED", "DRAFT_PREPARED", "DOCUMENT_APPROVED"],
+            ["VALIDATED", "DRAFT_PREPARED", "DOCUMENT_APPROVED", "PUBLISHED"],
+            ["VALIDATED", "DRAFT_PREPARED", "DOCUMENT_APPROVED", "PUBLISHED", "REVIEW_COMPLETED"],
+            ["VALIDATION_FAILED"],
+        ]
+        if event_types[3:] not in allowed:
+            raise CampaignArtifactError("La secuencia de validación/publicación v2 no es válida")
+    elif event_types[3:] not in ([], ["REVIEW_COMPLETED"]):
         raise CampaignArtifactError("La secuencia del candidato no es la adquisición esperada")
 
 
@@ -128,11 +137,20 @@ def parse_campaign_saved_artifact(
     except ValueError as exc:
         raise CampaignArtifactError("El artefacto está fuera del almacén configurado") from exc
 
-    ledger = MatchDetailCampaignLedger(campaigns_root)
     try:
-        campaign, preflight, events = ledger.inspect_persisted_campaign_read_only(
-            campaign_root, internal_id=str(expected_match.get("internal_id"))
-        )
+        initial_campaign, _ = _read_canonical_json(campaign_root / "campaign.json", "campaign.json")
+        operational_v2 = initial_campaign.get("schema_version") == "football_data_hub.match_detail_operational_campaign.v2"
+        if operational_v2:
+            from .operational_campaign import OperationalMatchCampaignLedger
+
+            campaign, preflight, events = OperationalMatchCampaignLedger(campaigns_root).inspect(
+                campaign_root, internal_id=str(expected_match.get("internal_id"))
+            )
+        else:
+            ledger = MatchDetailCampaignLedger(campaigns_root)
+            campaign, preflight, events = ledger.inspect_persisted_campaign_read_only(
+                campaign_root, internal_id=str(expected_match.get("internal_id"))
+            )
     except MatchCampaignIntegrityError as exc:
         raise CampaignArtifactError(f"El ledger de campaña no es íntegro: {exc}") from exc
 
@@ -223,7 +241,7 @@ def parse_campaign_saved_artifact(
         or preflight.get("capture_promotion_enabled") is not False
     ):
         raise CampaignArtifactError("El ledger no acredita una única adquisición no promovida")
-    _validate_discovery_event_sequence(events)
+    _validate_discovery_event_sequence(events, operational_v2=operational_v2)
     authorization = events[0].get("authorization")
     started = events[1]
     resolved = events[2]

@@ -1,0 +1,756 @@
+from __future__ import annotations
+
+import dataclasses
+import copy
+import hashlib
+import json
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+
+from football_data_hub.providers.bdfutbol.match_details import (
+    operational_campaign as operational,
+)
+from football_data_hub.providers.bdfutbol.match_details.campaign import (
+    MatchCampaignAuthorizationError,
+    MatchCampaignIntegrityError,
+    SimulatedAccessResponse,
+    SimulatedMatchAccessAdapter,
+    review_completion_confirmation,
+)
+from football_data_hub.providers.bdfutbol.match_details.inventory import (
+    build_match_detail_inventory,
+)
+from football_data_hub.providers.bdfutbol.match_details.scalable_campaigns import (
+    build_match_campaign_inventory,
+    build_match_campaign_proposal,
+    classify_match_campaign_inventory,
+    write_match_campaign_proposal,
+)
+from football_data_hub_api import match_details_dataset as api_details
+from tests.match_detail_fixtures import make_verified_generation
+
+
+def _sha(raw: bytes) -> str:
+    return hashlib.sha256(raw).hexdigest()
+
+
+def _canonical(value) -> bytes:
+    return (
+        json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    ).encode()
+
+
+def _fixture(tmp_path: Path, monkeypatch):
+    data_root = tmp_path / "data"
+    generation_id = "match-00-testgeneration"
+    generation_root = data_root / "matches/generations" / generation_id
+    generation_root.mkdir(parents=True)
+    verified = make_verified_generation()
+    verified = dataclasses.replace(
+        verified,
+        manifest_path=generation_root / "manifest.json",
+        data_root=data_root,
+    )
+    for capture in verified.manifest_payload["source_captures"]:
+        capture["source_snapshot_sha256"] = "a" * 64
+        capture["files"]["source_html"]["sha256"] = "b" * 64
+        capture["files"]["normalized_matches"]["sha256"] = "c" * 64
+    for group in ("I", "II"):
+        for team in verified.matches_payload["groups"][group]["teams"]:
+            team["name"] = f"Equipo {team['team_id']}"
+    # Third played fixture makes this a variable-size, cross-group proposal.
+    verified.matches_payload["groups"]["I"]["matches"].append(
+        {
+            "internal_id": "pf-2026-27-group-i-bdfutbol-269411",
+            "source_match_id": "269411",
+            "status": "played",
+            "source_match_url": "https://www.bdfutbol.com/es/p/p.php?id=269411",
+            "home_team_id": 102,
+            "away_team_id": 103,
+            "matchday": 2,
+            "source_match_date": "2026-09-02",
+            "matchday_date": "2026-09-02",
+            "home_goals": 1,
+            "away_goals": 1,
+        }
+    )
+    monkeypatch.setattr(
+        operational, "load_verified_match_generation", lambda *_a, **_kw: verified
+    )
+
+    campaign_inventory = build_match_campaign_inventory(verified)
+    report = classify_match_campaign_inventory(campaign_inventory)
+    plan = build_match_campaign_proposal(report, groups=("I", "II"), limit=3)
+    assert plan["candidate_count"] == 3
+    proposal_root = tmp_path / "proposals"
+    proposal_dir = write_match_campaign_proposal(proposal_root, plan)
+
+    detail_inventory = build_match_detail_inventory(verified)
+    store_root = data_root / "matches/details"
+    ledger = operational.OperationalMatchCampaignLedger(store_root / "campaigns")
+    return SimpleNamespace(
+        data_root=data_root,
+        generation_root=generation_root,
+        verified=verified,
+        plan=plan,
+        proposal_dir=proposal_dir,
+        inventory=detail_inventory,
+        store_root=store_root,
+        ledger=ledger,
+        candidate=plan["candidates"][0],
+    )
+
+
+def _initialize(fixture):
+    return fixture.ledger.initialize(
+        proposal_dir=fixture.proposal_dir,
+        generation_root=fixture.generation_root,
+        data_root=fixture.data_root,
+    )
+
+
+def _current_status(fixture, state="NOT_AUTHORIZED"):
+    candidate = fixture.candidate
+    row = {
+        **candidate,
+        "detail_status": "included_in_existing_campaign"
+        if state == "NOT_AUTHORIZED"
+        else "authorized_not_executed",
+        "campaign": {
+            "campaign_id": fixture.plan["campaign_id"],
+            "campaign_version": 2,
+            "state": state,
+        },
+    }
+    return row
+
+
+def _authorize(fixture):
+    return fixture.ledger.authorize(
+        campaign_id=fixture.plan["campaign_id"],
+        internal_id=fixture.candidate["internal_id"],
+        confirmed_url=fixture.candidate["source_match_url"],
+        operator="offline-test-operator",
+        confirmation=operational.AUTHORIZE_CONFIRMATION,
+        current_status=_current_status(fixture),
+        data_root=fixture.data_root,
+    )
+
+
+def _execute(fixture, adapter):
+    authorization_id = fixture.ledger.candidate_events(
+        fixture.plan["campaign_id"], fixture.candidate["internal_id"]
+    )[0]["authorization"]["authorization_id"]
+    return fixture.ledger.execute_simulated(
+        campaign_id=fixture.plan["campaign_id"],
+        internal_id=fixture.candidate["internal_id"],
+        authorization_id=authorization_id,
+        confirmed_url=fixture.candidate["source_match_url"],
+        adapter=adapter,
+        store_root=fixture.store_root,
+        store_inventory=fixture.inventory,
+        current_status=_current_status(fixture, "AUTHORIZED"),
+        published=False,
+        captured=False,
+        blocked=False,
+    )
+
+
+def test_v2_initialization_is_immutable_idempotent_and_never_authorizes(
+    tmp_path, monkeypatch
+):
+    fixture = _fixture(tmp_path, monkeypatch)
+    first = _initialize(fixture)
+    second = _initialize(fixture)
+    assert first["status"] == "CAMPAIGN_INITIALIZED_NOT_AUTHORIZED"
+    assert second["status"] == "CAMPAIGN_ALREADY_INITIALIZED"
+    preflight = fixture.ledger.preflight(fixture.plan["campaign_id"])
+    assert preflight["candidate_count"] == 3
+    assert preflight["candidate_states"] == {"NOT_AUTHORIZED": 3}
+    assert preflight["http_enabled"] is False
+    assert preflight["browser_started"] is False
+    assert all(item["navigation_count"] == 0 for item in preflight["candidates"])
+
+
+def test_v2_rejects_tampered_proposal_and_campaign_manifest(tmp_path, monkeypatch):
+    fixture = _fixture(tmp_path, monkeypatch)
+    plan_path = fixture.proposal_dir / "plan.json"
+    plan_path.write_bytes(plan_path.read_bytes().replace(b"269400", b"269401"))
+    with pytest.raises(ValueError, match="Hash|contrato|coincide"):
+        _initialize(fixture)
+
+    fixture = _fixture(tmp_path / "second", monkeypatch)
+    _initialize(fixture)
+    manifest_path = fixture.ledger.root / fixture.plan["campaign_id"] / "manifest.json"
+    manifest_path.write_bytes(_canonical({"schema_version": "tampered"}))
+    with pytest.raises(MatchCampaignIntegrityError):
+        fixture.ledger.preflight(fixture.plan["campaign_id"])
+
+    fixture = _fixture(tmp_path / "inventory", monkeypatch)
+    _initialize(fixture)
+    inventory_path = (
+        fixture.store_root
+        / "inventories"
+        / fixture.inventory["inventory_id"]
+        / "inventory.json"
+    )
+    inventory_path.write_bytes(inventory_path.read_bytes() + b" ")
+    with pytest.raises(MatchCampaignIntegrityError):
+        fixture.ledger.preflight(fixture.plan["campaign_id"])
+
+
+def test_v2_campaign_membership_rejects_duplicate_candidate_in_another_campaign(
+    tmp_path, monkeypatch
+):
+    fixture = _fixture(tmp_path, monkeypatch)
+    _initialize(fixture)
+    from football_data_hub.providers.bdfutbol.match_details.scalable_campaigns import (
+        build_match_campaign_inventory,
+        build_match_campaign_proposal,
+        classify_match_campaign_inventory,
+        write_match_campaign_proposal,
+    )
+
+    second_plan = build_match_campaign_proposal(
+        classify_match_campaign_inventory(
+            build_match_campaign_inventory(fixture.verified)
+        ),
+        groups=("I", "II"),
+        limit=2,
+    )
+    second_dir = write_match_campaign_proposal(
+        tmp_path / "other-proposals", second_plan
+    )
+    with pytest.raises(MatchCampaignAuthorizationError, match="gestionados"):
+        fixture.ledger.initialize(
+            proposal_dir=second_dir,
+            generation_root=fixture.generation_root,
+            data_root=fixture.data_root,
+        )
+
+
+@pytest.mark.parametrize("changed_field", ["status", "home_team_id", "home_goals"])
+def test_v2_initialization_rejects_nonplayed_or_conflicting_candidate_source(
+    tmp_path, monkeypatch, changed_field
+):
+    fixture = _fixture(tmp_path, monkeypatch)
+    changed = copy.deepcopy(fixture.verified)
+    row = next(
+        item
+        for item in changed.matches_payload["groups"]["I"]["matches"]
+        if item["source_match_id"] == fixture.candidate["source_match_id"]
+    )
+    if changed_field == "status":
+        row["status"] = "unplayed"
+        row["home_goals"] = row["away_goals"] = None
+    elif changed_field == "home_team_id":
+        row["home_team_id"] = 104
+    else:
+        row["home_goals"] = 4
+    monkeypatch.setattr(operational, "load_verified_match_generation", lambda *_a, **_kw: changed)
+    with pytest.raises(MatchCampaignIntegrityError, match="Candidato contradictorio"):
+        _initialize(fixture)
+
+
+def test_v2_authorization_is_individual_and_consumed_once(tmp_path, monkeypatch):
+    fixture = _fixture(tmp_path, monkeypatch)
+    _initialize(fixture)
+    with pytest.raises(MatchCampaignAuthorizationError):
+        fixture.ledger.execute_real(
+            campaign_id=fixture.plan["campaign_id"],
+            internal_id=fixture.candidate["internal_id"],
+            authorization_id="not-authorized",
+            confirmed_url=fixture.candidate["source_match_url"],
+            data_root=fixture.data_root,
+            profile_dir=fixture.data_root
+            / "browser-profiles"
+            / f"match-detail-v2-{fixture.candidate['source_match_id']}",
+            confirmation=operational.EXECUTE_CONFIRMATION,
+            player_browser_idle_confirmation=operational.PLAYER_IDLE_CONFIRMATION,
+            store_root=fixture.store_root,
+            store_inventory=fixture.inventory,
+            current_status=_current_status(fixture),
+            published=False,
+            captured=False,
+            blocked=False,
+            access_runner=lambda *_a, **_kw: pytest.fail(
+                "browser adapter must not be invoked in this offline test"
+            ),
+        )
+    with pytest.raises(MatchCampaignAuthorizationError):
+        fixture.ledger.authorize(
+            campaign_id=fixture.plan["campaign_id"],
+            internal_id=fixture.candidate["internal_id"],
+            confirmed_url="https://www.bdfutbol.com/es/p/p.php?id=00000",
+            operator="offline-test-operator",
+            confirmation=operational.AUTHORIZE_CONFIRMATION,
+            current_status=_current_status(fixture),
+            data_root=fixture.data_root,
+        )
+    authorization_id = _authorize(fixture)
+    assert authorization_id.startswith("match-detail-authorization-v2-")
+    with pytest.raises(MatchCampaignAuthorizationError):
+        _authorize(fixture)
+    assert (
+        fixture.ledger.preflight(fixture.plan["campaign_id"])["candidate_states"][
+            "AUTHORIZED"
+        ]
+        == 1
+    )
+
+
+def test_simulated_acquisition_writes_one_immutable_artifact_and_blocks_second_navigation(
+    tmp_path, monkeypatch
+):
+    fixture = _fixture(tmp_path, monkeypatch)
+    _initialize(fixture)
+    _authorize(fixture)
+    adapter = SimulatedMatchAccessAdapter(
+        SimulatedAccessResponse(
+            final_url=fixture.candidate["source_match_url"],
+            http_status=200,
+            html=b"<!doctype html><html><head><title>Fixture match</title></head><body>Fixture</body></html>",
+            page_title="Fixture match",
+            access_classification="VALID",
+        )
+    )
+    result = _execute(fixture, adapter)
+    assert result["status"] == "DISCOVERY_REVIEW_REQUIRED"
+    assert adapter.calls == [fixture.candidate["source_match_url"]]
+    artifact = fixture.ledger.preflight(fixture.plan["campaign_id"])["candidates"][0][
+        "artifact"
+    ]
+    assert artifact["artifact_id"]
+    assert (
+        fixture.ledger.candidate_events(
+            fixture.plan["campaign_id"], fixture.candidate["internal_id"]
+        )[-1]["event_type"]
+        == "DISCOVERY_REVIEW_REQUIRED"
+    )
+    import football_data_hub.providers.bdfutbol.match_details.campaign_artifact as campaign_artifact
+
+    parser_result = object()
+    monkeypatch.setattr(
+        campaign_artifact,
+        "parse_match_detail_html",
+        lambda *_args, **_kwargs: parser_result,
+    )
+    parsed = campaign_artifact.parse_campaign_saved_artifact(
+        fixture.ledger.root
+        / fixture.plan["campaign_id"]
+        / artifact["artifact_relative_path"],
+        expected_match=next(
+            row
+            for row in fixture.inventory["matches"]
+            if row["internal_id"] == fixture.candidate["internal_id"]
+        ),
+        verified_generation=fixture.verified,
+        data_root=fixture.data_root,
+    )
+    assert parsed is parser_result
+    with pytest.raises(MatchCampaignAuthorizationError):
+        _execute(fixture, SimulatedMatchAccessAdapter(adapter.response))
+
+
+def test_abrupt_interruption_stays_blocked_and_access_denial_stops(
+    tmp_path, monkeypatch
+):
+    fixture = _fixture(tmp_path, monkeypatch)
+    _initialize(fixture)
+    _authorize(fixture)
+    interrupted = SimulatedMatchAccessAdapter(error=KeyboardInterrupt())
+    with pytest.raises(KeyboardInterrupt):
+        _execute(fixture, interrupted)
+    state = fixture.ledger.preflight(fixture.plan["campaign_id"])["candidates"][0][
+        "state"
+    ]
+    assert state == "INTERRUPTED_REQUIRES_REVIEW"
+    retry = SimulatedMatchAccessAdapter(
+        SimulatedAccessResponse(
+            final_url=fixture.candidate["source_match_url"],
+            http_status=200,
+            html=b"<html><body>Never fetched</body></html>",
+            access_classification="VALID",
+        )
+    )
+    with pytest.raises(MatchCampaignAuthorizationError):
+        _execute(fixture, retry)
+    assert retry.calls == []
+
+    second = _fixture(tmp_path / "denied", monkeypatch)
+    _initialize(second)
+    _authorize(second)
+    denial = SimulatedMatchAccessAdapter(
+        SimulatedAccessResponse(
+            final_url=second.candidate["source_match_url"],
+            http_status=403,
+            html=b"forbidden",
+            access_classification="ACCESS_DENIED",
+            denial_detected=True,
+        )
+    )
+    result = _execute(second, denial)
+    assert result["status"] == "STOPPED"
+    assert denial.calls == [second.candidate["source_match_url"]]
+    assert (
+        second.ledger.preflight(second.plan["campaign_id"])["candidates"][0]["state"]
+        == "STOPPED"
+    )
+
+
+def test_simulated_challenge_stops_and_consumes_the_single_authorization(
+    tmp_path, monkeypatch
+):
+    fixture = _fixture(tmp_path, monkeypatch)
+    _initialize(fixture)
+    _authorize(fixture)
+    adapter = SimulatedMatchAccessAdapter(
+        SimulatedAccessResponse(
+            final_url=fixture.candidate["source_match_url"],
+            http_status=200,
+            html=b"challenge content",
+            access_classification="CHALLENGE_REQUIRED",
+            challenge_detected=True,
+        )
+    )
+    result = _execute(fixture, adapter)
+    assert result["status"] == "STOPPED"
+    assert result["error_code"] == "CONTENT_NOT_VERIFIED"
+    assert len(adapter.calls) == 1
+    with pytest.raises(MatchCampaignAuthorizationError):
+        _execute(fixture, SimulatedMatchAccessAdapter(adapter.response))
+
+
+@dataclasses.dataclass
+class _FakeValidation:
+    semantic_valid: bool = True
+    parser_version: str = "offline-test-parser"
+    checks: tuple = ()
+    errors: tuple = ()
+
+
+def _valid_draft(fixture, artifact_event):
+    details = {
+        "source_html_sha256": artifact_event["artifact"]["source_html_sha256"],
+        "home_goals": 0,
+        "away_goals": 0,
+    }
+    draft = {
+        "schema_version": api_details.CAMPAIGN_DRAFT_SCHEMA,
+        "publication_id": "campaign-offline-" + fixture.candidate["source_match_id"],
+        "source_kind": "campaign_discovery",
+        "internal_id": fixture.candidate["internal_id"],
+        "source_match_id": fixture.candidate["source_match_id"],
+        "inventory_id": fixture.ledger._read_campaign(
+            fixture.ledger.root / fixture.plan["campaign_id"]
+        )[0]["source"]["inventory_id"],
+        "source_generation_id": fixture.verified.generation_id,
+        "source_generation_manifest_sha256": fixture.verified.manifest_sha256,
+        "source_capture_id": "capture-I",
+        "season": "2026-27",
+        "competition": "Primera Federación",
+        "group": fixture.candidate["group"],
+        "matchday": fixture.candidate["matchday"],
+        "source_match_date": fixture.candidate["source_match_date"],
+        "home_team_id": fixture.candidate["home_team_id"],
+        "away_team_id": fixture.candidate["away_team_id"],
+        "home_team_name": fixture.candidate["home_team_name"],
+        "away_team_name": fixture.candidate["away_team_name"],
+        "campaign_id": fixture.plan["campaign_id"],
+        "artifact_id": artifact_event["artifact"]["artifact_id"],
+        "navigation_attempt_id": artifact_event["attempt_id"],
+        "artifact_manifest_sha256": artifact_event["artifact"]["manifest_sha256"],
+        "source_html_sha256": artifact_event["artifact"]["source_html_sha256"],
+        "capture_promotion_enabled": False,
+        "promotion_eligible": False,
+        "access_status": "VALID",
+        "semantic_valid": True,
+        "details": details,
+    }
+    draft["details_sha256"] = api_details._sha256(api_details._canonical_json(details))
+    return draft
+
+
+def test_v2_offline_pipeline_reaches_review_completion_with_human_approval(
+    tmp_path, monkeypatch
+):
+    fixture = _fixture(tmp_path, monkeypatch)
+    _initialize(fixture)
+    _authorize(fixture)
+    _execute(
+        fixture,
+        SimulatedMatchAccessAdapter(
+            SimulatedAccessResponse(
+                final_url=fixture.candidate["source_match_url"],
+                http_status=200,
+                html=b"<html><head><title>Fixture</title></head><body>Fixture</body></html>",
+                page_title="Fixture",
+                access_classification="VALID",
+            )
+        ),
+    )
+
+    import football_data_hub.providers.bdfutbol.match_details.campaign_artifact as artifacts
+
+    monkeypatch.setattr(
+        artifacts,
+        "parse_campaign_saved_artifact",
+        lambda *_a, **_kw: SimpleNamespace(validation=_FakeValidation()),
+    )
+    validated = fixture.ledger.validate_offline_artifact(
+        campaign_id=fixture.plan["campaign_id"],
+        internal_id=fixture.candidate["internal_id"],
+        data_root=fixture.data_root,
+    )
+    assert validated["status"] == "VALIDATED"
+    events = fixture.ledger.candidate_events(
+        fixture.plan["campaign_id"], fixture.candidate["internal_id"]
+    )
+    discovery = next(
+        item for item in events if item["event_type"] == "DISCOVERY_REVIEW_REQUIRED"
+    )
+    draft = _valid_draft(fixture, discovery)
+    monkeypatch.setattr(
+        api_details, "build_campaign_publication_draft", lambda **_kw: draft
+    )
+    monkeypatch.setattr(
+        fixture.ledger,
+        "_publication_inputs",
+        lambda **_kw: (
+            fixture.data_root,
+            fixture.generation_root,
+            SimpleNamespace(),
+            set(),
+        ),
+    )
+    prepared = fixture.ledger.prepare_draft(
+        campaign_id=fixture.plan["campaign_id"],
+        internal_id=fixture.candidate["internal_id"],
+        data_root=fixture.data_root,
+        generation_root=fixture.generation_root,
+        player_inventory_root=tmp_path,
+        player_compact_root=tmp_path,
+        player_team_captures_root=tmp_path,
+        player_published_index_path=tmp_path / "players.json",
+    )
+    assert prepared["status"] == "DRAFT_PREPARED"
+    repeated_preparation = fixture.ledger.prepare_draft(
+        campaign_id=fixture.plan["campaign_id"],
+        internal_id=fixture.candidate["internal_id"],
+        data_root=fixture.data_root,
+        generation_root=fixture.generation_root,
+        player_inventory_root=tmp_path,
+        player_compact_root=tmp_path,
+        player_team_captures_root=tmp_path,
+        player_published_index_path=tmp_path / "players.json",
+    )
+    assert repeated_preparation["draft_sha256"] == prepared["draft_sha256"]
+
+    draft_path = (
+        fixture.data_root
+        / next(
+            item
+            for item in fixture.ledger.candidate_events(
+                fixture.plan["campaign_id"], fixture.candidate["internal_id"]
+            )
+            if item["event_type"] == "DRAFT_PREPARED"
+        )["draft_path"]
+    )
+    original_draft_bytes = draft_path.read_bytes()
+    draft_path.write_bytes(
+        original_draft_bytes.replace(
+            b'"semantic_valid":true', b'"semantic_valid":false'
+        )
+    )
+    with pytest.raises(MatchCampaignIntegrityError, match="borrador|Borrador"):
+        fixture.ledger.candidate_events(
+            fixture.plan["campaign_id"], fixture.candidate["internal_id"]
+        )
+    draft_path.write_bytes(original_draft_bytes)
+    with pytest.raises(MatchCampaignAuthorizationError):
+        fixture.ledger.publish(
+            campaign_id=fixture.plan["campaign_id"],
+            internal_id=fixture.candidate["internal_id"],
+            data_root=fixture.data_root,
+            generation_root=fixture.generation_root,
+            published_root=fixture.store_root / "published",
+            store_root=fixture.store_root,
+            player_inventory_root=tmp_path,
+            player_compact_root=tmp_path,
+            player_team_captures_root=tmp_path,
+            player_published_index_path=tmp_path / "players.json",
+        )
+
+    approval = api_details.build_campaign_approval_receipt(
+        draft,
+        approved_by="synthetic reviewer",
+        confirm_internal_id=draft["internal_id"],
+        confirm_source_html_sha256=draft["source_html_sha256"],
+        confirm_details_sha256=draft["details_sha256"],
+        confirm_action=api_details.campaign_approval_confirmation(draft),
+    )
+    draft_path = (
+        fixture.data_root
+        / next(
+            item
+            for item in fixture.ledger.candidate_events(
+                fixture.plan["campaign_id"], fixture.candidate["internal_id"]
+            )
+            if item["event_type"] == "DRAFT_PREPARED"
+        )["draft_path"]
+    )
+    receipt_path = draft_path.with_name(
+        draft_path.name.removesuffix("-draft.json") + "-approval.json"
+    )
+    with pytest.raises(api_details.MatchDetailsLoadError):
+        fixture.ledger.approve_draft(
+            campaign_id=fixture.plan["campaign_id"],
+            internal_id=fixture.candidate["internal_id"],
+            draft_path=draft_path,
+            approved_by="synthetic reviewer",
+            confirm_internal_id="pf-2026-27-group-ii-bdfutbol-272582",
+            confirm_source_html_sha256=draft["source_html_sha256"],
+            confirm_details_sha256=draft["details_sha256"],
+            confirm_action=api_details.campaign_approval_confirmation(draft),
+            data_root=fixture.data_root,
+        )
+    monkeypatch.setattr(
+        api_details,
+        "build_campaign_approval_receipt",
+        lambda *_a, **_kw: approval,
+    )
+    approved = fixture.ledger.approve_draft(
+        campaign_id=fixture.plan["campaign_id"],
+        internal_id=fixture.candidate["internal_id"],
+        draft_path=draft_path,
+        approved_by="synthetic reviewer",
+        confirm_internal_id=draft["internal_id"],
+        confirm_source_html_sha256=draft["source_html_sha256"],
+        confirm_details_sha256=draft["details_sha256"],
+        confirm_action=api_details.campaign_approval_confirmation(draft),
+        data_root=fixture.data_root,
+    )
+    assert approved["status"] == "DOCUMENT_APPROVED"
+    assert receipt_path.is_file()
+    repeated_approval = fixture.ledger.approve_draft(
+        campaign_id=fixture.plan["campaign_id"],
+        internal_id=fixture.candidate["internal_id"],
+        draft_path=draft_path,
+        approved_by="synthetic reviewer",
+        confirm_internal_id=draft["internal_id"],
+        confirm_source_html_sha256=draft["source_html_sha256"],
+        confirm_details_sha256=draft["details_sha256"],
+        confirm_action=api_details.campaign_approval_confirmation(draft),
+        data_root=fixture.data_root,
+    )
+    assert repeated_approval["status"] == "DOCUMENT_ALREADY_APPROVED"
+
+    published_root = fixture.store_root / "published"
+
+    def fake_publish(_draft, **_kwargs):
+        published_root.mkdir(parents=True, exist_ok=True)
+        (published_root / "packages" / draft["publication_id"]).mkdir(parents=True)
+        manifest = {
+            "publication_id": draft["publication_id"],
+            "internal_id": draft["internal_id"],
+            "details_sha256": draft["details_sha256"],
+        }
+        manifest_path = (
+            published_root / "packages" / draft["publication_id"] / "manifest.json"
+        )
+        manifest_path.write_bytes(_canonical(manifest))
+        (published_root / "index.json").write_text(
+            json.dumps(
+                {
+                    "publications": [
+                        {
+                            "internal_id": draft["internal_id"],
+                            "publication_id": draft["publication_id"],
+                            "package_path": f"packages/{draft['publication_id']}",
+                        }
+                    ]
+                }
+            )
+        )
+        return {"publication_id": draft["publication_id"]}
+
+    loaded_doc = SimpleNamespace(
+        source=SimpleNamespace(details_sha256=draft["details_sha256"])
+    )
+    monkeypatch.setattr(
+        api_details, "publish_campaign_match_detail_draft", fake_publish
+    )
+    monkeypatch.setattr(
+        api_details,
+        "load_published_match_details",
+        lambda *_a, **_kw: {draft["internal_id"]: loaded_doc},
+    )
+    published = fixture.ledger.publish(
+        campaign_id=fixture.plan["campaign_id"],
+        internal_id=fixture.candidate["internal_id"],
+        data_root=fixture.data_root,
+        generation_root=fixture.generation_root,
+        published_root=published_root,
+        store_root=fixture.store_root,
+        player_inventory_root=tmp_path,
+        player_compact_root=tmp_path,
+        player_team_captures_root=tmp_path,
+        player_published_index_path=tmp_path / "players.json",
+    )
+    assert published["status"] == "PUBLISHED"
+    verification = fixture.ledger.verify_publication(
+        campaign_id=fixture.plan["campaign_id"],
+        internal_id=fixture.candidate["internal_id"],
+        data_root=fixture.data_root,
+        generation_root=fixture.generation_root,
+        published_root=published_root,
+        store_root=fixture.store_root,
+        player_inventory_root=tmp_path,
+        player_compact_root=tmp_path,
+        player_team_captures_root=tmp_path,
+        player_published_index_path=tmp_path / "players.json",
+    )
+    assert verification["status"] == "PUBLISHED_VERIFIED"
+    confirmation = review_completion_confirmation(
+        draft["source_match_id"], draft["source_html_sha256"], draft["details_sha256"]
+    )
+    closed = fixture.ledger.complete_review(
+        campaign_id=fixture.plan["campaign_id"],
+        internal_id=fixture.candidate["internal_id"],
+        reviewer="synthetic reviewer",
+        confirmation=confirmation,
+        data_root=fixture.data_root,
+        generation_root=fixture.generation_root,
+        published_root=published_root,
+        store_root=fixture.store_root,
+        player_inventory_root=tmp_path,
+        player_compact_root=tmp_path,
+        player_team_captures_root=tmp_path,
+        player_published_index_path=tmp_path / "players.json",
+    )
+    assert closed["status"] == "REVIEW_COMPLETED"
+    assert (
+        fixture.ledger.preflight(fixture.plan["campaign_id"])["candidate_states"][
+            "REVIEW_COMPLETED"
+        ]
+        == 1
+    )
+
+    from football_data_hub.providers.bdfutbol.match_details.scalable_campaign_cli import (
+        _read_campaign_states,
+    )
+
+    campaign_states, _summaries = _read_campaign_states(fixture.ledger.root)
+    refreshed = classify_match_campaign_inventory(
+        build_match_campaign_inventory(fixture.verified),
+        published_ids={fixture.candidate["internal_id"]},
+        campaign_states=campaign_states,
+    )
+    final_row = next(
+        row
+        for row in refreshed["matches"]
+        if row["internal_id"] == fixture.candidate["internal_id"]
+    )
+    assert final_row["detail_status"] == "review_completed"

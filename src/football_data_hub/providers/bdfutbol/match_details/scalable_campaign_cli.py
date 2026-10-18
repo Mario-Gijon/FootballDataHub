@@ -53,6 +53,11 @@ def _parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command", required=True)
     status = commands.add_parser("status", help="Consulta cobertura y ciclo de vida sin modificar datos")
     status.add_argument("--include-matches", action="store_true", help="Incluye el registro de los 760 encuentros")
+    status.add_argument("--group", choices=("I", "II"))
+    status.add_argument("--matchday-from", type=int)
+    status.add_argument("--matchday-to", type=int)
+    status.add_argument("--campaign-id")
+    status.add_argument("--state")
     propose = commands.add_parser("propose", help="Crea una propuesta no autorizante y sin navegación")
     propose.add_argument("--groups", choices=("I", "II", "both"), default="both")
     propose.add_argument("--matchday-from", type=int)
@@ -60,6 +65,60 @@ def _parser() -> argparse.ArgumentParser:
     propose.add_argument("--limit", type=int, default=10)
     propose.add_argument("--persist", action="store_true", help="Guarda el plan inmutable bajo matches/details/campaign-proposals")
     propose.add_argument("--newly-played-only", action="store_true", help="Limita a nuevos disputados; requiere --previous-generation-root")
+    initialize = commands.add_parser("initialize", help="Inicializa una propuesta verificada como campaña v2; no autoriza")
+    initialize.add_argument("--proposal-id", required=True)
+    campaign_preflight = commands.add_parser("campaign-preflight", help="Consulta integridad y progreso de una campaña v2")
+    campaign_preflight.add_argument("--campaign-id", required=True)
+    candidates = commands.add_parser("candidates", help="Lista candidatos de una campaña v2")
+    candidates.add_argument("--campaign-id", required=True)
+    candidates.add_argument("--group", choices=("I", "II"))
+    candidates.add_argument("--matchday", type=int)
+    candidates.add_argument("--state")
+    authorize = commands.add_parser("authorize", help="Autoriza una sola navegación para un partido")
+    authorize.add_argument("--campaign-id", required=True)
+    authorize.add_argument("--internal-id", required=True)
+    authorize.add_argument("--confirm-url", required=True)
+    authorize.add_argument("--operator", required=True)
+    authorize.add_argument("--confirm-authorization", required=True)
+    execute = commands.add_parser("execute", help="Consume una autorización y realiza una única navegación real")
+    execute.add_argument("--campaign-id", required=True)
+    execute.add_argument("--internal-id", required=True)
+    execute.add_argument("--authorization-id", required=True)
+    execute.add_argument("--confirm-url", required=True)
+    execute.add_argument("--confirm-execution", required=True)
+    execute.add_argument("--player-browser-idle-confirmation", required=True)
+    inspect = commands.add_parser("inspect", help="Consulta el estado y artefacto local de un candidato")
+    inspect.add_argument("--campaign-id", required=True)
+    inspect.add_argument("--internal-id", required=True)
+    validate = commands.add_parser("validate", help="Valida offline el artefacto semántico")
+    validate.add_argument("--campaign-id", required=True)
+    validate.add_argument("--internal-id", required=True)
+    prepare = commands.add_parser("prepare", help="Prepara el borrador deportivo offline")
+    prepare.add_argument("--campaign-id", required=True)
+    prepare.add_argument("--internal-id", required=True)
+    preview = commands.add_parser("preview", help="Muestra el borrador inmutable para revisión humana")
+    preview.add_argument("--campaign-id", required=True)
+    preview.add_argument("--internal-id", required=True)
+    approve = commands.add_parser("approve", help="Registra aprobación humana específica y ligada a hashes")
+    approve.add_argument("--campaign-id", required=True)
+    approve.add_argument("--internal-id", required=True)
+    approve.add_argument("--draft-path", type=Path, required=True)
+    approve.add_argument("--approved-by", required=True)
+    approve.add_argument("--confirm-internal-id", required=True)
+    approve.add_argument("--confirm-source-html-sha256", required=True)
+    approve.add_argument("--confirm-details-sha256", required=True)
+    approve.add_argument("--confirm-action", required=True)
+    publish = commands.add_parser("publish", help="Publica un borrador aprobado tras revalidarlo")
+    publish.add_argument("--campaign-id", required=True)
+    publish.add_argument("--internal-id", required=True)
+    verify = commands.add_parser("verify", help="Verifica el paquete público desde sus fuentes")
+    verify.add_argument("--campaign-id", required=True)
+    verify.add_argument("--internal-id", required=True)
+    close = commands.add_parser("complete-review", help="Cierra explícitamente la revisión de una publicación")
+    close.add_argument("--campaign-id", required=True)
+    close.add_argument("--internal-id", required=True)
+    close.add_argument("--reviewer", required=True)
+    close.add_argument("--confirm-review", required=True)
     return parser
 
 
@@ -96,6 +155,50 @@ def _read_campaign_states(campaign_root: Path) -> tuple[dict[str, dict[str, Any]
                 candidates = campaign.get("candidates") if isinstance(campaign, dict) else None
                 if not isinstance(candidates, list) or not candidates:
                     raise ScalableCampaignError(f"La campaña no tiene candidatos legibles: {directory.name}")
+                if campaign.get("schema_version") == "football_data_hub.match_detail_operational_campaign.v2":
+                    from .operational_campaign import OperationalMatchCampaignLedger
+
+                    report = OperationalMatchCampaignLedger(campaign_root).preflight(
+                        directory.name, acquire_lock=False
+                    )
+                    state_counts: dict[str, int] = {}
+                    for candidate in report["candidates"]:
+                        state_counts[candidate["state"]] = state_counts.get(candidate["state"], 0) + 1
+                    summaries.append({
+                        "campaign_id": directory.name,
+                        "proposal_id": report["proposal_id"],
+                        "candidate_count": report["candidate_count"],
+                        "candidate_states": dict(sorted(state_counts.items())),
+                        "blocked_reasons": [],
+                        "campaign_version": 2,
+                    })
+                    for candidate in report["candidates"]:
+                        internal_id = candidate["internal_id"]
+                        row = {
+                            "campaign_id": directory.name,
+                            "campaign_version": 2,
+                            "state": candidate["state"],
+                            "authorization_consumed": candidate["authorization_consumed"],
+                            "navigation_count": candidate["navigation_count"],
+                            "review_status": "completed" if candidate["state"] == "REVIEW_COMPLETED" else "pending",
+                            "blocked_reasons": [],
+                            "candidate_identity": {
+                                key: candidate.get(key)
+                                for key in (
+                                    "internal_id", "source_match_id", "group", "home_team_id",
+                                    "away_team_id", "reference_result", "source_match_url",
+                                    "source_generation_id", "source_generation_manifest_sha256",
+                                )
+                            },
+                        }
+                        existing = states.get(internal_id)
+                        if existing is not None and existing.get("campaign_id") != directory.name:
+                            existing.setdefault("campaigns", [existing["campaign_id"]]).append(directory.name)
+                            existing["state"] = "CONFLICTING_CAMPAIGN_MEMBERSHIP"
+                        else:
+                            row["campaigns"] = [directory.name]
+                            states[internal_id] = row
+                    continue
                 first = candidates[0]
                 first_id = first.get("internal_id") if isinstance(first, dict) else None
                 if not isinstance(first_id, str):
@@ -316,6 +419,17 @@ def _load_report(args: argparse.Namespace) -> tuple[dict[str, Any], list[dict[st
             )
         if campaign["state"] == "CONFLICTING_CAMPAIGN_MEMBERSHIP":
             blocked.setdefault(internal_id, []).append("CONFLICTING_CAMPAIGN_MEMBERSHIP")
+        source_identity = campaign.get("candidate_identity")
+        if source_identity:
+            current = next((row for row in inventory["matches"] if row["internal_id"] == internal_id), None)
+            if current is None or any(
+                source_identity.get(key) != current.get(key)
+                for key in (
+                    "internal_id", "source_match_id", "group", "home_team_id", "away_team_id",
+                    "reference_result", "source_match_url",
+                )
+            ):
+                blocked.setdefault(internal_id, []).append("CAMPAIGN_SOURCE_CONFLICT_WITH_ACTIVE_GENERATION")
     for diag in reconciliation["diagnostics"]:
         if not diag.get("stop_acquisition", True):
             continue
@@ -370,7 +484,15 @@ def _load_report(args: argparse.Namespace) -> tuple[dict[str, Any], list[dict[st
             published_ids=published_ids,
         )
     status_report["publication_count"] = len(published_ids)
-    return status_report, proposals, {"generation_root": generation_root, "store_root": args.store_root}
+    return status_report, proposals, {
+        "generation_root": generation_root,
+        "store_root": args.store_root,
+        "data_root": data_root,
+        "published_root": args.published_root,
+        "published_ids": published_ids,
+        "captured_ids": set(reconciliation["verified_by_internal_id"]),
+        "blocked_ids": set(blocked),
+    }
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -379,13 +501,159 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "propose" and args.newly_played_only and args.previous_generation_root is None:
         parser.error("--newly-played-only requiere --previous-generation-root")
     try:
-        report, _proposals, context = _load_report(args)
+        from .operational_campaign import OperationalMatchCampaignLedger
+
+        ledger = OperationalMatchCampaignLedger(args.store_root / "campaigns")
+        data_root = args.data_root.expanduser().resolve()
+        if args.command in {"campaign-preflight", "candidates", "inspect", "preview"}:
+            preflight = ledger.preflight(args.campaign_id)
+            if args.command == "campaign-preflight":
+                result = preflight
+            elif args.command == "candidates":
+                result = dict(preflight)
+                result["candidates"] = [
+                    row for row in preflight["candidates"]
+                    if (args.group is None or row["group"] == args.group)
+                    and (args.matchday is None or row["matchday"] == args.matchday)
+                    and (args.state is None or row["state"] == args.state)
+                ]
+            elif args.command == "inspect":
+                result = {
+                    "candidate": ledger.candidate(args.campaign_id, args.internal_id),
+                    "events": ledger.candidate_events(args.campaign_id, args.internal_id),
+                }
+            else:
+                events = ledger.candidate_events(args.campaign_id, args.internal_id)
+                prepared = next((item for item in events if item["event_type"] == "DRAFT_PREPARED"), None)
+                if prepared is None:
+                    raise ScalableCampaignError("Aún no hay borrador preparado")
+                result = json.loads((data_root / prepared["draft_path"]).read_text(encoding="utf-8"))
+            print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+            return 0
+
+        report = None
+        proposals: list[dict[str, Any]] = []
+        context: dict[str, Any] = {
+            "data_root": data_root,
+            "store_root": args.store_root,
+            "published_root": args.published_root,
+        }
+        if args.command in {"status", "propose", "initialize", "authorize", "execute"}:
+            report, proposals, context = _load_report(args)
         if args.command == "status":
             output = dict(report)
-            if not args.include_matches:
+            rows = output.get("matches", [])
+            filtered = [
+                row for row in rows
+                if (args.group is None or row["group"] == args.group)
+                and (args.matchday_from is None or row["matchday"] >= args.matchday_from)
+                and (args.matchday_to is None or row["matchday"] <= args.matchday_to)
+                and (args.campaign_id is None or (row.get("campaign") or {}).get("campaign_id") == args.campaign_id)
+                and (args.state is None or (row.get("campaign") or {}).get("state") == args.state or row["detail_status"] == args.state)
+            ]
+            output["filtered_count"] = len(filtered)
+            output["filters"] = {
+                "group": args.group,
+                "matchday_from": args.matchday_from,
+                "matchday_to": args.matchday_to,
+                "campaign_id": args.campaign_id,
+                "state": args.state,
+            }
+            if args.include_matches:
+                output["matches"] = filtered
+            else:
                 output.pop("matches", None)
             print(json.dumps(output, ensure_ascii=False, indent=2, sort_keys=True))
             return 0
+        if args.command == "initialize":
+            proposal = next((row for row in proposals if row.get("proposal_id") == args.proposal_id), None)
+            if proposal is None:
+                raise ScalableCampaignError("No se encontró una propuesta persistida con ese proposal_id")
+            generation_root = data_root / "matches" / "generations" / proposal["source"]["generation_id"]
+            result = ledger.initialize(
+                proposal_dir=context["store_root"] / "campaign-proposals" / "plans" / args.proposal_id,
+                generation_root=generation_root,
+                data_root=data_root,
+                published_ids=context["published_ids"],
+                captured_ids=context["captured_ids"],
+                blocked_ids=context["blocked_ids"],
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+            return 0
+        if args.command in {"authorize", "execute"}:
+            row = next((item for item in report["matches"] if item["internal_id"] == args.internal_id), None)
+            if row is None:
+                raise ScalableCampaignError("Partido no presente en el inventario de la generación seleccionada")
+            shared = {
+                "campaign_id": args.campaign_id,
+                "internal_id": args.internal_id,
+                "confirmed_url": args.confirm_url,
+                "current_status": row,
+                "published": args.internal_id in context["published_ids"],
+                "captured": args.internal_id in context["captured_ids"],
+                "blocked": args.internal_id in context["blocked_ids"],
+            }
+            if args.command == "authorize":
+                result = {"status": "AUTHORIZED", "authorization_id": ledger.authorize(
+                    **shared, operator=args.operator, confirmation=args.confirm_authorization, data_root=data_root
+                )}
+            else:
+                inventory = ledger.source_inventory(args.campaign_id)
+                result = ledger.execute_real(
+                    **shared, authorization_id=args.authorization_id, data_root=data_root,
+                    profile_dir=data_root / "browser-profiles" / f"match-detail-v2-{row['source_match_id']}",
+                    confirmation=args.confirm_execution,
+                    player_browser_idle_confirmation=args.player_browser_idle_confirmation,
+                    store_root=args.store_root, store_inventory=inventory,
+                )
+            print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+            return 0
+
+        if args.command in {"validate", "prepare", "approve", "publish", "verify", "complete-review"}:
+            if args.command == "validate":
+                result = ledger.validate_offline_artifact(
+                    campaign_id=args.campaign_id, internal_id=args.internal_id, data_root=data_root
+                )
+            elif args.command == "prepare":
+                result = ledger.prepare_draft(
+                    campaign_id=args.campaign_id, internal_id=args.internal_id, data_root=data_root,
+                    generation_root=ledger.generation_root(args.campaign_id, data_root),
+                    player_inventory_root=args.player_inventory_root,
+                    player_compact_root=args.player_compact_root,
+                    player_team_captures_root=args.player_team_captures_root,
+                    player_published_index_path=args.player_published_index,
+                )
+            elif args.command == "approve":
+                result = ledger.approve_draft(
+                    campaign_id=args.campaign_id, internal_id=args.internal_id, draft_path=args.draft_path,
+                    approved_by=args.approved_by, confirm_internal_id=args.confirm_internal_id,
+                    confirm_source_html_sha256=args.confirm_source_html_sha256,
+                    confirm_details_sha256=args.confirm_details_sha256, confirm_action=args.confirm_action,
+                    data_root=data_root,
+                )
+            else:
+                common = {
+                    "data_root": data_root,
+                    "generation_root": ledger.generation_root(args.campaign_id, data_root),
+                    "published_root": args.published_root,
+                    "store_root": args.store_root,
+                    "player_inventory_root": args.player_inventory_root,
+                    "player_compact_root": args.player_compact_root,
+                    "player_team_captures_root": args.player_team_captures_root,
+                    "player_published_index_path": args.player_published_index,
+                }
+                if args.command == "publish":
+                    result = ledger.publish(campaign_id=args.campaign_id, internal_id=args.internal_id, **common)
+                elif args.command == "verify":
+                    result = ledger.verify_publication(campaign_id=args.campaign_id, internal_id=args.internal_id, **common)
+                else:
+                    result = ledger.complete_review(
+                        campaign_id=args.campaign_id, internal_id=args.internal_id,
+                        reviewer=args.reviewer, confirmation=args.confirm_review, **common,
+                    )
+            print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+            return 0
+
         groups = ("I", "II") if args.groups == "both" else (args.groups,)
         if args.newly_played_only:
             incremental_ids = {
