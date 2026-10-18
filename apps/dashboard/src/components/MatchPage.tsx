@@ -74,7 +74,7 @@ function MatchPageContent({ page, onNavigate }: { page: MatchPageData; onNavigat
       Vista previa local · datos exploratorios, no publicados
     </div>}
     <header className="match-page-hero">
-      <div className="match-page-context">PRIMERA FEDERACIÓN · GRUPO {metadata.group} · TEMPORADA {formatSeason(metadata.season)}</div>
+      <h1 className="match-page-context">PRIMERA FEDERACIÓN · GRUPO {metadata.group} · TEMPORADA {formatSeason(metadata.season)}</h1>
       <div className="match-page-scoreboard">
         <InternalTeamLink className="match-page-team" teamId={match.home_team.team_id} onNavigate={onNavigate}>
           <TeamCrest name={match.home_team.name} crestUrl={match.home_team.crest_url} className="match-page-crest" />
@@ -96,30 +96,32 @@ function MatchPageContent({ page, onNavigate }: { page: MatchPageData; onNavigat
         {played && <span className="match-finished-label">Finalizado</span>}
         Jornada {match.matchday}{date ? ` · ${dateLabel.toLowerCase()} ${formatDate(date)}` : ""}
       </div>
+      {(match.stadium_name || match.referee_name) && <div className="match-page-officials">
+        {match.stadium_name && <span className="match-page-official">
+          <span className="match-page-official-label">Estadio</span>
+          {match.stadium_url
+            ? <a href={match.stadium_url} target="_blank" rel="noreferrer">{match.stadium_name}</a>
+            : <strong>{match.stadium_name}</strong>}
+        </span>}
+        {match.referee_name && <span className="match-page-official">
+          <span className="match-page-official-label">Árbitro</span>
+          {match.referee_url
+            ? <a href={match.referee_url} target="_blank" rel="noreferrer">{match.referee_name}</a>
+            : <strong>{match.referee_name}</strong>}
+        </span>}
+      </div>}
+      <div className="match-page-provenance">
+        <span>Datos actualizados <time dateTime={metadata.source_captured_at}>{formatCaptureDate(metadata.source_captured_at)}</time></span>
+        {match.source_match_url
+          ? <a href={match.source_match_url} target="_blank" rel="noreferrer">Ficha en {metadata.source} ↗</a>
+          : <span>Fuente: {metadata.source}</span>}
+      </div>
     </header>
 
     {hasPublishedContent && details && details.events?.length
       ? <MatchHighlights events={details.events} homeName={match.home_team.name} awayName={match.away_team.name}
         homeTeamId={match.home_team.team_id} awayTeamId={match.away_team.team_id} onNavigate={onNavigate} />
       : null}
-
-    <section className="match-page-panel match-info-panel" aria-labelledby="match-info-title">
-      <div className="match-info-heading"><div><span className="section-kicker">ENCUENTRO</span><h1 id="match-info-title">Información del partido</h1></div></div>
-      <dl className="match-info-grid">
-        <div><dt>Jornada</dt><dd>{match.matchday}</dd></div>
-        <div><dt>Grupo</dt><dd>{metadata.group}</dd></div>
-        <div><dt>Temporada</dt><dd>{formatSeason(metadata.season)}</dd></div>
-        {date && <div><dt>{dateLabel}</dt><dd><time dateTime={date}>{formatDate(date)}</time></dd></div>}
-        <div><dt>Datos actualizados</dt><dd><time dateTime={metadata.source_captured_at}>{formatCaptureDate(metadata.source_captured_at)}</time></dd></div>
-        {match.stadium_name && <div><dt>Estadio</dt><dd>{match.stadium_url
-          ? <a href={match.stadium_url} target="_blank" rel="noreferrer">{match.stadium_name}</a>
-          : match.stadium_name}</dd></div>}
-        {match.referee_name && <div><dt>Árbitro</dt><dd>{match.referee_url
-          ? <a href={match.referee_url} target="_blank" rel="noreferrer">{match.referee_name}</a>
-          : match.referee_name}</dd></div>}
-      </dl>
-      {match.source_match_url && <a className="match-source-link" href={match.source_match_url} target="_blank" rel="noreferrer">Ficha en BDFutbol ↗</a>}
-    </section>
 
     {hasPublishedContent && details
       ? <PublishedMatchDetails
@@ -357,20 +359,23 @@ function PlayerEventMarker({ event }: { event: MatchEvent }) {
 }
 
 function EventGlyph({ kind }: { kind: MatchEventKind }) {
-  if (kind === "goal" || kind === "penalty" || kind === "own_goal") return <svg className={`match-event-glyph is-${kind}`} viewBox="0 0 16 16" aria-hidden="true">
+  if (kind === "goal") return <svg className="match-event-glyph is-goal" viewBox="0 0 16 16" aria-hidden="true">
     <circle cx="8" cy="8" r="6.5" /><path d="m8 4 2.35 1.7-.9 2.75h-2.9l-.9-2.75L8 4Zm-3.9 1.5L2 6.4m9.9-.9 2.1.9m-7 2.05L5.5 11m5-2.55L13 11m-5-1.25v3.1" />
+  </svg>;
+  if (kind === "own_goal") return <svg className="match-event-glyph is-own_goal" viewBox="0 0 16 16" aria-hidden="true">
+    <circle cx="8" cy="8" r="6.5" /><path d="m8 4 2.35 1.7-.9 2.75h-2.9l-.9-2.75L8 4Zm-3.9 1.5L2 6.4m9.9-.9 2.1.9m-7 2.05L5.5 11m5-2.55L13 11m-5-1.25v3.1" />
+    <path className="own-goal-direction" d="M13.7 2.3h-3m3 0v3m0-3-3 3" />
+  </svg>;
+  if (kind === "penalty" || kind === "missed_penalty") return <svg className={`match-event-glyph is-${kind}`} viewBox="0 0 16 16" aria-hidden="true">
+    <path className="penalty-goal-frame" d="M2 13.5V3h12v10.5" />
+    <circle className="penalty-ball" cx="8" cy="10.6" r="2.25" />
+    <path className="penalty-ball-seams" d="m8 9.2.8.6-.3.9h-1l-.3-.9.8-.6m-1.8.7-.5.2m3.6-.2.5.2" />
+    {kind === "missed_penalty" && <path className="missed-penalty-cross" d="m10.7 10.7 3.8 3.8m0-3.8-3.8 3.8" />}
   </svg>;
   if (kind === "yellow_card" || kind === "second_yellow") return <svg className="match-event-glyph is-yellow" viewBox="0 0 12 16" aria-hidden="true"><rect x="1" y="1" width="10" height="14" rx="1.5" /></svg>;
   if (kind === "red_card") return <svg className="match-event-glyph is-red" viewBox="0 0 12 16" aria-hidden="true"><rect x="1" y="1" width="10" height="14" rx="1.5" /></svg>;
   if (kind === "substitution" || kind === "substitution_in" || kind === "substitution_out") return <svg className={`match-event-glyph is-${kind}`} viewBox="0 0 16 16" aria-hidden="true">
     <path d={kind === "substitution_in" ? "M2 8h11m0 0-4-4m4 4-4 4" : kind === "substitution_out" ? "M14 8H3m0 0 4-4m-4 4 4 4" : "M2 5h10m0 0-2.5-2.5M12 5 9.5 7.5M14 11H4m0 0 2.5-2.5M4 11l2.5 2.5"} />
-  </svg>;
-  if (kind === "missed_penalty") return <svg className="match-event-glyph is-missed-penalty" viewBox="0 0 16 16" aria-hidden="true">
-    <g className="missed-penalty-ball">
-      <circle cx="6.2" cy="6.2" r="5.1" />
-      <path d="m6.2 3.2 1.8 1.3-.7 2.1H5.1l-.7-2.1 1.8-1.3Zm-3 1.2-1.5.7m7.5-.7 1.5.7m-5.4 1.5-1.7 1.8m3.8-1.8 1.7 1.8m-1.9-1v2.3" />
-    </g>
-    <path className="missed-penalty-cross" d="m10.8 10.8 3.7 3.7m0-3.7-3.7 3.7" />
   </svg>;
   return <span className="match-event-glyph is-other" aria-hidden="true">·</span>;
 }

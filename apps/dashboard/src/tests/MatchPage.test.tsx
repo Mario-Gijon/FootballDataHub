@@ -218,7 +218,7 @@ describe("MatchPage details", () => {
     const highlights = screen.getByRole("region", { name: "Momentos del partido" });
     expect(within(highlights).getByText("Penalti fallado")).toBeInTheDocument();
     expect(within(highlights).getByText("Expulsión")).toBeInTheDocument();
-    expect(within(highlights).getByText("Penalti fallado").closest("li")?.querySelector(".match-event-glyph.is-missed-penalty .missed-penalty-cross")).toBeInTheDocument();
+    expect(within(highlights).getByText("Penalti fallado").closest("li")?.querySelector(".match-event-glyph.is-missed_penalty .missed-penalty-cross")).toBeInTheDocument();
     expect(within(highlights).getByText(/Rachad · Real Madrid Castilla/)).toBeInTheDocument();
     expect(within(highlights).getByText(/Belevonis · Teruel/)).toBeInTheDocument();
     expect(within(highlights).queryByText(/roja directa/i)).not.toBeInTheDocument();
@@ -227,9 +227,100 @@ describe("MatchPage details", () => {
     expect(container.querySelectorAll(".match-lineup-side ul li")).toHaveLength(39);
     expect(container.querySelector(".match-lineup-side .match-player-marker.match-event-missed_penalty .missed-penalty-cross")).toBeInTheDocument();
     expect(container.querySelectorAll(".match-events > li")).toHaveLength(15);
-    expect(container.querySelector(".match-events .match-event-missed_penalty .match-event-glyph.is-missed-penalty .missed-penalty-cross")).toBeInTheDocument();
+    expect(container.querySelector(".match-events .match-event-missed_penalty .match-event-glyph.is-missed_penalty .missed-penalty-cross")).toBeInTheDocument();
     expect(screen.getByText("24 acontecimientos")).toBeInTheDocument();
     expect(screen.queryByText("Los detalles de este encuentro todavía no están disponibles.")).not.toBeInTheDocument();
+  });
+
+  it("keeps match context, linked officials and provenance in the compact hero", async () => {
+    const match = page("approved");
+    match.match.matchday_date = "2026-10-10";
+    match.match.source_match_date = "2026-10-12";
+    match.match.stadium_name = "La Victoria";
+    match.match.stadium_url = "https://www.bdfutbol.com/es/s/s49.html";
+    match.match.referee_name = "Campos Salinas";
+    match.match.referee_url = "https://www.bdfutbol.com/es/r/r123.html";
+    loadMatchPage.mockResolvedValue(match);
+
+    const { container } = render(<MatchPage internalId={match.match.internal_id} onNavigate={vi.fn()} onReturnToResults={vi.fn()} />);
+    await screen.findByRole("heading", { name: "Alineaciones" });
+
+    const hero = container.querySelector(".match-page-hero") as HTMLElement;
+    expect(container.querySelector(".match-info-panel")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Información del partido" })).not.toBeInTheDocument();
+    expect(within(hero).getByRole("heading", { level: 1 })).toHaveTextContent("PRIMERA FEDERACIÓN · GRUPO II · TEMPORADA 2026/27");
+    expect(hero).toHaveTextContent("PRIMERA FEDERACIÓN · GRUPO II · TEMPORADA 2026/27");
+    expect(hero).toHaveTextContent("Jornada 7 · fecha 12 de octubre de 2026");
+    expect(within(hero).getByText("Estadio")).toBeInTheDocument();
+    expect(within(hero).getByText("Árbitro")).toBeInTheDocument();
+    expect(within(hero).getByRole("link", { name: "La Victoria" })).toHaveAttribute("href", match.match.stadium_url);
+    expect(within(hero).getByRole("link", { name: "Campos Salinas" })).toHaveAttribute("href", match.match.referee_url);
+    expect(hero).toHaveTextContent("Datos actualizados 14 de octubre de 2026");
+    expect(within(hero).getByRole("link", { name: "Ficha en BDFutbol ↗" })).toHaveAttribute("href", match.match.source_match_url);
+    expect(hero.querySelectorAll(".match-page-context")).toHaveLength(1);
+  });
+
+  it("omits absent officials and labels the matchday date when the real date is unavailable", async () => {
+    const match = page("approved");
+    match.match.source_match_date = null;
+    match.match.stadium_name = null;
+    match.match.stadium_url = null;
+    match.match.referee_name = null;
+    match.match.referee_url = null;
+    match.match.source_match_url = null;
+    loadMatchPage.mockResolvedValue(match);
+
+    const { container } = render(<MatchPage internalId={match.match.internal_id} onNavigate={vi.fn()} onReturnToResults={vi.fn()} />);
+    await screen.findByRole("heading", { name: "Alineaciones" });
+
+    const hero = container.querySelector(".match-page-hero") as HTMLElement;
+    expect(hero).toHaveTextContent("Jornada 7 · fecha de jornada 10 de octubre de 2026");
+    expect(hero.querySelector(".match-page-officials")).not.toBeInTheDocument();
+    expect(within(hero).queryByRole("link", { name: "La Victoria" })).not.toBeInTheDocument();
+    expect(within(hero).queryByRole("link", { name: "Campos Salinas" })).not.toBeInTheDocument();
+    expect(hero).toHaveTextContent("Datos actualizados 14 de octubre de 2026");
+    expect(hero).toHaveTextContent("Fuente: BDFutbol");
+    expect(within(hero).queryByRole("link", { name: /Ficha en BDFutbol/ })).not.toBeInTheDocument();
+  });
+
+  it("uses distinct accessible SVGs for goals, scored penalties, missed penalties and own goals", async () => {
+    const match = page("approved");
+    match.details!.events = [
+      { ...event("goal", "10", 49, 1001, "Siverio"), is_penalty: false, is_own_goal: false },
+      { ...event("penalty", "20", 49, 1001, "Siverio"), is_penalty: true, is_own_goal: false },
+      { ...event("missed_penalty", "30", 49, 1001, "Siverio"), is_penalty: true, is_own_goal: false },
+      { ...event("own_goal", "40", 94, 2001, "Ayman"), is_penalty: false, is_own_goal: true },
+    ];
+    loadMatchPage.mockResolvedValue(match);
+
+    const { container } = render(<MatchPage internalId={match.match.internal_id} onNavigate={vi.fn()} onReturnToResults={vi.fn()} />);
+    await screen.findByRole("heading", { name: "Cronología" });
+
+    const glyph = (kind: string) => container.querySelector(`.match-events .match-event-${kind} .match-event-glyph`) as SVGSVGElement;
+    const goal = glyph("goal");
+    const penalty = glyph("penalty");
+    const missedPenalty = glyph("missed_penalty");
+    const ownGoal = glyph("own_goal");
+    expect(goal.tagName.toLowerCase()).toBe("svg");
+    expect(goal.querySelector("circle")).toBeInTheDocument();
+    expect(goal.querySelector(".penalty-goal-frame")).not.toBeInTheDocument();
+    expect(penalty).toHaveClass("is-penalty");
+    expect(penalty.querySelector(".penalty-goal-frame")).toBeInTheDocument();
+    expect(penalty.querySelector(".penalty-ball")).toBeInTheDocument();
+    expect(missedPenalty).toHaveClass("is-missed_penalty");
+    expect(missedPenalty.querySelector(".penalty-goal-frame")?.getAttribute("d"))
+      .toBe(penalty.querySelector(".penalty-goal-frame")?.getAttribute("d"));
+    expect(missedPenalty.querySelector(".penalty-ball")?.getAttribute("r"))
+      .toBe(penalty.querySelector(".penalty-ball")?.getAttribute("r"));
+    expect(missedPenalty.querySelector(".missed-penalty-cross")).toBeInTheDocument();
+    expect(missedPenalty.textContent).not.toContain("!");
+    expect(ownGoal).toHaveClass("is-own_goal");
+    expect(ownGoal.querySelector(".own-goal-direction")).toBeInTheDocument();
+    expect(screen.getAllByText("Gol en propia puerta").length).toBeGreaterThan(0);
+    expect(screen.getByLabelText("Gol de penalti, 20 minuto")).toBeInTheDocument();
+    expect(screen.getByLabelText("Penalti fallado, 30 minuto")).toBeInTheDocument();
+    expect(container.querySelector(".match-player-marker.match-event-penalty")).toHaveAttribute("title", "Gol de penalti, 20 minuto");
+    expect(container.querySelector(".match-player-marker.match-event-missed_penalty")).toHaveAttribute("title", "Penalti fallado, 30 minuto");
   });
 
   it("renders a local 0–0 preview and a missed-penalty event", async () => {
