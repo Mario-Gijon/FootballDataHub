@@ -18,6 +18,7 @@ EventKind = Literal[
     "missed_penalty",
     "yellow_card",
     "red_card",
+    "second_yellow",
     "substitution_in",
     "substitution_out",
     "unknown",

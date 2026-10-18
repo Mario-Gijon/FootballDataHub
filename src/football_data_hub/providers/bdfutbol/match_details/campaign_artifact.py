@@ -85,15 +85,24 @@ def _validate_discovery_event_sequence(events: list[dict[str, Any]], *, operatio
     if event_types[:3] != ["AUTHORIZED", "STARTED", "DISCOVERY_REVIEW_REQUIRED"]:
         raise CampaignArtifactError("La secuencia del candidato no es la adquisición esperada")
     if operational_v2:
-        allowed = [
-            [], ["VALIDATED"], ["VALIDATED", "DRAFT_PREPARED"],
-            ["VALIDATED", "DRAFT_PREPARED", "DOCUMENT_APPROVED"],
-            ["VALIDATED", "DRAFT_PREPARED", "DOCUMENT_APPROVED", "PUBLISHED"],
-            ["VALIDATED", "DRAFT_PREPARED", "DOCUMENT_APPROVED", "PUBLISHED", "REVIEW_COMPLETED"],
-            ["VALIDATION_FAILED"],
-        ]
-        if event_types[3:] not in allowed:
-            raise CampaignArtifactError("La secuencia de validación/publicación v2 no es válida")
+        transitions = {
+            None: {"VALIDATED", "VALIDATION_FAILED"},
+            "VALIDATION_FAILED": {"REVALIDATED", "REVALIDATION_FAILED"},
+            "REVALIDATION_FAILED": {"REVALIDATED", "REVALIDATION_FAILED"},
+            "VALIDATED": {"DRAFT_PREPARED"},
+            "REVALIDATED": {"DRAFT_PREPARED"},
+            "DRAFT_PREPARED": {"DOCUMENT_APPROVED"},
+            "DOCUMENT_APPROVED": {"PUBLISHED"},
+            "PUBLISHED": {"REVIEW_COMPLETED"},
+            "REVIEW_COMPLETED": set(),
+        }
+        state = None
+        for event_type in event_types[3:]:
+            if event_type not in transitions.get(state, set()):
+                raise CampaignArtifactError(
+                    "La secuencia de validación/publicación v2 no es válida"
+                )
+            state = event_type
     elif event_types[3:] not in ([], ["REVIEW_COMPLETED"]):
         raise CampaignArtifactError("La secuencia del candidato no es la adquisición esperada")
 

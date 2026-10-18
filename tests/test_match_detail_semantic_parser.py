@@ -163,6 +163,44 @@ def test_preserves_extra_time_minutes_and_recognizes_red_cards():
     )
 
 
+def test_tg2_is_a_second_yellow_dismissal_not_a_yellow_or_direct_red_card():
+    html = match_html().replace(
+        b'class="TG" title="Tarjeta Amarilla"',
+        b'class="TG2" title="Doble Tarjeta Amarilla"',
+        1,
+    )
+    observation = _parse(html)
+
+    assert observation.validation.semantic_valid is True
+    event = next(
+        item
+        for item in observation.events
+        if item.player_id == 1002 and item.event_type == "second_yellow"
+    )
+    assert event.event_type == "second_yellow"
+    assert event.minute_literal == "45"
+    assert event.raw_icon_class == "TG2"
+    assert event.raw_icon_title == "Doble Tarjeta Amarilla"
+    assert not any(item.event_type in {"yellow_card", "red_card"} for item in observation.events if item.player_id == 1002)
+    red_evidence = next(item for item in observation.evidence if item.field_path == "events.red_cards")
+    assert red_evidence.state == "not_observed"
+    assert "direct_red_card_absence_not_asserted_second_yellow_present" in observation.validation.warnings
+
+
+def test_tg2_with_an_unverified_title_remains_a_blocking_unknown_icon():
+    html = match_html().replace(
+        b'class="TG" title="Tarjeta Amarilla"',
+        b'class="TG2" title="Tarjeta Amarilla"',
+        1,
+    )
+    observation = _parse(html)
+
+    assert observation.validation.semantic_valid is False
+    assert "unknown_event_icon:home:1002:TG2:Tarjeta Amarilla" in observation.validation.errors
+    red_evidence = next(item for item in observation.evidence if item.field_path == "events.red_cards")
+    assert red_evidence.state == "not_observed"
+
+
 @pytest.mark.parametrize(
     ("icon", "expected"),
     [

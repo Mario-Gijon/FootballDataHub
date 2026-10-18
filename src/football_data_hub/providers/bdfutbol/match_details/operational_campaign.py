@@ -51,6 +51,7 @@ OPERATIONAL_EVENT_SCHEMA = (
 AUTHORIZE_CONFIRMATION = "AUTHORIZE_ONE_MATCH_DISCOVERY_V2"
 EXECUTE_CONFIRMATION = "EXECUTE_ONE_MATCH_DISCOVERY_V2"
 PLAYER_IDLE_CONFIRMATION = "PLAYER_BROWSER_IDLE_CONFIRMED"
+REVALIDATE_CONFIRMATION = "REVALIDATE_FAILED_ARTIFACT_V2"
 _CAMPAIGN_ID = re.compile(r"^match-detail-campaign-v2-[0-9a-f]{16}$")
 _INTERNAL_ID = re.compile(r"^pf-2026-27-group-(?:i|ii)-bdfutbol-[0-9]{5,10}$")
 _EVENT_FILE = re.compile(r"^[0-9]{6}-[0-9a-f]{32}\.json$")
@@ -64,7 +65,9 @@ _TRANSITIONS = {
     "DOCUMENT_APPROVED": {"PUBLISHED"},
     "PUBLISHED": {"REVIEW_COMPLETED"},
     "STOPPED": set(),
-    "VALIDATION_FAILED": set(),
+    "VALIDATION_FAILED": {"REVALIDATED", "REVALIDATION_FAILED"},
+    "REVALIDATION_FAILED": {"REVALIDATED", "REVALIDATION_FAILED"},
+    "REVALIDATED": {"DRAFT_PREPARED"},
     "REVIEW_COMPLETED": set(),
 }
 
@@ -654,6 +657,74 @@ class OperationalMatchCampaignLedger:
                 raise MatchCampaignIntegrityError(
                     "VALIDATION_FAILED no contiene evidencia"
                 )
+        elif kind in {"REVALIDATED", "REVALIDATION_FAILED"}:
+            discovery = next(
+                (
+                    row
+                    for row in previous
+                    if row["event_type"] == "DISCOVERY_REVIEW_REQUIRED"
+                ),
+                None,
+            )
+            failed = previous[-1] if previous else {}
+            validation = event.get("validation")
+            if (
+                failed.get("event_type")
+                not in {"VALIDATION_FAILED", "REVALIDATION_FAILED"}
+                or failed.get("semantic_valid") is not False
+                or discovery is None
+                or event.get("based_on_event_sha256")
+                != failed.get("event_sha256")
+                or event.get("artifact_id")
+                != discovery["artifact"].get("artifact_id")
+                or event.get("source_html_sha256")
+                != discovery["artifact"].get("source_html_sha256")
+                or not isinstance(event.get("operator"), str)
+                or not event["operator"].strip()
+                or event.get("human_confirmation") != REVALIDATE_CONFIRMATION
+                or not isinstance(event.get("parser_version"), str)
+                or not event["parser_version"].strip()
+                or not isinstance(validation, dict)
+                or validation.get("parser_version") != event.get("parser_version")
+                or validation.get("semantic_valid")
+                is not (kind == "REVALIDATED")
+                or not _is_sha(event.get("evidence_sha256"))
+            ):
+                raise MatchCampaignIntegrityError(
+                    "La revalidación no conserva fallo, artefacto y confirmación"
+                )
+            if kind == "REVALIDATED":
+                errors = validation.get("errors")
+                checks = validation.get("checks")
+                if (
+                    errors not in ([], ())
+                    or not isinstance(checks, (list, tuple))
+                    or any(
+                        not isinstance(check, dict) or check.get("passed") is not True
+                        for check in checks
+                    )
+                ):
+                    raise MatchCampaignIntegrityError(
+                        "REVALIDATED contiene errores o comprobaciones fallidas"
+                    )
+            evidence = {
+                key: event[key]
+                for key in (
+                    "based_on_event_sha256",
+                    "artifact_id",
+                    "source_html_sha256",
+                    "semantic_valid",
+                    "validation",
+                    "parser_version",
+                    "operator",
+                    "human_confirmation",
+                    "validated_at_utc",
+                )
+            }
+            if event.get("evidence_sha256") != _sha(_canonical(evidence)):
+                raise MatchCampaignIntegrityError(
+                    "El hash de evidencia de revalidación no coincide"
+                )
         elif kind == "DRAFT_PREPARED":
             if (
                 not _is_sha(event.get("draft_sha256"))
@@ -1088,12 +1159,14 @@ class OperationalMatchCampaignLedger:
             "INTERRUPTED_REQUIRES_REVIEW": "manual_review_no_retry",
             "DISCOVERY_REVIEW_REQUIRED": "validate_offline_artifact",
             "VALIDATED": "prepare_offline_draft",
+            "REVALIDATED": "prepare_offline_draft",
+            "VALIDATION_FAILED": "revalidate_failed_artifact_offline_with_operator_confirmation",
+            "REVALIDATION_FAILED": "revalidate_failed_artifact_offline_with_operator_confirmation",
             "DRAFT_PREPARED": "human_document_review_and_approval",
             "DOCUMENT_APPROVED": "publish_approved_document",
             "PUBLISHED": "verify_then_complete_review",
             "REVIEW_COMPLETED": "none",
             "STOPPED": "manual_review_no_retry",
-            "VALIDATION_FAILED": "manual_review_no_retry",
         }.get(state, "manual_review_required")
 
     def authorize(
@@ -1535,6 +1608,7 @@ class OperationalMatchCampaignLedger:
         self, *, campaign_id: str, internal_id: str, data_root: Path
     ) -> dict[str, Any]:
         from .campaign_artifact import parse_campaign_saved_artifact
+        from .semantic_parser import PARSER_VERSION
 
         directory, campaign, events = self._events(campaign_id, internal_id)
         if self._state(events) != "DISCOVERY_REVIEW_REQUIRED":
@@ -1562,10 +1636,12 @@ class OperationalMatchCampaignLedger:
                 expected_match=candidates[0],
                 verified_generation=generation,
                 data_root=data_root,
+                parser_version=PARSER_VERSION,
             )
             validation = dataclasses.asdict(observation.validation)
             valid = observation.validation.semantic_valid is True
             diagnostic = None
+            parser_version = observation.source.parser_version
         except Exception as exc:
             validation = {
                 "error_type": type(exc).__name__,
@@ -1573,11 +1649,13 @@ class OperationalMatchCampaignLedger:
             }
             valid = False
             diagnostic = str(exc)[:500]
+            parser_version = PARSER_VERSION
+        validation["parser_version"] = parser_version
         evidence = {
             "source_html_sha256": discovery["artifact"]["source_html_sha256"],
             "semantic_valid": valid,
             "validation": validation,
-            "parser_version": validation.get("parser_version"),
+            "parser_version": parser_version,
             "validated_at_utc": _now(),
         }
         evidence["evidence_sha256"] = _sha(_canonical(evidence))
@@ -1588,6 +1666,161 @@ class OperationalMatchCampaignLedger:
             self._append(
                 directory,
                 campaign,
+                internal_id,
+                {
+                    "event_type": event_type,
+                    "campaign_id": campaign_id,
+                    "internal_id": internal_id,
+                    **evidence,
+                },
+            )
+        return {"status": event_type, "internal_id": internal_id, **evidence}
+
+    def revalidate_failed_artifact(
+        self,
+        *,
+        campaign_id: str,
+        internal_id: str,
+        data_root: Path,
+        operator: str,
+        confirmation: str,
+    ) -> dict[str, Any]:
+        """Re-run semantic validation on the immutable saved artifact only.
+
+        This operation is deliberately separate from initial validation: it
+        requires an operator confirmation, binds the new result to the latest
+        failed event and original HTML hash, and can never consume navigation
+        authorization or alter the capture.
+        """
+
+        from .campaign_artifact import parse_campaign_saved_artifact
+        from .semantic_parser import PARSER_VERSION
+
+        operator = operator.strip() if isinstance(operator, str) else ""
+        if not operator or confirmation != REVALIDATE_CONFIRMATION:
+            raise MatchCampaignAuthorizationError(
+                "La revalidación requiere operador y confirmación explícita"
+            )
+        data_root = data_root.expanduser().resolve(strict=True)
+        with self.lock.exclusive_lock():
+            directory, campaign, events = self._events(campaign_id, internal_id)
+            state = self._state(events)
+            if state not in {"VALIDATION_FAILED", "REVALIDATION_FAILED"}:
+                raise MatchCampaignAuthorizationError(
+                    f"Solo se revalidan fallos semánticos sin resolver; estado={state}"
+                )
+            failure = events[-1]
+            if (
+                failure.get("semantic_valid") is not False
+                or not _is_sha(failure.get("evidence_sha256"))
+            ):
+                raise MatchCampaignIntegrityError(
+                    "El último fallo no contiene evidencia semántica verificable"
+                )
+            discovery = next(
+                (
+                    item
+                    for item in events
+                    if item["event_type"] == "DISCOVERY_REVIEW_REQUIRED"
+                ),
+                None,
+            )
+            if discovery is None:
+                raise MatchCampaignIntegrityError(
+                    "No existe adquisición original para revalidar"
+                )
+            artifact_reference = discovery["artifact"]
+            if failure.get("source_html_sha256") != artifact_reference.get(
+                "source_html_sha256"
+            ):
+                raise MatchCampaignIntegrityError(
+                    "El fallo no está ligado al HTML de la captura original"
+                )
+            artifact = directory / artifact_reference["artifact_relative_path"]
+            failure_event_sha256 = failure["event_sha256"]
+            source_generation_id = campaign["source"]["generation_id"]
+            source_generation_sha256 = campaign["source"][
+                "generation_manifest_sha256"
+            ]
+
+        # Parse outside the campaign lock. parse_campaign_saved_artifact reads
+        # the same ledger for integrity and acquires its own lock while doing so.
+        # We compare the failure event again before appending to reject a racing
+        # revalidation without serializing the parser behind a nested flock.
+        generation_root = (
+            data_root / "matches" / "generations" / source_generation_id
+        )
+        generation = load_verified_match_generation(
+            generation_root, data_root=data_root
+        )
+        if (
+            generation.generation_id != source_generation_id
+            or generation.manifest_sha256 != source_generation_sha256
+        ):
+            raise MatchCampaignIntegrityError(
+                "La generación histórica de la campaña no coincide"
+            )
+        inventory = build_match_detail_inventory(generation)
+        candidates = [
+            row for row in inventory["matches"] if row["internal_id"] == internal_id
+        ]
+        if len(candidates) != 1:
+            raise MatchCampaignIntegrityError(
+                "La generación histórica no contiene un candidato único"
+            )
+        parser_version = PARSER_VERSION
+        try:
+            observation = parse_campaign_saved_artifact(
+                artifact,
+                expected_match=candidates[0],
+                verified_generation=generation,
+                data_root=data_root,
+                parser_version=parser_version,
+            )
+            validation = dataclasses.asdict(observation.validation)
+            valid = observation.validation.semantic_valid is True
+            diagnostic = None
+            parser_version = observation.source.parser_version
+        except Exception as exc:
+            validation = {
+                "error_type": type(exc).__name__,
+                "diagnostic": str(exc)[:1000],
+                "semantic_valid": False,
+            }
+            valid = False
+            diagnostic = str(exc)[:500]
+        validation["parser_version"] = parser_version
+        evidence = {
+            "based_on_event_sha256": failure_event_sha256,
+            "artifact_id": artifact_reference["artifact_id"],
+            "source_html_sha256": artifact_reference["source_html_sha256"],
+            "semantic_valid": valid,
+            "validation": validation,
+            "parser_version": parser_version,
+            "operator": operator,
+            "human_confirmation": confirmation,
+            "validated_at_utc": _now(),
+        }
+        evidence["evidence_sha256"] = _sha(_canonical(evidence))
+        if diagnostic:
+            evidence["diagnostic"] = diagnostic
+        event_type = "REVALIDATED" if valid else "REVALIDATION_FAILED"
+        with self.lock.exclusive_lock():
+            current_directory, current_campaign, current_events = self._events(
+                campaign_id, internal_id
+            )
+            current_state = self._state(current_events)
+            if (
+                current_state not in {"VALIDATION_FAILED", "REVALIDATION_FAILED"}
+                or not current_events
+                or current_events[-1].get("event_sha256") != failure_event_sha256
+            ):
+                raise MatchCampaignAuthorizationError(
+                    "El fallo cambió durante la revalidación; no se añadió ningún evento"
+                )
+            self._append(
+                current_directory,
+                current_campaign,
                 internal_id,
                 {
                     "event_type": event_type,
@@ -1644,7 +1877,7 @@ class OperationalMatchCampaignLedger:
 
         directory, campaign, events = self._events(campaign_id, internal_id)
         state = self._state(events)
-        if state not in {"VALIDATED", "DRAFT_PREPARED"}:
+        if state not in {"VALIDATED", "REVALIDATED", "DRAFT_PREPARED"}:
             raise MatchCampaignAuthorizationError(
                 f"No se puede preparar borrador desde {state}"
             )
@@ -1668,7 +1901,11 @@ class OperationalMatchCampaignLedger:
             match_bundle=bundle,
             player_ids=player_ids,
         )
-        validated = next(item for item in events if item["event_type"] == "VALIDATED")
+        validated = next(
+            item
+            for item in reversed(events)
+            if item["event_type"] in {"VALIDATED", "REVALIDATED"}
+        )
         if draft.get("semantic_valid") is not True or draft.get(
             "source_html_sha256"
         ) != validated.get("source_html_sha256"):
@@ -1682,7 +1919,7 @@ class OperationalMatchCampaignLedger:
         with self.lock.exclusive_lock():
             directory, campaign, current_events = self._events(campaign_id, internal_id)
             current_state = self._state(current_events)
-            if current_state not in {"VALIDATED", "DRAFT_PREPARED"}:
+            if current_state not in {"VALIDATED", "REVALIDATED", "DRAFT_PREPARED"}:
                 raise MatchCampaignAuthorizationError(
                     f"No se puede guardar borrador desde {current_state}"
                 )
@@ -1707,7 +1944,7 @@ class OperationalMatchCampaignLedger:
                 "source_html_sha256": draft["source_html_sha256"],
                 "details_sha256": draft["details_sha256"],
             }
-            if current_state == "VALIDATED":
+            if current_state in {"VALIDATED", "REVALIDATED"}:
                 self._append(directory, campaign, internal_id, event)
             elif current_events[-1].get("draft_sha256") != event["draft_sha256"]:
                 raise MatchCampaignIntegrityError(

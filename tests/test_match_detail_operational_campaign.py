@@ -497,7 +497,10 @@ def test_v2_offline_pipeline_reaches_review_completion_with_human_approval(
     monkeypatch.setattr(
         artifacts,
         "parse_campaign_saved_artifact",
-        lambda *_a, **_kw: SimpleNamespace(validation=_FakeValidation()),
+        lambda *_a, **_kw: SimpleNamespace(
+            validation=_FakeValidation(),
+            source=SimpleNamespace(parser_version="offline-test-parser"),
+        ),
     )
     validated = fixture.ledger.validate_offline_artifact(
         campaign_id=fixture.plan["campaign_id"],
@@ -754,3 +757,344 @@ def test_v2_offline_pipeline_reaches_review_completion_with_human_approval(
         if row["internal_id"] == fixture.candidate["internal_id"]
     )
     assert final_row["detail_status"] == "review_completed"
+
+
+def test_v2_failed_validation_can_be_revalidated_without_recapture(tmp_path, monkeypatch):
+    fixture = _fixture(tmp_path, monkeypatch)
+    _initialize(fixture)
+    _authorize(fixture)
+    _execute(
+        fixture,
+        SimulatedMatchAccessAdapter(
+            SimulatedAccessResponse(
+                final_url=fixture.candidate["source_match_url"],
+                http_status=200,
+                html=b"<html><head><title>Saved fixture</title></head><body>Saved</body></html>",
+                page_title="Saved fixture",
+                access_classification="VALID",
+            )
+        ),
+    )
+    import football_data_hub.providers.bdfutbol.match_details.campaign_artifact as artifacts
+
+    parser_versions = []
+
+    def parsed(semantic_valid, *, parser_version):
+        parser_versions.append(parser_version)
+        return SimpleNamespace(
+            validation=_FakeValidation(
+                semantic_valid=semantic_valid,
+                parser_version=parser_version,
+                errors=() if semantic_valid else ("unknown_event_icon:TG2",),
+            ),
+            source=SimpleNamespace(parser_version=parser_version),
+        )
+
+    monkeypatch.setattr(
+        artifacts,
+        "parse_campaign_saved_artifact",
+        lambda *_a, **kwargs: parsed(False, parser_version=kwargs["parser_version"]),
+    )
+    initial = fixture.ledger.validate_offline_artifact(
+        campaign_id=fixture.plan["campaign_id"],
+        internal_id=fixture.candidate["internal_id"],
+        data_root=fixture.data_root,
+    )
+    assert initial["status"] == "VALIDATION_FAILED"
+    assert initial["parser_version"] == "match-detail-semantic-0.3.1"
+
+    events_before = fixture.ledger.candidate_events(
+        fixture.plan["campaign_id"], fixture.candidate["internal_id"]
+    )
+    original_failure = events_before[-1]
+    discovery = next(
+        event for event in events_before if event["event_type"] == "DISCOVERY_REVIEW_REQUIRED"
+    )
+    artifact_dir = (
+        fixture.ledger.root
+        / fixture.plan["campaign_id"]
+        / discovery["artifact"]["artifact_relative_path"]
+    )
+    artifact_before = {
+        path.name: path.read_bytes()
+        for path in artifact_dir.iterdir()
+        if path.is_file()
+    }
+
+    with pytest.raises(MatchCampaignAuthorizationError, match="operador y confirmación"):
+        fixture.ledger.revalidate_failed_artifact(
+            campaign_id=fixture.plan["campaign_id"],
+            internal_id=fixture.candidate["internal_id"],
+            data_root=fixture.data_root,
+            operator="",
+            confirmation="wrong",
+        )
+    other_candidate = next(
+        item
+        for item in fixture.plan["candidates"]
+        if item["internal_id"] != fixture.candidate["internal_id"]
+    )
+    with pytest.raises(MatchCampaignAuthorizationError):
+        fixture.ledger.revalidate_failed_artifact(
+            campaign_id=fixture.plan["campaign_id"],
+            internal_id=other_candidate["internal_id"],
+            data_root=fixture.data_root,
+            operator="offline-test-operator",
+            confirmation=operational.REVALIDATE_CONFIRMATION,
+        )
+
+    failed_again = fixture.ledger.revalidate_failed_artifact(
+        campaign_id=fixture.plan["campaign_id"],
+        internal_id=fixture.candidate["internal_id"],
+        data_root=fixture.data_root,
+        operator="offline-test-operator",
+        confirmation=operational.REVALIDATE_CONFIRMATION,
+    )
+    assert failed_again["status"] == "REVALIDATION_FAILED"
+    assert failed_again["parser_version"] == "match-detail-semantic-0.3.1"
+    assert fixture.ledger.candidate(fixture.plan["campaign_id"], fixture.candidate["internal_id"])["state"] == "REVALIDATION_FAILED"
+    from football_data_hub.providers.bdfutbol.match_details.scalable_campaign_cli import (
+        _read_campaign_states,
+    )
+
+    campaign_states, _ = _read_campaign_states(fixture.ledger.root)
+    failed_row = next(
+        row
+        for row in classify_match_campaign_inventory(
+            build_match_campaign_inventory(fixture.verified),
+            campaign_states=campaign_states,
+        )["matches"]
+        if row["internal_id"] == fixture.candidate["internal_id"]
+    )
+    assert failed_row["detail_status"] == "blocked_requires_human_review"
+    with pytest.raises(MatchCampaignAuthorizationError, match="REVALIDATION_FAILED"):
+        fixture.ledger.prepare_draft(
+            campaign_id=fixture.plan["campaign_id"],
+            internal_id=fixture.candidate["internal_id"],
+            data_root=fixture.data_root,
+            generation_root=fixture.generation_root,
+            player_inventory_root=tmp_path,
+            player_compact_root=tmp_path,
+            player_team_captures_root=tmp_path,
+            player_published_index_path=tmp_path / "players.json",
+        )
+
+    monkeypatch.setattr(
+        artifacts,
+        "parse_campaign_saved_artifact",
+        lambda *_a, **kwargs: parsed(True, parser_version=kwargs["parser_version"]),
+    )
+    revalidated = fixture.ledger.revalidate_failed_artifact(
+        campaign_id=fixture.plan["campaign_id"],
+        internal_id=fixture.candidate["internal_id"],
+        data_root=fixture.data_root,
+        operator="offline-test-operator",
+        confirmation=operational.REVALIDATE_CONFIRMATION,
+    )
+    assert revalidated["status"] == "REVALIDATED"
+    assert revalidated["parser_version"] == "match-detail-semantic-0.3.1"
+    events_after = fixture.ledger.candidate_events(
+        fixture.plan["campaign_id"], fixture.candidate["internal_id"]
+    )
+    assert next(event for event in events_after if event["event_type"] == "VALIDATION_FAILED") == original_failure
+    assert [event["event_type"] for event in events_after][-3:] == [
+        "VALIDATION_FAILED", "REVALIDATION_FAILED", "REVALIDATED"
+    ]
+    assert artifact_before == {
+        path.name: path.read_bytes()
+        for path in artifact_dir.iterdir()
+        if path.is_file()
+    }
+    candidate_status = fixture.ledger.candidate(
+        fixture.plan["campaign_id"], fixture.candidate["internal_id"]
+    )
+    assert candidate_status["state"] == "REVALIDATED"
+    assert candidate_status["authorization_consumed"] is True
+    assert candidate_status["navigation_count"] == 1
+    assert parser_versions == ["match-detail-semantic-0.3.1"] * 3
+    campaign_states, _ = _read_campaign_states(fixture.ledger.root)
+    revalidated_row = next(
+        row
+        for row in classify_match_campaign_inventory(
+            build_match_campaign_inventory(fixture.verified),
+            campaign_states=campaign_states,
+        )["matches"]
+        if row["internal_id"] == fixture.candidate["internal_id"]
+    )
+    assert revalidated_row["detail_status"] == "validated_pending_approval"
+
+    retry = SimulatedMatchAccessAdapter(
+        SimulatedAccessResponse(
+            final_url=fixture.candidate["source_match_url"],
+            http_status=200,
+            html=b"must not navigate",
+            access_classification="VALID",
+        )
+    )
+    with pytest.raises(MatchCampaignAuthorizationError):
+        _execute(fixture, retry)
+    assert retry.calls == []
+
+    draft = _valid_draft(fixture, discovery)
+    monkeypatch.setattr(api_details, "build_campaign_publication_draft", lambda **_kw: draft)
+    monkeypatch.setattr(
+        fixture.ledger,
+        "_publication_inputs",
+        lambda **_kw: (fixture.data_root, fixture.generation_root, SimpleNamespace(), set()),
+    )
+    prepared = fixture.ledger.prepare_draft(
+        campaign_id=fixture.plan["campaign_id"],
+        internal_id=fixture.candidate["internal_id"],
+        data_root=fixture.data_root,
+        generation_root=fixture.generation_root,
+        player_inventory_root=tmp_path,
+        player_compact_root=tmp_path,
+        player_team_captures_root=tmp_path,
+        player_published_index_path=tmp_path / "players.json",
+    )
+    assert prepared["status"] == "DRAFT_PREPARED"
+    with pytest.raises(MatchCampaignAuthorizationError, match="sin aprobación humana"):
+        fixture.ledger.publish(
+            campaign_id=fixture.plan["campaign_id"],
+            internal_id=fixture.candidate["internal_id"],
+            data_root=fixture.data_root,
+            generation_root=fixture.generation_root,
+            published_root=fixture.store_root / "published",
+            store_root=fixture.store_root,
+            player_inventory_root=tmp_path,
+            player_compact_root=tmp_path,
+            player_team_captures_root=tmp_path,
+            player_published_index_path=tmp_path / "players.json",
+        )
+
+
+@pytest.mark.parametrize("mode", ["stopped", "interrupted"])
+def test_offline_revalidation_never_unlocks_access_or_interruption(
+    tmp_path, monkeypatch, mode
+):
+    fixture = _fixture(tmp_path, monkeypatch)
+    _initialize(fixture)
+    _authorize(fixture)
+    if mode == "stopped":
+        response = SimulatedAccessResponse(
+            final_url=fixture.candidate["source_match_url"],
+            http_status=403,
+            html=b"denied",
+            access_classification="ACCESS_DENIED",
+            denial_detected=True,
+        )
+        assert _execute(fixture, SimulatedMatchAccessAdapter(response))["status"] == "STOPPED"
+    else:
+        with pytest.raises(KeyboardInterrupt):
+            _execute(fixture, SimulatedMatchAccessAdapter(error=KeyboardInterrupt()))
+
+    import football_data_hub.providers.bdfutbol.match_details.campaign_artifact as artifacts
+
+    monkeypatch.setattr(
+        artifacts,
+        "parse_campaign_saved_artifact",
+        lambda *_a, **_kw: pytest.fail("Un estado de acceso no se revalida"),
+    )
+    with pytest.raises(MatchCampaignAuthorizationError):
+        fixture.ledger.revalidate_failed_artifact(
+            campaign_id=fixture.plan["campaign_id"],
+            internal_id=fixture.candidate["internal_id"],
+            data_root=fixture.data_root,
+            operator="offline-test-operator",
+            confirmation=operational.REVALIDATE_CONFIRMATION,
+        )
+
+
+def test_revalidation_rejects_corrupt_saved_artifact_without_appending(tmp_path, monkeypatch):
+    fixture = _fixture(tmp_path, monkeypatch)
+    _initialize(fixture)
+    _authorize(fixture)
+    _execute(
+        fixture,
+        SimulatedMatchAccessAdapter(
+            SimulatedAccessResponse(
+                final_url=fixture.candidate["source_match_url"],
+                http_status=200,
+                html=b"<html><head><title>Saved fixture</title></head><body>Saved</body></html>",
+                page_title="Saved fixture",
+                access_classification="VALID",
+            )
+        ),
+    )
+    import football_data_hub.providers.bdfutbol.match_details.campaign_artifact as artifacts
+
+    monkeypatch.setattr(
+        artifacts,
+        "parse_campaign_saved_artifact",
+        lambda *_a, **kwargs: SimpleNamespace(
+            validation=_FakeValidation(semantic_valid=False),
+            source=SimpleNamespace(parser_version=kwargs["parser_version"]),
+        ),
+    )
+    assert fixture.ledger.validate_offline_artifact(
+        campaign_id=fixture.plan["campaign_id"],
+        internal_id=fixture.candidate["internal_id"],
+        data_root=fixture.data_root,
+    )["status"] == "VALIDATION_FAILED"
+    events_before = fixture.ledger.candidate_events(
+        fixture.plan["campaign_id"], fixture.candidate["internal_id"]
+    )
+    discovery = next(
+        event for event in events_before if event["event_type"] == "DISCOVERY_REVIEW_REQUIRED"
+    )
+    html_path = (
+        fixture.ledger.root
+        / fixture.plan["campaign_id"]
+        / discovery["artifact"]["artifact_relative_path"]
+        / "source.html"
+    )
+    html_path.write_bytes(html_path.read_bytes() + b"tampered")
+    event_dir = (
+        fixture.ledger.root
+        / fixture.plan["campaign_id"]
+        / "candidates"
+        / fixture.candidate["internal_id"]
+        / "events"
+    )
+    event_names_before = sorted(path.name for path in event_dir.iterdir())
+    with pytest.raises(MatchCampaignIntegrityError, match="Hash inválido|no coincide"):
+        fixture.ledger.revalidate_failed_artifact(
+            campaign_id=fixture.plan["campaign_id"],
+            internal_id=fixture.candidate["internal_id"],
+            data_root=fixture.data_root,
+            operator="offline-test-operator",
+            confirmation=operational.REVALIDATE_CONFIRMATION,
+        )
+    assert sorted(path.name for path in event_dir.iterdir()) == event_names_before
+
+
+def test_v2_artifact_sequence_accepts_offline_revalidation_but_v1_stays_unchanged():
+    from football_data_hub.providers.bdfutbol.match_details.campaign_artifact import (
+        CampaignArtifactError,
+        _validate_discovery_event_sequence,
+    )
+
+    def events(*types):
+        return [{"event_type": event_type} for event_type in (
+            "AUTHORIZED", "STARTED", "DISCOVERY_REVIEW_REQUIRED", *types
+        )]
+
+    _validate_discovery_event_sequence(
+        events(
+            "VALIDATION_FAILED",
+            "REVALIDATION_FAILED",
+            "REVALIDATED",
+            "DRAFT_PREPARED",
+            "DOCUMENT_APPROVED",
+            "PUBLISHED",
+        ),
+        operational_v2=True,
+    )
+    with pytest.raises(CampaignArtifactError):
+        _validate_discovery_event_sequence(
+            events("VALIDATION_FAILED", "DRAFT_PREPARED"), operational_v2=True
+        )
+    with pytest.raises(CampaignArtifactError):
+        _validate_discovery_event_sequence(
+            events("VALIDATION_FAILED"), operational_v2=False
+        )

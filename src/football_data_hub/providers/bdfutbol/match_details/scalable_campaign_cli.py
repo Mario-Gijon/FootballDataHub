@@ -93,6 +93,14 @@ def _parser() -> argparse.ArgumentParser:
     validate = commands.add_parser("validate", help="Valida offline el artefacto semántico")
     validate.add_argument("--campaign-id", required=True)
     validate.add_argument("--internal-id", required=True)
+    revalidate = commands.add_parser(
+        "revalidate-failed",
+        help="Revalida offline una validación fallida con confirmación de operador; no navega",
+    )
+    revalidate.add_argument("--campaign-id", required=True)
+    revalidate.add_argument("--internal-id", required=True)
+    revalidate.add_argument("--operator", required=True)
+    revalidate.add_argument("--confirm-revalidation", required=True)
     prepare = commands.add_parser("prepare", help="Prepara el borrador deportivo offline")
     prepare.add_argument("--campaign-id", required=True)
     prepare.add_argument("--internal-id", required=True)
@@ -609,10 +617,18 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
             return 0
 
-        if args.command in {"validate", "prepare", "approve", "publish", "verify", "complete-review"}:
+        if args.command in {"validate", "revalidate-failed", "prepare", "approve", "publish", "verify", "complete-review"}:
             if args.command == "validate":
                 result = ledger.validate_offline_artifact(
                     campaign_id=args.campaign_id, internal_id=args.internal_id, data_root=data_root
+                )
+            elif args.command == "revalidate-failed":
+                result = ledger.revalidate_failed_artifact(
+                    campaign_id=args.campaign_id,
+                    internal_id=args.internal_id,
+                    data_root=data_root,
+                    operator=args.operator,
+                    confirmation=args.confirm_revalidation,
                 )
             elif args.command == "prepare":
                 result = ledger.prepare_draft(

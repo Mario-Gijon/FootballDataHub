@@ -1626,6 +1626,7 @@ def build_discovery_preview(
         "missed_penalty": "missed_penalty",
         "yellow_card": "yellow_card",
         "red_card": "red_card",
+        "second_yellow": "second_yellow",
         "substitution_in": "substitution_in",
         "substitution_out": "substitution_out",
     }

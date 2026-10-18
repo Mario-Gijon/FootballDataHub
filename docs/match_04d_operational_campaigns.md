@@ -129,6 +129,29 @@ Si la generación activa avanza, la campaña mantiene su `generation_id`, hash d
 
 La campaña piloto v1 sigue siendo legible por su verificador y nunca se migra ni reescribe. `272525` y `272517` continúan siendo publicaciones existentes; los candidatos de piloto sin autorizar y el bloqueo histórico de `272582` se conservan. Las pruebas locales de regresión de esta entrega consultan esos estados sin escribir en ese almacén.
 
+### Recuperación de una validación semántica fallida
+
+`VALIDATION_FAILED` queda bloqueado para adquisición, pero puede revisarse offline mediante `revalidate-failed` cuando una corrección del parser justifique volver a evaluar el mismo HTML. El comando exige operador y `REVALIDATE_FAILED_ARTIFACT_V2`; rehasha artefacto/manifiesto, vuelve a comprobar el partido contra la generación histórica y añade `REVALIDATED` o `REVALIDATION_FAILED` al final del ledger. El evento original `VALIDATION_FAILED`, sus hashes y el artefacto no se sustituyen. Solo `REVALIDATED` permite preparar borrador; aprobación y publicación siguen requiriendo sus pasos humanos. `STOPPED` e `INTERRUPTED_REQUIRES_REVIEW` no admiten esta operación.
+
+El parser semántico `match-detail-semantic-0.3.1` reconoce únicamente el par observado `class="TG2"` y `title="Doble Tarjeta Amarilla"` como `second_yellow`. Se conserva como expulsión por segunda amarilla, separada de `yellow_card` y de `red_card`; ante una segunda amarilla no se declara ausente una expulsión ni se inventa una roja directa. El adaptador de vista previa de FastAPI proyecta el tipo `second_yellow`, ya admitido por el contrato de respuesta. La versión del parser se toma de `observation.source.parser_version` (no de `SemanticValidation`, que no contiene ese campo), y se guarda también dentro de la evidencia de cada validación nueva.
+
+Después de revisar el diagnóstico de `269408` y autorizar explícitamente esta recuperación offline, el comando previsto es:
+
+```bash
+FDH_DATA="$HOME/FootballDataHub-data"
+: "${FDH_MATCH_REVIEWER:?Define FDH_MATCH_REVIEWER con la identidad del operador}"
+PYTHONPATH=src:apps/api .venv/bin/python scripts/manage_bdfutbol_match_detail_campaigns.py \
+  --data-root "$FDH_DATA" \
+  --store-root "$FDH_DATA/matches/details" \
+  revalidate-failed \
+  --campaign-id match-detail-campaign-v2-06aa2259b14b95a7 \
+  --internal-id pf-2026-27-group-i-bdfutbol-269408 \
+  --operator "$FDH_MATCH_REVIEWER" \
+  --confirm-revalidation REVALIDATE_FAILED_ARTIFACT_V2
+```
+
+Este comando no se ejecutó sobre la campaña real durante el hotfix. La prueba real de parser se hizo de forma local y de solo lectura; no abrió navegador ni realizó HTTP.
+
 Para una futura ejecución en servidor UJA deben validarse allí almacenamiento persistente con rename/fsync y locks POSIX, `data-root` y generaciones históricas, Chromium/SeleniumBase/Pure CDP/Xvfb disponibles, perfil aislado, dependencias de jugadores para publicar y accesibilidad local de índice/package. La adquisición real debe seguir siendo secuencial y aprobada por candidato. El servidor puede ejecutar el CLI con rutas configuradas; no debe suponer que el adaptador de navegador está instalado o autorizado sin esa comprobación. No se añade programación periódica ni despliegue.
 
 ## Validación de MATCH-04D

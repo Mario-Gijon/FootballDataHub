@@ -38,7 +38,7 @@ from football_data_hub.providers.bdfutbol.match_details.semantic_validation impo
     roster_identity_errors,
 )
 
-PARSER_VERSION = "match-detail-semantic-0.3.0"
+PARSER_VERSION = "match-detail-semantic-0.3.1"
 _TEAM_HREF = re.compile(r"(?:^|/)e/e(\d+)\.html$")
 _COACH_HREF = re.compile(r"(?:^|/)l/l(\d+)\.html$")
 _STADIUM_HREF = re.compile(r"(?:^|/)s/(\d+)\.html$")
@@ -512,6 +512,7 @@ def _event_kind(icon: Tag) -> str:
         ("gp", "gol de penalty"): "penalty_goal",
         ("pf", "penalty fallado"): "missed_penalty",
         ("tg", "tarjeta amarilla"): "yellow_card",
+        ("tg2", "doble tarjeta amarilla"): "second_yellow",
         ("tr", "tarjeta roja"): "red_card",
         ("tv", "expulsión"): "red_card",
     }
@@ -1376,11 +1377,32 @@ def parse_match_detail_html(
             )
 
     red_cards = [event for event in events if event.event_type == "red_card"]
-    if not red_cards:
-        evidence.add("events.red_cards", "explicitly_absent", "all lineup/substitute event cells; title='Tarjeta Roja'", None, None)
+    second_yellows = [event for event in events if event.event_type == "second_yellow"]
     unknown_events = [event for event in raw_roster_events if event.kind == "unknown"]
+    if not red_cards and not second_yellows and not unknown_events:
+        evidence.add("events.red_cards", "explicitly_absent", "all lineup/substitute event cells; title='Tarjeta Roja'", None, None)
+    elif not red_cards and second_yellows:
+        # The direct-red marker is absent, but a second-yellow dismissal is
+        # present. Keep those semantics distinct and avoid a misleading claim
+        # that no dismissal happened in the match.
+        evidence.add(
+            "events.red_cards",
+            "not_observed",
+            "direct-red markers absent; second-yellow dismissal observed",
+            "; ".join(event.raw_text for event in second_yellows),
+            None,
+        )
+        warnings.append("direct_red_card_absence_not_asserted_second_yellow_present")
+    elif not red_cards and unknown_events:
+        evidence.add(
+            "events.red_cards",
+            "not_observed",
+            "red-card absence cannot be established while event icons are unknown",
+            None,
+            None,
+        )
     red_absence_verified = not unknown_events
-    if not red_absence_verified:
+    if not red_absence_verified and not red_cards:
         warnings.append("red_card_absence_not_proven_due_to_unknown_event_icons")
     checks.append(ValidationCheck("all_event_icons_recognized", not unknown_events, f"unknown={len(unknown_events)}"))
 

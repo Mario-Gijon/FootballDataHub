@@ -222,7 +222,7 @@ def classify_match_campaign_inventory(
             status = "published_approved"
         elif internal_id in blocked:
             status = "blocked_requires_human_review"
-        elif campaign_state in {"STOPPED", "INTERRUPTED_REQUIRES_REVIEW", "VALIDATION_FAILED", "CAMPAIGN_BLOCKED", "CONFLICTING_CAMPAIGN_MEMBERSHIP"}:
+        elif campaign_state in {"STOPPED", "INTERRUPTED_REQUIRES_REVIEW", "VALIDATION_FAILED", "REVALIDATION_FAILED", "CAMPAIGN_BLOCKED", "CONFLICTING_CAMPAIGN_MEMBERSHIP"}:
             status = "blocked_requires_human_review"
         elif campaign_state in {"PUBLISHED", "REVIEW_COMPLETED"} and not is_published:
             status = "blocked_requires_human_review"
@@ -233,7 +233,7 @@ def classify_match_campaign_inventory(
             status = "approved_pending_publication"
         elif campaign_state in {"DOCUMENT_APPROVED"} or internal_id in approved:
             status = "approved_pending_publication"
-        elif campaign_state in {"VALIDATED", "DRAFT_PREPARED"} or internal_id in validated:
+        elif campaign_state in {"VALIDATED", "REVALIDATED", "DRAFT_PREPARED"} or internal_id in validated:
             status = "validated_pending_approval"
         elif campaign_state == "DISCOVERY_REVIEW_REQUIRED":
             status = "captured_pending_validation"
@@ -263,7 +263,11 @@ def classify_match_campaign_inventory(
             next_operation = "publish_approved_document_offline"
         elif campaign_state == "PUBLISHED":
             next_operation = "verify_publication_and_complete_review"
-        elif campaign_state in {"STOPPED", "STARTED", "INTERRUPTED_REQUIRES_REVIEW", "VALIDATION_FAILED"}:
+        elif campaign_state in {"VALIDATED", "REVALIDATED"}:
+            next_operation = "prepare_offline_draft"
+        elif campaign_state in {"VALIDATION_FAILED", "REVALIDATION_FAILED"}:
+            next_operation = "revalidate_failed_artifact_offline_with_operator_confirmation"
+        elif campaign_state in {"STOPPED", "STARTED", "INTERRUPTED_REQUIRES_REVIEW"}:
             next_operation = "manual_review_required_no_retry"
         rows.append({
             **source,
