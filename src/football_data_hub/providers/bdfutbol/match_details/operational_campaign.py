@@ -2243,8 +2243,33 @@ class OperationalMatchCampaignLedger:
         player_published_index_path: Path,
     ) -> dict[str, Any]:
         from football_data_hub_api.match_details_dataset import (
+            CAMPAIGN_PACKAGE_SCHEMA,
+            MatchDetailsLoadError,
+            _read_json,
+            _validated_index_entries,
             load_published_match_details,
         )
+
+        _directory, _campaign, events = self._events(campaign_id, internal_id)
+        approved_events = [
+            event for event in events if event["event_type"] == "DOCUMENT_APPROVED"
+        ]
+        published_events = [
+            event for event in events if event["event_type"] == "PUBLISHED"
+        ]
+        if len(approved_events) != 1 or len(published_events) != 1:
+            raise MatchCampaignIntegrityError(
+                "La publicación no tiene una aprobación y un evento PUBLISHED únicos"
+            )
+        approved = approved_events[0]
+        published = published_events[0]
+        if (
+            approved.get("internal_id") != internal_id
+            or published.get("internal_id") != internal_id
+        ):
+            raise MatchCampaignIntegrityError(
+                "La identidad del partido no coincide con los eventos del ledger"
+            )
 
         data_root, generation_root, bundle, player_ids = self._publication_inputs(
             data_root=data_root,
@@ -2254,30 +2279,111 @@ class OperationalMatchCampaignLedger:
             player_team_captures_root=player_team_captures_root,
             player_published_index_path=player_published_index_path,
         )
-        loaded = load_published_match_details(
-            published_root,
-            store_root=store_root,
-            generation_root=generation_root,
-            data_root=data_root,
-            match_bundle=bundle,
-            player_ids=player_ids,
-        )
+        try:
+            loaded = load_published_match_details(
+                published_root,
+                store_root=store_root,
+                generation_root=generation_root,
+                data_root=data_root,
+                match_bundle=bundle,
+                player_ids=player_ids,
+            )
+        except Exception as exc:
+            raise MatchCampaignIntegrityError(
+                f"El paquete publicado no supera su carga íntegra: {exc}"
+            ) from exc
         if internal_id not in loaded:
             raise MatchCampaignIntegrityError("Partido ausente del índice publicado")
-        index = json.loads((published_root / "index.json").read_bytes())
-        row = next(
-            item for item in index["publications"] if item["internal_id"] == internal_id
-        )
-        manifest_sha = _file_hash(
-            published_root / row["package_path"] / "manifest.json"
-        )
+        document = loaded[internal_id]
+        if (
+            getattr(document, "internal_id", None) != internal_id
+            or getattr(document, "publication_status", None) != "approved"
+            or getattr(document, "source", None) != "BDFutbol"
+        ):
+            raise MatchCampaignIntegrityError(
+                "El documento cargado no corresponde a la publicación aprobada"
+            )
+
+        try:
+            index, _index_raw = _read_json(Path(published_root) / "index.json")
+            entries = _validated_index_entries(index)
+            rows = [item for item in entries if item["internal_id"] == internal_id]
+            if len(rows) != 1:
+                raise MatchCampaignIntegrityError(
+                    "El índice no contiene una referencia única para el partido"
+                )
+            row = rows[0]
+            if row["publication_id"] != published.get("publication_id"):
+                raise MatchCampaignIntegrityError(
+                    "El publication_id no coincide entre índice y evento PUBLISHED"
+                )
+            if (
+                row["manifest_sha256"]
+                != published.get("publication_manifest_sha256")
+            ):
+                raise MatchCampaignIntegrityError(
+                    "El hash del manifiesto difiere entre índice y evento PUBLISHED"
+                )
+
+            package = Path(published_root) / "packages" / row["publication_id"]
+            manifest_path = package / "manifest.json"
+            details_path = package / "details.json"
+            approval_path = package / "approval.json"
+            if any(
+                path.is_symlink() or not path.is_file()
+                for path in (manifest_path, details_path, approval_path)
+            ):
+                raise MatchCampaignIntegrityError(
+                    "Falta un archivo regular del paquete publicado"
+                )
+            manifest, manifest_raw = _read_json(manifest_path)
+            details_payload, details_raw = _read_json(details_path)
+            approval_receipt, approval_raw = _read_json(approval_path)
+        except MatchCampaignIntegrityError:
+            raise
+        except (MatchDetailsLoadError, OSError, TypeError, ValueError, KeyError) as exc:
+            raise MatchCampaignIntegrityError(
+                f"No se puede verificar el índice o paquete publicado: {exc}"
+            ) from exc
+
+        manifest_sha = _sha(manifest_raw)
+        details_sha = manifest.get("details_sha256")
+        if (
+            manifest_sha != row["manifest_sha256"]
+            or manifest_sha != published.get("publication_manifest_sha256")
+        ):
+            raise MatchCampaignIntegrityError(
+                "El hash del manifiesto del paquete no coincide con índice y ledger"
+            )
+        if (
+            manifest.get("schema_version") != CAMPAIGN_PACKAGE_SCHEMA
+            or manifest.get("internal_id") != internal_id
+            or manifest.get("publication_id") != row["publication_id"]
+            or getattr(document, "source_match_id", None)
+            != manifest.get("source_match_id")
+            or not _is_sha(details_sha)
+            or details_sha != _sha(details_raw)
+            or details_sha != published.get("details_sha256")
+            or details_sha != approved.get("details_sha256")
+            or approval_receipt.get("publication_id") != row["publication_id"]
+            or approval_receipt.get("internal_id") != internal_id
+            or approval_receipt.get("details_sha256") != details_sha
+            or approval_receipt.get("approved_by") != approved.get("approved_by")
+            or approval_receipt.get("approval_confirmation")
+            != approved.get("approval_confirmation")
+            or approval_receipt.get("source_html_sha256")
+            != approved.get("source_html_sha256")
+            or manifest.get("approval_sha256") != _sha(approval_raw)
+            or details_payload.get("internal_id") != internal_id
+        ):
+            raise MatchCampaignIntegrityError(
+                "El manifiesto, recibo, documento y eventos del ledger no coinciden"
+            )
         return {
             "internal_id": internal_id,
             "publication_id": row["publication_id"],
             "publication_manifest_sha256": manifest_sha,
-            "details_sha256": loaded[internal_id].source.details_sha256
-            if hasattr(loaded[internal_id], "source")
-            else None,
+            "details_sha256": details_sha,
         }
 
     def complete_review(

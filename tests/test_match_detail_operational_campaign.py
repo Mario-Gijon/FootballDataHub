@@ -29,6 +29,7 @@ from football_data_hub.providers.bdfutbol.match_details.scalable_campaigns impor
     write_match_campaign_proposal,
 )
 from football_data_hub_api import match_details_dataset as api_details
+from football_data_hub_api.schemas import MatchPublishedDetailsResponse
 from tests.match_detail_fixtures import make_verified_generation
 
 
@@ -432,10 +433,38 @@ class _FakeValidation:
 
 
 def _valid_draft(fixture, artifact_event):
+    details_document = MatchPublishedDetailsResponse.model_validate(
+        {
+            "publication_status": "approved",
+            "validation_status": "valid",
+            "source": "BDFutbol",
+            "internal_id": fixture.candidate["internal_id"],
+            "source_match_id": fixture.candidate["source_match_id"],
+            "source_generation_id": fixture.verified.generation_id,
+            "source_capture_id": "capture-I",
+            "source_html_sha256": artifact_event["artifact"]["source_html_sha256"],
+            "match_date": fixture.candidate["source_match_date"],
+            "home_team_id": fixture.candidate["home_team_id"],
+            "away_team_id": fixture.candidate["away_team_id"],
+            "home_goals": 0,
+            "away_goals": 0,
+            "home": {
+                "team_id": fixture.candidate["home_team_id"],
+                "coach": None,
+                "starters": None,
+                "substitutes": None,
+            },
+            "away": {
+                "team_id": fixture.candidate["away_team_id"],
+                "coach": None,
+                "starters": None,
+                "substitutes": None,
+            },
+            "events": [],
+        }
+    ).model_dump(mode="json", exclude_unset=True)
     details = {
-        "source_html_sha256": artifact_event["artifact"]["source_html_sha256"],
-        "home_goals": 0,
-        "away_goals": 0,
+        **details_document,
     }
     draft = {
         "schema_version": api_details.CAMPAIGN_DRAFT_SCHEMA,
@@ -471,6 +500,211 @@ def _valid_draft(fixture, artifact_event):
     }
     draft["details_sha256"] = api_details._sha256(api_details._canonical_json(details))
     return draft
+
+
+def _publication_verification_fixture(tmp_path, monkeypatch):
+    internal_id = "pf-2026-27-group-i-bdfutbol-269408"
+    publication_id = "campaign-269408-testhash"
+    details = MatchPublishedDetailsResponse.model_validate(
+        {
+            "publication_status": "approved",
+            "validation_status": "valid",
+            "source": "BDFutbol",
+            "internal_id": internal_id,
+            "source_match_id": "269408",
+            "source_generation_id": "match-00-testgeneration",
+            "source_capture_id": "capture-I",
+            "source_html_sha256": "a" * 64,
+            "match_date": None,
+            "home_team_id": 81,
+            "away_team_id": 58,
+            "home_goals": 0,
+            "away_goals": 1,
+            "home": {"team_id": 81, "coach": None, "starters": None, "substitutes": None},
+            "away": {"team_id": 58, "coach": None, "starters": None, "substitutes": None},
+            "events": [],
+        }
+    )
+    details_payload = details.model_dump(mode="json", exclude_unset=True)
+    details_raw = api_details._canonical_json(details_payload)
+    details_sha = _sha(details_raw)
+    approval_receipt = {
+        "internal_id": internal_id,
+        "publication_id": publication_id,
+        "details_sha256": details_sha,
+        "approved_by": "synthetic review",
+        "approval_confirmation": "APPROVE-269408-test",
+        "source_html_sha256": "a" * 64,
+    }
+    approval_raw = api_details._canonical_json(approval_receipt)
+    manifest = {
+        "schema_version": api_details.CAMPAIGN_PACKAGE_SCHEMA,
+        "publication_id": publication_id,
+        "internal_id": internal_id,
+        "source_match_id": "269408",
+        "details_sha256": details_sha,
+        "approval_sha256": _sha(approval_raw),
+    }
+    manifest_raw = api_details._canonical_json(manifest)
+    published_root = tmp_path / "published"
+    package = published_root / "packages" / publication_id
+    package.mkdir(parents=True)
+    (package / "manifest.json").write_bytes(manifest_raw)
+    (package / "details.json").write_bytes(details_raw)
+    (package / "approval.json").write_bytes(approval_raw)
+    index = {
+        "schema_version": api_details.INDEX_SCHEMA,
+        "publications": [
+            {
+                "internal_id": internal_id,
+                "publication_id": publication_id,
+                "package_path": f"packages/{publication_id}",
+                "manifest_sha256": _sha(manifest_raw),
+            }
+        ],
+    }
+    index_path = published_root / "index.json"
+    index_path.write_bytes(api_details._canonical_json(index))
+
+    approved_event = {
+        "event_type": "DOCUMENT_APPROVED",
+        "internal_id": internal_id,
+        "details_sha256": details_sha,
+        "approval_sha256": _sha(approval_raw),
+        "approved_by": "synthetic review",
+        "approval_confirmation": "APPROVE-269408-test",
+        "source_html_sha256": "a" * 64,
+    }
+    published_event = {
+        "event_type": "PUBLISHED",
+        "internal_id": internal_id,
+        "publication_id": publication_id,
+        "details_sha256": details_sha,
+        "publication_manifest_sha256": _sha(manifest_raw),
+    }
+    events = [approved_event, published_event]
+    ledger = operational.OperationalMatchCampaignLedger(tmp_path / "campaigns")
+    monkeypatch.setattr(
+        ledger, "_events", lambda *_args: (tmp_path, {}, events)
+    )
+    monkeypatch.setattr(
+        ledger,
+        "_publication_inputs",
+        lambda **_kwargs: (tmp_path, tmp_path, SimpleNamespace(), set()),
+    )
+    monkeypatch.setattr(
+        api_details,
+        "load_published_match_details",
+        lambda *_args, **_kwargs: {internal_id: details},
+    )
+    kwargs = {
+        "campaign_id": "match-detail-campaign-v2-06aa2259b14b95a7",
+        "internal_id": internal_id,
+        "data_root": tmp_path,
+        "generation_root": tmp_path,
+        "published_root": published_root,
+        "store_root": tmp_path,
+        "player_inventory_root": tmp_path,
+        "player_compact_root": tmp_path,
+        "player_team_captures_root": tmp_path,
+        "player_published_index_path": tmp_path / "players.json",
+    }
+    return SimpleNamespace(
+        ledger=ledger,
+        kwargs=kwargs,
+        internal_id=internal_id,
+        publication_id=publication_id,
+        details_sha=details_sha,
+        package=package,
+        index_path=index_path,
+        manifest=manifest,
+        events=events,
+    )
+
+
+def test_verify_publication_uses_manifest_with_real_response_source_literal(
+    tmp_path, monkeypatch
+):
+    fixture = _publication_verification_fixture(tmp_path, monkeypatch)
+    paths = [fixture.index_path, *fixture.package.iterdir()]
+    before = {path: path.read_bytes() for path in paths}
+
+    result = fixture.ledger.verify_publication(**fixture.kwargs)
+
+    assert result["status"] == "PUBLISHED_VERIFIED"
+    assert result["publication_id"] == fixture.publication_id
+    assert result["details_sha256"] == fixture.details_sha
+    assert before == {path: path.read_bytes() for path in paths}
+
+
+@pytest.mark.parametrize(
+    "mismatch",
+    [
+        "index_manifest_sha",
+        "ledger_manifest_sha",
+        "manifest_details_sha",
+        "published_details_sha",
+        "approved_details_sha",
+        "manifest_identity",
+        "publication_id",
+        "missing_package",
+        "missing_manifest",
+        "corrupt_manifest",
+    ],
+)
+def test_verify_publication_rejects_mismatched_or_incomplete_package(
+    tmp_path, monkeypatch, mismatch
+):
+    fixture = _publication_verification_fixture(tmp_path, monkeypatch)
+    manifest_path = fixture.package / "manifest.json"
+    index = json.loads(fixture.index_path.read_bytes())
+    row = index["publications"][0]
+    manifest = dict(fixture.manifest)
+    published = fixture.events[-1]
+    approved = fixture.events[0]
+
+    if mismatch == "index_manifest_sha":
+        row["manifest_sha256"] = "b" * 64
+        fixture.index_path.write_bytes(api_details._canonical_json(index))
+    elif mismatch == "ledger_manifest_sha":
+        published["publication_manifest_sha256"] = "b" * 64
+    elif mismatch == "manifest_details_sha":
+        manifest["details_sha256"] = "b" * 64
+        raw = api_details._canonical_json(manifest)
+        manifest_path.write_bytes(raw)
+        row["manifest_sha256"] = _sha(raw)
+        fixture.index_path.write_bytes(api_details._canonical_json(index))
+        published["publication_manifest_sha256"] = _sha(raw)
+    elif mismatch == "published_details_sha":
+        published["details_sha256"] = "b" * 64
+    elif mismatch == "approved_details_sha":
+        approved["details_sha256"] = "b" * 64
+    elif mismatch == "manifest_identity":
+        manifest["internal_id"] = "pf-2026-27-group-i-bdfutbol-269411"
+        raw = api_details._canonical_json(manifest)
+        manifest_path.write_bytes(raw)
+        row["manifest_sha256"] = _sha(raw)
+        fixture.index_path.write_bytes(api_details._canonical_json(index))
+        published["publication_manifest_sha256"] = _sha(raw)
+    elif mismatch == "publication_id":
+        row["publication_id"] = "campaign-269408-other"
+        row["package_path"] = "packages/campaign-269408-other"
+        fixture.index_path.write_bytes(api_details._canonical_json(index))
+    elif mismatch == "missing_package":
+        import shutil
+
+        shutil.rmtree(fixture.package)
+    elif mismatch == "missing_manifest":
+        manifest_path.unlink()
+    elif mismatch == "corrupt_manifest":
+        manifest_path.write_bytes(b"{not-json")
+        raw = manifest_path.read_bytes()
+        row["manifest_sha256"] = _sha(raw)
+        fixture.index_path.write_bytes(api_details._canonical_json(index))
+        published["publication_manifest_sha256"] = _sha(raw)
+
+    with pytest.raises(MatchCampaignIntegrityError):
+        fixture.ledger.verify_publication(**fixture.kwargs)
 
 
 def test_v2_offline_pipeline_reaches_review_completion_with_human_approval(
@@ -653,35 +887,46 @@ def test_v2_offline_pipeline_reaches_review_completion_with_human_approval(
     published_root = fixture.store_root / "published"
 
     def fake_publish(_draft, **_kwargs):
-        published_root.mkdir(parents=True, exist_ok=True)
-        (published_root / "packages" / draft["publication_id"]).mkdir(parents=True)
+        package = published_root / "packages" / draft["publication_id"]
+        package.mkdir(parents=True)
+        details_raw = api_details._canonical_json(draft["details"])
+        approval_raw = (
+            fixture.data_root / approved["approval_path"]
+        ).read_bytes()
         manifest = {
+            "schema_version": api_details.CAMPAIGN_PACKAGE_SCHEMA,
             "publication_id": draft["publication_id"],
             "internal_id": draft["internal_id"],
+            "source_match_id": draft["source_match_id"],
             "details_sha256": draft["details_sha256"],
+            "approval_sha256": _sha(approval_raw),
         }
+        manifest_raw = api_details._canonical_json(manifest)
         manifest_path = (
             published_root / "packages" / draft["publication_id"] / "manifest.json"
         )
-        manifest_path.write_bytes(_canonical(manifest))
+        manifest_path.write_bytes(manifest_raw)
+        (package / "details.json").write_bytes(details_raw)
+        (package / "approval.json").write_bytes(approval_raw)
         (published_root / "index.json").write_text(
             json.dumps(
                 {
+                    "schema_version": api_details.INDEX_SCHEMA,
                     "publications": [
                         {
                             "internal_id": draft["internal_id"],
                             "publication_id": draft["publication_id"],
                             "package_path": f"packages/{draft['publication_id']}",
+                            "manifest_sha256": _sha(manifest_raw),
                         }
-                    ]
-                }
+                    ],
+                },
+                sort_keys=True,
             )
         )
         return {"publication_id": draft["publication_id"]}
 
-    loaded_doc = SimpleNamespace(
-        source=SimpleNamespace(details_sha256=draft["details_sha256"])
-    )
+    loaded_doc = MatchPublishedDetailsResponse.model_validate(draft["details"])
     monkeypatch.setattr(
         api_details, "publish_campaign_match_detail_draft", fake_publish
     )
@@ -703,6 +948,22 @@ def test_v2_offline_pipeline_reaches_review_completion_with_human_approval(
         player_published_index_path=tmp_path / "players.json",
     )
     assert published["status"] == "PUBLISHED"
+    package = published_root / "packages" / draft["publication_id"]
+    event_dir = (
+        fixture.ledger.root
+        / fixture.plan["campaign_id"]
+        / "candidates"
+        / fixture.candidate["internal_id"]
+        / "events"
+    )
+    verification_paths = [
+        published_root / "index.json",
+        *package.iterdir(),
+        *event_dir.iterdir(),
+    ]
+    verification_bytes = {
+        path: path.read_bytes() for path in verification_paths
+    }
     verification = fixture.ledger.verify_publication(
         campaign_id=fixture.plan["campaign_id"],
         internal_id=fixture.candidate["internal_id"],
@@ -716,6 +977,9 @@ def test_v2_offline_pipeline_reaches_review_completion_with_human_approval(
         player_published_index_path=tmp_path / "players.json",
     )
     assert verification["status"] == "PUBLISHED_VERIFIED"
+    assert verification_bytes == {
+        path: path.read_bytes() for path in verification_paths
+    }
     confirmation = review_completion_confirmation(
         draft["source_match_id"], draft["source_html_sha256"], draft["details_sha256"]
     )
