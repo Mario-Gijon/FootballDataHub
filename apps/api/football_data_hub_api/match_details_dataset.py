@@ -8,7 +8,7 @@ import os
 import re
 import fcntl
 import shutil
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from pathlib import Path, PurePosixPath
 import tempfile
 from typing import Any
@@ -49,7 +49,12 @@ INDEX_SCHEMA = "football_data_hub.match_detail_publication_index.v1"
 PACKAGE_SCHEMA = "football_data_hub.match_detail_publication.v1"
 APPROVAL_SCHEMA = "football_data_hub.match_detail_publication_approval.v1"
 DRAFT_SCHEMA = "football_data_hub.match_detail_publication_draft.v1"
+CAMPAIGN_PACKAGE_SCHEMA = "football_data_hub.match_detail_campaign_publication.v1"
+CAMPAIGN_APPROVAL_SCHEMA = "football_data_hub.match_detail_campaign_approval.v1"
+CAMPAIGN_DRAFT_SCHEMA = "football_data_hub.match_detail_campaign_publication_draft.v1"
 _PUBLICATION_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+_CAMPAIGN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+_ARTIFACT_ID = re.compile(r"^discovery-[A-Za-z0-9._-]{1,120}$")
 
 
 class MatchDetailsLoadError(ValueError):
@@ -319,6 +324,251 @@ def _validate_detail_against_inventory(detail: MatchDetail, record: dict[str, An
         raise MatchDetailsLoadError("La identidad deportiva no coincide con el registro de MATCH-00.")
 
 
+def _campaign_artifact_path(
+    data_root: Path, *, campaign_id: str, internal_id: str, artifact_id: str
+) -> Path:
+    """Resolve one campaign artifact inside the configured store without symlinks."""
+
+    if (
+        not _CAMPAIGN_ID.fullmatch(campaign_id)
+        or not _PUBLICATION_ID.fullmatch(internal_id)
+        or not _ARTIFACT_ID.fullmatch(artifact_id)
+    ):
+        raise MatchDetailsLoadError("Identificadores de campaña o artefacto no válidos.")
+    root = data_root.expanduser().absolute()
+    path = (
+        root / "matches/details/campaigns" / campaign_id / "candidates"
+        / internal_id / "artifacts" / artifact_id
+    )
+    cursor = path
+    while cursor != cursor.parent:
+        if cursor.is_symlink():
+            raise MatchDetailsLoadError(f"La ruta del artefacto contiene un symlink: {cursor}")
+        cursor = cursor.parent
+    try:
+        resolved = path.resolve(strict=True)
+        resolved.relative_to((root / "matches/details/campaigns").resolve(strict=True))
+    except (OSError, ValueError) as exc:
+        raise MatchDetailsLoadError("El artefacto de campaña no está bajo el almacén configurado.") from exc
+    if not resolved.is_dir():
+        raise MatchDetailsLoadError("El artefacto de campaña no es un directorio regular.")
+    return resolved
+
+
+def _campaign_observation(
+    *,
+    campaign_id: str,
+    artifact_id: str,
+    internal_id: str,
+    generation: Any,
+    data_root: Path,
+    record: dict[str, Any],
+) -> tuple[Any, dict[str, Any]]:
+    """Reverify the immutable campaign evidence and return its observation/source refs."""
+
+    artifact = _campaign_artifact_path(
+        data_root, campaign_id=campaign_id, internal_id=internal_id, artifact_id=artifact_id
+    )
+    try:
+        observation = parse_campaign_saved_artifact(
+            artifact,
+            expected_match=record,
+            verified_generation=generation,
+            data_root=data_root,
+        )
+        manifest, manifest_raw = _read_json(artifact / "manifest.json")
+        metadata, _ = _read_json(artifact / "metadata.json")
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise MatchDetailsLoadError(f"El artefacto/ledger de campaña no superó la validación: {exc}") from exc
+    if (
+        manifest.get("campaign_id") != campaign_id
+        or manifest.get("artifact_id") != artifact_id
+        or manifest.get("internal_id") != internal_id
+        or metadata.get("campaign_id") != campaign_id
+        or metadata.get("navigation_attempt_id") is None
+        or metadata.get("capture_promoted") is not False
+        or metadata.get("access_classification") != "VALID"
+        or metadata.get("http_status") != 200
+        or metadata.get("challenge_detected") is not False
+        or metadata.get("denial_detected") is not False
+        or observation.source.artifact_access_status != "VALID"
+        or observation.source.promotion_eligible is not False
+        or observation.validation.promotion_eligible is not False
+    ):
+        raise MatchDetailsLoadError("El artefacto no acredita acceso válido de campaña sin promoción.")
+    source = {
+        "source_kind": "campaign_discovery",
+        "campaign_id": campaign_id,
+        "artifact_id": artifact_id,
+        "source_match_id": observation.source.source_match_id,
+        "navigation_attempt_id": metadata["navigation_attempt_id"],
+        "artifact_manifest_sha256": _sha256(manifest_raw),
+        "source_html_sha256": observation.source.source_html_sha256,
+        "inventory_id": observation.source.inventory_id,
+        "source_generation_id": observation.source.source_generation_id,
+        "source_generation_manifest_sha256": record["source_generation_manifest_sha256"],
+        "source_capture_id": observation.source.source_capture_id,
+        "season": record["season"],
+        "competition": record["competition"],
+        "group": record["group"],
+        "matchday": record["matchday"],
+        "source_match_date": record["source_match_date"],
+        "home_team_id": record["home_team_id"],
+        "away_team_id": record["away_team_id"],
+        "home_team_name": observation.home.team.name,
+        "away_team_name": observation.away.team.name,
+        "capture_promotion_enabled": False,
+        "promotion_eligible": False,
+        "access_status": "VALID",
+        "semantic_valid": observation.validation.semantic_valid,
+    }
+    return observation, source
+
+
+def _validate_campaign_observation_against_match(
+    observation: Any, record: dict[str, Any], match_page: MatchPageResponse
+) -> None:
+    """Require all catalog identity/context and score facts before drafting."""
+
+    source = observation.source
+    context = observation.context
+    expected = match_page.match
+    if observation.validation.semantic_valid is not True:
+        raise MatchDetailsLoadError("La validación semántica no es válida.")
+    if (
+        source.internal_id != record["internal_id"]
+        or source.source_match_id != record["source_match_id"]
+        or source.requested_url != record["source_match_url"]
+        or source.final_url != record["source_match_url"]
+        or source.source_generation_id != record["source_generation_id"]
+        or source.source_capture_id != record["source_capture_id"]
+        or context.season.value != record["season"]
+        or context.competition.value != record["competition"]
+        or context.group.value != record["group"]
+        or context.matchday.value != record["matchday"]
+        or observation.match_date.value != record["source_match_date"]
+        or observation.home.team.team_id != record["home_team_id"]
+        or observation.away.team.team_id != record["away_team_id"]
+        or observation.home.team.name != expected.home_team.name
+        or observation.away.team.name != expected.away_team.name
+        or observation.score.home_goals != expected.home_goals
+        or observation.score.away_goals != expected.away_goals
+    ):
+        raise MatchDetailsLoadError("La identidad/contexto/marcador no coincide exactamente con MATCH-00.")
+
+
+def _load_campaign_publication_document(
+    *,
+    publication_id: str,
+    indexed_internal_id: str,
+    manifest: dict[str, Any],
+    approval: dict[str, Any],
+    approval_raw: bytes,
+    details_payload: dict[str, Any],
+    details_raw: bytes,
+    generation_root: Path,
+    data_root: Path,
+    match_bundle: MatchResultsBundle,
+    player_ids: set[int],
+) -> MatchPublishedDetailsResponse:
+    manifest_fields = {
+        "schema_version", "publication_id", "source_kind", "internal_id", "inventory_id",
+        "source_generation_id", "source_generation_manifest_sha256", "source_capture_id",
+        "source_match_id", "season", "competition", "group", "matchday", "source_match_date",
+        "home_team_id", "away_team_id", "home_team_name", "away_team_name",
+        "campaign_id", "artifact_id", "navigation_attempt_id", "artifact_manifest_sha256",
+        "source_html_sha256", "details_sha256", "approval_sha256",
+    }
+    approval_fields = {
+        "schema_version", "publication_status", "approved_by", "approved_at_utc",
+        "approval_confirmation",
+        "publication_id", "source_kind", "internal_id", "inventory_id",
+        "source_generation_id", "source_generation_manifest_sha256", "source_capture_id",
+        "source_match_id", "season", "competition", "group", "matchday", "source_match_date",
+        "home_team_id", "away_team_id", "home_team_name", "away_team_name",
+        "campaign_id", "artifact_id", "navigation_attempt_id", "artifact_manifest_sha256",
+        "source_html_sha256", "details_sha256",
+    }
+    if set(manifest) != manifest_fields or manifest.get("schema_version") != CAMPAIGN_PACKAGE_SCHEMA:
+        raise MatchDetailsLoadError("El manifiesto de campaña no cumple el contrato exacto.")
+    if manifest.get("publication_id") != publication_id or manifest.get("internal_id") != indexed_internal_id:
+        raise MatchDetailsLoadError("La publicación de campaña no coincide con el índice.")
+    if set(approval) != approval_fields or approval.get("schema_version") != CAMPAIGN_APPROVAL_SCHEMA:
+        raise MatchDetailsLoadError("Falta un recibo explícito de aprobación de campaña.")
+    if (
+        approval.get("publication_status") != "approved"
+        or approval.get("source_kind") != "campaign_discovery"
+        or not isinstance(approval.get("approved_by"), str)
+        or not approval["approved_by"].strip()
+        or approval.get("approval_confirmation") != (
+            f"APPROVE-{manifest.get('source_match_id')}-"
+            f"{str(manifest.get('source_html_sha256', ''))[:12]}-"
+            f"{str(manifest.get('details_sha256', ''))[:12]}"
+        )
+    ):
+        raise MatchDetailsLoadError("Se requiere aprobación humana explícita para esta campaña.")
+    approved_at = approval.get("approved_at_utc")
+    if not isinstance(approved_at, str):
+        raise MatchDetailsLoadError("El recibo de campaña no tiene fecha de aprobación.")
+    try:
+        approved_at_value = datetime.fromisoformat(approved_at.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise MatchDetailsLoadError("La fecha de aprobación de campaña no es válida.") from exc
+    if approved_at_value.tzinfo is None:
+        raise MatchDetailsLoadError("La aprobación de campaña debe tener zona horaria.")
+    if approval_raw != _canonical_json(approval) or details_raw != _canonical_json(details_payload):
+        raise MatchDetailsLoadError("Los JSON aprobados no usan la codificación canónica del paquete.")
+    if manifest.get("approval_sha256") != _sha256(approval_raw):
+        raise MatchDetailsLoadError("El hash del recibo de campaña no coincide.")
+    for key in approval_fields - {
+        "schema_version", "publication_status", "approval_confirmation", "approved_by", "approved_at_utc"
+    }:
+        if approval.get(key) != manifest.get(key):
+            raise MatchDetailsLoadError(f"La aprobación no autoriza el campo exacto {key}.")
+    if (
+        manifest.get("source_kind") != "campaign_discovery"
+        or not isinstance(manifest.get("inventory_id"), str)
+        or not isinstance(manifest.get("source_generation_id"), str)
+        or not re.fullmatch(r"[a-f0-9]{64}", str(manifest.get("source_generation_manifest_sha256", "")))
+        or not re.fullmatch(r"[a-f0-9]{64}", str(manifest.get("artifact_manifest_sha256", "")))
+        or not re.fullmatch(r"[a-f0-9]{64}", str(manifest.get("source_html_sha256", "")))
+        or not re.fullmatch(r"[a-f0-9]{64}", str(manifest.get("details_sha256", "")))
+        or not isinstance(manifest.get("navigation_attempt_id"), str)
+        or not manifest["navigation_attempt_id"]
+        or _sha256(details_raw) != manifest.get("details_sha256")
+    ):
+        raise MatchDetailsLoadError("La procedencia o huella del paquete de campaña no es válida.")
+    try:
+        document = MatchPublishedDetailsResponse.model_validate(details_payload)
+    except (ValueError, TypeError) as exc:
+        raise MatchDetailsLoadError("El documento de campaña no cumple el contrato público.") from exc
+    if document.publication_status != "approved":
+        raise MatchDetailsLoadError("El documento público de campaña no está marcado aprobado.")
+    draft = build_campaign_publication_draft(
+        internal_id=indexed_internal_id,
+        campaign_id=str(manifest["campaign_id"]),
+        artifact_id=str(manifest["artifact_id"]),
+        publication_id=publication_id,
+        generation_root=generation_root,
+        data_root=data_root,
+        match_bundle=match_bundle,
+        player_ids=player_ids,
+    )
+    if (
+        draft.get("schema_version") != CAMPAIGN_DRAFT_SCHEMA
+        or draft.get("details_sha256") != manifest.get("details_sha256")
+        or _canonical_json(document.model_dump(mode="json"))
+        != _canonical_json(draft.get("details"))
+    ):
+        raise MatchDetailsLoadError("El documento público no coincide con la evidencia de campaña revalidada.")
+    for key in manifest_fields - {
+        "schema_version", "publication_id", "approval_sha256", "details_sha256"
+    }:
+        if manifest.get(key) != draft.get(key):
+            raise MatchDetailsLoadError(f"El manifiesto no coincide con la fuente revalidada: {key}.")
+    return document
+
+
 def load_published_match_details(
     published_root: Path,
     *,
@@ -408,6 +658,34 @@ def load_published_match_details(
         details_payload, details_raw = _read_json(details_path)
         if _sha256(manifest_raw) != item["manifest_sha256"]:
             raise MatchDetailsLoadError("El hash del manifiesto no coincide con el índice.")
+        if manifest.get("schema_version") == CAMPAIGN_PACKAGE_SCHEMA:
+            document = _load_campaign_publication_document(
+                publication_id=publication_id,
+                indexed_internal_id=internal_id,
+                manifest=manifest,
+                approval=approval,
+                approval_raw=approval_raw,
+                details_payload=details_payload,
+                details_raw=details_raw,
+                generation_root=generation_root,
+                data_root=data_root,
+                match_bundle=match_bundle,
+                player_ids=player_ids,
+            )
+            record = records.get(internal_id)
+            if record is None:
+                raise MatchDetailsLoadError("El partido de campaña no pertenece a MATCH-00.")
+            _validate_detail_against_match(
+                document,
+                _published_match(match_bundle, internal_id),
+                generation_id=generation.generation_id,
+                generation_sha256=generation.manifest_sha256,
+                source_generation_manifest_sha256=str(
+                    manifest["source_generation_manifest_sha256"]
+                ),
+            )
+            loaded[internal_id] = document
+            continue
         allowed_manifest = {
             "schema_version", "publication_id", "internal_id", "inventory_id", "capture_id",
             "source_generation_id", "source_generation_manifest_sha256", "source_capture_id",
@@ -545,6 +823,177 @@ def build_match_detail_publication_draft(
         "details_sha256": _sha256(details_raw),
         "details": document.model_dump(mode="json"),
     }
+
+
+def build_campaign_publication_draft(
+    *,
+    internal_id: str,
+    campaign_id: str,
+    artifact_id: str,
+    publication_id: str | None = None,
+    generation_root: Path,
+    data_root: Path,
+    match_bundle: MatchResultsBundle,
+    player_ids: set[int],
+) -> dict[str, Any]:
+    """Prepare a publication document from an unpromoted campaign artifact.
+
+    This does not change campaign state, promote a capture, or write to the public
+    index. Every call rechecks the campaign ledger, artifact hashes and MATCH-00.
+    """
+
+    generation = load_verified_match_generation(generation_root, data_root=data_root)
+    if (
+        generation.generation_id != match_bundle.bootstrap.metadata.generation_id
+        or generation.manifest_sha256 != match_bundle.bootstrap.metadata.generation_sha256
+    ):
+        raise MatchDetailsLoadError("La generación de detalles difiere de la cargada por Resultados.")
+    inventory = build_match_detail_inventory(generation)
+    record = next((item for item in inventory["matches"] if item["internal_id"] == internal_id), None)
+    if record is None:
+        raise MatchDetailsLoadError("El partido no pertenece al inventario disputado de MATCH-00.")
+    observation, source = _campaign_observation(
+        campaign_id=campaign_id,
+        artifact_id=artifact_id,
+        internal_id=internal_id,
+        generation=generation,
+        data_root=data_root,
+        record=record,
+    )
+    match_page = build_match_page(match_bundle, internal_id)
+    if match_page is None:
+        raise MatchDetailsLoadError("El partido no está disponible en la respuesta de MATCH-00.")
+    _validate_campaign_observation_against_match(observation, record, match_page)
+    preview = build_discovery_preview(
+        observation, match_page=match_page, player_ids=player_ids
+    )
+    document = MatchPublishedDetailsResponse.model_validate({
+        **preview.model_dump(mode="json"),
+        "publication_status": "approved",
+    })
+    _validate_detail_against_match(
+        document,
+        match_page.match,
+        generation_id=generation.generation_id,
+        generation_sha256=generation.manifest_sha256,
+        source_generation_manifest_sha256=record["source_generation_manifest_sha256"],
+    )
+    details = document.model_dump(mode="json")
+    details_raw = _canonical_json(details)
+    if publication_id is None:
+        publication_id = (
+            f"campaign-{record['source_match_id']}-{source['source_html_sha256'][:16]}"
+        )
+    if not _PUBLICATION_ID.fullmatch(publication_id):
+        raise MatchDetailsLoadError("publication_id no seguro")
+    return {
+        "schema_version": CAMPAIGN_DRAFT_SCHEMA,
+        "publication_id": publication_id,
+        **source,
+        "internal_id": internal_id,
+        "details_sha256": _sha256(details_raw),
+        "details": details,
+    }
+
+
+def campaign_approval_confirmation(draft: dict[str, Any]) -> str:
+    """Return the exact confirmation token bound to this match and two content hashes."""
+
+    if draft.get("schema_version") != CAMPAIGN_DRAFT_SCHEMA:
+        raise MatchDetailsLoadError("No es un borrador de publicación de campaña.")
+    return (
+        f"APPROVE-{draft.get('source_match_id')}-"
+        f"{str(draft.get('source_html_sha256', ''))[:12]}-"
+        f"{str(draft.get('details_sha256', ''))[:12]}"
+    )
+
+
+def build_campaign_approval_receipt(
+    draft: dict[str, Any],
+    *,
+    approved_by: str,
+    confirm_internal_id: str,
+    confirm_source_html_sha256: str,
+    confirm_details_sha256: str,
+    confirm_action: str,
+    approved_at_utc: datetime | None = None,
+) -> dict[str, Any]:
+    """Create an approval receipt only after an explicit hash-specific confirmation."""
+
+    if draft.get("schema_version") != CAMPAIGN_DRAFT_SCHEMA:
+        raise MatchDetailsLoadError("No es un borrador de publicación de campaña.")
+    if (
+        not isinstance(approved_by, str)
+        or not approved_by.strip()
+        or confirm_internal_id != draft.get("internal_id")
+        or confirm_source_html_sha256 != draft.get("source_html_sha256")
+        or confirm_details_sha256 != draft.get("details_sha256")
+        or confirm_action != campaign_approval_confirmation(draft)
+        or draft.get("source_kind") != "campaign_discovery"
+        or draft.get("capture_promotion_enabled") is not False
+        or draft.get("promotion_eligible") is not False
+        or draft.get("access_status") != "VALID"
+        or draft.get("semantic_valid") is not True
+        or _sha256(_canonical_json(draft.get("details"))) != draft.get("details_sha256")
+    ):
+        raise MatchDetailsLoadError("La aprobación no confirma el partido, HTML y documento exactos.")
+    approved_at_utc = approved_at_utc or datetime.now(timezone.utc)
+    if approved_at_utc.tzinfo is None:
+        raise MatchDetailsLoadError("La fecha de aprobación debe incluir zona horaria.")
+    fields = (
+        "publication_id", "source_kind", "internal_id", "inventory_id",
+        "source_generation_id", "source_generation_manifest_sha256", "source_capture_id",
+        "source_match_id", "season", "competition", "group", "matchday", "source_match_date",
+        "home_team_id", "away_team_id", "home_team_name", "away_team_name",
+        "campaign_id", "artifact_id", "navigation_attempt_id", "artifact_manifest_sha256",
+        "source_html_sha256", "details_sha256",
+    )
+    return {
+        "schema_version": CAMPAIGN_APPROVAL_SCHEMA,
+        "publication_status": "approved",
+        "approval_confirmation": confirm_action,
+        "approved_by": approved_by.strip(),
+        "approved_at_utc": approved_at_utc.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
+        **{key: draft[key] for key in fields},
+    }
+
+
+def write_immutable_publication_json(path: Path, value: dict[str, Any]) -> Path:
+    """Write one canonical derived record without replacing previous evidence."""
+
+    target = path.expanduser().absolute()
+    cursor = target
+    while cursor != cursor.parent:
+        if cursor.is_symlink():
+            raise MatchDetailsLoadError(f"No se permiten symlinks en la salida: {cursor}")
+        cursor = cursor.parent
+    target.parent.mkdir(parents=True, exist_ok=True)
+    cursor = target
+    while cursor != cursor.parent:
+        if cursor.is_symlink():
+            raise MatchDetailsLoadError(f"No se permiten symlinks en la salida: {cursor}")
+        cursor = cursor.parent
+    if target.exists():
+        raise MatchDetailsLoadError(f"No se sobrescribe un registro inmutable: {target}")
+    fd, temporary_name = tempfile.mkstemp(prefix=f".{target.name}.", dir=target.parent)
+    temporary = Path(temporary_name)
+    try:
+        raw = _canonical_json(value) + b"\n"
+        with os.fdopen(fd, "wb") as output:
+            output.write(raw)
+            output.flush()
+            os.fsync(output.fileno())
+        os.link(temporary, target)
+        directory_fd = os.open(target.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
+    except FileExistsError as exc:
+        raise MatchDetailsLoadError(f"No se sobrescribe un registro inmutable: {target}") from exc
+    finally:
+        temporary.unlink(missing_ok=True)
+    return target
 
 
 def publish_match_detail_draft(
@@ -735,6 +1184,248 @@ def publish_match_detail_draft(
         finally:
             fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
     return {"internal_id": expected_draft["internal_id"], "publication_id": package_id}
+
+
+def publish_campaign_match_detail_draft(
+    draft: dict[str, Any],
+    *,
+    approval_receipt: dict[str, Any],
+    published_root: Path,
+    store_root: Path,
+    generation_root: Path,
+    data_root: Path,
+    match_bundle: MatchResultsBundle,
+    player_ids: set[int],
+) -> dict[str, str]:
+    """Publish one freshly revalidated campaign discovery after exact human approval."""
+
+    if not isinstance(draft, dict) or not isinstance(approval_receipt, dict):
+        raise MatchDetailsLoadError("Se requiere borrador y aprobación individual explícita.")
+    expected = build_campaign_publication_draft(
+        internal_id=str(draft.get("internal_id", "")),
+        campaign_id=str(draft.get("campaign_id", "")),
+        artifact_id=str(draft.get("artifact_id", "")),
+        publication_id=str(draft.get("publication_id", "")),
+        generation_root=generation_root,
+        data_root=data_root,
+        match_bundle=match_bundle,
+        player_ids=player_ids,
+    )
+    if _canonical_json(draft) != _canonical_json(expected):
+        raise MatchDetailsLoadError("El borrador ya no coincide con la evidencia de campaña revalidada.")
+    expected_approval = build_campaign_approval_receipt(
+        expected,
+        approved_by=str(approval_receipt.get("approved_by", "")),
+        confirm_internal_id=str(approval_receipt.get("internal_id", "")),
+        confirm_source_html_sha256=str(approval_receipt.get("source_html_sha256", "")),
+        confirm_details_sha256=str(approval_receipt.get("details_sha256", "")),
+        confirm_action=campaign_approval_confirmation(expected),
+        approved_at_utc=_parse_approval_timestamp(approval_receipt.get("approved_at_utc")),
+    )
+    if _canonical_json(approval_receipt) != _canonical_json(expected_approval):
+        raise MatchDetailsLoadError("El recibo de aprobación no autoriza exactamente este borrador.")
+
+    root = _safe_root(published_root)
+    root.mkdir(parents=True, exist_ok=True)
+    lock_path = root / ".publication.lock"
+    if lock_path.is_symlink():
+        raise MatchDetailsLoadError("El bloqueo de publicación no puede ser symlink.")
+    with lock_path.open("a+b") as lock_file:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+        try:
+            package_id = expected["publication_id"]
+            packages_root = root / "packages"
+            packages_root.mkdir(exist_ok=True)
+            if packages_root.is_symlink() or not packages_root.is_dir():
+                raise MatchDetailsLoadError("El directorio de paquetes no es regular.")
+            package = packages_root / package_id
+
+            index_path = root / "index.json"
+            previous_index: bytes | None = None
+            entries: list[dict[str, str]] = []
+            if index_path.is_symlink():
+                raise MatchDetailsLoadError("El índice actual no puede ser symlink.")
+            if index_path.exists():
+                if not index_path.is_file():
+                    raise MatchDetailsLoadError("El índice actual no es regular.")
+                current, previous_index = _read_json(index_path)
+                entries = _validated_index_entries(current)
+
+            details_raw = _canonical_json(expected["details"])
+            approval_raw = _canonical_json(approval_receipt)
+            manifest = {
+                "schema_version": CAMPAIGN_PACKAGE_SCHEMA,
+                **{
+                    key: expected[key]
+                    for key in (
+                        "publication_id", "source_kind", "internal_id", "inventory_id",
+                        "source_generation_id", "source_generation_manifest_sha256",
+                        "source_capture_id", "source_match_id", "season", "competition", "group",
+                        "matchday", "source_match_date", "home_team_id", "away_team_id",
+                        "home_team_name", "away_team_name",
+                        "campaign_id", "artifact_id",
+                        "navigation_attempt_id", "artifact_manifest_sha256", "source_html_sha256",
+                        "details_sha256",
+                    )
+                },
+                "approval_sha256": _sha256(approval_raw),
+            }
+            manifest_raw = _canonical_json(manifest)
+            if package.exists() or package.is_symlink():
+                active = next(
+                    (entry for entry in entries if entry["internal_id"] == expected["internal_id"]),
+                    None,
+                )
+                if (
+                    package.is_symlink()
+                    or not package.is_dir()
+                    or any(path.is_symlink() for path in package.rglob("*"))
+                    or {path.name for path in package.iterdir()} != {
+                        "approval.json", "details.json", "manifest.json"
+                    }
+                ):
+                    raise MatchDetailsLoadError("La publicación existente está incompleta o no es regular.")
+                existing_bytes = {
+                    name: (package / name).read_bytes()
+                    for name in ("approval.json", "details.json", "manifest.json")
+                }
+                if (
+                    existing_bytes["approval.json"] != approval_raw
+                    or existing_bytes["details.json"] != details_raw
+                    or existing_bytes["manifest.json"] != manifest_raw
+                    or active is None
+                    or active["publication_id"] != package_id
+                    or active["manifest_sha256"] != _sha256(manifest_raw)
+                ):
+                    raise MatchDetailsLoadError("Una publicación inmutable con ese ID ya existe con contenido distinto o inactiva.")
+                loaded = load_published_match_details(
+                    root,
+                    store_root=store_root,
+                    generation_root=generation_root,
+                    data_root=data_root,
+                    match_bundle=match_bundle,
+                    player_ids=player_ids,
+                )
+                if expected["internal_id"] not in loaded:
+                    raise MatchDetailsLoadError("La publicación existente no supera su lectura final.")
+                return {"internal_id": expected["internal_id"], "publication_id": package_id}
+            stage = Path(tempfile.mkdtemp(prefix=f".{package_id}.", dir=packages_root))
+            try:
+                for filename, content in (
+                    ("approval.json", approval_raw),
+                    ("details.json", details_raw),
+                    ("manifest.json", manifest_raw),
+                ):
+                    with (stage / filename).open("xb") as output:
+                        output.write(content)
+                        output.flush()
+                        os.fsync(output.fileno())
+                stage_fd = os.open(stage, os.O_RDONLY)
+                try:
+                    os.fsync(stage_fd)
+                finally:
+                    os.close(stage_fd)
+                # Reserve the immutable final name without replacing any existing package.
+                package.mkdir()
+                for filename in ("approval.json", "details.json", "manifest.json"):
+                    os.rename(stage / filename, package / filename)
+                package_fd = os.open(package, os.O_RDONLY)
+                try:
+                    os.fsync(package_fd)
+                finally:
+                    os.close(package_fd)
+                packages_fd = os.open(packages_root, os.O_RDONLY)
+                try:
+                    os.fsync(packages_fd)
+                finally:
+                    os.close(packages_fd)
+            finally:
+                shutil.rmtree(stage, ignore_errors=True)
+
+            entry = {
+                "internal_id": expected["internal_id"],
+                "publication_id": package_id,
+                "package_path": f"packages/{package_id}",
+                "manifest_sha256": _sha256(manifest_raw),
+            }
+            entries = [item for item in entries if item["internal_id"] != expected["internal_id"]]
+            entries.append(entry)
+            entries.sort(key=lambda item: item["internal_id"])
+            new_index = _canonical_json({"schema_version": INDEX_SCHEMA, "publications": entries})
+            if previous_index is not None:
+                history = root / "indexes"
+                history.mkdir(exist_ok=True)
+                if history.is_symlink() or not history.is_dir():
+                    raise MatchDetailsLoadError("El historial de índices no es regular.")
+                history_path = history / f"{_sha256(previous_index)}.json"
+                if history_path.is_symlink():
+                    raise MatchDetailsLoadError("Un índice histórico es symlink.")
+                if history_path.exists():
+                    if not history_path.is_file() or history_path.read_bytes() != previous_index:
+                        raise MatchDetailsLoadError("El índice histórico existente difiere de su hash.")
+                else:
+                    _atomic_bytes(history_path, previous_index)
+            _atomic_bytes(index_path, new_index)
+            try:
+                loaded = load_published_match_details(
+                    root,
+                    store_root=store_root,
+                    generation_root=generation_root,
+                    data_root=data_root,
+                    match_bundle=match_bundle,
+                    player_ids=player_ids,
+                )
+                if expected["internal_id"] not in loaded:
+                    raise MatchDetailsLoadError("La publicación no aparece en la recarga de verificación.")
+            except BaseException:
+                if previous_index is None:
+                    index_path.unlink(missing_ok=True)
+                    root_fd = os.open(root, os.O_RDONLY)
+                    try:
+                        os.fsync(root_fd)
+                    finally:
+                        os.close(root_fd)
+                else:
+                    _atomic_bytes(index_path, previous_index)
+                raise
+        finally:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+    return {"internal_id": expected["internal_id"], "publication_id": package_id}
+
+
+def _parse_approval_timestamp(value: Any) -> datetime:
+    if not isinstance(value, str):
+        raise MatchDetailsLoadError("El recibo de aprobación carece de fecha ISO.")
+    try:
+        result = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise MatchDetailsLoadError("La fecha de aprobación no es ISO válida.") from exc
+    if result.tzinfo is None:
+        raise MatchDetailsLoadError("La fecha de aprobación no incluye zona horaria.")
+    return result
+
+
+def _validated_index_entries(value: dict[str, Any]) -> list[dict[str, str]]:
+    if (
+        value.get("schema_version") != INDEX_SCHEMA
+        or set(value) != {"schema_version", "publications"}
+        or not isinstance(value.get("publications"), list)
+    ):
+        raise MatchDetailsLoadError("El índice actual no se puede actualizar con seguridad.")
+    entries = value["publications"]
+    if any(
+        not isinstance(entry, dict)
+        or set(entry) != {"internal_id", "publication_id", "package_path", "manifest_sha256"}
+        or not all(isinstance(entry.get(key), str) for key in entry)
+        or not _PUBLICATION_ID.fullmatch(entry["publication_id"])
+        or entry["package_path"] != f"packages/{entry['publication_id']}"
+        or not re.fullmatch(r"[a-f0-9]{64}", entry["manifest_sha256"])
+        for entry in entries
+    ):
+        raise MatchDetailsLoadError("El índice actual contiene referencias inválidas.")
+    if len({entry["internal_id"] for entry in entries}) != len(entries):
+        raise MatchDetailsLoadError("El índice actual contiene partidos duplicados.")
+    return list(entries)
 
 
 def build_discovery_preview(

@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import type { MatchPage as MatchPageData } from "../api/contracts";
 
 const { loadMatchPage, loadLocalMatchPreview } = vi.hoisted(() => ({
@@ -14,6 +14,8 @@ vi.mock("../api/client", () => ({
 }));
 
 import { MatchPage } from "../components/MatchPage";
+
+afterEach(cleanup);
 
 function page(publicationStatus: "approved" | "preview_only"): MatchPageData {
   const details: NonNullable<MatchPageData["details"]> = {
@@ -120,6 +122,79 @@ describe("MatchPage details", () => {
     />);
     await waitFor(() => expect(loadMatchPage).toHaveBeenCalledWith("pf-2026-27-group-ii-bdfutbol-272582"));
     expect(loadLocalMatchPreview).not.toHaveBeenCalled();
+  });
+
+  it("renders an approved 272525 publication through the normal public page", async () => {
+    const published = page("approved");
+    const internalId = "pf-2026-27-group-ii-bdfutbol-272525";
+    published.match.internal_id = internalId;
+    published.match.source_match_id = "272525";
+    published.match.home_team = { team_id: 204, name: "Teruel", team_url: null, crest_url: null };
+    published.match.away_team = { team_id: 61, name: "Real Madrid Castilla", team_url: null, crest_url: null };
+    published.match.home_goals = 0;
+    published.match.away_goals = 0;
+    published.match.status = "played";
+    published.details!.internal_id = internalId;
+    published.details!.source_match_id = "272525";
+    published.details!.home_team_id = 204;
+    published.details!.away_team_id = 61;
+    published.details!.home_goals = 0;
+    published.details!.away_goals = 0;
+
+    const makePlayer = (playerId: number, role: "starter" | "substitute", team: string) => ({
+      player_id: playerId,
+      display_name: `${team} ${role} ${playerId}`,
+      profile_url: null,
+      photo_url: null,
+      shirt_number: playerId % 30,
+      position: null,
+      role,
+      participation_status: role === "starter" ? "not_applicable" as const : "no_entry_marker" as const,
+      player_profile_available: false,
+    });
+    published.details!.home.coach = {
+      coach_id: 5001, display_name: "Entrenador Teruel", profile_url: null, photo_url: null,
+    };
+    published.details!.away.coach = {
+      coach_id: 5002, display_name: "Entrenador Castilla", profile_url: null, photo_url: null,
+    };
+    published.details!.home.starters = Array.from({ length: 11 }, (_, index) => makePlayer(3000 + index, "starter", "Teruel"));
+    published.details!.away.starters = Array.from({ length: 11 }, (_, index) => makePlayer(3100 + index, "starter", "Castilla"));
+    published.details!.home.substitutes = Array.from({ length: 7 }, (_, index) => makePlayer(3200 + index, "substitute", "Teruel"));
+    published.details!.away.substitutes = Array.from({ length: 10 }, (_, index) => makePlayer(3300 + index, "substitute", "Castilla"));
+
+    type Event = NonNullable<NonNullable<MatchPageData["details"]>["events"]>[number];
+    const makeEvent = (event_kind: Event["event_kind"], minute: string, team_id: number): Event => ({
+      event_kind, minute, team_id, player_id: null, player_name: null,
+      related_player_id: null, related_player_name: null, is_penalty: null,
+      is_own_goal: null, score_after_home: null, score_after_away: null,
+      player_profile_available: false, related_player_profile_available: false,
+    });
+    published.details!.events = [
+      ...Array.from({ length: 9 }, (_, index) => makeEvent("substitution_in", `${10 + index}`, 204)),
+      ...Array.from({ length: 9 }, (_, index) => makeEvent("substitution_out", `${10 + index}`, 204)),
+      ...Array.from({ length: 4 }, (_, index) => makeEvent("yellow_card", `${60 + index}`, 61)),
+      makeEvent("red_card", "80", 61),
+      makeEvent("missed_penalty", "43", 204),
+    ];
+    loadMatchPage.mockResolvedValue(published);
+
+    const { container } = render(<MatchPage
+      internalId={internalId}
+      onNavigate={vi.fn()}
+      onReturnToResults={vi.fn()}
+    />);
+
+    expect(await screen.findByLabelText("Resultado 0 a 0")).toBeInTheDocument();
+    expect(loadMatchPage).toHaveBeenCalledWith(internalId);
+    expect(loadLocalMatchPreview).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Vista previa local/)).not.toBeInTheDocument();
+    expect(screen.getByText("Entrenador Teruel")).toBeInTheDocument();
+    expect(screen.getByText("Entrenador Castilla")).toBeInTheDocument();
+    expect(screen.getByText("Penalti fallado")).toBeInTheDocument();
+    expect(container.querySelectorAll(".match-lineup-side ul li")).toHaveLength(39);
+    expect(container.querySelectorAll(".match-events li")).toHaveLength(24);
+    expect(screen.queryByText("Los detalles de este encuentro todavía no están disponibles.")).not.toBeInTheDocument();
   });
 
   it("renders a local 0–0 preview and a missed-penalty event", async () => {
