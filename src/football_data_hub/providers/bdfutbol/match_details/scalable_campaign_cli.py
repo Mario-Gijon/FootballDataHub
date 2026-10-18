@@ -6,6 +6,7 @@ import argparse
 import fcntl
 import json
 import os
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -92,6 +93,21 @@ def _parser() -> argparse.ArgumentParser:
     publish_approved = commands.add_parser("publish-approved", help="Publica y verifica únicamente borradores ya aprobados")
     publish_approved.add_argument("--campaign-id", required=True)
     publish_approved.add_argument("--confirm-publish-approved", required=True)
+    authorize_reviewed = commands.add_parser(
+        "authorize-reviewed",
+        help="Revisa y autoriza candidatos uno a uno en una sesión interactiva",
+    )
+    authorize_reviewed.add_argument("--campaign-id", required=True)
+    authorize_reviewed.add_argument("--operator", required=True)
+    execute_batch = commands.add_parser(
+        "execute-authorized-batch",
+        help="Ejecuta secuencialmente autorizaciones individuales ya registradas",
+    )
+    execute_batch.add_argument("--campaign-id", required=True)
+    execute_batch.add_argument("--operator", required=True)
+    execute_batch.add_argument("--limit", type=int, default=10)
+    execute_batch.add_argument("--confirm-session", required=True)
+    execute_batch.add_argument("--player-browser-idle-confirmation", required=True)
     candidates = commands.add_parser("candidates", help="Lista candidatos de una campaña v2")
     candidates.add_argument("--campaign-id", required=True)
     candidates.add_argument("--group", choices=("I", "II"))
@@ -609,7 +625,7 @@ def main(argv: list[str] | None = None) -> int:
             "store_root": args.store_root,
             "published_root": args.published_root,
         }
-        if args.command in {"status", "worklist", "next", "propose", "initialize", "authorize", "execute"}:
+        if args.command in {"status", "worklist", "next", "propose", "initialize", "authorize", "execute", "authorize-reviewed", "execute-authorized-batch"}:
             report, proposals, context = _load_report(args)
         if args.command == "worklist":
             from .campaign_operations import build_worklist
@@ -648,6 +664,94 @@ def main(argv: list[str] | None = None) -> int:
             ))
             print(json.dumps({"next": eligible[0] if eligible else None, "count": len(eligible), "http_enabled": False, "browser_started": False, "navigation_enabled": False}, ensure_ascii=False, indent=2, sort_keys=True))
             return 0 if eligible else 2
+        if args.command == "authorize-reviewed":
+            from .supervised_acquisition import authorize_reviewed_candidates
+
+            result = authorize_reviewed_candidates(
+                ledger=ledger,
+                campaign_id=args.campaign_id,
+                data_root=data_root,
+                status_report=report,
+                context=context,
+                operator=args.operator,
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+            return 0 if result["status"] == "COMPLETED" else 2
+        if args.command == "execute-authorized-batch":
+            from .operational_campaign import EXECUTE_CONFIRMATION, PLAYER_IDLE_CONFIRMATION
+            from .supervised_acquisition import run_authorized_batch
+
+            def refresh_snapshot():
+                fresh_report, _fresh_proposals, fresh_context = _load_report(args)
+                return fresh_report, fresh_context
+
+            source_inventory = ledger.source_inventory(args.campaign_id)
+
+            def execute_candidate(candidate, authorization_id, current, fresh_context):
+                internal_id = candidate["internal_id"]
+                return ledger.execute_real(
+                    campaign_id=args.campaign_id,
+                    internal_id=internal_id,
+                    authorization_id=authorization_id,
+                    confirmed_url=candidate["source_match_url"],
+                    data_root=data_root,
+                    profile_dir=data_root / "browser-profiles" / f"match-detail-v2-{candidate['source_match_id']}",
+                    confirmation=EXECUTE_CONFIRMATION,
+                    player_browser_idle_confirmation=PLAYER_IDLE_CONFIRMATION,
+                    store_root=args.store_root,
+                    store_inventory=source_inventory,
+                    current_status=current,
+                    published=internal_id in fresh_context["published_ids"],
+                    captured=internal_id in fresh_context["captured_ids"],
+                    blocked=internal_id in fresh_context["blocked_ids"],
+                )
+
+            def show_progress(event):
+                if event["event"] == "candidate_starting":
+                    reference = event.get("reference_result")
+                    score = (
+                        f"{reference['home_goals']}–{reference['away_goals']}"
+                        if isinstance(reference, dict)
+                        and isinstance(reference.get("home_goals"), int)
+                        and isinstance(reference.get("away_goals"), int)
+                        else "resultado no disponible"
+                    )
+                    date_label = (
+                        f"partido {event['source_match_date']}"
+                        if event.get("source_match_date")
+                        else f"jornada {event.get('matchday_date') or 'sin fecha'}"
+                    )
+                    print(
+                        f"[{event['index']}/{event['total']}] {event['internal_id']} | "
+                        f"Grupo {event['group']} · J{event['matchday']} · {date_label} | "
+                        f"{event['home_team_name']} {score} {event['away_team_name']} | "
+                        f"{event['requested_url']} — navegación única iniciando",
+                        file=sys.stderr,
+                        flush=True,
+                    )
+                else:
+                    print(
+                        f"[{event['index']}/{event['total']}] {event['internal_id']} "
+                        f"— {event['status']} (attempt={event.get('attempt_id')})",
+                        file=sys.stderr,
+                        flush=True,
+                    )
+
+            result = run_authorized_batch(
+                ledger=ledger,
+                campaign_id=args.campaign_id,
+                data_root=data_root,
+                player_capture_root=args.player_team_captures_root,
+                operator=args.operator,
+                limit=args.limit,
+                confirmation=args.confirm_session,
+                player_idle_confirmation=args.player_browser_idle_confirmation,
+                refresh_snapshot=refresh_snapshot,
+                execute_candidate=execute_candidate,
+                progress_callback=show_progress,
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+            return 0 if result["status"] == "COMPLETED" else 2
         if args.command == "status":
             output = dict(report)
             rows = output.get("matches", [])

@@ -308,7 +308,16 @@ def test_simulated_acquisition_writes_one_immutable_artifact_and_blocks_second_n
     fixture = _fixture(tmp_path, monkeypatch)
     _initialize(fixture)
     _authorize(fixture)
-    adapter = SimulatedMatchAccessAdapter(
+
+    class StartObservedAdapter(SimulatedMatchAccessAdapter):
+        def open(self, url):
+            events = fixture.ledger.candidate_events(
+                fixture.plan["campaign_id"], fixture.candidate["internal_id"]
+            )
+            assert [event["event_type"] for event in events] == ["AUTHORIZED", "STARTED"]
+            return super().open(url)
+
+    adapter = StartObservedAdapter(
         SimulatedAccessResponse(
             final_url=fixture.candidate["source_match_url"],
             http_status=200,
