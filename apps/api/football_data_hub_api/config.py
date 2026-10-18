@@ -133,6 +133,17 @@ class ApiSettings:
             if local_root_value
             else None
         )
+        match_store_pointer = (
+            local_data_root / "matches" / "active-generation.json"
+            if local_data_root is not None
+            else None
+        )
+        match_generation_default = (
+            "matches"
+            if match_store_pointer is not None
+            and (match_store_pointer.exists() or match_store_pointer.is_symlink())
+            else "matches/generations/match-00-4ad1d610507e425d"
+        )
         data_root = _resolve_path(
             Path(os.getenv("FDH_DATA_ROOT", str(DEFAULT_DATA_ROOT))), PROJECT_ROOT
         )
@@ -299,7 +310,7 @@ class ApiSettings:
             match_generation_root=_optional_data_path(
                 "FDH_MATCH_GENERATION_ROOT",
                 local_data_root,
-                "matches/generations/match-00-4ad1d610507e425d",
+                match_generation_default,
             ),
             player_inventory_root=_optional_data_path(
                 "FDH_PLAYER_INVENTORY_ROOT",

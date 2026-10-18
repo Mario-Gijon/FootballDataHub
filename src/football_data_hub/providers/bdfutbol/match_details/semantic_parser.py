@@ -38,7 +38,7 @@ from football_data_hub.providers.bdfutbol.match_details.semantic_validation impo
     roster_identity_errors,
 )
 
-PARSER_VERSION = "match-detail-semantic-0.2.0"
+PARSER_VERSION = "match-detail-semantic-0.3.0"
 _TEAM_HREF = re.compile(r"(?:^|/)e/e(\d+)\.html$")
 _COACH_HREF = re.compile(r"(?:^|/)l/l(\d+)\.html$")
 _STADIUM_HREF = re.compile(r"(?:^|/)s/(\d+)\.html$")
@@ -49,7 +49,8 @@ _MINUTE = re.compile(
     r"^\s*(\d+\s*(?:\+\s*\d+)?)\s*[’']?\s*(?:\(pen\))?\s*$",
     re.IGNORECASE,
 )
-_DATE_TIME = re.compile(r"(\d{1,2})/(\d{1,2})/(\d{4})\s*\((\d{1,2}:\d{2})\)")
+_DATE_ONLY = re.compile(r"(?<!\d)(\d{1,2})/(\d{1,2})/(\d{4})(?!\d)")
+_TIME_TOKEN = re.compile(r"(?<!\d)(\d{1,2}:\d{2})(?!\d)")
 
 
 class MatchDetailParserError(ValueError):
@@ -85,6 +86,35 @@ def _sha256(raw: bytes) -> str:
 
 def _text(node: Tag | None) -> str:
     return " ".join(node.stripped_strings) if node is not None else ""
+
+
+def _parse_date_and_kickoff(raw: str) -> tuple[str | None, str | None, str, str | None]:
+    """Parse the observed match date independently from its optional local time."""
+
+    dates = list(_DATE_ONLY.finditer(raw))
+    if len(dates) != 1:
+        return None, None, "unresolved", "date_missing_or_ambiguous"
+    match = dates[0]
+    day, month, year = (int(value) for value in match.groups())
+    try:
+        parsed_date = date(year, month, day).isoformat()
+    except ValueError:
+        return None, None, "unresolved", "date_format_unrecognized"
+
+    suffix = raw[match.end():]
+    parenthetical = re.findall(r"\(([^()]*)\)", suffix)
+    tokens = list(_TIME_TOKEN.finditer(suffix))
+    if not parenthetical and not tokens:
+        return parsed_date, None, "explicitly_absent", None
+    if len(parenthetical) != 1 or len(tokens) != 1:
+        return parsed_date, None, "unresolved", "kickoff_time_ambiguous"
+    token = parenthetical[0].strip()
+    if not re.fullmatch(r"\d{1,2}:\d{2}", token):
+        return parsed_date, None, "unresolved", "kickoff_time_format_unrecognized"
+    hour, minute = (int(value) for value in token.split(":"))
+    if hour > 23 or minute > 59:
+        return parsed_date, None, "unresolved", "kickoff_time_out_of_range"
+    return parsed_date, f"{hour:02d}:{minute:02d}", "observed", None
 
 
 def _classes(node: Tag) -> list[str]:
@@ -1176,23 +1206,20 @@ def parse_match_detail_html(
     evidence.add("context.group", "not_observed", "inventory.group", None, str(expected_match.get("group")))
     evidence.add("context.matchday", "observed" if jornada_ok else "unresolved", "div.hero.hero-partit .f14 label='Jornada'", matchday_raw, jornada_value if jornada_ok else None)
 
-    date_match = _DATE_TIME.search(date_raw)
-    if date_match is None:
-        errors.append("date_time_format_unrecognized")
-        match_date = None
-        kickoff = None
-    else:
-        day, month, year, kickoff = date_match.groups()
-        match_date = f"{int(year):04d}-{int(month):02d}-{int(day):02d}"
+    match_date, kickoff, kickoff_state, kickoff_error = _parse_date_and_kickoff(date_raw)
+    if match_date is None:
+        errors.append(kickoff_error or "date_format_unrecognized")
+    elif kickoff_error:
+        warnings.append(kickoff_error)
     date_ok = match_date is not None and (expected_date is None or match_date == expected_date)
     if not date_ok:
         errors.append("date_catalog_mismatch")
     checks.append(ValidationCheck("date_matches_catalog", date_ok, date_raw))
     date_value = _provenanced(match_date, state="observed" if match_date else "unresolved", origin="match_detail_dom", raw=date_raw, reference="div.hero.hero-partit .f14 label='Fecha'")
-    kickoff_value = _provenanced(kickoff, state="observed" if kickoff else "unresolved", origin="match_detail_dom", raw=date_raw, reference="div.hero.hero-partit .f14 label='Fecha'")
+    kickoff_value = _provenanced(kickoff, state=kickoff_state, origin="match_detail_dom", raw=date_raw, reference="div.hero.hero-partit .f14 label='Fecha'")
     timezone_value = _provenanced(None, state="not_observed", origin="match_detail_dom", raw=date_raw, reference="El HTML publica hora local sin zona horaria")
     evidence.add("match.match_date", "observed" if match_date else "unresolved", "div.hero.hero-partit .f14 label='Fecha'", date_raw, match_date)
-    evidence.add("match.kickoff_time_local", "observed" if kickoff else "unresolved", "div.hero.hero-partit .f14 label='Fecha'", date_raw, kickoff)
+    evidence.add("match.kickoff_time_local", kickoff_state, "div.hero.hero-partit .f14 label='Fecha'", date_raw, kickoff)
     evidence.add("match.timezone", "not_observed", "div.hero.hero-partit .f14 label='Fecha'", date_raw, None)
 
     stadium_id = _profile_id(stadium_href, _STADIUM_HREF, "estadio")

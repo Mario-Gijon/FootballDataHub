@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, replace
+from pathlib import Path
 
 import pytest
 
@@ -21,6 +22,8 @@ from football_data_hub_api.match_details_dataset import (
     MatchDetailsLoadError,
     load_published_match_details,
     project_verified_detail,
+    _published_match,
+    _validate_detail_against_active_fixture,
     _validate_detail_against_inventory,
 )
 from football_data_hub_api.match_results_dataset import build_match_page
@@ -185,6 +188,113 @@ def test_public_match_projection_rejects_preview_details() -> None:
     )
     with pytest.raises(ValueError, match="solo acepta detalles aprobados"):
         build_match_page(_bundle(), "pf-2026-27-group-ii-bdfutbol-272582", details=preview)
+
+
+def test_historically_published_details_remain_valid_with_a_new_active_generation() -> None:
+    from football_data_hub_api.match_results_dataset import MatchResultsBundle
+
+    original = _bundle()
+    metadata = original.bootstrap.metadata.model_copy(update={
+        "generation_id": "match-00-active-generation-2",
+        "generation_sha256": "b" * 64,
+    })
+    active = MatchResultsBundle(
+        original.bootstrap.model_copy(update={"metadata": metadata}),
+        '"active-generation-2"',
+    )
+    historical = project_verified_detail(_detail(), source_html_sha256="e" * 64, player_ids=set())
+
+    page = build_match_page(
+        active, "pf-2026-27-group-ii-bdfutbol-272582", details=historical
+    )
+    assert page.metadata.generation_id == "match-00-active-generation-2"
+    assert page.details is not None
+    assert page.details.source_generation_id == "match-00-test-generation"
+
+
+def test_historical_generation_context_resolves_the_declared_source_not_the_active_one(tmp_path, monkeypatch) -> None:
+    import football_data_hub_api.match_details_dataset as dataset
+    import football_data_hub_api.match_results_dataset as results_dataset
+
+    source_bundle = _bundle()
+    active_metadata = source_bundle.bootstrap.metadata.model_copy(update={
+        "generation_id": "match-00-active-g2",
+        "generation_sha256": "b" * 64,
+    })
+    active_bundle = source_bundle.__class__(
+        source_bundle.bootstrap.model_copy(update={"metadata": active_metadata}),
+        '"g2"',
+        tmp_path / "matches/generations/match-00-active-g2",
+    )
+    source_generation = type("Verified", (), {
+        "generation_id": "match-00-test-generation",
+        "manifest_sha256": "a" * 64,
+        "manifest_payload": {"source_captures": []},
+    })()
+    calls: list[str] = []
+
+    def load_generation(path, **_kwargs):
+        calls.append(Path(path).name)
+        return source_generation
+
+    monkeypatch.setattr(dataset, "load_verified_match_generation", load_generation)
+    monkeypatch.setattr(results_dataset, "build_match_results_bundle", lambda *_args, **_kwargs: source_bundle)
+
+    source_root, verified, resolved_bundle = dataset._historical_generation_context(
+        {
+            "source_generation_id": "match-00-test-generation",
+            "source_generation_manifest_sha256": "a" * 64,
+        },
+        generation_root=active_bundle.generation_root,
+        data_root=tmp_path,
+        match_bundle=active_bundle,
+    )
+
+    assert source_root == tmp_path / "matches/generations/match-00-test-generation"
+    assert verified is source_generation
+    assert resolved_bundle is source_bundle
+    assert calls == ["match-00-test-generation"]
+
+
+def test_active_fixture_check_accepts_same_identity_and_rejects_result_or_date_conflicts() -> None:
+    document = project_verified_detail(_detail(), source_html_sha256="e" * 64, player_ids=set())
+    active_match = _published_match(_bundle(), document.internal_id)
+    _validate_detail_against_active_fixture(document, active_match)
+
+    wrong_score = active_match.model_copy(update={"home_goals": 2})
+    with pytest.raises(MatchDetailsLoadError, match="fixture activo"):
+        _validate_detail_against_active_fixture(document, wrong_score)
+
+    wrong_date = active_match.model_copy(update={"source_match_date": "2026-10-11"})
+    with pytest.raises(MatchDetailsLoadError, match="fixture activo"):
+        _validate_detail_against_active_fixture(document, wrong_date)
+
+
+def test_kickoff_api_field_requires_verified_source_evidence() -> None:
+    from football_data_hub_api.schemas import MatchPublishedDetailsResponse
+
+    raw = project_verified_detail(_detail(), source_html_sha256="e" * 64, player_ids=set()).model_dump(mode="json")
+    raw.update({
+        "kickoff_time_local": "19:15",
+        "kickoff_state": "observed",
+        "kickoff_source_text": "Sábado 29/08/2026 (19:15)",
+        "kickoff_source_reference": "div.hero.hero-partit .f14 label='Fecha'",
+        "kickoff_parser_version": "match-detail-semantic-0.3.0",
+        "kickoff_source_html_sha256": "e" * 64,
+    })
+    valid = MatchPublishedDetailsResponse.model_validate(raw)
+    assert valid.kickoff_time_local == "19:15"
+    raw["kickoff_source_html_sha256"] = "f" * 64
+    with pytest.raises(ValueError, match="HTML verificado"):
+        MatchPublishedDetailsResponse.model_validate(raw)
+
+    old_payload = project_verified_detail(_detail(), source_html_sha256="e" * 64, player_ids=set()).model_dump(mode="json")
+    for key in (
+        "kickoff_time_local", "kickoff_state", "kickoff_timezone", "kickoff_source_text",
+        "kickoff_source_reference", "kickoff_parser_version", "kickoff_source_html_sha256",
+    ):
+        old_payload.pop(key, None)
+    assert MatchPublishedDetailsResponse.model_validate(old_payload).kickoff_time_local is None
 
 
 def test_loader_ignores_diagnostics_when_publication_index_is_absent(tmp_path) -> None:

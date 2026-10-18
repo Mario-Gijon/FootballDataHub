@@ -485,6 +485,7 @@ class MatchGenerationRecordResponse(ApiModel):
     matchday: StrictInt = Field(ge=1, le=38)
     matchday_date: date | None
     source_match_date: date | None
+    kickoff_time_local: str | None = Field(default=None, pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")
     home_team_id: StrictInt = Field(gt=0)
     away_team_id: StrictInt = Field(gt=0)
     home_goals: OptionalInt
@@ -687,6 +688,13 @@ class MatchPublishedDetailsResponse(ApiModel):
     source_capture_id: str = Field(min_length=1)
     source_html_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
     match_date: date | None
+    kickoff_time_local: str | None = Field(default=None, pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")
+    kickoff_state: Literal["observed", "explicitly_absent", "not_observed", "unresolved"] | None = None
+    kickoff_timezone: str | None = None
+    kickoff_source_text: str | None = None
+    kickoff_source_reference: str | None = None
+    kickoff_parser_version: str | None = None
+    kickoff_source_html_sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
     home_team_id: StrictInt = Field(gt=0)
     away_team_id: StrictInt = Field(gt=0)
     home_goals: StrictInt = Field(ge=0)
@@ -694,6 +702,36 @@ class MatchPublishedDetailsResponse(ApiModel):
     home: MatchPublishedSideResponse
     away: MatchPublishedSideResponse
     events: list[MatchPublishedEventResponse] | None
+
+    @model_validator(mode="after")
+    def validate_kickoff_evidence(self) -> MatchPublishedDetailsResponse:
+        enrichment = (
+            self.kickoff_state,
+            self.kickoff_source_text,
+            self.kickoff_source_reference,
+            self.kickoff_parser_version,
+            self.kickoff_source_html_sha256,
+        )
+        if self.kickoff_time_local is not None and self.kickoff_state != "observed":
+            raise ValueError("Solo una hora observada puede publicarse como hora local.")
+        if self.kickoff_state is not None and (
+            any(value is None for value in enrichment[1:])
+            or self.kickoff_source_html_sha256 != self.source_html_sha256
+            or (self.kickoff_state == "observed") != (self.kickoff_time_local is not None)
+        ):
+            raise ValueError("La hora requiere estado y procedencia ligados al HTML verificado.")
+        if self.kickoff_state is None and any(value is not None for value in (
+            self.kickoff_time_local,
+            self.kickoff_timezone,
+            self.kickoff_source_text,
+            self.kickoff_source_reference,
+            self.kickoff_parser_version,
+            self.kickoff_source_html_sha256,
+        )):
+            raise ValueError("La procedencia horaria requiere un estado de observación.")
+        if self.kickoff_timezone is not None and self.kickoff_time_local is None:
+            raise ValueError("Una zona horaria requiere una hora local observada.")
+        return self
 
 
 class MatchPageMetadataResponse(ApiModel):
@@ -714,6 +752,7 @@ class MatchPageRecordResponse(ApiModel):
     matchday: StrictInt = Field(ge=1, le=38)
     matchday_date: date | None
     source_match_date: date | None
+    kickoff_time_local: str | None = Field(default=None, pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")
     home_team: MatchPageTeamResponse
     away_team: MatchPageTeamResponse
     home_goals: OptionalInt
@@ -780,8 +819,6 @@ class MatchPageResponse(ApiModel):
         if self.details is not None and (
             self.details.internal_id != self.match.internal_id
             or self.details.source_match_id != self.match.source_match_id
-            or self.details.source_generation_id != self.metadata.generation_id
-            or self.details.source_capture_id != self.metadata.source_capture_id
             or self.details.home_team_id != self.match.home_team.team_id
             or self.details.away_team_id != self.match.away_team.team_id
             or self.details.home.team_id != self.match.home_team.team_id

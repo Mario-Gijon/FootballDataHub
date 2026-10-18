@@ -22,8 +22,13 @@ from football_data_hub.domain.matches.details import (
     validate_match_detail_contract,
 )
 from football_data_hub.providers.bdfutbol.match_details.inventory import (
+    MatchDetailInventoryError,
     build_match_detail_inventory,
     load_verified_match_generation,
+)
+from football_data_hub.providers.bdfutbol.classification.generation_activation import (
+    MatchGenerationActivationError,
+    resolve_match_generation_root,
 )
 from football_data_hub.providers.bdfutbol.match_details.campaign_artifact import (
     parse_campaign_saved_artifact,
@@ -300,6 +305,106 @@ def _validate_detail_against_match(
         raise MatchDetailsLoadError("La captura no corresponde al manifiesto MATCH-00 cargado.")
 
 
+def _validate_detail_against_active_fixture(
+    document: MatchPublishedDetailsResponse,
+    active_match: MatchPageRecordResponse,
+) -> None:
+    """Keep historical provenance while requiring exact current sports identity."""
+
+    if (
+        document.internal_id != active_match.internal_id
+        or document.source_match_id != active_match.source_match_id
+        or document.home_team_id != active_match.home_team.team_id
+        or document.away_team_id != active_match.away_team.team_id
+        or document.home.team_id != active_match.home_team.team_id
+        or document.away.team_id != active_match.away_team.team_id
+        or active_match.status != "played"
+        or document.home_goals != active_match.home_goals
+        or document.away_goals != active_match.away_goals
+        or (active_match.source_match_date is not None and document.match_date != active_match.source_match_date)
+    ):
+        raise MatchDetailsLoadError(
+            "Los detalles históricos contradicen la identidad, fecha o resultado del fixture activo."
+        )
+
+
+def _with_verified_kickoff(
+    document: MatchPublishedDetailsResponse, observation: Any
+) -> MatchPublishedDetailsResponse:
+    """Add a read-time projection from the same already-hashed source HTML.
+
+    The immutable package is not rewritten. The enrichment is returned only
+    for an observed HH:MM and remains tied to the package's HTML hash and the
+    semantic parser version.
+    """
+
+    kickoff = observation.kickoff_time_local
+    if kickoff.state not in {"observed", "explicitly_absent", "not_observed", "unresolved"}:
+        return document
+    return MatchPublishedDetailsResponse.model_validate({
+        **document.model_dump(mode="json"),
+        "kickoff_time_local": kickoff.value if kickoff.state == "observed" else None,
+        "kickoff_state": kickoff.state,
+        "kickoff_timezone": observation.timezone.value,
+        "kickoff_source_text": kickoff.raw_value,
+        "kickoff_source_reference": kickoff.source_reference,
+        "kickoff_parser_version": observation.source.parser_version,
+        "kickoff_source_html_sha256": observation.source.source_html_sha256,
+    })
+
+
+def _historical_generation_context(
+    manifest: dict[str, Any],
+    *,
+    generation_root: Path,
+    data_root: Path,
+    match_bundle: MatchResultsBundle,
+    generation_contexts: dict[str, tuple[Path, Any, MatchResultsBundle]] | None = None,
+) -> tuple[Path, Any, MatchResultsBundle]:
+    """Resolve a publication's immutable source generation without guessing."""
+
+    source_generation_id = manifest.get("source_generation_id")
+    if not isinstance(source_generation_id, str) or not _PUBLICATION_ID.fullmatch(source_generation_id):
+        raise MatchDetailsLoadError("La publicación no declara su generación histórica.")
+    if generation_contexts is not None and source_generation_id in generation_contexts:
+        source_root, source_generation, source_bundle = generation_contexts[source_generation_id]
+        if (
+            source_generation.manifest_sha256 != manifest.get("source_generation_manifest_sha256")
+            or source_bundle.bootstrap.metadata.generation_sha256 != source_generation.manifest_sha256
+        ):
+            raise MatchDetailsLoadError("La publicación no coincide con su generación histórica en caché.")
+        return source_root, source_generation, source_bundle
+    if source_generation_id == match_bundle.bootstrap.metadata.generation_id:
+        source_root = match_bundle.generation_root or generation_root
+        source_bundle = match_bundle
+        source_generation = load_verified_match_generation(source_root, data_root=data_root)
+    else:
+        try:
+            source_root = (
+                data_root.expanduser().resolve(strict=True)
+                / "matches" / "generations" / source_generation_id
+            )
+            source_generation = load_verified_match_generation(source_root, data_root=data_root)
+            if source_generation.generation_id != source_generation_id:
+                raise MatchDetailsLoadError("La generación histórica resuelta tiene otro ID.")
+            from football_data_hub_api.match_results_dataset import build_match_results_bundle
+
+            source_bundle = build_match_results_bundle(source_generation, source_root)
+        except (MatchDetailInventoryError, MatchGenerationActivationError, OSError, ValueError, KeyError, TypeError) as exc:
+            raise MatchDetailsLoadError(
+                f"No se puede revalidar la generación histórica {source_generation_id}: {exc}"
+            ) from exc
+    if (
+        source_generation.generation_id != source_generation_id
+        or source_generation.manifest_sha256 != manifest.get("source_generation_manifest_sha256")
+        or source_bundle.bootstrap.metadata.generation_sha256 != source_generation.manifest_sha256
+    ):
+        raise MatchDetailsLoadError("La publicación no coincide con su manifiesto de generación histórica.")
+    if generation_contexts is not None:
+        generation_contexts[source_generation_id] = (source_root, source_generation, source_bundle)
+    return source_root, source_generation, source_bundle
+
+
 def _validate_detail_against_inventory(detail: MatchDetail, record: dict[str, Any]) -> None:
     """Require the complete source identity to match the verified MATCH-00 row."""
 
@@ -557,7 +662,7 @@ def _load_campaign_publication_document(
     if (
         draft.get("schema_version") != CAMPAIGN_DRAFT_SCHEMA
         or draft.get("details_sha256") != manifest.get("details_sha256")
-        or _canonical_json(document.model_dump(mode="json"))
+        or _canonical_json(document.model_dump(mode="json", exclude_unset=True))
         != _canonical_json(draft.get("details"))
     ):
         raise MatchDetailsLoadError("El documento público no coincide con la evidencia de campaña revalidada.")
@@ -600,21 +705,19 @@ def load_published_match_details(
     items = index.get("publications")
     if not isinstance(items, list):
         raise MatchDetailsLoadError("publications debe ser una lista.")
-    generation = load_verified_match_generation(generation_root, data_root=data_root)
+    resolved_active_root = match_bundle.generation_root or generation_root
+    generation = load_verified_match_generation(resolved_active_root, data_root=data_root)
     if (
         generation.generation_id != match_bundle.bootstrap.metadata.generation_id
         or generation.manifest_sha256 != match_bundle.bootstrap.metadata.generation_sha256
     ):
         raise MatchDetailsLoadError("La generación de detalles difiere de la cargada por Resultados.")
-    inventory = build_match_detail_inventory(generation)
-    records = {record["internal_id"]: record for record in inventory["matches"]}
-    source_captures = {
-        source["group"]: source["capture_id"]
-        for source in generation.manifest_payload["source_captures"]
-    }
     store = MatchDetailStore(store_root)
     loaded: dict[str, MatchPublishedDetailsResponse] = {}
     seen: set[str] = set()
+    generation_contexts: dict[str, tuple[Path, Any, MatchResultsBundle]] = {
+        generation.generation_id: (resolved_active_root, generation, match_bundle)
+    }
 
     for item in items:
         if not isinstance(item, dict) or set(item) != {"internal_id", "publication_id", "package_path", "manifest_sha256"}:
@@ -658,6 +761,21 @@ def load_published_match_details(
         details_payload, details_raw = _read_json(details_path)
         if _sha256(manifest_raw) != item["manifest_sha256"]:
             raise MatchDetailsLoadError("El hash del manifiesto no coincide con el índice.")
+        source_root, source_generation, source_bundle = _historical_generation_context(
+            manifest,
+            generation_root=resolved_active_root,
+            data_root=data_root,
+            match_bundle=match_bundle,
+            generation_contexts=generation_contexts,
+        )
+        source_inventory = build_match_detail_inventory(source_generation)
+        source_records = {
+            record["internal_id"]: record for record in source_inventory["matches"]
+        }
+        source_captures = {
+            source["group"]: source["capture_id"]
+            for source in source_generation.manifest_payload["source_captures"]
+        }
         if manifest.get("schema_version") == CAMPAIGN_PACKAGE_SCHEMA:
             document = _load_campaign_publication_document(
                 publication_id=publication_id,
@@ -667,23 +785,35 @@ def load_published_match_details(
                 approval_raw=approval_raw,
                 details_payload=details_payload,
                 details_raw=details_raw,
-                generation_root=generation_root,
+                generation_root=source_root,
                 data_root=data_root,
-                match_bundle=match_bundle,
+                match_bundle=source_bundle,
                 player_ids=player_ids,
             )
-            record = records.get(internal_id)
+            record = source_records.get(internal_id)
             if record is None:
-                raise MatchDetailsLoadError("El partido de campaña no pertenece a MATCH-00.")
+                raise MatchDetailsLoadError("El partido de campaña no pertenece a su MATCH-00 histórico.")
             _validate_detail_against_match(
                 document,
-                _published_match(match_bundle, internal_id),
-                generation_id=generation.generation_id,
-                generation_sha256=generation.manifest_sha256,
+                _published_match(source_bundle, internal_id),
+                generation_id=source_generation.generation_id,
+                generation_sha256=source_generation.manifest_sha256,
                 source_generation_manifest_sha256=str(
                     manifest["source_generation_manifest_sha256"]
                 ),
             )
+            _validate_detail_against_active_fixture(
+                document, _published_match(match_bundle, internal_id)
+            )
+            observation, _ = _campaign_observation(
+                campaign_id=str(manifest["campaign_id"]),
+                artifact_id=str(manifest["artifact_id"]),
+                internal_id=internal_id,
+                generation=source_generation,
+                data_root=data_root,
+                record=record,
+            )
+            document = _with_verified_kickoff(document, observation)
             loaded[internal_id] = document
             continue
         allowed_manifest = {
@@ -721,25 +851,25 @@ def load_published_match_details(
             "source_generation_manifest_sha256", "match_detail_sha256", "source_html_sha256", "details_sha256",
         )):
             raise MatchDetailsLoadError("El recibo de aprobación no autoriza estos datos exactos.")
-        record = records.get(internal_id)
+        record = source_records.get(internal_id)
         if record is None or manifest.get("internal_id") != internal_id:
-            raise MatchDetailsLoadError("El partido publicado no pertenece al inventario MATCH-00.")
+            raise MatchDetailsLoadError("El partido publicado no pertenece a su inventario MATCH-00 histórico.")
         if (
-            manifest.get("inventory_id") != inventory["inventory_id"]
-            or manifest.get("source_generation_id") != generation.generation_id
-            or manifest.get("source_generation_manifest_sha256") != generation.manifest_sha256
+            manifest.get("inventory_id") != source_inventory["inventory_id"]
+            or manifest.get("source_generation_id") != source_generation.generation_id
+            or manifest.get("source_generation_manifest_sha256") != source_generation.manifest_sha256
             or manifest.get("source_capture_id") != source_captures.get(record.get("group"))
         ):
-            raise MatchDetailsLoadError("La procedencia del paquete no coincide con MATCH-00.")
+            raise MatchDetailsLoadError("La procedencia del paquete no coincide con su MATCH-00 histórico.")
         try:
-            verified_capture = store.verify_capture_read_only(inventory, str(manifest["capture_id"]))
+            verified_capture = store.verify_capture_read_only(source_inventory, str(manifest["capture_id"]))
         except (MatchDetailStoreError, KeyError, TypeError, ValueError) as exc:
             raise MatchDetailsLoadError("La captura fuente no supera la verificación íntegra.") from exc
         if (
             verified_capture["internal_id"] != internal_id
             or verified_capture["match_detail_sha256"] != manifest.get("match_detail_sha256")
             or verified_capture["source_html_sha256"] != manifest.get("source_html_sha256")
-            or verified_capture["metadata"].get("source_generation_manifest_sha256") != generation.manifest_sha256
+            or verified_capture["metadata"].get("source_generation_manifest_sha256") != source_generation.manifest_sha256
             or _sha256(details_raw) != manifest.get("details_sha256")
         ):
             raise MatchDetailsLoadError("Los hashes de captura no coinciden con la aprobación.")
@@ -753,16 +883,17 @@ def load_published_match_details(
             document = MatchPublishedDetailsResponse.model_validate(details_payload)
         except (ValueError, TypeError) as exc:
             raise MatchDetailsLoadError("El documento deportivo preparado no cumple el contrato.") from exc
-        if _canonical_json(document.model_dump(mode="json")) != _canonical_json(projected.model_dump(mode="json")):
+        if _canonical_json(document.model_dump(mode="json", exclude_none=True)) != _canonical_json(projected.model_dump(mode="json", exclude_none=True)):
             raise MatchDetailsLoadError("El documento preparado no coincide con la captura verificada.")
         match = _published_match(match_bundle, internal_id)
         _validate_detail_against_match(
             document,
-            match,
-            generation_id=generation.generation_id,
-            generation_sha256=generation.manifest_sha256,
+            _published_match(source_bundle, internal_id),
+            generation_id=source_generation.generation_id,
+            generation_sha256=source_generation.manifest_sha256,
             source_generation_manifest_sha256=str(manifest["source_generation_manifest_sha256"]),
         )
+        _validate_detail_against_active_fixture(document, match)
         loaded[internal_id] = document
     return loaded
 
@@ -782,6 +913,9 @@ def build_match_detail_publication_draft(
 
     if not _PUBLICATION_ID.fullmatch(publication_id):
         raise MatchDetailsLoadError("publication_id no seguro")
+    generation_root = match_bundle.generation_root or resolve_match_generation_root(
+        generation_root, data_root=data_root
+    )
     generation = load_verified_match_generation(generation_root, data_root=data_root)
     if (
         generation.generation_id != match_bundle.bootstrap.metadata.generation_id
@@ -808,7 +942,7 @@ def build_match_detail_publication_draft(
         generation_sha256=generation.manifest_sha256,
         source_generation_manifest_sha256=source_generation_manifest_sha256,
     )
-    details_raw = _canonical_json(document.model_dump(mode="json"))
+    details_raw = _canonical_json(document.model_dump(mode="json", exclude_unset=True))
     return {
         "schema_version": DRAFT_SCHEMA,
         "publication_id": publication_id,
@@ -821,7 +955,7 @@ def build_match_detail_publication_draft(
         "match_detail_sha256": verified_capture["match_detail_sha256"],
         "source_html_sha256": verified_capture["source_html_sha256"],
         "details_sha256": _sha256(details_raw),
-        "details": document.model_dump(mode="json"),
+        "details": document.model_dump(mode="json", exclude_unset=True),
     }
 
 
@@ -842,6 +976,9 @@ def build_campaign_publication_draft(
     index. Every call rechecks the campaign ledger, artifact hashes and MATCH-00.
     """
 
+    generation_root = match_bundle.generation_root or resolve_match_generation_root(
+        generation_root, data_root=data_root
+    )
     generation = load_verified_match_generation(generation_root, data_root=data_root)
     if (
         generation.generation_id != match_bundle.bootstrap.metadata.generation_id
@@ -868,7 +1005,7 @@ def build_campaign_publication_draft(
         observation, match_page=match_page, player_ids=player_ids
     )
     document = MatchPublishedDetailsResponse.model_validate({
-        **preview.model_dump(mode="json"),
+        **preview.model_dump(mode="json", exclude_unset=True),
         "publication_status": "approved",
     })
     _validate_detail_against_match(
@@ -878,7 +1015,7 @@ def build_campaign_publication_draft(
         generation_sha256=generation.manifest_sha256,
         source_generation_manifest_sha256=record["source_generation_manifest_sha256"],
     )
-    details = document.model_dump(mode="json")
+    details = document.model_dump(mode="json", exclude_unset=True)
     details_raw = _canonical_json(details)
     if publication_id is None:
         publication_id = (
@@ -1559,6 +1696,9 @@ def load_local_discovery_preview(
     """Read one explicitly configured discovery artifact for a loopback preview."""
 
     artifact = safe_preview_artifact(artifact_path)
+    generation_root = match_bundle.generation_root or resolve_match_generation_root(
+        generation_root, data_root=data_root
+    )
     generation = load_verified_match_generation(generation_root, data_root=data_root)
     if (
         generation.generation_id != match_bundle.bootstrap.metadata.generation_id

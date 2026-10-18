@@ -11,6 +11,10 @@ from football_data_hub.providers.bdfutbol.match_details.inventory import (
     MatchDetailInventoryError,
     load_verified_match_generation,
 )
+from football_data_hub.providers.bdfutbol.classification.generation_activation import (
+    MatchGenerationActivationError,
+    resolve_match_generation_root,
+)
 from football_data_hub_api.schemas import (
     MatchGenerationBootstrapResponse,
     MatchPageResponse,
@@ -26,6 +30,7 @@ class MatchResultsLoadError(ValueError):
 class MatchResultsBundle:
     bootstrap: MatchGenerationBootstrapResponse
     etag: str
+    generation_root: Path | None = None
 
 
 def build_match_page(
@@ -70,6 +75,7 @@ def build_match_page(
                 "matchday": match.matchday,
                 "matchday_date": match.matchday_date,
                 "source_match_date": match.source_match_date,
+                "kickoff_time_local": match.kickoff_time_local,
                 "home_team": home.model_dump(),
                 "away_team": away.model_dump(),
                 "home_goals": match.home_goals,
@@ -92,9 +98,16 @@ def load_match_results_dataset(
     generation_root: Path, *, data_root: Path
 ) -> MatchResultsBundle:
     try:
-        verified = load_verified_match_generation(generation_root, data_root=data_root)
-    except (MatchDetailInventoryError, OSError, ValueError, KeyError, TypeError) as exc:
+        resolved_generation_root = resolve_match_generation_root(generation_root, data_root=data_root)
+        verified = load_verified_match_generation(resolved_generation_root, data_root=data_root)
+    except (MatchDetailInventoryError, MatchGenerationActivationError, OSError, ValueError, KeyError, TypeError) as exc:
         raise MatchResultsLoadError(f"La generación MATCH-00 no superó la verificación: {exc}") from exc
+
+    return build_match_results_bundle(verified, resolved_generation_root)
+
+
+def build_match_results_bundle(verified: Any, generation_root: Path) -> MatchResultsBundle:
+    """Project an already verified immutable generation without re-reading it."""
 
     manifest = verified.manifest_payload
     sources = {item["group"]: item for item in manifest["source_captures"]}
@@ -114,6 +127,7 @@ def load_match_results_dataset(
                 "matchday": item.get("matchday"),
                 "matchday_date": item.get("matchday_date"),
                 "source_match_date": item.get("source_match_date"),
+                "kickoff_time_local": item.get("kickoff_time_local"),
                 "home_team_id": item.get("home_team_id"),
                 "away_team_id": item.get("away_team_id"),
                 "home_goals": item.get("home_goals"),
@@ -175,4 +189,4 @@ def load_match_results_dataset(
         f'"match-results-v1-{verified.generation_id}-'
         f'{hashlib.sha256(representation).hexdigest()[:24]}"'
     )
-    return MatchResultsBundle(payload, etag)
+    return MatchResultsBundle(payload, etag, generation_root)

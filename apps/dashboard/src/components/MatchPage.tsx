@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { loadLocalMatchPreview, loadMatchPage, loadTeamRoster, MatchPageApiError } from "../api/client";
 import type { MatchPage as MatchPageData, TeamRoster } from "../api/contracts";
+import { formatMatchDateTime } from "../domain/match-date-time";
 import { navigateOnPlainClick } from "../domain/internal-navigation";
 import { InternalTeamLink } from "./InternalTeamLink";
 import { InternalPlayerLink } from "./InternalPlayerLink";
@@ -63,6 +64,7 @@ function MatchPageContent({ page, onNavigate }: { page: MatchPageData; onNavigat
   const date = match.source_match_date ?? match.matchday_date;
   const dateLabel = match.source_match_date ? "Fecha" : "Fecha de jornada";
   const details = page.details;
+  const kickoffTime = details?.kickoff_time_local ?? match.kickoff_time_local;
   const hasPublishedContent = Boolean(details && (
     details.home.coach || details.away.coach ||
     Boolean(details.home.starters?.length || details.home.substitutes?.length || details.away.starters?.length || details.away.substitutes?.length) ||
@@ -96,7 +98,7 @@ function MatchPageContent({ page, onNavigate }: { page: MatchPageData; onNavigat
         </InternalTeamLink>
       </div>
       <div className="match-page-subtitle">
-        Jornada {match.matchday}{date ? ` · ${dateLabel.toLowerCase()} ${formatDate(date)}` : ""}
+        Jornada {match.matchday}{date ? ` · ${dateLabel.toLowerCase()} ${formatMatchDateTime(date, kickoffTime)}` : ""}
       </div>
       {(match.stadium_name || match.referee_name) && <div className="match-page-officials">
         {match.stadium_name && <span className="match-page-official">
@@ -513,12 +515,6 @@ function sortMatchEvents<T extends { minute: string | null }>(events: T[]): T[] 
 function parseMinute(value: string): [number, number] | null {
   const match = /^(\d+)(?:\+(\d+))?\s*['’]?$/.exec(value.trim());
   return match ? [Number(match[1]), Number(match[2] ?? 0)] : null;
-}
-
-function formatDate(value: string): string {
-  const [year, month, day] = value.split("-").map(Number);
-  return new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })
-    .format(new Date(Date.UTC(year!, month! - 1, day!)));
 }
 
 function formatSeason(value: string): string {

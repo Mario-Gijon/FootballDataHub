@@ -277,12 +277,21 @@ export const loadGroup2TopBootstrap = (signal?: AbortSignal) => loadGroupTopBoot
 export const loadGroup2RefereesBootstrap = (signal?: AbortSignal) => loadGroupRefereesBootstrap("2", signal);
 export const loadGroup2StatisticsBootstrap = (signal?: AbortSignal) => loadGroupStatisticsBootstrap("2", signal);
 
+let observedMatchGenerationId: string | null = null;
+
 export function loadMatchResultsBootstrap(signal?: AbortSignal): Promise<MatchResultsBootstrap> {
   return loadEndpoint(
     "/api/v1/matches/bootstrap", MatchResultsBootstrapSchema, signal,
     "No se pudo conectar con la API de Resultados.",
     "La generación de Resultados no coincide con el contrato del dashboard.",
-  );
+  ).then((payload) => {
+    const generationId = payload.metadata.generation_id;
+    if (observedMatchGenerationId !== null && observedMatchGenerationId !== generationId) {
+      clearMatchPageCache();
+    }
+    observedMatchGenerationId = generationId;
+    return payload;
+  });
 }
 
 export class MatchPageApiError extends Error {

@@ -10,6 +10,7 @@ from bs4 import BeautifulSoup
 from football_data_hub.providers.bdfutbol.match_details.semantic_parser import (
     MatchDetailParserError,
     _event_kind,
+    _parse_date_and_kickoff,
     parse_match_detail_html,
     parse_saved_artifact,
 )
@@ -41,6 +42,40 @@ def _replace_player_id(html: bytes, original: int, replacement: int) -> bytes:
     return html.replace(
         f"/m/{original}.png".encode(), f"/m/{replacement}.png".encode(), 1
     )
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected_date", "expected_time", "expected_state", "expected_error"),
+    [
+        ("Sábado 29/08/2026 (19:15)", "2026-08-29", "19:15", "observed", None),
+        ("Sábado 29/08/2026", "2026-08-29", None, "explicitly_absent", None),
+        ("Sábado 29/08/2026 (25:90)", "2026-08-29", None, "unresolved", "kickoff_time_out_of_range"),
+        ("Sábado 29/08/2026 (19:15) y 20:30", "2026-08-29", None, "unresolved", "kickoff_time_ambiguous"),
+        ("Sábado 29/08/2026 (hora pendiente)", "2026-08-29", None, "unresolved", "kickoff_time_ambiguous"),
+        ("Sábado 29/08/2026 (19:15 CET)", "2026-08-29", None, "unresolved", "kickoff_time_format_unrecognized"),
+    ],
+)
+def test_kickoff_parser_preserves_date_and_classifies_optional_time(
+    raw, expected_date, expected_time, expected_state, expected_error
+):
+    actual_date, actual_time, state, error = _parse_date_and_kickoff(raw)
+    assert (actual_date, actual_time, state, error) == (
+        expected_date, expected_time, expected_state, expected_error
+    )
+
+
+def test_semantic_match_date_remains_valid_when_source_has_no_kickoff_time():
+    html = match_html().replace(
+        b"S\xc3\xa1bado 10/10/2026 (18:45)",
+        b"S\xc3\xa1bado 10/10/2026",
+    )
+    observation = _parse(html)
+    assert observation.validation.semantic_valid is True
+    assert observation.match_date.value == "2026-10-10"
+    assert observation.kickoff_time_local.value is None
+    assert observation.kickoff_time_local.state == "explicitly_absent"
+    assert observation.kickoff_time_local.raw_value == "Sábado 10/10/2026"
+    assert observation.timezone.state == "not_observed"
 
 
 def test_parses_semantic_fixture_and_preserves_discovery_only_status():

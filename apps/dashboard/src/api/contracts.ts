@@ -16,6 +16,7 @@ export const MatchSchema = z.object({
   matchday: z.number().int().min(1).max(38),
   matchday_date: dateOnly,
   source_match_date: dateOnly,
+  kickoff_time_local: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/).nullable().optional(),
   home_team_id: positiveInteger,
   away_team_id: positiveInteger,
   home_goals: nullableInteger,
@@ -1044,6 +1045,7 @@ const MatchGenerationRecordSchema = z.object({
   matchday: z.number().int().min(1).max(38),
   matchday_date: dateOnly,
   source_match_date: dateOnly,
+  kickoff_time_local: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/).nullable().optional(),
   home_team_id: positiveInteger,
   away_team_id: positiveInteger,
   home_goals: nullableInteger,
@@ -1204,6 +1206,13 @@ const MatchPublishedDetailsSchema = z.object({
   source_capture_id: z.string().min(1),
   source_html_sha256: z.string().regex(/^[a-f0-9]{64}$/),
   match_date: dateOnly,
+  kickoff_time_local: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/).nullable().optional(),
+  kickoff_state: z.enum(["observed", "explicitly_absent", "not_observed", "unresolved"]).nullable().optional(),
+  kickoff_timezone: z.string().nullable().optional(),
+  kickoff_source_text: z.string().nullable().optional(),
+  kickoff_source_reference: z.string().nullable().optional(),
+  kickoff_parser_version: z.string().nullable().optional(),
+  kickoff_source_html_sha256: z.string().regex(/^[a-f0-9]{64}$/).nullable().optional(),
   home_team_id: positiveInteger,
   away_team_id: positiveInteger,
   home_goals: z.number().int().nonnegative(),
@@ -1231,6 +1240,7 @@ export const MatchPageSchema = z.object({
     matchday: z.number().int().min(1).max(38),
     matchday_date: dateOnly,
     source_match_date: dateOnly,
+    kickoff_time_local: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/).nullable().optional(),
     home_team: MatchPageTeamSchema,
     away_team: MatchPageTeamSchema,
     home_goals: nullableInteger,
@@ -1273,8 +1283,6 @@ export const MatchPageSchema = z.object({
   }
   if (page.details && (page.details.internal_id !== page.match.internal_id
     || page.details.source_match_id !== page.match.source_match_id
-    || page.details.source_generation_id !== page.metadata.generation_id
-    || page.details.source_capture_id !== page.metadata.source_capture_id
     || page.details.home_team_id !== page.match.home_team.team_id
     || page.details.away_team_id !== page.match.away_team.team_id
     || page.details.home.team_id !== page.match.home_team.team_id

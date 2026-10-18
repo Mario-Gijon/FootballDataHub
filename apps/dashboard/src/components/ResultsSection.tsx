@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { MatchGenerationRecord, Team } from "../api/contracts";
 import { buildResultsMatrix, listResults, type ListedMatch, type MatchOutcome } from "../domain/results";
+import { formatMatchDateTime, matchDateTimeAttribute } from "../domain/match-date-time";
 import { InternalTeamLink } from "./InternalTeamLink";
 import { InternalMatchLink } from "./InternalMatchLink";
 
@@ -180,9 +181,9 @@ function MatchRow({ entry, onNavigate }: { entry: ListedMatch; onNavigate: (path
       className={involvesJaen ? "results-match-row is-jaen-match" : "results-match-row"}
     >
       <td className="result-date">{match.source_match_date
-        ? formatMatchDate(match.source_match_date)
+        ? <time dateTime={matchDateTimeAttribute(match.source_match_date, match.kickoff_time_local)}>{formatMatchDateTime(match.source_match_date, match.kickoff_time_local, "compact")}</time>
         : match.matchday_date
-          ? <time dateTime={match.matchday_date} title="Fecha de jornada">{formatMatchDate(match.matchday_date)}</time>
+          ? <time dateTime={matchDateTimeAttribute(match.matchday_date, match.kickoff_time_local)} title="Fecha de jornada">{formatMatchDateTime(match.matchday_date, match.kickoff_time_local, "compact")}</time>
           : <span aria-label="Fecha no disponible">—</span>}</td>
       <td><TeamLink team={homeTeam} onNavigate={onNavigate} /></td>
       <td className="result-score-cell">
@@ -262,13 +263,6 @@ function formatCaptureDate(value: string): string {
   return new Intl.DateTimeFormat("es-ES", {
     day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Madrid",
   }).format(new Date(value));
-}
-
-function formatMatchDate(value: string): string {
-  const [year, month, day] = value.split("-").map(Number);
-  return new Intl.DateTimeFormat("es-ES", {
-    day: "2-digit", month: "short", year: "numeric", timeZone: "UTC",
-  }).format(new Date(Date.UTC(year!, month! - 1, day!)));
 }
 
 function outcomeLabel(outcome: MatchOutcome | null): string {

@@ -56,6 +56,7 @@ INVENTORY_ID = "match-detail-inventory-8cf339654c80c0ef"
 CAMPAIGN_ID = "match-detail-sample-campaign-67fdc4b4fac66b82"
 ARTIFACT_ID = "discovery-20261018T112656Z-4543b211"
 INTERNAL_ID = "pf-2026-27-group-ii-bdfutbol-272525"
+HUESCA_INTERNAL_ID = "pf-2026-27-group-ii-bdfutbol-272517"
 LEGACY_INTERNAL_ID = "pf-2026-27-group-ii-bdfutbol-272582"
 
 
@@ -134,7 +135,7 @@ def test_272525_campaign_publication_cycle_is_temporary_and_api_readable(tmp_pat
         match_bundle=match_bundle,
         player_ids=player_ids,
     )
-    assert set(active_publications) == {INTERNAL_ID}
+    assert set(active_publications) == {INTERNAL_ID, HUESCA_INTERNAL_ID}
     assert LEGACY_INTERNAL_ID not in active_publications
     active_page = build_match_page(
         match_bundle, INTERNAL_ID, details=active_publications.get(INTERNAL_ID)
@@ -142,6 +143,13 @@ def test_272525_campaign_publication_cycle_is_temporary_and_api_readable(tmp_pat
     assert active_page.detail_status == "available"
     assert active_page.details is not None
     assert active_page.details.publication_status == "approved"
+    assert active_page.details.kickoff_time_local == "21:15"
+    huesca_page = build_match_page(
+        match_bundle, HUESCA_INTERNAL_ID, details=active_publications.get(HUESCA_INTERNAL_ID)
+    )
+    assert huesca_page is not None and huesca_page.detail_status == "available"
+    assert huesca_page.details is not None
+    assert huesca_page.details.kickoff_time_local == "19:15"
     assert build_match_page(match_bundle, LEGACY_INTERNAL_ID).detail_status == "not_available"
 
     published_root = tmp_path / "published"
@@ -254,6 +262,7 @@ def test_272525_campaign_publication_cycle_is_temporary_and_api_readable(tmp_pat
         "red_card": 1,
     }
     assert LEGACY_INTERNAL_ID not in loaded
+    assert HUESCA_INTERNAL_ID not in loaded  # The temporary fixture publishes only 272525.
 
     monkeypatch.setenv("FDH_LOCAL_DATA_ROOT", str(data_root))
     settings = replace(

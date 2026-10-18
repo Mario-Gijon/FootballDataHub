@@ -343,6 +343,28 @@ describe("MatchPage details", () => {
     expect(hero.querySelectorAll(".match-page-context")).toHaveLength(1);
   });
 
+  it("shows a verified kickoff time and keeps the date without inventing a timezone", async () => {
+    const match = page("approved");
+    match.details!.kickoff_time_local = "18:45";
+    match.details!.kickoff_state = "observed";
+    match.match.kickoff_time_local = null;
+    loadMatchPage.mockResolvedValue(match);
+    const { container } = render(<MatchPage internalId={match.match.internal_id} onNavigate={vi.fn()} onReturnToResults={vi.fn()} />);
+    await screen.findByRole("heading", { name: "Alineaciones" });
+    expect(container.querySelector(".match-page-subtitle")).toHaveTextContent(
+      "Jornada 7 · fecha 10 de octubre de 2026 · 18:45",
+    );
+    expect(container.querySelector(".match-page-subtitle")).not.toHaveTextContent(/CET|UTC|Europe/);
+
+    cleanup();
+    match.details!.kickoff_time_local = null;
+    match.details!.kickoff_state = "explicitly_absent";
+    loadMatchPage.mockResolvedValue(match);
+    const next = render(<MatchPage internalId={match.match.internal_id} onNavigate={vi.fn()} onReturnToResults={vi.fn()} />);
+    await screen.findByRole("heading", { name: "Alineaciones" });
+    expect(next.container.querySelector(".match-page-subtitle")).not.toHaveTextContent("18:45");
+  });
+
   it("shows non-official reference lineups for an unplayed Group I match using only roster IDs", async () => {
     const pending = pendingPage("I", 48, 49, "270001");
     loadMatchPage.mockResolvedValue(pending);
