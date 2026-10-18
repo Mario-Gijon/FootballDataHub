@@ -18,7 +18,7 @@ from football_data_hub.providers.bdfutbol.match_details.sampling_plan import (
 pytestmark = pytest.mark.integration
 
 
-def test_latest_campaign_preflight_is_read_only_and_keeps_272525_unapproved(monkeypatch):
+def test_latest_campaign_preflight_is_read_only_and_keeps_272525_review_pending(monkeypatch):
     if os.environ.get("FDH_MATCH_01C_D0_INTEGRATION") != "1":
         pytest.skip("Activa FDH_MATCH_01C_D0_INTEGRATION=1 para usar los datos locales")
 
@@ -61,7 +61,13 @@ def test_latest_campaign_preflight_is_read_only_and_keeps_272525_unapproved(monk
         "272524",
         "269411",
     ]
-    assert result["candidates"][0]["state"] == "NOT_AUTHORIZED"
+    assert result["candidates"][0]["state"] == "DISCOVERY_REVIEW_REQUIRED"
+    assert result["candidates"][0]["acquisition_state"] == "DISCOVERY_REVIEW_REQUIRED"
+    assert result["candidates"][0]["navigation_count"] == 1
+    assert result["candidates"][0]["authorization_consumed"] is True
+    assert result["candidates"][0]["capture_promoted"] is False
+    assert "DISCOVERY_REVIEW_REQUIRED:272525" in result["blocked_reasons"]
+    assert all(item["state"] == "NOT_AUTHORIZED" for item in result["candidates"][1:])
     assert result["navigation_enabled"] is False
     assert result["real_access_adapter_enabled"] is False
     assert result["real_access_adapter_implemented"] is True

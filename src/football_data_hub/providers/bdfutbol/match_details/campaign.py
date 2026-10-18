@@ -39,6 +39,22 @@ _CAMPAIGN_ID = re.compile(r"^match-detail-sample-campaign-[0-9a-f]{16}$")
 _EVENT_FILE = re.compile(r"^[0-9]{6}-[0-9a-f]{32}\.json$")
 _REVIEW_ID = re.compile(r"^legacy-stop-review-[0-9a-f]{16}$")
 _ARTIFACT_ID = re.compile(r"^discovery-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$")
+_PUBLICATION_ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,95}$")
+
+
+def review_completion_confirmation(
+    source_match_id: str, source_html_sha256: str, details_sha256: str
+) -> str:
+    """Return a human confirmation bound to the reviewed match and content."""
+
+    if not _is_sha(source_html_sha256) or not _is_sha(details_sha256):
+        raise MatchCampaignAuthorizationError("La confirmación requiere hashes verificados")
+    if not re.fullmatch(r"[0-9]{5,10}", source_match_id):
+        raise MatchCampaignAuthorizationError("El ID de partido no es válido")
+    return (
+        f"COMPLETE-REVIEW-{source_match_id}-"
+        f"{source_html_sha256[:12]}-{details_sha256[:12]}"
+    )
 
 
 class MatchCampaignError(ValueError):
@@ -467,7 +483,14 @@ class MatchDetailCampaignLedger:
             ):
                 raise MatchCampaignIntegrityError(f"Cadena/hash de eventos inválida para {internal_id}")
             previous = _sha(raw)
-            events.append({**payload, "sequence": sequence, "event_sha256": previous})
+            events.append(
+                {
+                    **payload,
+                    "campaign_id": campaign_id,
+                    "sequence": sequence,
+                    "event_sha256": previous,
+                }
+            )
         self._validate_transitions(events, internal_id)
         return events
 
@@ -484,10 +507,183 @@ class MatchDetailCampaignLedger:
                 state = "DISCOVERY_REVIEW_REQUIRED"
             elif event_type == "STOPPED" and state == "STARTED":
                 state = "STOPPED"
+            elif event_type == "REVIEW_COMPLETED" and state == "DISCOVERY_REVIEW_REQUIRED":
+                MatchDetailCampaignLedger._validate_review_completion_event(
+                    events, event, internal_id
+                )
+                state = "REVIEW_COMPLETED"
             else:
                 raise MatchCampaignIntegrityError(
                     f"Transición ilegal {event_type!r} para {internal_id} desde {state}"
                 )
+
+    @staticmethod
+    def _validate_review_completion_event(
+        events: list[dict[str, Any]], event: dict[str, Any], internal_id: str
+    ) -> None:
+        payload_fields = {
+            "event_type",
+            "reviewer",
+            "completed_at_utc",
+            "human_confirmation",
+            "publication_evidence",
+            "historic_acquisition_state",
+            "capture_promoted",
+        }
+        if set(event) - {"campaign_id", "sequence", "event_sha256"} != payload_fields:
+            raise MatchCampaignIntegrityError("El evento de cierre tiene campos no reconocidos")
+        if len(events) < 3:
+            raise MatchCampaignIntegrityError("Cierre de revisión sin adquisición previa")
+        started = next(
+            (item for item in events[:-1] if item.get("event_type") == "STARTED"), None
+        )
+        discovery = next(
+            (item for item in events[:-1] if item.get("event_type") == "DISCOVERY_REVIEW_REQUIRED"),
+            None,
+        )
+        evidence = event.get("publication_evidence")
+        required = {
+            "schema_version",
+            "publication_id",
+            "publication_manifest_sha256",
+            "approval_sha256",
+            "details_sha256",
+            "source_html_sha256",
+            "campaign_id",
+            "internal_id",
+            "source_match_id",
+            "group",
+            "source_capture_id",
+            "inventory_id",
+            "source_generation_id",
+            "source_generation_manifest_sha256",
+            "artifact_id",
+            "artifact_manifest_sha256",
+            "navigation_attempt_id",
+        }
+        if (
+            started is None
+            or discovery is None
+            or not isinstance(evidence, dict)
+            or set(evidence) != required
+            or evidence.get("schema_version")
+            != "football_data_hub.match_detail_campaign_review_completion_evidence.v1"
+            or evidence.get("internal_id") != internal_id
+            or evidence.get("source_match_id") != started.get("source_match_id")
+            or evidence.get("campaign_id") != discovery.get("campaign_id")
+            or evidence.get("navigation_attempt_id") != started.get("attempt_id")
+            or evidence.get("artifact_id")
+            != (discovery.get("artifact") or {}).get("artifact_id")
+            or evidence.get("artifact_manifest_sha256")
+            != (discovery.get("artifact") or {}).get("manifest_sha256")
+            or evidence.get("source_html_sha256")
+            != (discovery.get("artifact") or {}).get("source_html_sha256")
+            or not _PUBLICATION_ID.fullmatch(str(evidence.get("publication_id", "")))
+            or any(
+                not _is_sha(evidence.get(key))
+                for key in (
+                    "publication_manifest_sha256",
+                    "approval_sha256",
+                    "details_sha256",
+                    "source_html_sha256",
+                    "source_generation_manifest_sha256",
+                    "artifact_manifest_sha256",
+                )
+            )
+            or not isinstance(event.get("reviewer"), str)
+            or not event["reviewer"].strip()
+            or not isinstance(event.get("completed_at_utc"), str)
+            or event.get("historic_acquisition_state") != "DISCOVERY_REVIEW_REQUIRED"
+            or event.get("capture_promoted") is not False
+            or not re.fullmatch(r"[0-9]{5,10}", str(evidence.get("source_match_id", "")))
+            or event.get("human_confirmation")
+            != review_completion_confirmation(
+                str(evidence.get("source_match_id", "")),
+                str(evidence.get("source_html_sha256", "")),
+                str(evidence.get("details_sha256", "")),
+            )
+        ):
+            raise MatchCampaignIntegrityError(
+                "El cierre de revisión no está enlazado al intento y publicación aprobada"
+            )
+        try:
+            completed_at = datetime.fromisoformat(
+                event["completed_at_utc"].replace("Z", "+00:00")
+            )
+        except ValueError as exc:
+            raise MatchCampaignIntegrityError("Fecha de cierre de revisión inválida") from exc
+        if completed_at.tzinfo is None:
+            raise MatchCampaignIntegrityError("La fecha de cierre debe incluir zona horaria")
+
+    def _append_review_completion_locked(
+        self,
+        campaign_dir: Path,
+        spec: dict[str, Any],
+        *,
+        internal_id: str,
+        reviewer: str,
+        confirmation: str,
+        publication_evidence: dict[str, Any],
+        completed_at_utc: str | None = None,
+    ) -> dict[str, Any]:
+        """Append a verified review closure; caller must hold ``exclusive_lock``."""
+
+        self._verify_campaign_dir(campaign_dir, spec)
+        candidate = next(
+            (item for item in spec["candidates"] if item["internal_id"] == internal_id), None
+        )
+        if candidate is None:
+            raise MatchCampaignAuthorizationError("El candidato no pertenece al plan")
+        events = self._read_events(
+            self._candidate_dir(campaign_dir, internal_id), spec["campaign_id"], internal_id
+        )
+        state = self._state_from_events(events)
+        if state == "REVIEW_COMPLETED":
+            previous = events[-1]
+            if (
+                previous.get("reviewer") == reviewer.strip()
+                and previous.get("human_confirmation") == confirmation
+                and previous.get("publication_evidence") == publication_evidence
+            ):
+                return {
+                    "status": "REVIEW_ALREADY_COMPLETED",
+                    "event_sequence": previous["sequence"],
+                    "event_sha256": previous["event_sha256"],
+                    "idempotent": True,
+                }
+            raise MatchCampaignAuthorizationError(
+                "El cierre ya existe con otra identidad o evidencia; requiere revisión manual"
+            )
+        if state != "DISCOVERY_REVIEW_REQUIRED":
+            raise MatchCampaignAuthorizationError(
+                f"No se puede cerrar la revisión desde el estado {state}"
+            )
+        discovery = events[-1]
+        expected_confirmation = review_completion_confirmation(
+            candidate["source_match_id"],
+            str((discovery.get("artifact") or {}).get("source_html_sha256", "")),
+            str(publication_evidence.get("details_sha256", "")),
+        )
+        if confirmation != expected_confirmation:
+            raise MatchCampaignAuthorizationError(
+                "La confirmación no coincide con el partido y los hashes publicados"
+            )
+        payload = {
+            "event_type": "REVIEW_COMPLETED",
+            "reviewer": reviewer.strip(),
+            "completed_at_utc": completed_at_utc or _now(),
+            "human_confirmation": confirmation,
+            "publication_evidence": publication_evidence,
+            "historic_acquisition_state": "DISCOVERY_REVIEW_REQUIRED",
+            "capture_promoted": False,
+        }
+        appended = self._append_event_locked(campaign_dir, spec, internal_id, payload)
+        return {
+            "status": "REVIEW_COMPLETED",
+            "event_sequence": appended["sequence"],
+            "event_sha256": appended["event_sha256"],
+            "idempotent": False,
+        }
 
     def _append_event_locked(
         self,
@@ -1149,6 +1345,36 @@ class MatchDetailCampaignLedger:
                         raise MatchCampaignIntegrityError("Referencia de artefacto en evento inesperado")
                     self._verify_artifact_reference(campaign_dir, spec, internal_id, artifact_ref)
                     referenced_artifacts.add(artifact_ref["artifact_relative_path"])
+                if event["event_type"] == "REVIEW_COMPLETED":
+                    evidence = event["publication_evidence"]
+                    if (
+                        evidence.get("campaign_id") != spec["campaign_id"]
+                        or evidence.get("inventory_id") != spec["source"]["inventory_id"]
+                        or evidence.get("source_generation_id") != spec["source"]["generation_id"]
+                        or evidence.get("source_generation_manifest_sha256")
+                        != spec["source"]["generation_manifest_sha256"]
+                        or evidence.get("source_match_id")
+                        != next(
+                            item["source_match_id"]
+                            for item in spec["candidates"]
+                            if item["internal_id"] == internal_id
+                        )
+                        or evidence.get("group")
+                        != next(
+                            item["group"]
+                            for item in spec["candidates"]
+                            if item["internal_id"] == internal_id
+                        )
+                        or evidence.get("source_capture_id")
+                        != next(
+                            item["source_capture_id"]
+                            for item in spec["candidates"]
+                            if item["internal_id"] == internal_id
+                        )
+                    ):
+                        raise MatchCampaignIntegrityError(
+                            f"Cierre de revisión discordante con el plan para {internal_id}"
+                        )
             if candidate_dir.exists():
                 unexpected_candidate_entries = {
                     item.name for item in candidate_dir.iterdir()
@@ -1179,6 +1405,14 @@ class MatchDetailCampaignLedger:
                     "internal_id": internal_id,
                     "source_match_id": candidate["source_match_id"],
                     "state": state,
+                    "acquisition_state": (
+                        "DISCOVERY_REVIEW_REQUIRED"
+                        if state == "REVIEW_COMPLETED"
+                        else state
+                    ),
+                    "review_status": (
+                        "completed" if state == "REVIEW_COMPLETED" else "pending"
+                    ),
                     "authorization_consumed": any(item["event_type"] == "STARTED" for item in events),
                     "navigation_count": sum(item["event_type"] == "STARTED" for item in events),
                     "capture_promoted": False,

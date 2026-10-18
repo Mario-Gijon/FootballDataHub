@@ -15,6 +15,7 @@ from .campaign import (
 from .real_acquisition import (
     run_authorized_real_candidate,
 )
+from .review_completion import complete_published_discovery_review
 from .sampling_plan import MatchSamplePlanError, build_offline_sample_plan
 
 PLAYER_IDLE_CONFIRMATION = "PLAYER_BROWSER_IDLE_CONFIRMED"
@@ -39,9 +40,25 @@ def _parser() -> argparse.ArgumentParser:
         "--campaign-root", type=Path,
         default=data_root / "matches/details/campaigns",
     )
+    parser.add_argument("--published-root", type=Path, default=data_root / "matches/details/published")
+    parser.add_argument("--player-inventory-root", type=Path, default=data_root / "players/inventory-2026-27")
+    parser.add_argument("--player-compact-root", type=Path, default=data_root / "players/compact-2026-27")
+    parser.add_argument("--player-team-captures-root", type=Path, default=data_root / "team-captures")
+    parser.add_argument(
+        "--player-published-index", type=Path,
+        default=data_root / "published/team_profiles_2026-27.json",
+    )
     commands = parser.add_subparsers(dest="command", required=True)
 
     commands.add_parser("preflight", help="Solo lectura; no crea ledger ni inicia navegador")
+
+    close_review = commands.add_parser(
+        "complete-review",
+        help="Cierra una revisión solo tras verificar ledger, artefacto y publicación activa aprobada",
+    )
+    close_review.add_argument("--internal-id", required=True)
+    close_review.add_argument("--reviewer", required=True)
+    close_review.add_argument("--confirm-review-complete", required=True)
 
     review = commands.add_parser("review-legacy", help="Registra una decisión humana sobre 272582")
     review.add_argument("--reviewer", required=True)
@@ -87,6 +104,23 @@ def main(argv: list[str] | None = None) -> int:
             report = ledger.preflight(plan)
             print(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True))
             return 0 if report["status"] == "READY_FOR_FUTURE_HUMAN_AUTHORIZATION" else 2
+        if args.command == "complete-review":
+            result = complete_published_discovery_review(
+                plan=plan,
+                ledger=ledger,
+                internal_id=args.internal_id,
+                reviewer=args.reviewer,
+                confirmation=args.confirm_review_complete,
+                data_root=args.data_root,
+                generation_root=args.generation_root,
+                published_root=args.published_root,
+                player_inventory_root=args.player_inventory_root,
+                player_compact_root=args.player_compact_root,
+                player_team_captures_root=args.player_team_captures_root,
+                player_published_index_path=args.player_published_index,
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+            return 0 if result["status"] in {"REVIEW_COMPLETED", "REVIEW_ALREADY_COMPLETED"} else 2
         if args.command == "review-legacy":
             review_id = ledger.append_legacy_stop_review(
                 plan,

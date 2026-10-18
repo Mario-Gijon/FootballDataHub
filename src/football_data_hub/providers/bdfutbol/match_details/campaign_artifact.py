@@ -78,6 +78,17 @@ def _same_candidate(candidate: Mapping[str, Any], expected: Mapping[str, Any]) -
     )
 
 
+def _validate_discovery_event_sequence(events: list[dict[str, Any]]) -> None:
+    """Keep the immutable acquisition sequence valid after an operational close."""
+
+    event_types = [event.get("event_type") for event in events]
+    if event_types[:3] != ["AUTHORIZED", "STARTED", "DISCOVERY_REVIEW_REQUIRED"] or event_types[3:] not in (
+        [],
+        ["REVIEW_COMPLETED"],
+    ):
+        raise CampaignArtifactError("La secuencia del candidato no es la adquisición esperada")
+
+
 def parse_campaign_saved_artifact(
     artifact_dir: Path,
     *,
@@ -205,19 +216,14 @@ def parse_campaign_saved_artifact(
     ]
     if (
         len(report_candidates) != 1
-        or report_candidates[0].get("state") != "DISCOVERY_REVIEW_REQUIRED"
+        or report_candidates[0].get("acquisition_state") != "DISCOVERY_REVIEW_REQUIRED"
         or report_candidates[0].get("authorization_consumed") is not True
         or report_candidates[0].get("navigation_count") != 1
         or report_candidates[0].get("capture_promoted") is not False
         or preflight.get("capture_promotion_enabled") is not False
     ):
         raise CampaignArtifactError("El ledger no acredita una única adquisición no promovida")
-    if [event.get("event_type") for event in events] != [
-        "AUTHORIZED",
-        "STARTED",
-        "DISCOVERY_REVIEW_REQUIRED",
-    ]:
-        raise CampaignArtifactError("La secuencia del candidato no es la adquisición esperada")
+    _validate_discovery_event_sequence(events)
     authorization = events[0].get("authorization")
     started = events[1]
     resolved = events[2]

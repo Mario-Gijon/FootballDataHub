@@ -16,7 +16,7 @@ La integración offline utilizó el artefacto local:
 
 El HTML tiene SHA-256 `9649b77712f8f259dd4cc413ebc90c26305069a7cb96ab8829fed3aff4b01113`. La validación releyó ledger, autorización, intento, manifiesto y hashes; confirmó Teruel 0–0 Real Madrid Castilla, J1, fecha 2026-08-31, IDs 204 y 61, 11 titulares por equipo, 7/10 suplentes, ambos entrenadores y 24 eventos. Entre ellos hay nueve entradas y nueve salidas, cuatro amarillas, una expulsión observada y un penalti fallado; se conserva sin atribuir una causa no demostrada para la expulsión, y no se fabrican parejas de sustitución.
 
-En la ejecución MATCH-03 no se creó recibo de aprobación, no se escribió en `$FDH_LOCAL_DATA_ROOT/matches/details/published`, y el partido sigue sin publicar. `272582` tampoco se publicó.
+En la ejecución MATCH-03 no se creó recibo de aprobación ni se escribió en `$FDH_LOCAL_DATA_ROOT/matches/details/published`; esa observación describe el estado de aquella ejecución. En la auditoría MATCH-04A del 2026-10-18, el índice local ya contiene una publicación aprobada para `272525`; `272582` no está publicado. Véase `docs/match_04a_campaign_continuation.md` para los hashes y el estado actual del ledger.
 
 ## Flujo de operación
 
@@ -79,4 +79,4 @@ La aprobación generada dentro del test es un fixture técnico aislado y no repr
 
 ## Bloqueos y próximos pasos
 
-No queda un bloqueo contractual para ofrecer esta vía: es un contrato independiente de publicación por aprobación, no una promoción de captura. `272525` **sigue sin publicar** hasta que una persona revise el documento y ejecute deliberadamente `approve` y `publish`. No hay publicación real ni aprobación automática en MATCH-03. Otros candidatos deben seguir el mismo proceso uno a uno; aprobar uno no autoriza a los demás.
+No queda un bloqueo contractual para ofrecer esta vía: es un contrato independiente de publicación por aprobación, no una promoción de captura. En MATCH-03, `272525` seguía sin publicar hasta que un operador ejecutase deliberadamente `approve` y `publish`; la auditoría MATCH-04A verificó posteriormente el paquete aprobado activo. El proceso no aprueba otros candidatos: cada encuentro debe seguir el flujo uno a uno.

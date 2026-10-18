@@ -134,8 +134,15 @@ def test_272525_campaign_publication_cycle_is_temporary_and_api_readable(tmp_pat
         match_bundle=match_bundle,
         player_ids=player_ids,
     )
-    assert INTERNAL_ID not in active_publications
+    assert set(active_publications) == {INTERNAL_ID}
     assert LEGACY_INTERNAL_ID not in active_publications
+    active_page = build_match_page(
+        match_bundle, INTERNAL_ID, details=active_publications.get(INTERNAL_ID)
+    )
+    assert active_page.detail_status == "available"
+    assert active_page.details is not None
+    assert active_page.details.publication_status == "approved"
+    assert build_match_page(match_bundle, LEGACY_INTERNAL_ID).detail_status == "not_available"
 
     published_root = tmp_path / "published"
     store_root = data_root / "matches/details"
