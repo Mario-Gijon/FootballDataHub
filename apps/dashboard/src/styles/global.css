@@ -1572,7 +1572,8 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .match-event-glyph.is-substitution { color: var(--text-subtle); }
 .match-event-glyph.is-substitution_in { color: #94cba4; }
 .match-event-glyph.is-substitution_out { color: #d99393; }
-.match-event-glyph.is-missed-penalty { display: inline-grid; place-items: center; border: 1px solid #e8bc65; border-radius: 50%; color: #e8bc65; font-family: var(--mono); font-size: 10px; font-weight: 700; }
+.match-event-glyph.is-missed-penalty { color: #9ed8b1; }
+.match-event-glyph.is-missed-penalty .missed-penalty-cross { stroke: #df7777; stroke-width: 2.4; }
 .match-event-glyph.is-other { color: var(--text-subtle); font-size: 20px; line-height: 10px; }
 .match-highlights { padding-bottom: 14px; }
 .match-highlights .section-heading { display: flex; align-items: center; justify-content: space-between; }

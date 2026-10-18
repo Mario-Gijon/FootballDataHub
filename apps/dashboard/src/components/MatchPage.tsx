@@ -365,7 +365,13 @@ function EventGlyph({ kind }: { kind: MatchEventKind }) {
   if (kind === "substitution" || kind === "substitution_in" || kind === "substitution_out") return <svg className={`match-event-glyph is-${kind}`} viewBox="0 0 16 16" aria-hidden="true">
     <path d={kind === "substitution_in" ? "M2 8h11m0 0-4-4m4 4-4 4" : kind === "substitution_out" ? "M14 8H3m0 0 4-4m-4 4 4 4" : "M2 5h10m0 0-2.5-2.5M12 5 9.5 7.5M14 11H4m0 0 2.5-2.5M4 11l2.5 2.5"} />
   </svg>;
-  if (kind === "missed_penalty") return <span className="match-event-glyph is-missed-penalty" aria-hidden="true">!</span>;
+  if (kind === "missed_penalty") return <svg className="match-event-glyph is-missed-penalty" viewBox="0 0 16 16" aria-hidden="true">
+    <g className="missed-penalty-ball">
+      <circle cx="6.2" cy="6.2" r="5.1" />
+      <path d="m6.2 3.2 1.8 1.3-.7 2.1H5.1l-.7-2.1 1.8-1.3Zm-3 1.2-1.5.7m7.5-.7 1.5.7m-5.4 1.5-1.7 1.8m3.8-1.8 1.7 1.8m-1.9-1v2.3" />
+    </g>
+    <path className="missed-penalty-cross" d="m10.8 10.8 3.7 3.7m0-3.7-3.7 3.7" />
+  </svg>;
   return <span className="match-event-glyph is-other" aria-hidden="true">·</span>;
 }
 

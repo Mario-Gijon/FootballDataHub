@@ -218,13 +218,16 @@ describe("MatchPage details", () => {
     const highlights = screen.getByRole("region", { name: "Momentos del partido" });
     expect(within(highlights).getByText("Penalti fallado")).toBeInTheDocument();
     expect(within(highlights).getByText("Expulsión")).toBeInTheDocument();
+    expect(within(highlights).getByText("Penalti fallado").closest("li")?.querySelector(".match-event-glyph.is-missed-penalty .missed-penalty-cross")).toBeInTheDocument();
     expect(within(highlights).getByText(/Rachad · Real Madrid Castilla/)).toBeInTheDocument();
     expect(within(highlights).getByText(/Belevonis · Teruel/)).toBeInTheDocument();
     expect(within(highlights).queryByText(/roja directa/i)).not.toBeInTheDocument();
     expect(container.querySelectorAll(".match-lineup-side")[1]?.querySelector(".match-player-row .match-event-yellow_card")).toBeInTheDocument();
     expect(container.querySelectorAll(".match-lineup-side")[0]?.querySelector(".match-player-row .match-event-red_card")).toBeInTheDocument();
     expect(container.querySelectorAll(".match-lineup-side ul li")).toHaveLength(39);
+    expect(container.querySelector(".match-lineup-side .match-player-marker.match-event-missed_penalty .missed-penalty-cross")).toBeInTheDocument();
     expect(container.querySelectorAll(".match-events > li")).toHaveLength(15);
+    expect(container.querySelector(".match-events .match-event-missed_penalty .match-event-glyph.is-missed-penalty .missed-penalty-cross")).toBeInTheDocument();
     expect(screen.getByText("24 acontecimientos")).toBeInTheDocument();
     expect(screen.queryByText("Los detalles de este encuentro todavía no están disponibles.")).not.toBeInTheDocument();
   });
