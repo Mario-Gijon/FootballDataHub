@@ -394,6 +394,36 @@ class MatchDetailCampaignLedger:
         finally:
             self._thread_lock.release()
 
+    @contextmanager
+    def shared_lock(self) -> Iterator[None]:
+        """Lock an existing ledger for a consistent read without creating files."""
+
+        if not self._thread_lock.acquire(blocking=False):
+            raise MatchCampaignLocked("Otra operación tiene el lock local de campaña")
+        handle = None
+        try:
+            if self._lock_depth > 0:
+                # The current thread already owns the exclusive lock.
+                yield
+                return
+            _reject_symlink_path(self.root)
+            if not self.root.is_dir():
+                raise MatchCampaignIntegrityError("La raíz del ledger no es un directorio existente")
+            lock_path = self.root / "campaign-ledger.lock"
+            if lock_path.is_symlink() or not lock_path.is_file():
+                raise MatchCampaignIntegrityError("Falta campaign-ledger.lock en un ledger persistido")
+            handle = lock_path.open("rb")
+            try:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_SH | fcntl.LOCK_NB)
+            except BlockingIOError as exc:
+                raise MatchCampaignLocked("El ledger cambia durante la consulta") from exc
+            yield
+        finally:
+            if handle is not None:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+                handle.close()
+            self._thread_lock.release()
+
     def _campaign_dir(self, spec: dict[str, Any]) -> Path:
         return self.root / spec["campaign_id"]
 

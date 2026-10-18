@@ -58,6 +58,15 @@ def _parser() -> argparse.ArgumentParser:
     status.add_argument("--matchday-to", type=int)
     status.add_argument("--campaign-id")
     status.add_argument("--state")
+    worklist = commands.add_parser("worklist", help="Cola global legible y métricas por grupo/jornada; solo lectura")
+    worklist.add_argument("--group", choices=("I", "II"))
+    worklist.add_argument("--matchday-from", type=int)
+    worklist.add_argument("--matchday-to", type=int)
+    worklist.add_argument("--campaign-id")
+    worklist.add_argument("--state")
+    next_item = commands.add_parser("next", help="Sugiere la siguiente operación segura; no la ejecuta")
+    next_item.add_argument("--campaign-id")
+    next_item.add_argument("--group", choices=("I", "II"))
     propose = commands.add_parser("propose", help="Crea una propuesta no autorizante y sin navegación")
     propose.add_argument("--groups", choices=("I", "II", "both"), default="both")
     propose.add_argument("--matchday-from", type=int)
@@ -69,6 +78,20 @@ def _parser() -> argparse.ArgumentParser:
     initialize.add_argument("--proposal-id", required=True)
     campaign_preflight = commands.add_parser("campaign-preflight", help="Consulta integridad y progreso de una campaña v2")
     campaign_preflight.add_argument("--campaign-id", required=True)
+    batch_preflight = commands.add_parser("batch-preflight", help="Preflight solo lectura de trabajo offline de una campaña v2")
+    batch_preflight.add_argument("--campaign-id", required=True)
+    batch_offline = commands.add_parser("batch-offline", help="Valida HTML ya guardado y prepara borradores; nunca navega")
+    batch_offline.add_argument("--campaign-id", required=True)
+    batch_offline.add_argument("--confirm-offline-batch", required=True)
+    batch_report = commands.add_parser("batch-report", help="Lee y verifica un informe versionado de lote")
+    batch_report.add_argument("--path", type=Path, required=True)
+    review_queue = commands.add_parser("review-queue", help="Resume borradores pendientes con hashes y evidencia")
+    review_queue.add_argument("--campaign-id", required=True)
+    publication_queue = commands.add_parser("publish-queue", help="Lista documentos aprobados listos para publicación")
+    publication_queue.add_argument("--campaign-id", required=True)
+    publish_approved = commands.add_parser("publish-approved", help="Publica y verifica únicamente borradores ya aprobados")
+    publish_approved.add_argument("--campaign-id", required=True)
+    publish_approved.add_argument("--confirm-publish-approved", required=True)
     candidates = commands.add_parser("candidates", help="Lista candidatos de una campaña v2")
     candidates.add_argument("--campaign-id", required=True)
     candidates.add_argument("--group", choices=("I", "II"))
@@ -280,11 +303,29 @@ def _review_state_ids(
         return validated, approved, blocked
     if review_root.is_symlink() or not review_root.is_dir():
         raise ScalableCampaignError("La raíz review no es un directorio regular")
+    review_files: list[Path] = []
+    for path in sorted(review_root.iterdir()):
+        if path.is_symlink():
+            raise ScalableCampaignError(f"Entrada review no regular: {path.name}")
+        if path.is_file() and path.name.endswith(("-draft.json", "-approval.json")):
+            review_files.append(path)
+            continue
+        if path.name != "v2" or not path.is_dir():
+            raise ScalableCampaignError(f"Entrada inesperada en review: {path.name}")
+        for campaign_dir in sorted(path.iterdir()):
+            if campaign_dir.is_symlink() or not campaign_dir.is_dir():
+                raise ScalableCampaignError(f"Entrada v2 no regular: {campaign_dir.name}")
+            for record in sorted(campaign_dir.iterdir()):
+                if (
+                    record.is_symlink()
+                    or not record.is_file()
+                    or not record.name.endswith(("-draft.json", "-approval.json"))
+                ):
+                    raise ScalableCampaignError(f"Entrada inesperada en review v2: {record.name}")
+                review_files.append(record)
     drafts: dict[str, dict[str, Any]] = {}
     approvals: dict[str, dict[str, Any]] = {}
-    for path in sorted(review_root.iterdir()):
-        if path.is_symlink() or not path.is_file() or not path.name.endswith(("-draft.json", "-approval.json")):
-            raise ScalableCampaignError(f"Entrada inesperada en review: {path.name}")
+    for path in review_files:
         try:
             value = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -292,6 +333,8 @@ def _review_state_ids(
         if not isinstance(value, dict) or not isinstance(value.get("internal_id"), str):
             raise ScalableCampaignError(f"Registro review sin internal_id: {path.name}")
         target = drafts if path.name.endswith("-draft.json") else approvals
+        if value["internal_id"] in target:
+            raise ScalableCampaignError(f"Registro review duplicado para {value['internal_id']}")
         target[value["internal_id"]] = value
     for internal_id, draft_record in drafts.items():
         if internal_id in published_ids:
@@ -513,7 +556,19 @@ def main(argv: list[str] | None = None) -> int:
 
         ledger = OperationalMatchCampaignLedger(args.store_root / "campaigns")
         data_root = args.data_root.expanduser().resolve()
-        if args.command in {"campaign-preflight", "candidates", "inspect", "preview"}:
+        if args.command == "batch-report":
+            from .campaign_operations import load_operation_report
+
+            result = load_operation_report(args.path.expanduser())
+            print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+            return 0
+        if args.command == "batch-preflight":
+            from .campaign_operations import build_batch_preflight
+
+            result = build_batch_preflight(ledger, args.campaign_id)
+            print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+            return 0
+        if args.command in {"campaign-preflight", "candidates", "inspect", "preview", "review-queue", "publish-queue"}:
             preflight = ledger.preflight(args.campaign_id)
             if args.command == "campaign-preflight":
                 result = preflight
@@ -530,6 +585,14 @@ def main(argv: list[str] | None = None) -> int:
                     "candidate": ledger.candidate(args.campaign_id, args.internal_id),
                     "events": ledger.candidate_events(args.campaign_id, args.internal_id),
                 }
+            elif args.command == "review-queue":
+                from .campaign_operations import build_review_queue
+
+                result = {"campaign_id": args.campaign_id, "documents": build_review_queue(ledger, args.campaign_id, data_root)}
+            elif args.command == "publish-queue":
+                from .campaign_operations import build_publication_queue
+
+                result = {"campaign_id": args.campaign_id, "documents": build_publication_queue(ledger, args.campaign_id)}
             else:
                 events = ledger.candidate_events(args.campaign_id, args.internal_id)
                 prepared = next((item for item in events if item["event_type"] == "DRAFT_PREPARED"), None)
@@ -546,8 +609,45 @@ def main(argv: list[str] | None = None) -> int:
             "store_root": args.store_root,
             "published_root": args.published_root,
         }
-        if args.command in {"status", "propose", "initialize", "authorize", "execute"}:
+        if args.command in {"status", "worklist", "next", "propose", "initialize", "authorize", "execute"}:
             report, proposals, context = _load_report(args)
+        if args.command == "worklist":
+            from .campaign_operations import build_worklist
+
+            result = build_worklist(report)
+            result["matches"] = [
+                row for row in result["matches"]
+                if (args.group is None or row["group"] == args.group)
+                and (args.matchday_from is None or row["matchday"] >= args.matchday_from)
+                and (args.matchday_to is None or row["matchday"] <= args.matchday_to)
+                and (args.campaign_id is None or args.campaign_id in row["campaign_ids"])
+                and (args.state is None or row["state"] == args.state or row["detail_status"] == args.state)
+            ]
+            result["filtered_count"] = len(result["matches"])
+            print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+            return 0
+        if args.command == "next":
+            from .campaign_operations import build_worklist
+
+            rows = build_worklist(report)["matches"]
+            eligible = [
+                row for row in rows
+                if (args.campaign_id is None or args.campaign_id in row["campaign_ids"])
+                and (args.group is None or row["group"] == args.group)
+                and row["state"] in {
+                    "AVAILABLE_FOR_PROPOSAL", "NOT_AUTHORIZED", "AUTHORIZED",
+                    "DISCOVERY_REVIEW_REQUIRED", "VALIDATED", "REVALIDATED",
+                    "DRAFT_PREPARED", "DOCUMENT_APPROVED",
+                }
+            ]
+            eligible.sort(key=lambda row: (
+                {"DISCOVERY_REVIEW_REQUIRED": 0, "VALIDATED": 1, "REVALIDATED": 1,
+                 "DRAFT_PREPARED": 2, "DOCUMENT_APPROVED": 3,
+                 "AUTHORIZED": 4, "NOT_AUTHORIZED": 5, "AVAILABLE_FOR_PROPOSAL": 6}.get(row["state"], 9),
+                row["group"], row["matchday"], int(row["source_match_id"]),
+            ))
+            print(json.dumps({"next": eligible[0] if eligible else None, "count": len(eligible), "http_enabled": False, "browser_started": False, "navigation_enabled": False}, ensure_ascii=False, indent=2, sort_keys=True))
+            return 0 if eligible else 2
         if args.command == "status":
             output = dict(report)
             rows = output.get("matches", [])
@@ -616,6 +716,43 @@ def main(argv: list[str] | None = None) -> int:
                 )
             print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
             return 0
+
+        if args.command == "batch-offline":
+            from .campaign_operations import run_offline_batch
+
+            if args.confirm_offline_batch != "PROCESS_SAVED_MATCH_ARTIFACTS_OFFLINE":
+                raise ScalableCampaignError("El lote offline requiere confirmación explícita")
+            result = run_offline_batch(
+                ledger=ledger,
+                campaign_id=args.campaign_id,
+                data_root=data_root,
+                player_inventory_root=args.player_inventory_root,
+                player_compact_root=args.player_compact_root,
+                player_team_captures_root=args.player_team_captures_root,
+                player_published_index_path=args.player_published_index,
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+            return 0 if result["status"] == "COMPLETED" else 2
+
+        if args.command == "publish-approved":
+            from .campaign_operations import publish_approved_batch
+
+            generation_root = ledger.generation_root(args.campaign_id, data_root)
+            result = publish_approved_batch(
+                ledger=ledger,
+                campaign_id=args.campaign_id,
+                confirmation=args.confirm_publish_approved,
+                data_root=data_root,
+                generation_root=generation_root,
+                published_root=args.published_root,
+                store_root=args.store_root,
+                player_inventory_root=args.player_inventory_root,
+                player_compact_root=args.player_compact_root,
+                player_team_captures_root=args.player_team_captures_root,
+                player_published_index_path=args.player_published_index,
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+            return 0 if result["status"] == "COMPLETED" else 2
 
         if args.command in {"validate", "revalidate-failed", "prepare", "approve", "publish", "verify", "complete-review"}:
             if args.command == "validate":

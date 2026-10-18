@@ -1023,6 +1023,121 @@ def test_v2_offline_pipeline_reaches_review_completion_with_human_approval(
     assert final_row["detail_status"] == "review_completed"
 
 
+def test_offline_batch_uses_v2_parser_and_is_idempotent(tmp_path, monkeypatch):
+    from football_data_hub.providers.bdfutbol.match_details.campaign_operations import run_offline_batch
+
+    fixture = _fixture(tmp_path, monkeypatch)
+    _initialize(fixture)
+    _authorize(fixture)
+    _execute(
+        fixture,
+        SimulatedMatchAccessAdapter(
+            SimulatedAccessResponse(
+                final_url=fixture.candidate["source_match_url"],
+                http_status=200,
+                html=b"<html><head><title>Offline fixture</title></head><body>stored</body></html>",
+                page_title="Offline fixture",
+                access_classification="VALID",
+            )
+        ),
+    )
+    import football_data_hub.providers.bdfutbol.match_details.campaign_artifact as artifacts
+
+    monkeypatch.setattr(
+        artifacts,
+        "parse_campaign_saved_artifact",
+        lambda *_a, **_kw: SimpleNamespace(
+            validation=_FakeValidation(),
+            source=SimpleNamespace(parser_version="offline-test-parser"),
+        ),
+    )
+    discovery = next(
+        event for event in fixture.ledger.candidate_events(
+            fixture.plan["campaign_id"], fixture.candidate["internal_id"]
+        ) if event["event_type"] == "DISCOVERY_REVIEW_REQUIRED"
+    )
+    monkeypatch.setattr(
+        api_details, "build_campaign_publication_draft",
+        lambda **_kwargs: _valid_draft(fixture, discovery),
+    )
+    monkeypatch.setattr(
+        fixture.ledger,
+        "_publication_inputs",
+        lambda **_kwargs: (fixture.data_root, fixture.generation_root, SimpleNamespace(), set()),
+    )
+    kwargs = {
+        "ledger": fixture.ledger,
+        "campaign_id": fixture.plan["campaign_id"],
+        "data_root": fixture.data_root,
+        "player_inventory_root": tmp_path,
+        "player_compact_root": tmp_path,
+        "player_team_captures_root": tmp_path,
+        "player_published_index_path": tmp_path / "players.json",
+    }
+    first = run_offline_batch(**kwargs)
+    assert first["status"] == "COMPLETED"
+    assert first["prepared_count"] == 1
+    events_after_first = fixture.ledger.candidate_events(
+        fixture.plan["campaign_id"], fixture.candidate["internal_id"]
+    )
+    assert [event["event_type"] for event in events_after_first][-2:] == ["VALIDATED", "DRAFT_PREPARED"]
+
+    second = run_offline_batch(**kwargs)
+    assert second["status"] == "COMPLETED"
+    assert second["prepared_count"] == 0
+    events_after_second = fixture.ledger.candidate_events(
+        fixture.plan["campaign_id"], fixture.candidate["internal_id"]
+    )
+    assert [event["event_sha256"] for event in events_after_second] == [
+        event["event_sha256"] for event in events_after_first
+    ]
+
+
+def test_offline_validation_rechecks_state_before_appending_after_concurrent_change(tmp_path, monkeypatch):
+    fixture = _fixture(tmp_path, monkeypatch)
+    _initialize(fixture)
+    _authorize(fixture)
+    _execute(
+        fixture,
+        SimulatedMatchAccessAdapter(
+            SimulatedAccessResponse(
+                final_url=fixture.candidate["source_match_url"], http_status=200,
+                html=b"<html><body>stored</body></html>", page_title="Fixture",
+                access_classification="VALID",
+            )
+        ),
+    )
+    import football_data_hub.providers.bdfutbol.match_details.campaign_artifact as artifacts
+
+    def concurrent_parser(*_args, **_kwargs):
+        # A second validator commits while the first is parsing, before the
+        # first validator reacquires the campaign lock.
+        directory, campaign, events = fixture.ledger._events(
+            fixture.plan["campaign_id"], fixture.candidate["internal_id"]
+        )
+        discovery = next(event for event in events if event["event_type"] == "DISCOVERY_REVIEW_REQUIRED")
+        concurrent = {
+            "event_type": "VALIDATED",
+            "campaign_id": fixture.plan["campaign_id"],
+            "internal_id": fixture.candidate["internal_id"],
+            "semantic_valid": True,
+            "source_html_sha256": discovery["artifact"]["source_html_sha256"],
+            "evidence_sha256": "a" * 64,
+        }
+        fixture.ledger._append(directory, campaign, fixture.candidate["internal_id"], concurrent)
+        return SimpleNamespace(validation=_FakeValidation(), source=SimpleNamespace(parser_version="offline-test-parser"))
+
+    monkeypatch.setattr(artifacts, "parse_campaign_saved_artifact", concurrent_parser)
+    with pytest.raises(MatchCampaignAuthorizationError, match="cambió durante la validación"):
+        fixture.ledger.validate_offline_artifact(
+            campaign_id=fixture.plan["campaign_id"],
+            internal_id=fixture.candidate["internal_id"],
+            data_root=fixture.data_root,
+        )
+    events = fixture.ledger.candidate_events(fixture.plan["campaign_id"], fixture.candidate["internal_id"])
+    assert sum(event["event_type"] == "VALIDATED" for event in events) == 1
+
+
 def test_v2_failed_validation_can_be_revalidated_without_recapture(tmp_path, monkeypatch):
     fixture = _fixture(tmp_path, monkeypatch)
     _initialize(fixture)

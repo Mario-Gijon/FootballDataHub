@@ -1078,16 +1078,18 @@ class OperationalMatchCampaignLedger:
     def inspect(
         self, directory: Path, *, internal_id: str
     ) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
-        campaign, _manifest, _plan = self._read_campaign(directory)
-        self._candidate(campaign, internal_id)
-        events = self._read_events(directory, campaign, internal_id)
-        return campaign, self.preflight(campaign["campaign_id"]), events
+        with self.lock.shared_lock():
+            campaign, _manifest, _plan = self._read_campaign(directory)
+            self._candidate(campaign, internal_id)
+            events = self._read_events(directory, campaign, internal_id)
+            report = self.preflight(campaign["campaign_id"], acquire_lock=False)
+            return campaign, report, events
 
     def preflight(
         self, campaign_id: str, *, acquire_lock: bool = True
     ) -> dict[str, Any]:
         directory = _campaign_dir(self.root, campaign_id)
-        context = self.lock.exclusive_lock() if acquire_lock else _null_context()
+        context = self.lock.shared_lock() if acquire_lock else _null_context()
         with context:
             campaign, _manifest, _plan = self._read_campaign(directory)
             rows = []
@@ -1663,9 +1665,21 @@ class OperationalMatchCampaignLedger:
             evidence["diagnostic"] = diagnostic
         event_type = "VALIDATED" if valid else "VALIDATION_FAILED"
         with self.lock.exclusive_lock():
+            current_directory, current_campaign, current_events = self._events(
+                campaign_id, internal_id
+            )
+            if (
+                self._state(current_events) != "DISCOVERY_REVIEW_REQUIRED"
+                or not current_events
+                or current_events[-1].get("event_sha256")
+                != events[-1].get("event_sha256")
+            ):
+                raise MatchCampaignAuthorizationError(
+                    "El estado o artefacto cambió durante la validación offline"
+                )
             self._append(
-                directory,
-                campaign,
+                current_directory,
+                current_campaign,
                 internal_id,
                 {
                     "event_type": event_type,
