@@ -6,6 +6,7 @@ import {
   TeamFollowSchema,
   TeamTransfersSchema,
   MatchResultsBootstrapSchema,
+  MatchPageSchema,
   PlayerDirectorySchema,
   PlayerDetailSchema,
   TopBootstrapSchema,
@@ -16,6 +17,7 @@ import {
   type TeamFollow,
   type TeamTransfers,
   type MatchResultsBootstrap,
+  type MatchPage,
   type PlayerDirectory,
   type PlayerDetail,
   type TopBootstrap,
@@ -268,6 +270,66 @@ export function loadMatchResultsBootstrap(signal?: AbortSignal): Promise<MatchRe
     "No se pudo conectar con la API de Resultados.",
     "La generación de Resultados no coincide con el contrato del dashboard.",
   );
+}
+
+export class MatchPageApiError extends Error {
+  constructor(message: string, readonly code: string, readonly statusCode: number) {
+    super(message);
+    this.name = "MatchPageApiError";
+  }
+}
+
+const matchPageCache = new Map<string, Promise<MatchPage>>();
+
+export function clearMatchPageCache(): void {
+  matchPageCache.clear();
+}
+
+export function loadMatchPage(internalId: string): Promise<MatchPage> {
+  const cached = matchPageCache.get(internalId);
+  if (cached) return cached;
+  const pending = requestMatchPage(internalId).catch((error: unknown) => {
+    matchPageCache.delete(internalId);
+    throw error;
+  });
+  matchPageCache.set(internalId, pending);
+  return pending;
+}
+
+async function requestMatchPage(internalId: string): Promise<MatchPage> {
+  let response: Response;
+  try {
+    response = await fetch(`${apiBase}/api/v1/matches/${encodeURIComponent(internalId)}`, {
+      headers: { Accept: "application/json" },
+    });
+  } catch {
+    throw new MatchPageApiError("No se pudo conectar con la API de FootballDataHub.", "connection_error", 0);
+  }
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    throw new MatchPageApiError("La API devolvió una respuesta que no es JSON válido.", "invalid_json", response.status);
+  }
+  if (!response.ok) {
+    const detail = typeof body === "object" && body !== null && "detail" in body
+      ? (body as { detail?: unknown }).detail : undefined;
+    const errorBody = typeof detail === "object" && detail !== null
+      ? detail as { code?: unknown; message?: unknown } : {};
+    throw new MatchPageApiError(
+      typeof errorBody.message === "string" ? errorBody.message : `La API respondió con un error (${response.status}).`,
+      typeof errorBody.code === "string" ? errorBody.code : "request_failed",
+      response.status,
+    );
+  }
+  const parsed = MatchPageSchema.safeParse(body);
+  if (!parsed.success) {
+    throw new MatchPageApiError("La ficha del partido no coincide con el contrato de la aplicación.", "contract_error", response.status);
+  }
+  if (parsed.data.match.internal_id !== internalId) {
+    throw new MatchPageApiError("La API devolvió otro encuentro.", "identity_mismatch", response.status);
+  }
+  return parsed.data;
 }
 
 export interface PlayerDirectoryQuery {

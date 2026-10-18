@@ -1,7 +1,8 @@
 import { useMemo } from "react";
-import type { Match, Team } from "../api/contracts";
+import type { MatchGenerationRecord, Team } from "../api/contracts";
 import { buildResultsMatrix, listResults, type ListedMatch, type MatchOutcome } from "../domain/results";
 import { InternalTeamLink } from "./InternalTeamLink";
+import { InternalMatchLink } from "./InternalMatchLink";
 
 export type ResultsMatchday = number | "all";
 
@@ -15,15 +16,13 @@ interface ResultsSectionProps {
 
 export interface ResultsViewData {
   metadata: {
+    group: "I" | "II";
     captured_at: string;
     scheduled_matchdays: number[];
-    generation_id: string;
-    generation_sha256: string;
-    source_capture_id: string;
     counts: { teams: number; matches: number; played: number; unplayed: number; incomplete: number };
   };
   teams: Team[];
-  matches: Match[];
+  matches: MatchGenerationRecord[];
 }
 
 export function ResultsSection({ data, matchday, onMatchdayChange, onNavigate, idSuffix = "" }: ResultsSectionProps) {
@@ -42,14 +41,15 @@ export function ResultsSection({ data, matchday, onMatchdayChange, onNavigate, i
     return [...byMatchday.entries()].sort(([left], [right]) => left - right);
   }, [entries]);
   const playedCount = entries.filter(({ match }) => match.status === "played").length;
+  const unplayedCount = entries.filter(({ match }) => match.status === "unplayed").length;
 
   return (
     <section className="results-section" role="tabpanel" id={`results-panel${idSuffix}`} aria-labelledby={`results-tab${idSuffix}`}>
       <div className="competition-hero results-hero">
         <h1>Resultados</h1>
         <div className="dataset-meta" aria-label="Cobertura de resultados">
-          <span>Generación MATCH-00 · {data.metadata.generation_id}</span>
-          <span>{playedCount} con marcador</span>
+          <span>Primera Federación · Grupo {data.metadata.group}</span>
+          <span>{playedCount} disputados · {unplayedCount} pendientes</span>
           <time dateTime={data.metadata.captured_at}>Actualizado {formatCaptureDate(data.metadata.captured_at)}</time>
         </div>
       </div>
@@ -112,7 +112,7 @@ export function ResultsSection({ data, matchday, onMatchdayChange, onNavigate, i
                     <span>{matches.length} partidos</span>
                   </th>
                 </tr>
-                {matches.map((entry) => <MatchRow key={entry.match.match_id} entry={entry} onNavigate={onNavigate} />)}
+                {matches.map((entry) => <MatchRow key={entry.match.internal_id} entry={entry} onNavigate={onNavigate} />)}
               </tbody>
             ))}
             {groups.length === 0 && (
@@ -159,6 +159,7 @@ export function ResultsSection({ data, matchday, onMatchdayChange, onNavigate, i
                       cell={cell}
                       rowTeam={row.team}
                       columnTeam={data.teams.find((team) => team.team_id === cell.columnTeamId)!}
+                      onNavigate={onNavigate}
                     />
                   ))}
                 </tr>
@@ -177,22 +178,21 @@ function MatchRow({ entry, onNavigate }: { entry: ListedMatch; onNavigate: (path
   return (
     <tr
       className={involvesJaen ? "results-match-row is-jaen-match" : "results-match-row"}
-      data-match-id={match.match_id}
-      data-home-team-id={homeTeam.team_id}
-      data-away-team-id={awayTeam.team_id}
     >
-      <td className="result-date">{match.source_match_date ? formatMatchDate(match.source_match_date) : <span aria-label="Fecha no disponible">—</span>}</td>
+      <td className="result-date">{match.source_match_date
+        ? formatMatchDate(match.source_match_date)
+        : match.matchday_date
+          ? <time dateTime={match.matchday_date} title="Fecha de jornada">{formatMatchDate(match.matchday_date)}</time>
+          : <span aria-label="Fecha no disponible">—</span>}</td>
       <td><TeamLink team={homeTeam} onNavigate={onNavigate} /></td>
       <td className="result-score-cell">
         {match.status === "played" && match.home_goals !== null && match.away_goals !== null
-          ? match.source_match_url
-            ? <a className="result-score" href={match.source_match_url} target="_blank" rel="noreferrer" aria-label={`Ficha BDFutbol: ${homeTeam.name} ${match.home_goals} a ${match.away_goals} ${awayTeam.name}`}>
-                {match.home_goals}<span>–</span>{match.away_goals}
-              </a>
-            : <span className="result-score">{match.home_goals}<span>–</span>{match.away_goals}</span>
+          ? <InternalMatchLink className="result-score" internalId={match.internal_id} onNavigate={onNavigate} aria-label={`Abrir ficha: ${homeTeam.name} ${match.home_goals} a ${match.away_goals} ${awayTeam.name}`}>
+              {match.home_goals}<span>–</span>{match.away_goals}
+            </InternalMatchLink>
           : match.status === "unplayed"
-            ? <span className="result-pending" aria-label="Partido pendiente">Pendiente</span>
-            : <span className="result-pending" aria-label="Datos incompletos">Incompleto</span>}
+            ? <InternalMatchLink className="result-pending" internalId={match.internal_id} onNavigate={onNavigate} aria-label="Abrir ficha del partido pendiente">Pendiente</InternalMatchLink>
+            : <InternalMatchLink className="result-pending" internalId={match.internal_id} onNavigate={onNavigate} aria-label="Abrir ficha con datos incompletos">Datos incompletos</InternalMatchLink>}
       </td>
       <td><TeamLink team={awayTeam} onNavigate={onNavigate} /></td>
       <td>{match.stadium_name ? <SourceLink href={match.stadium_url} label={match.stadium_name} /> : <span className="result-unavailable">—</span>}</td>
@@ -215,10 +215,12 @@ function MatrixCell({
   cell,
   rowTeam,
   columnTeam,
+  onNavigate,
 }: {
   cell: ReturnType<typeof buildResultsMatrix>[number]["cells"][number];
   rowTeam: Team;
   columnTeam: Team;
+  onNavigate: (path: string) => void;
 }) {
   if (cell.state === "diagonal") {
     return <td className="matrix-diagonal" aria-label={`${rowTeam.name}: diagonal`}>·</td>;
@@ -234,9 +236,7 @@ function MatrixCell({
   const score = match.status === "played" ? `${match.home_goals}–${match.away_goals}` : "—";
   return (
     <td className={className} aria-label={label}>
-      {match.source_match_url
-        ? <a href={match.source_match_url} target="_blank" rel="noreferrer" title={label}>{score}</a>
-        : <span title={label}>{score}</span>}
+      <InternalMatchLink internalId={match.internal_id} onNavigate={onNavigate} title={label}>{score}</InternalMatchLink>
     </td>
   );
 }

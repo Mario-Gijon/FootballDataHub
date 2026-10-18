@@ -1,10 +1,10 @@
-import type { Match, Team } from "../api/contracts";
+import type { MatchGenerationRecord, Team } from "../api/contracts";
 
 export type MatchOutcome = "home_win" | "draw" | "home_loss";
 export type MatrixCellState = "diagonal" | "fixture" | "missing";
 
 export interface ListedMatch {
-  match: Match;
+  match: MatchGenerationRecord;
   homeTeam: Team;
   awayTeam: Team;
 }
@@ -13,7 +13,7 @@ export interface ResultsMatrixCell {
   rowTeamId: number;
   columnTeamId: number;
   state: MatrixCellState;
-  match: Match | null;
+  match: MatchGenerationRecord | null;
   outcome: MatchOutcome | null;
 }
 
@@ -24,7 +24,7 @@ export interface ResultsMatrixRow {
 
 export function listResults(
   teams: Team[],
-  matches: Match[],
+  matches: MatchGenerationRecord[],
   matchday: number | null,
 ): ListedMatch[] {
   if (matchday !== null && (!Number.isInteger(matchday) || matchday < 1 || matchday > 38)) {
@@ -38,10 +38,10 @@ export function listResults(
 
   const seenMatchIds = new Set<string>();
   for (const match of matches) {
-    if (seenMatchIds.has(match.match_id)) throw new Error(`match_id duplicado: ${match.match_id}`);
-    seenMatchIds.add(match.match_id);
+    if (seenMatchIds.has(match.internal_id)) throw new Error(`internal_id duplicado: ${match.internal_id}`);
+    seenMatchIds.add(match.internal_id);
     if (!teamById.has(match.home_team_id) || !teamById.has(match.away_team_id)) {
-      throw new Error(`El partido ${match.match_id} referencia un equipo desconocido.`);
+      throw new Error(`El partido ${match.internal_id} referencia un equipo desconocido.`);
     }
   }
   return matches
@@ -49,7 +49,7 @@ export function listResults(
     .map((match) => {
       const homeTeam = teamById.get(match.home_team_id);
       const awayTeam = teamById.get(match.away_team_id);
-      if (!homeTeam || !awayTeam) throw new Error(`El partido ${match.match_id} referencia un equipo desconocido.`);
+      if (!homeTeam || !awayTeam) throw new Error(`El partido ${match.internal_id} referencia un equipo desconocido.`);
       return { match, homeTeam, awayTeam };
     })
     .sort((left, right) => {
@@ -57,23 +57,23 @@ export function listResults(
         .localeCompare(right.match.source_match_date ?? "9999-12-31");
       if (dateOrder !== 0) return dateOrder;
       if (left.match.matchday !== right.match.matchday) return left.match.matchday - right.match.matchday;
-      return compareMatchIds(left.match.match_id, right.match.match_id);
+      return compareMatchIds(left.match.internal_id, right.match.internal_id);
     });
 }
 
-export function buildResultsMatrix(teams: Team[], matches: Match[]): ResultsMatrixRow[] {
+export function buildResultsMatrix(teams: Team[], matches: MatchGenerationRecord[]): ResultsMatrixRow[] {
   const teamIds = new Set<number>();
   for (const team of teams) {
     if (teamIds.has(team.team_id)) throw new Error(`team_id duplicado: ${team.team_id}`);
     teamIds.add(team.team_id);
   }
-  const matchByPair = new Map<string, Match>();
+  const matchByPair = new Map<string, MatchGenerationRecord>();
   const matchIds = new Set<string>();
   for (const match of matches) {
-    if (matchIds.has(match.match_id)) throw new Error(`match_id duplicado: ${match.match_id}`);
-    matchIds.add(match.match_id);
+    if (matchIds.has(match.internal_id)) throw new Error(`internal_id duplicado: ${match.internal_id}`);
+    matchIds.add(match.internal_id);
     if (!teamIds.has(match.home_team_id) || !teamIds.has(match.away_team_id)) {
-      throw new Error(`El partido ${match.match_id} referencia un equipo desconocido.`);
+      throw new Error(`El partido ${match.internal_id} referencia un equipo desconocido.`);
     }
     const pair = `${match.home_team_id}:${match.away_team_id}`;
     if (matchByPair.has(pair)) throw new Error(`Fixture local/visitante duplicado: ${pair}`);

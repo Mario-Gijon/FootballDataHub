@@ -11,7 +11,10 @@ from football_data_hub.providers.bdfutbol.match_details.inventory import (
     MatchDetailInventoryError,
     load_verified_match_generation,
 )
-from football_data_hub_api.schemas import MatchGenerationBootstrapResponse
+from football_data_hub_api.schemas import (
+    MatchGenerationBootstrapResponse,
+    MatchPageResponse,
+)
 
 
 class MatchResultsLoadError(ValueError):
@@ -22,6 +25,61 @@ class MatchResultsLoadError(ValueError):
 class MatchResultsBundle:
     bootstrap: MatchGenerationBootstrapResponse
     etag: str
+
+
+def build_match_page(
+    bundle: MatchResultsBundle, internal_id: str
+) -> MatchPageResponse | None:
+    """Project one identity-checked fixture; exploratory artifacts are never read here."""
+
+    bootstrap = bundle.bootstrap
+    for group_code, group in bootstrap.groups.items():
+        match = next(
+            (item for item in group.matches if item.internal_id == internal_id),
+            None,
+        )
+        if match is None:
+            continue
+        teams_by_id = {team.team_id: team for team in group.teams}
+        home = teams_by_id.get(match.home_team_id)
+        away = teams_by_id.get(match.away_team_id)
+        if home is None or away is None:
+            raise MatchResultsLoadError("El partido apunta a un equipo ausente en MATCH-00.")
+        return MatchPageResponse.model_validate({
+            "metadata": {
+                "contract_version": 1,
+                "source": bootstrap.metadata.source,
+                "competition": bootstrap.metadata.competition,
+                "season": bootstrap.metadata.season,
+                "group": group_code,
+                "generation_id": bootstrap.metadata.generation_id,
+                "generation_sha256": bootstrap.metadata.generation_sha256,
+                "source_capture_id": group.source_capture_id,
+                "source_captured_at": group.source_captured_at,
+            },
+            "match": {
+                "internal_id": match.internal_id,
+                "source_match_id": match.source_match_id,
+                "matchday": match.matchday,
+                "matchday_date": match.matchday_date,
+                "source_match_date": match.source_match_date,
+                "home_team": home.model_dump(),
+                "away_team": away.model_dump(),
+                "home_goals": match.home_goals,
+                "away_goals": match.away_goals,
+                "status": match.status,
+                "unplayed_state": match.unplayed_state,
+                "stadium_name": match.stadium_name,
+                "stadium_url": match.stadium_url,
+                "referee_name": match.referee_name,
+                "referee_url": match.referee_url,
+                "source_match_url": match.source_match_url,
+            },
+            # Only a future, separately approved publication loader may populate this field.
+            "detail_status": "not_available",
+            "details": None,
+        })
+    return None
 
 
 def load_match_results_dataset(

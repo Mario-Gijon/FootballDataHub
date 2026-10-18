@@ -10,6 +10,8 @@ import {
 } from "recharts";
 import type { Bootstrap, StatisticsBootstrap, Team } from "../api/contracts";
 import { InternalTeamLink } from "./InternalTeamLink";
+import { InternalMatchLink } from "./InternalMatchLink";
+import { matchInternalId } from "../domain/matches";
 
 interface StatisticsSectionProps {
   data: StatisticsBootstrap | null;
@@ -157,9 +159,15 @@ function StatisticsDashboard({
                 return (
                   <div className="record-match" key={recordMatch.match_id}>
                     <TeamName team={home} onNavigate={onNavigate} />
-                    <a className="record-score" href={match?.source_match_url ?? undefined} target={match?.source_match_url ? "_blank" : undefined} rel={match?.source_match_url ? "noreferrer" : undefined} aria-label={`${home.name} ${recordMatch.home_goals} a ${recordMatch.away_goals} ${away.name}`}>
-                      <strong>{recordMatch.home_goals} – {recordMatch.away_goals}</strong><small>J{recordMatch.matchday}</small>
-                    </a>
+                    {match ? <InternalMatchLink
+                      className="record-score"
+                      internalId={matchInternalId(data.statistics.group, "2026-27", recordMatch.match_id)}
+                      onNavigate={onNavigate}
+                      aria-label={`Abrir ficha: ${home.name} ${recordMatch.home_goals} a ${recordMatch.away_goals} ${away.name}`}
+                    ><strong>{recordMatch.home_goals} – {recordMatch.away_goals}</strong><small>J{recordMatch.matchday}</small></InternalMatchLink>
+                      : <span className="record-score" aria-label={`${home.name} ${recordMatch.home_goals} a ${recordMatch.away_goals} ${away.name}`}>
+                        <strong>{recordMatch.home_goals} – {recordMatch.away_goals}</strong><small>J{recordMatch.matchday}</small>
+                      </span>}
                     <TeamName team={away} onNavigate={onNavigate} />
                     {recordMatch.home_goals !== recordMatch.away_goals && (
                       <span className="record-winner">Ganador: <InternalTeamLink teamId={recordMatch.home_goals > recordMatch.away_goals ? home.team_id : away.team_id} onNavigate={onNavigate}>

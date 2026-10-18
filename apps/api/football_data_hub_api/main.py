@@ -27,6 +27,7 @@ from football_data_hub_api.schemas import (
     DatasetMetadata,
     HealthResponse,
     MatchGenerationBootstrapResponse,
+    MatchPageResponse,
     PlayerDetailResponse,
     PlayerDirectoryResponse,
     ReadinessResponse,
@@ -63,6 +64,7 @@ from football_data_hub_api.team_transfers_dataset import (
 from football_data_hub_api.match_results_dataset import (
     MatchResultsBundle,
     MatchResultsLoadError,
+    build_match_page,
     load_match_results_dataset,
 )
 from football_data_hub_api.player_dataset import (
@@ -287,6 +289,41 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         if _etag_matches(request.headers.get("if-none-match"), bundle.etag):
             return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": bundle.etag})
         return bundle.bootstrap
+
+    @app.get(
+        "/api/v1/matches/{internal_id}",
+        response_model=MatchPageResponse,
+        tags=["matches"],
+        summary="Consultar un partido de la generación verificada MATCH-00",
+    )
+    def match_page(
+        internal_id: str, request: Request, response: Response
+    ) -> MatchPageResponse | Response:
+        bundle: MatchResultsBundle | None = request.app.state.match_results
+        if bundle is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "code": "match_results_unavailable",
+                    "message": "La generación local de Resultados no está disponible o no superó la validación.",
+                },
+            )
+        page = build_match_page(bundle, internal_id)
+        if page is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "code": "match_not_found",
+                    "message": "No encontramos ese encuentro en la generación publicada.",
+                },
+            )
+        page_etag = (
+            f'"match-page-v1-{hashlib.sha256(page.model_dump_json().encode("utf-8")).hexdigest()[:24]}"'
+        )
+        response.headers["ETag"] = page_etag
+        if _etag_matches(request.headers.get("if-none-match"), page_etag):
+            return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": page_etag})
+        return page
 
     @app.get(
         "/api/v1/players",

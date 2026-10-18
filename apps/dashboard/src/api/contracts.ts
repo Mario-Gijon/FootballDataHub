@@ -1101,6 +1101,10 @@ const MatchGenerationGroupSchema = z.object({
     if (group.matches.some((match) => !ids.has(match.home_team_id) || !ids.has(match.away_team_id))) {
       context.addIssue({ code: "custom", message: "Un partido referencia un equipo ausente." });
     }
+    const groupSlug = group.group.toLowerCase();
+    if (group.matches.some((match) => match.internal_id !== `pf-2026-27-group-${groupSlug}-bdfutbol-${match.source_match_id}`)) {
+      context.addIssue({ code: "custom", message: "Un ID interno de partido no coincide con grupo e identidad de fuente." });
+    }
     const actual = {
       played: group.matches.filter((match) => match.status === "played").length,
       unplayed: group.matches.filter((match) => match.status === "unplayed").length,
@@ -1138,6 +1142,125 @@ export const MatchResultsBootstrapSchema = z.object({
     || payload.metadata.played_count !== played || payload.metadata.unplayed_count !== unplayed
     || payload.metadata.incomplete_count !== incomplete) {
     context.addIssue({ code: "custom", message: "Los totales de la generación no coinciden con sus grupos." });
+  }
+});
+
+const MatchPageTeamSchema = z.object({
+  team_id: positiveInteger,
+  name: z.string().min(1),
+  team_url: z.string().url().nullable(),
+  crest_url: z.string().url().nullable(),
+}).strict();
+
+const MatchPublishedPlayerSchema = z.object({
+  player_id: nullableInteger,
+  display_name: z.string().min(1),
+  profile_url: z.string().url().nullable(),
+  photo_url: z.string().url().nullable(),
+  shirt_number: nullableInteger,
+  position: z.string().nullable(),
+  role: z.enum(["starter", "substitute"]),
+}).strict();
+
+const MatchPublishedCoachSchema = z.object({
+  coach_id: nullableInteger,
+  display_name: z.string().min(1),
+  profile_url: z.string().url().nullable(),
+  photo_url: z.string().url().nullable(),
+}).strict();
+
+const MatchPublishedSideSchema = z.object({
+  coach: MatchPublishedCoachSchema.nullable(),
+  starters: z.array(MatchPublishedPlayerSchema).nullable(),
+  substitutes: z.array(MatchPublishedPlayerSchema).nullable(),
+}).strict();
+
+const MatchPublishedEventSchema = z.object({
+  event_kind: z.enum(["goal", "penalty", "own_goal", "yellow_card", "red_card", "second_yellow", "substitution", "other"]),
+  minute: z.string().nullable(),
+  team_id: positiveInteger,
+  player_id: nullableInteger,
+  player_name: z.string().nullable(),
+  related_player_id: nullableInteger,
+  related_player_name: z.string().nullable(),
+  is_penalty: z.boolean().nullable(),
+  is_own_goal: z.boolean().nullable(),
+}).strict();
+
+const MatchPublishedDetailsSchema = z.object({
+  publication_status: z.literal("approved"),
+  validation_status: z.literal("valid"),
+  source: z.literal("BDFutbol"),
+  internal_id: z.string().min(1),
+  source_match_id: z.string().min(1),
+  source_generation_id: z.string().min(1),
+  source_capture_id: z.string().min(1),
+  source_html_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  home: MatchPublishedSideSchema,
+  away: MatchPublishedSideSchema,
+  events: z.array(MatchPublishedEventSchema).nullable(),
+}).strict();
+
+export const MatchPageSchema = z.object({
+  metadata: z.object({
+    contract_version: z.literal(1),
+    source: z.literal("BDFutbol"),
+    competition: z.literal("Primera Federación"),
+    season: z.literal("2026-27"),
+    group: z.enum(["I", "II"]),
+    generation_id: z.string().min(1),
+    generation_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    source_capture_id: z.string().min(1),
+    source_captured_at: z.string().datetime({ offset: true }),
+  }).strict(),
+  match: z.object({
+    internal_id: z.string().min(1),
+    source_match_id: z.string().min(1),
+    matchday: z.number().int().min(1).max(38),
+    matchday_date: dateOnly,
+    source_match_date: dateOnly,
+    home_team: MatchPageTeamSchema,
+    away_team: MatchPageTeamSchema,
+    home_goals: nullableInteger,
+    away_goals: nullableInteger,
+    status: z.enum(["played", "unplayed", "incomplete"]),
+    unplayed_state: z.enum(["scheduled", "result_unavailable_at_capture", "unknown"]).nullable(),
+    stadium_name: z.string().nullable(),
+    stadium_url: z.string().url().nullable(),
+    referee_name: z.string().nullable(),
+    referee_url: z.string().url().nullable(),
+    source_match_url: z.string().url().nullable(),
+  }).strict(),
+  detail_status: z.enum(["not_available", "available"]),
+  details: MatchPublishedDetailsSchema.nullable(),
+}).strict().superRefine((page, context) => {
+  const expectedId = `pf-${page.metadata.season}-group-${page.metadata.group.toLowerCase()}-bdfutbol-${page.match.source_match_id}`;
+  if (page.match.internal_id !== expectedId) {
+    context.addIssue({ code: "custom", message: "El identificador no coincide con la competición y partido." });
+  }
+  if (page.match.home_team.team_id === page.match.away_team.team_id) {
+    context.addIssue({ code: "custom", message: "El partido no puede enfrentar al mismo equipo." });
+  }
+  if (page.match.status === "played" && (page.match.home_goals === null || page.match.away_goals === null)) {
+    context.addIssue({ code: "custom", message: "El partido disputado necesita un marcador, incluso 0–0." });
+  }
+  if (page.match.status === "unplayed" && (page.match.home_goals !== null || page.match.away_goals !== null || page.match.unplayed_state === null)) {
+    context.addIssue({ code: "custom", message: "El partido pendiente debe conservar marcador nulo." });
+  }
+  if (page.match.status === "incomplete" && (page.match.home_goals !== null || page.match.away_goals !== null)) {
+    context.addIssue({ code: "custom", message: "Un partido incompleto no puede mostrar un marcador parcial." });
+  }
+  if ((page.detail_status === "available") !== (page.details !== null)) {
+    context.addIssue({ code: "custom", message: "El estado y el contenido de los detalles no coinciden." });
+  }
+  if (page.details && (page.details.internal_id !== page.match.internal_id
+    || page.details.source_match_id !== page.match.source_match_id
+    || page.details.source_generation_id !== page.metadata.generation_id
+    || page.details.source_capture_id !== page.metadata.source_capture_id)) {
+    context.addIssue({ code: "custom", message: "Los detalles no pertenecen al partido y generación solicitados." });
+  }
+  if (page.details?.events?.some((event) => event.team_id !== page.match.home_team.team_id && event.team_id !== page.match.away_team.team_id)) {
+    context.addIssue({ code: "custom", message: "Un evento de partido referencia otro equipo." });
   }
 });
 
@@ -1387,6 +1510,7 @@ export type StatisticsBootstrap = z.infer<typeof StatisticsBootstrapSchema>;
 export type MatchResultsBootstrap = z.infer<typeof MatchResultsBootstrapSchema>;
 export type MatchResultsGroup = MatchResultsBootstrap["groups"]["I"];
 export type MatchGenerationRecord = z.infer<typeof MatchGenerationRecordSchema>;
+export type MatchPage = z.infer<typeof MatchPageSchema>;
 export type PlayerDirectory = z.infer<typeof PlayerDirectorySchema>;
 export type PlayerIndexRecord = z.infer<typeof PlayerIndexRecordSchema>;
 export type PlayerDetail = z.infer<typeof PlayerDetailSchema>;

@@ -9,7 +9,6 @@ import {
 } from "./api/client";
 import type {
   Bootstrap,
-  Match,
   RefereeBootstrap,
   StatisticsBootstrap,
   TopBootstrap,
@@ -23,6 +22,7 @@ import { ClassificationControls } from "./components/ClassificationControls";
 const ProgressChart = lazy(() => import("./components/ProgressChart").then((module) => ({ default: module.ProgressChart })));
 import { StandingsTable } from "./components/StandingsTable";
 import { ResultsSection, type ResultsMatchday, type ResultsViewData } from "./components/ResultsSection";
+import { MatchPage } from "./components/MatchPage";
 import { RefereesSection } from "./components/RefereesSection";
 const StatisticsSection = lazy(() => import("./components/StatisticsSection").then((module) => ({ default: module.StatisticsSection })));
 const TopSection = lazy(() => import("./components/TopSection").then((module) => ({ default: module.TopSection })));
@@ -143,6 +143,8 @@ export default function App() {
       ? `${route.kind === "player" ? "Jugador" : "Jugadores"} · FootballDataHub`
     : route.kind === "team"
       ? `${teamName ?? "Equipo"} · FootballDataHub`
+      : route.kind === "match"
+        ? "Partido · FootballDataHub"
       : route.kind === "not-found"
         ? "Página no encontrada · FootballDataHub"
         : "Clasificación · FootballDataHub";
@@ -239,7 +241,7 @@ export default function App() {
       <header className="topbar">
         <div className="topbar-inner">
           <Brand onNavigate={navigate} />
-          <MainNavigation activePage={route.kind === "competitions" ? "competitions" : route.kind === "teams" || route.kind === "team" ? "teams" : "players"} onNavigate={navigate} />
+          <MainNavigation activePage={route.kind === "competitions" || route.kind === "match" ? "competitions" : route.kind === "teams" || route.kind === "team" ? "teams" : "players"} onNavigate={navigate} />
           {route.kind === "competitions" && <div className="topbar-competition">
             <span>Primera Federación</span>
             <span className="topbar-divider" aria-hidden="true">/</span>
@@ -356,6 +358,16 @@ export default function App() {
           onNavigate={navigate}
         />
       )}
+      {route.kind === "match" && <MatchPage
+        key={route.internalId}
+        internalId={route.internalId}
+        onNavigate={navigate}
+        onReturnToResults={() => {
+          setActiveGroup(route.group);
+          setActiveSection("results");
+          navigate("/");
+        }}
+      />}
       {route.kind === "not-found" && (
         <main className="dashboard-main team-route-state">
           <section className="state-card"><span className="section-kicker">PÁGINA NO DISPONIBLE</span><h1>No encontramos esta página</h1><a href="/" onClick={(event) => { event.preventDefault(); navigate("/"); }}>Volver a Competiciones</a></section>
@@ -375,6 +387,7 @@ type AppRoute =
   | { kind: "players" }
   | { kind: "player"; playerId: number }
   | { kind: "team"; teamId: number; section: "summary" | "roster" | "follow" | "transfers" | "matches" }
+  | { kind: "match"; internalId: string; group: CompetitionGroup }
   | { kind: "not-found" };
 
 function parseRoute(pathname: string): AppRoute {
@@ -385,6 +398,10 @@ function parseRoute(pathname: string): AppRoute {
   if (playerMatch) {
     const playerId = Number(playerMatch[1]);
     if (Number.isSafeInteger(playerId) && playerId > 0) return { kind: "player", playerId };
+  }
+  const matchPage = pathname.match(/^\/matches\/(pf-2026-27-group-(i|ii)-bdfutbol-\d+)\/?$/);
+  if (matchPage) {
+    return { kind: "match", internalId: matchPage[1]!, group: matchPage[2] === "i" ? "1" : "2" };
   }
   const match = pathname.match(/^\/teams\/(\d+)(?:\/(roster|follow|transfers|matches))?\/?$/);
   if (match) {
@@ -623,38 +640,13 @@ function resultViewData(generation: MatchResultsBootstrap, group: CompetitionGro
   const source = generation.groups[code];
   return {
     metadata: {
+      group: source.group,
       captured_at: source.source_captured_at,
       scheduled_matchdays: source.scheduled_matchdays,
-      generation_id: generation.metadata.generation_id,
-      generation_sha256: generation.metadata.generation_sha256,
-      source_capture_id: source.source_capture_id,
       counts: source.counts,
     },
     teams: source.teams,
-    matches: source.matches.map((match): Match => ({
-      match_id: match.source_match_id,
-      matchday: match.matchday,
-      matchday_date: match.matchday_date,
-      source_match_date: match.source_match_date,
-      home_team_id: match.home_team_id,
-      away_team_id: match.away_team_id,
-      home_goals: match.home_goals,
-      away_goals: match.away_goals,
-      home_yellow_cards: match.home_yellow_cards,
-      away_yellow_cards: match.away_yellow_cards,
-      home_red_cards: match.home_red_cards,
-      away_red_cards: match.away_red_cards,
-      status: match.status,
-      unplayed_state: match.unplayed_state,
-      postponed_by_source_rule: match.postponed_by_source_rule,
-      source_match_url: match.source_match_url,
-      stadium_id: match.stadium_id,
-      stadium_name: match.stadium_name,
-      stadium_url: match.stadium_url,
-      referee_id: match.referee_id,
-      referee_name: match.referee_name,
-      referee_url: match.referee_url,
-    })),
+    matches: source.matches,
   };
 }
 

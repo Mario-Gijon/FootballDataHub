@@ -10,6 +10,8 @@ import type { CatalogTeam } from "../domain/teams";
 import { TeamCrest } from "./TeamCard";
 import { TeamProgressChart } from "./TeamProgressChart";
 import { InternalTeamLink } from "./InternalTeamLink";
+import { InternalMatchLink } from "./InternalMatchLink";
+import { matchInternalId } from "../domain/matches";
 
 type StatusFilter = "all" | "played" | "unplayed" | "incomplete";
 type VenueFilter = "all" | "home" | "away";
@@ -46,7 +48,6 @@ export function TeamMatches({ team, data, onNavigate }: Props) {
         </div>
         <div className="team-matches-capture" aria-label="Procedencia de los partidos">
           <time dateTime={data.metadata.captured_at}>Datos capturados el {capturedAt}</time>
-          <span>Captura {data.metadata.capture_id}</span>
         </div>
       </header>
 
@@ -83,7 +84,7 @@ export function TeamMatches({ team, data, onNavigate }: Props) {
               <th scope="col">Local</th><th scope="col">Resultado</th><th scope="col">Visitante</th><th scope="col">Estadio</th>
             </tr></thead>
             <tbody>
-              {visibleMatches.map((entry) => <MatchRow key={entry.match.match_id} entry={entry} onNavigate={onNavigate} />)}
+              {visibleMatches.map((entry) => <MatchRow key={entry.match.match_id} entry={entry} team={team} onNavigate={onNavigate} />)}
               {!visibleMatches.length && <tr><td className="team-match-empty" colSpan={7}>No hay partidos para estos filtros.</td></tr>}
             </tbody>
           </table>
@@ -104,14 +105,14 @@ export function TeamMatches({ team, data, onNavigate }: Props) {
         </div>
         <p className="team-records-method">Cálculos derivados de los encuentros disputados de esta captura.</p>
         <div className="team-record-grid">
-          {records.map((record) => <RecordCard key={record.id} record={record} />)}
+          {records.map((record) => <RecordCard key={record.id} record={record} team={team} onNavigate={onNavigate} />)}
         </div>
       </section>
     </div>
   );
 }
 
-function MatchRow({ entry, onNavigate }: { entry: TeamMatchEntry; onNavigate: (path: string) => void }) {
+function MatchRow({ entry, team, onNavigate }: { entry: TeamMatchEntry; team: CatalogTeam; onNavigate: (path: string) => void }) {
   const { match, homeTeam, awayTeam } = entry;
   const date = match.source_match_date
     ? { value: match.source_match_date, label: formatDate(match.source_match_date), context: "" }
@@ -134,11 +135,12 @@ function MatchRow({ entry, onNavigate }: { entry: TeamMatchEntry; onNavigate: (p
     <td>J{match.matchday}</td>
     <td><TeamLink team={homeTeam} onNavigate={onNavigate} /></td>
     <td className="team-match-score-cell">
-      {match.source_match_url ? (
-        <a className={`team-match-score${scoreClass}`} href={match.source_match_url} target="_blank" rel="noreferrer" aria-label={`${scoreLabel}: ${score}`}>
-          {score}
-        </a>
-      ) : <span className={`team-match-score${scoreClass}`} aria-label={`${scoreLabel}: ${score}`}>{score}</span>}
+      <InternalMatchLink
+        className={`team-match-score${scoreClass}`}
+        internalId={matchInternalId(team.group, team.season, match.match_id)}
+        onNavigate={onNavigate}
+        aria-label={`${scoreLabel}: ${score}`}
+      >{score}</InternalMatchLink>
     </td>
     <td><TeamLink team={awayTeam} onNavigate={onNavigate} /></td>
     <td className="team-match-stadium">
@@ -156,7 +158,7 @@ function TeamLink({ team, onNavigate }: { team: TeamMatchEntry["homeTeam"]; onNa
   </InternalTeamLink>;
 }
 
-function RecordCard({ record }: { record: TeamRecord }) {
+function RecordCard({ record, team, onNavigate }: { record: TeamRecord; team: CatalogTeam; onNavigate: (path: string) => void }) {
   const value = record.value === null
     ? "—"
     : record.kind === "score" ? `${record.value} ${record.value === 1 ? "gol" : "goles"}` : `${record.value} ${record.value === 1 ? "partido" : "partidos"}`;
@@ -173,23 +175,24 @@ function RecordCard({ record }: { record: TeamRecord }) {
         {eventRows.map(({ entry, key, startsTiedRun }) => <li className={startsTiedRun ? "is-new-run" : undefined} key={key}>
           <span>J{entry.match.matchday}</span>
           <span>{record.kind === "streak" ? streakResultLabel(entry) : ""}</span>
-          <RecordMatchLink entry={entry} />
+          <RecordMatchLink entry={entry} team={team} onNavigate={onNavigate} />
         </li>)}
       </ul>
     ) : <p>Sin datos disponibles</p>}
   </article>;
 }
 
-function RecordMatchLink({ entry }: { entry: TeamMatchEntry }) {
+function RecordMatchLink({ entry, team, onNavigate }: { entry: TeamMatchEntry; team: CatalogTeam; onNavigate: (path: string) => void }) {
   const { match, homeTeam, awayTeam } = entry;
   const opponent = entry.venue === "home" ? awayTeam : homeTeam;
   const homeGoals = match.home_goals;
   const awayGoals = match.away_goals;
   const score = homeGoals === null || awayGoals === null ? "— : —" : `${homeGoals} : ${awayGoals}`;
   const text = `${opponent.name} (${score})`;
-  return match.source_match_url
-    ? <a href={match.source_match_url} target="_blank" rel="noreferrer">{text}</a>
-    : <span>{text}</span>;
+  return <InternalMatchLink
+    internalId={matchInternalId(team.group, team.season, match.match_id)}
+    onNavigate={onNavigate}
+  >{text}</InternalMatchLink>;
 }
 
 function streakResultLabel(entry: TeamMatchEntry): string {

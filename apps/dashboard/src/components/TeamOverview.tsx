@@ -9,6 +9,8 @@ import { TeamFollow } from "./TeamFollow";
 import { TeamTransfers } from "./TeamTransfers";
 import { TeamMatches } from "./TeamMatches";
 import { InternalTeamLink } from "./InternalTeamLink";
+import { InternalMatchLink } from "./InternalMatchLink";
+import { matchInternalId } from "../domain/matches";
 
 interface Props {
   team: CatalogTeam;
@@ -171,7 +173,12 @@ export function TeamOverview({ team, data, teamCatalog, activeSection, onNavigat
                     <TeamCrest name={opponent.name} crestUrl={opponent.crest_url} className="team-recent-crest" />
                     <span className="team-recent-opponent">{opponent.name}</span>
                   </InternalTeamLink>
-                  <strong className="team-recent-score">{ownGoals}–{opponentGoals}</strong>
+                  <InternalMatchLink
+                    className="team-recent-score"
+                    internalId={matchInternalId(team.group, team.season, match.match_id)}
+                    onNavigate={onNavigate}
+                    aria-label={`Abrir ficha del partido: ${home.name} ${match.home_goals} a ${match.away_goals} ${away.name}`}
+                  >{ownGoals}–{opponentGoals}</InternalMatchLink>
                   <span className="team-recent-date">{match.source_match_date ? formatDate(match.source_match_date) : "Fecha no disponible"}</span>
                 </li>
               );

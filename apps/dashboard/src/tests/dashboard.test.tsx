@@ -58,8 +58,8 @@ import racingTransfersDocument from "../../../../data/exports/bdfutbol/teams/202
 import { buildTopProgressData, TopSection } from "../components/TopSection";
 import { TeamRosterSection } from "../components/TeamRoster";
 import { ProfileImage } from "../components/TeamRosterShared";
-import { clearTeamProfileCache } from "../api/client";
-import type { MatchResultsBootstrap, RefereeBootstrap, StatisticsBootstrap, TeamFollow, TeamRoster, TeamTransfers, TopBootstrap } from "../api/contracts";
+import { clearMatchPageCache, clearTeamProfileCache } from "../api/client";
+import type { MatchPage, MatchResultsBootstrap, RefereeBootstrap, StatisticsBootstrap, TeamFollow, TeamRoster, TeamTransfers, TopBootstrap } from "../api/contracts";
 import { RefereeBootstrapSchema, StatisticsBootstrapSchema, TeamFollowSchema, TeamRosterSchema, TeamTransfersSchema, TopBootstrapSchema } from "../api/contracts";
 import App from "../App";
 
@@ -165,7 +165,7 @@ function resultGroup(group: "I" | "II", bootstrap: Bootstrap, captured: { captur
     source_captured_at: captured.captured_at_utc,
     teams: bootstrap.teams,
     matches: bootstrap.matches.map((match) => ({
-      internal_id: `${group}-${match.match_id}`,
+      internal_id: `pf-2026-27-group-${group.toLowerCase()}-bdfutbol-${match.match_id}`,
       source_match_id: match.match_id,
       matchday: match.matchday,
       matchday_date: match.matchday_date,
@@ -358,6 +358,52 @@ const matchResultsBootstrap: MatchResultsBootstrap = {
     II: resultGroup("II", apiBootstrap, captureSource),
   },
 };
+
+function matchPageFixture(internalId: string): MatchPage | null {
+  for (const groupCode of ["I", "II"] as const) {
+    const group = matchResultsBootstrap.groups[groupCode];
+    const match = group.matches.find((item) => item.internal_id === internalId);
+    if (!match) continue;
+    const teams = new Map(group.teams.map((team) => [team.team_id, team]));
+    const homeTeam = teams.get(match.home_team_id);
+    const awayTeam = teams.get(match.away_team_id);
+    if (!homeTeam || !awayTeam) return null;
+    return {
+      metadata: {
+        contract_version: 1,
+        source: "BDFutbol",
+        competition: "Primera Federación",
+        season: "2026-27",
+        group: groupCode,
+        generation_id: matchResultsBootstrap.metadata.generation_id,
+        generation_sha256: matchResultsBootstrap.metadata.generation_sha256,
+        source_capture_id: group.source_capture_id,
+        source_captured_at: group.source_captured_at,
+      },
+      match: {
+        internal_id: match.internal_id,
+        source_match_id: match.source_match_id,
+        matchday: match.matchday,
+        matchday_date: match.matchday_date,
+        source_match_date: match.source_match_date,
+        home_team: homeTeam,
+        away_team: awayTeam,
+        home_goals: match.home_goals,
+        away_goals: match.away_goals,
+        status: match.status,
+        unplayed_state: match.unplayed_state,
+        stadium_name: match.stadium_name,
+        stadium_url: match.stadium_url,
+        referee_name: match.referee_name,
+        referee_url: match.referee_url,
+        source_match_url: match.source_match_url,
+      },
+      detail_status: "not_available",
+      details: null,
+    };
+  }
+  return null;
+}
 const topBootstrap = {
   metadata: {
     source: topCapture.source,
@@ -618,6 +664,8 @@ const fetchMock = vi.fn();
 function payloadFor(input: RequestInfo | URL): unknown {
   const url = String(input);
   if (url.endsWith("/api/v1/matches/bootstrap")) return matchResultsBootstrap;
+  const matchPagePath = url.match(/^\/api\/v1\/matches\/(pf-2026-27-group-(?:i|ii)-bdfutbol-\d+)$/);
+  if (matchPagePath) return matchPageFixture(matchPagePath[1]);
   if (/^\/api\/v1\/players\/\d+$/.test(url)) return playerDetailFixture;
   if (url.startsWith("/api/v1/players")) {
     const params = new URL(url, window.location.origin).searchParams;
@@ -930,6 +978,7 @@ beforeEach(() => {
   window.history.replaceState({}, "", "/");
   window.sessionStorage.clear();
   clearTeamProfileCache();
+  clearMatchPageCache();
   fetchMock.mockReset();
   fetchMock.mockImplementation((input: RequestInfo | URL) => Promise.resolve(response(200, payloadFor(input))));
   vi.stubGlobal("fetch", fetchMock);
@@ -1067,15 +1116,32 @@ describe("dashboard de clasificación", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Resultados" }));
     await screen.findByRole("heading", { name: "Resultados" });
     const matchRow = container.querySelector<HTMLElement>(".results-match-row")!;
-    const match = apiBootstrap.matches.find((item) => String(item.match_id) === matchRow.dataset.matchId);
     const teamLinks = matchRow.querySelectorAll<HTMLAnchorElement>(".result-team-link");
     expect(teamLinks).toHaveLength(2);
-    expect(teamLinks[0]).toHaveAttribute("href", `/teams/${match?.home_team_id}`);
-    expect(teamLinks[1]).toHaveAttribute("href", `/teams/${match?.away_team_id}`);
-    expect(matchRow.querySelector(".result-score")?.getAttribute("href")).toMatch(/^https:\/\/www\.bdfutbol\.com\//);
+    expect(teamLinks[0]?.getAttribute("href")).toMatch(/^\/teams\/\d+$/);
+    expect(teamLinks[1]?.getAttribute("href")).toMatch(/^\/teams\/\d+$/);
+    expect(matchRow.querySelector(".result-score")?.getAttribute("href")).toMatch(/^\/matches\/pf-2026-27-group-ii-bdfutbol-\d+$/);
+
+    const scoreLink = matchRow.querySelector<HTMLAnchorElement>(".result-score")!;
+    fireEvent.click(scoreLink);
+    expect(window.location.pathname).toBe(scoreLink.getAttribute("href"));
+    expect(await screen.findByRole("heading", { name: "Información del partido" })).toBeInTheDocument();
+    expect(screen.getByText("Datos actualizados")).toBeInTheDocument();
+    expect(screen.getByText("Los detalles de este encuentro todavía no están disponibles.")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Alineaciones" })).not.toBeInTheDocument();
+    const sourceLink = screen.getByRole("link", { name: "Ficha en BDFutbol ↗" });
+    expect(sourceLink).toHaveAttribute("target", "_blank");
+    expect(sourceLink.getAttribute("href")).toMatch(/^https:\/\/www\.bdfutbol\.com\/es\/p\/p\.php\?id=/);
+    const matchTeams = document.querySelectorAll<HTMLAnchorElement>(".match-page-team");
+    expect(matchTeams).toHaveLength(2);
+    expect(matchTeams[0]?.getAttribute("href")).toMatch(/^\/teams\/\d+$/);
+    fireEvent.click(screen.getByRole("link", { name: "← Volver a Resultados" }));
+    expect(window.location.pathname).toBe("/");
+    expect(await screen.findByLabelText("Jornada de resultados")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Seleccionar grupo" })).toHaveValue("2");
 
     fireEvent.click(teamLinks[0]!);
-    expect(window.location.pathname).toBe(`/teams/${match?.home_team_id}`);
+    expect(window.location.pathname).toBe(teamLinks[0]?.getAttribute("href"));
     expect(await screen.findByRole("heading", { name: "Resumen deportivo" })).toBeInTheDocument();
 
     cleanup();
@@ -1137,7 +1203,7 @@ describe("dashboard de clasificación", () => {
     expect(targetRow?.querySelector("a[href^='/players/']")).toBeNull();
   });
 
-  it("enlaza clubes de Récords y Rachas a perfiles internos, manteniendo externo el marcador", async () => {
+  it("enlaza clubes de Récords y Rachas y abre las fichas internas de los partidos", async () => {
     render(<App />);
     await screen.findByRole("heading", { name: "General" });
     fireEvent.click(screen.getByRole("tab", { name: "Estadísticas" }));
@@ -1146,7 +1212,7 @@ describe("dashboard de clasificación", () => {
     const streakTeam = document.querySelector<HTMLAnchorElement>(".streak-leader .statistics-team[href^='/teams/']");
     expect(recordTeam).toBeInTheDocument();
     expect(streakTeam).toBeInTheDocument();
-    expect(document.querySelector(".record-score[target='_blank']")).toBeInTheDocument();
+    expect(document.querySelector(".record-score[href^='/matches/']")).toBeInTheDocument();
     fireEvent.click(recordTeam!);
     expect(window.location.pathname).toBe(recordTeam?.getAttribute("href"));
     expect(await screen.findByRole("heading", { name: "Resumen deportivo" })).toBeInTheDocument();
@@ -1457,7 +1523,8 @@ describe("dashboard de clasificación", () => {
     expect(container.querySelectorAll('.results-match-row.is-jaen-match')).toHaveLength(1);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock).toHaveBeenCalledWith("/api/v1/matches/bootstrap", expect.anything());
-    expect(screen.getByText(/Generación MATCH-00/)).toBeInTheDocument();
+    expect(screen.getByText("Primera Federación · Grupo II")).toBeInTheDocument();
+    expect(screen.queryByText(/Generación MATCH-00/)).not.toBeInTheDocument();
   });
 
   it("mantiene Resultados en su endpoint MATCH-00 separado del bootstrap de Clasificación", async () => {
@@ -1467,7 +1534,7 @@ describe("dashboard de clasificación", () => {
     expect(await screen.findByRole("heading", { name: "Resultados" })).toBeInTheDocument();
     expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/matches/bootstrap"))).toHaveLength(1);
     expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/v1/groups/2/bootstrap"))).toHaveLength(1);
-    expect(screen.getByText(/Generación MATCH-00/)).toBeInTheDocument();
+    expect(screen.queryByText(/Generación MATCH-00/)).not.toBeInTheDocument();
   });
 
   it("cambia jornadas, permite Todas y conserva resultados y matriz sin nuevas peticiones", async () => {

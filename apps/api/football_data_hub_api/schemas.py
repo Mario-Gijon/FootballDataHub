@@ -565,6 +565,12 @@ class MatchGenerationGroupResponse(ApiModel):
             for match in self.matches
         ):
             raise ValueError("Un partido referencia un equipo fuera de su grupo.")
+        expected_prefix = f"pf-2026-27-group-{self.group.lower()}-bdfutbol-"
+        if any(
+            match.internal_id != f"{expected_prefix}{match.source_match_id}"
+            for match in self.matches
+        ):
+            raise ValueError("El ID interno de un partido no coincide con su grupo y su ID de fuente.")
         if self.counts.teams != len(self.teams) or self.counts.matches != len(self.matches):
             raise ValueError("Los recuentos no coinciden con las colecciones del grupo.")
         actual = {
@@ -606,6 +612,165 @@ class MatchGenerationBootstrapResponse(ApiModel):
         matches = sum(group.counts.matches for group in self.groups.values())
         if teams != self.metadata.team_count or matches != self.metadata.match_count:
             raise ValueError("Los totales de generación no coinciden con los grupos.")
+        internal_ids = [
+            match.internal_id
+            for group in self.groups.values()
+            for match in group.matches
+        ]
+        if len(internal_ids) != len(set(internal_ids)):
+            raise ValueError("La generación contiene IDs internos de partido repetidos.")
+        return self
+
+
+class MatchPageTeamResponse(ApiModel):
+    team_id: StrictInt = Field(gt=0)
+    name: str = Field(min_length=1)
+    team_url: str | None
+    crest_url: str | None
+
+
+class MatchPublishedPlayerResponse(ApiModel):
+    player_id: OptionalInt = Field(default=None, gt=0)
+    display_name: str = Field(min_length=1)
+    profile_url: str | None
+    photo_url: str | None
+    shirt_number: OptionalInt = Field(default=None, ge=0)
+    position: str | None
+    role: Literal["starter", "substitute"]
+
+
+class MatchPublishedCoachResponse(ApiModel):
+    coach_id: OptionalInt = Field(default=None, gt=0)
+    display_name: str = Field(min_length=1)
+    profile_url: str | None
+    photo_url: str | None
+
+
+class MatchPublishedSideResponse(ApiModel):
+    coach: MatchPublishedCoachResponse | None
+    starters: list[MatchPublishedPlayerResponse] | None
+    substitutes: list[MatchPublishedPlayerResponse] | None
+
+
+class MatchPublishedEventResponse(ApiModel):
+    event_kind: Literal[
+        "goal", "penalty", "own_goal", "yellow_card", "red_card",
+        "second_yellow", "substitution", "other",
+    ]
+    minute: str | None
+    team_id: StrictInt = Field(gt=0)
+    player_id: OptionalInt = Field(default=None, gt=0)
+    player_name: str | None
+    related_player_id: OptionalInt = Field(default=None, gt=0)
+    related_player_name: str | None
+    is_penalty: bool | None
+    is_own_goal: bool | None
+
+
+class MatchPublishedDetailsResponse(ApiModel):
+    """Public projection for details explicitly validated and approved for publication."""
+
+    publication_status: Literal["approved"]
+    validation_status: Literal["valid"]
+    source: Literal["BDFutbol"]
+    internal_id: str = Field(min_length=1)
+    source_match_id: str = Field(min_length=1)
+    source_generation_id: str = Field(min_length=1)
+    source_capture_id: str = Field(min_length=1)
+    source_html_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    home: MatchPublishedSideResponse
+    away: MatchPublishedSideResponse
+    events: list[MatchPublishedEventResponse] | None
+
+
+class MatchPageMetadataResponse(ApiModel):
+    contract_version: Literal[1]
+    source: Literal["BDFutbol"]
+    competition: Literal["Primera Federación"]
+    season: Literal["2026-27"]
+    group: Literal["I", "II"]
+    generation_id: str = Field(min_length=1)
+    generation_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    source_capture_id: str = Field(min_length=1)
+    source_captured_at: datetime
+
+
+class MatchPageRecordResponse(ApiModel):
+    internal_id: str = Field(pattern=r"^pf-2026-27-group-(?:i|ii)-bdfutbol-\d+$")
+    source_match_id: str = Field(pattern=r"^\d+$")
+    matchday: StrictInt = Field(ge=1, le=38)
+    matchday_date: date | None
+    source_match_date: date | None
+    home_team: MatchPageTeamResponse
+    away_team: MatchPageTeamResponse
+    home_goals: OptionalInt
+    away_goals: OptionalInt
+    status: Literal["played", "unplayed", "incomplete"]
+    unplayed_state: Literal[
+        "scheduled", "result_unavailable_at_capture", "unknown"
+    ] | None
+    stadium_name: str | None
+    stadium_url: str | None
+    referee_name: str | None
+    referee_url: str | None
+    source_match_url: str | None
+
+    @model_validator(mode="after")
+    def validate_score_state(self) -> MatchPageRecordResponse:
+        if self.home_team.team_id == self.away_team.team_id:
+            raise ValueError("El partido no puede enfrentar al mismo equipo.")
+        if self.status == "played" and (self.home_goals is None or self.away_goals is None):
+            raise ValueError("Un partido disputado requiere ambos marcadores, incluido 0–0.")
+        if self.status == "unplayed" and (
+            self.home_goals is not None or self.away_goals is not None or self.unplayed_state is None
+        ):
+            raise ValueError("Un partido pendiente debe conservar marcadores nulos y su estado.")
+        if self.status == "incomplete" and (
+            self.home_goals is not None or self.away_goals is not None or self.unplayed_state is not None
+        ):
+            raise ValueError("Un partido incompleto no puede publicar marcador ni estado pendiente.")
+        if self.source_match_url is not None:
+            parsed = urlsplit(self.source_match_url)
+            if (
+                parsed.scheme != "https"
+                or parsed.hostname != "www.bdfutbol.com"
+                or parsed.path != "/es/p/p.php"
+                or parse_qs(parsed.query).get("id") != [self.source_match_id]
+            ):
+                raise ValueError("La URL externa no coincide con el ID de partido.")
+        return self
+
+
+class MatchPageResponse(ApiModel):
+    metadata: MatchPageMetadataResponse
+    match: MatchPageRecordResponse
+    detail_status: Literal["not_available", "available"]
+    details: MatchPublishedDetailsResponse | None
+
+    @model_validator(mode="after")
+    def validate_identity_and_publication(self) -> MatchPageResponse:
+        expected_group = "i" if self.metadata.group == "I" else "ii"
+        if f"-group-{expected_group}-" not in self.match.internal_id:
+            raise ValueError("El partido y la metadata no pertenecen al mismo grupo.")
+        if self.match.internal_id != (
+            f"pf-2026-27-group-{self.metadata.group.lower()}-bdfutbol-"
+            f"{self.match.source_match_id}"
+        ):
+            raise ValueError("El ID interno no coincide con la identidad del partido.")
+        if (self.detail_status == "available") != (self.details is not None):
+            raise ValueError("El estado de detalles no coincide con el contenido publicado.")
+        if self.details is not None and (
+            self.details.internal_id != self.match.internal_id
+            or self.details.source_match_id != self.match.source_match_id
+            or self.details.source_generation_id != self.metadata.generation_id
+            or self.details.source_capture_id != self.metadata.source_capture_id
+        ):
+            raise ValueError("Los detalles aprobados no corresponden a la generación y partido solicitados.")
+        if self.details is not None and any(
+            event.team_id not in {self.match.home_team.team_id, self.match.away_team.team_id}
+            for event in (self.details.events or [])
+        ):
+            raise ValueError("Un evento aprobado referencia un equipo que no disputa el partido.")
         return self
 
 
