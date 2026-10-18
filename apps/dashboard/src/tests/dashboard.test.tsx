@@ -1127,7 +1127,7 @@ describe("dashboard de clasificación", () => {
     expect(window.location.pathname).toBe(scoreLink.getAttribute("href"));
     expect(await screen.findByRole("heading", { name: "PRIMERA FEDERACIÓN · GRUPO II · TEMPORADA 2026/27" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Información del partido" })).not.toBeInTheDocument();
-    expect(screen.getByText(/Datos actualizados/)).toBeInTheDocument();
+    expect(screen.queryByText(/Datos actualizados/)).not.toBeInTheDocument();
     expect(screen.getByText("Los detalles de este encuentro todavía no están disponibles.")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Alineaciones" })).not.toBeInTheDocument();
     const sourceLink = screen.getByRole("link", { name: "Ficha en BDFutbol ↗" });

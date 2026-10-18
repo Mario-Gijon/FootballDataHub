@@ -254,17 +254,25 @@ describe("MatchPage details", () => {
     await screen.findByRole("heading", { name: "Alineaciones" });
 
     const hero = container.querySelector(".match-page-hero") as HTMLElement;
+    const scoreColumn = hero.querySelector(".match-page-score-column") as HTMLElement;
     expect(container.querySelector(".match-info-panel")).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Información del partido" })).not.toBeInTheDocument();
     expect(within(hero).getByRole("heading", { level: 1 })).toHaveTextContent("PRIMERA FEDERACIÓN · GRUPO II · TEMPORADA 2026/27");
     expect(hero).toHaveTextContent("PRIMERA FEDERACIÓN · GRUPO II · TEMPORADA 2026/27");
     expect(hero).toHaveTextContent("Jornada 7 · fecha 12 de octubre de 2026");
+    expect(scoreColumn.children[0]).toHaveClass("match-finished-label");
+    expect(scoreColumn.children[0]).toHaveTextContent("Finalizado");
+    expect(scoreColumn.children[1]).toHaveClass("match-page-score");
+    expect(hero.querySelector(".match-page-subtitle")).not.toHaveTextContent("Finalizado");
     expect(within(hero).getByText("Estadio")).toBeInTheDocument();
     expect(within(hero).getByText("Árbitro")).toBeInTheDocument();
     expect(within(hero).getByRole("link", { name: "La Victoria" })).toHaveAttribute("href", match.match.stadium_url);
     expect(within(hero).getByRole("link", { name: "Campos Salinas" })).toHaveAttribute("href", match.match.referee_url);
-    expect(hero).toHaveTextContent("Datos actualizados 14 de octubre de 2026");
-    expect(within(hero).getByRole("link", { name: "Ficha en BDFutbol ↗" })).toHaveAttribute("href", match.match.source_match_url);
+    expect(hero).not.toHaveTextContent("Datos actualizados");
+    const sourceLink = within(hero).getByRole("link", { name: "Ficha en BDFutbol ↗" });
+    expect(sourceLink).toHaveAttribute("href", match.match.source_match_url);
+    expect(sourceLink).toHaveAttribute("target", "_blank");
+    expect(sourceLink).toHaveAttribute("rel", "noreferrer");
     expect(hero.querySelectorAll(".match-page-context")).toHaveLength(1);
   });
 
@@ -286,8 +294,9 @@ describe("MatchPage details", () => {
     expect(hero.querySelector(".match-page-officials")).not.toBeInTheDocument();
     expect(within(hero).queryByRole("link", { name: "La Victoria" })).not.toBeInTheDocument();
     expect(within(hero).queryByRole("link", { name: "Campos Salinas" })).not.toBeInTheDocument();
-    expect(hero).toHaveTextContent("Datos actualizados 14 de octubre de 2026");
-    expect(hero).toHaveTextContent("Fuente: BDFutbol");
+    expect(hero).not.toHaveTextContent("Datos actualizados");
+    expect(hero).not.toHaveTextContent("Fuente: BDFutbol");
+    expect(hero.querySelector(".match-page-provenance")).not.toBeInTheDocument();
     expect(within(hero).queryByRole("link", { name: /Ficha en BDFutbol/ })).not.toBeInTheDocument();
   });
 
@@ -476,6 +485,7 @@ describe("MatchPage details", () => {
     const { container } = render(<MatchPage internalId={pending.match.internal_id} onNavigate={vi.fn()} onReturnToResults={vi.fn()} />);
     expect(await screen.findByText("Pendiente")).toBeInTheDocument();
     expect(screen.queryByText("Finalizado")).not.toBeInTheDocument();
+    expect(container.querySelector(".match-page-score-column .match-finished-label")).not.toBeInTheDocument();
     expect(screen.getByText("Los detalles de este encuentro todavía no están disponibles.")).toBeInTheDocument();
     expect(container.querySelector(".match-details-panel, .match-timeline, .match-highlights")).not.toBeInTheDocument();
   });
@@ -487,8 +497,9 @@ describe("MatchPage details", () => {
     incompletePlayed.details = null;
     incompletePlayed.detail_status = "not_available";
     loadMatchPage.mockResolvedValue(incompletePlayed);
-    render(<MatchPage internalId={incompletePlayed.match.internal_id} onNavigate={vi.fn()} onReturnToResults={vi.fn()} />);
+    const { container } = render(<MatchPage internalId={incompletePlayed.match.internal_id} onNavigate={vi.fn()} onReturnToResults={vi.fn()} />);
     expect(await screen.findByText("Finalizado")).toBeInTheDocument();
     expect(screen.getByText("Datos incompletos")).toBeInTheDocument();
+    expect(container.querySelector(".match-page-score-column .match-finished-label")).toBeInTheDocument();
   });
 });

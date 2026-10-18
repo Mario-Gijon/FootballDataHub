@@ -80,12 +80,15 @@ function MatchPageContent({ page, onNavigate }: { page: MatchPageData; onNavigat
           <TeamCrest name={match.home_team.name} crestUrl={match.home_team.crest_url} className="match-page-crest" />
           <span>{match.home_team.name}</span>
         </InternalTeamLink>
-        <div
-          className={`match-page-score ${hasFinalScore ? "is-played" : match.status === "unplayed" ? "is-pending" : "is-incomplete"}`}
-          aria-label={hasFinalScore ? `Resultado ${match.home_goals} a ${match.away_goals}` : match.status === "unplayed" ? "Partido pendiente" : "Marcador incompleto"}
-        >
-          {hasFinalScore ? <><strong>{match.home_goals}</strong><span>–</span><strong>{match.away_goals}</strong></>
-            : <span>{match.status === "unplayed" ? "Pendiente" : "Datos incompletos"}</span>}
+        <div className="match-page-score-column">
+          {played && <span className="match-finished-label">Finalizado</span>}
+          <div
+            className={`match-page-score ${hasFinalScore ? "is-played" : match.status === "unplayed" ? "is-pending" : "is-incomplete"}`}
+            aria-label={hasFinalScore ? `Resultado ${match.home_goals} a ${match.away_goals}` : match.status === "unplayed" ? "Partido pendiente" : "Marcador incompleto"}
+          >
+            {hasFinalScore ? <><strong>{match.home_goals}</strong><span>–</span><strong>{match.away_goals}</strong></>
+              : <span>{match.status === "unplayed" ? "Pendiente" : "Datos incompletos"}</span>}
+          </div>
         </div>
         <InternalTeamLink className="match-page-team" teamId={match.away_team.team_id} onNavigate={onNavigate}>
           <TeamCrest name={match.away_team.name} crestUrl={match.away_team.crest_url} className="match-page-crest" />
@@ -93,7 +96,6 @@ function MatchPageContent({ page, onNavigate }: { page: MatchPageData; onNavigat
         </InternalTeamLink>
       </div>
       <div className="match-page-subtitle">
-        {played && <span className="match-finished-label">Finalizado</span>}
         Jornada {match.matchday}{date ? ` · ${dateLabel.toLowerCase()} ${formatDate(date)}` : ""}
       </div>
       {(match.stadium_name || match.referee_name) && <div className="match-page-officials">
@@ -110,12 +112,9 @@ function MatchPageContent({ page, onNavigate }: { page: MatchPageData; onNavigat
             : <strong>{match.referee_name}</strong>}
         </span>}
       </div>}
-      <div className="match-page-provenance">
-        <span>Datos actualizados <time dateTime={metadata.source_captured_at}>{formatCaptureDate(metadata.source_captured_at)}</time></span>
-        {match.source_match_url
-          ? <a href={match.source_match_url} target="_blank" rel="noreferrer">Ficha en {metadata.source} ↗</a>
-          : <span>Fuente: {metadata.source}</span>}
-      </div>
+      {match.source_match_url && <div className="match-page-provenance">
+        <a href={match.source_match_url} target="_blank" rel="noreferrer">Ficha en BDFutbol ↗</a>
+      </div>}
     </header>
 
     {hasPublishedContent && details
@@ -378,15 +377,6 @@ function formatDate(value: string): string {
   const [year, month, day] = value.split("-").map(Number);
   return new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })
     .format(new Date(Date.UTC(year!, month! - 1, day!)));
-}
-
-function formatCaptureDate(value: string): string {
-  return new Intl.DateTimeFormat("es-ES", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "Europe/Madrid",
-  }).format(new Date(value));
 }
 
 function formatSeason(value: string): string {
