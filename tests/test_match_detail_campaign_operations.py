@@ -464,6 +464,38 @@ def test_review_index_accepts_v2_campaign_directory_and_rejects_unknown_entries(
 
 
 
+def test_review_index_ignores_only_regular_human_html_dossiers(tmp_path):
+    from football_data_hub.providers.bdfutbol.match_details.scalable_campaign_cli import _review_state_ids
+    from football_data_hub.providers.bdfutbol.match_details.scalable_campaigns import ScalableCampaignError
+
+    store_root = tmp_path / "matches" / "details"
+    human_root = store_root / "review" / "human"
+    human_root.mkdir(parents=True)
+    (human_root / "match-review-20261019T133314Z.html").write_text(
+        "<html><body>Human review dossier</body></html>", encoding="utf-8"
+    )
+    result = _review_state_ids(
+        store_root=store_root,
+        generation_root=tmp_path / "generation",
+        data_root=tmp_path,
+        bundle=SimpleNamespace(),
+        player_ids=set(),
+        published_ids=set(),
+    )
+    assert result == (set(), set(), {})
+
+    (human_root / "unexpected.json").write_text("{}", encoding="utf-8")
+    with pytest.raises(ScalableCampaignError, match="review human"):
+        _review_state_ids(
+            store_root=store_root,
+            generation_root=tmp_path / "generation",
+            data_root=tmp_path,
+            bundle=SimpleNamespace(),
+            player_ids=set(),
+            published_ids=set(),
+        )
+
+
 def test_read_only_ledger_lock_uses_existing_file_and_never_creates_one(tmp_path):
     from football_data_hub.providers.bdfutbol.match_details.campaign import MatchDetailCampaignLedger
     from football_data_hub.providers.bdfutbol.match_details.campaign import MatchCampaignIntegrityError

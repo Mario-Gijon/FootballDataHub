@@ -385,6 +385,21 @@ def _review_state_ids(
         if path.is_file() and path.name.endswith(("-draft.json", "-approval.json")):
             review_files.append(path)
             continue
+        if path.name == "human" and path.is_dir():
+            # Human-facing HTML dossiers are review aids only; they are never
+            # treated as drafts or approval receipts. Accept only regular,
+            # convention-named HTML files in this dedicated directory.
+            for dossier in sorted(path.iterdir()):
+                if (
+                    dossier.is_symlink()
+                    or not dossier.is_file()
+                    or not dossier.name.startswith("match-review-")
+                    or dossier.suffix != ".html"
+                ):
+                    raise ScalableCampaignError(
+                        f"Entrada inesperada en review human: {dossier.name}"
+                    )
+            continue
         if path.name != "v2" or not path.is_dir():
             raise ScalableCampaignError(f"Entrada inesperada en review: {path.name}")
         for campaign_dir in sorted(path.iterdir()):
