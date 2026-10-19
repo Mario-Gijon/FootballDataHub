@@ -2161,7 +2161,6 @@ class OperationalMatchCampaignLedger:
             data_root=data_root,
             match_bundle=bundle,
             player_ids=player_ids,
-            internal_ids={internal_id},
         )
         validated = next(
             item

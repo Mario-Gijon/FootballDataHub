@@ -920,8 +920,18 @@ def test_v2_offline_pipeline_reaches_review_completion_with_human_approval(
         item for item in events if item["event_type"] == "DISCOVERY_REVIEW_REQUIRED"
     )
     draft = _valid_draft(fixture, discovery)
+
+    def build_draft(
+        *, internal_id, campaign_id, artifact_id, generation_root, data_root,
+        match_bundle, player_ids
+    ):
+        assert internal_id == fixture.candidate["internal_id"]
+        assert campaign_id == fixture.plan["campaign_id"]
+        assert artifact_id == discovery["artifact"]["artifact_id"]
+        return draft
+
     monkeypatch.setattr(
-        api_details, "build_campaign_publication_draft", lambda **_kw: draft
+        api_details, "build_campaign_publication_draft", build_draft
     )
     monkeypatch.setattr(
         fixture.ledger,
