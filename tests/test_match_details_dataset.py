@@ -424,3 +424,32 @@ def test_publication_requires_independent_approval_receipt(tmp_path, monkeypatch
             data_root=tmp_path, match_bundle=_bundle(), player_ids={123},
         )
         assert loaded[record["internal_id"]].publication_status == "approved"
+        index_path = root / "index.json"
+        index = json.loads(index_path.read_bytes())
+        index["publications"].append({
+            "internal_id": "pf-2026-27-group-i-bdfutbol-269409",
+            "publication_id": "unselected-package",
+            "package_path": "packages/unselected-package",
+            "manifest_sha256": "f" * 64,
+        })
+        index["publications"].sort(key=lambda item: item["internal_id"])
+        index_path.write_bytes(dataset._canonical_json(index))
+        selected = load_published_match_details(
+            root,
+            store_root=tmp_path / "store",
+            generation_root=tmp_path / "generation",
+            data_root=tmp_path,
+            match_bundle=_bundle(),
+            player_ids={123},
+            internal_ids={record["internal_id"]},
+        )
+        assert set(selected) == {record["internal_id"]}
+        with pytest.raises(MatchDetailsLoadError, match="paquete publicado falta"):
+            load_published_match_details(
+                root,
+                store_root=tmp_path / "store",
+                generation_root=tmp_path / "generation",
+                data_root=tmp_path,
+                match_bundle=_bundle(),
+                player_ids={123},
+            )

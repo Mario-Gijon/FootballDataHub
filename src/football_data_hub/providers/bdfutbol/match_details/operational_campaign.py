@@ -1104,6 +1104,72 @@ class OperationalMatchCampaignLedger:
             report = self.preflight(campaign["campaign_id"], acquire_lock=False)
             return campaign, report, events
 
+    def inspect_artifact_evidence(
+        self, directory: Path, *, internal_id: str
+    ) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
+        """Read one candidate's complete chain for immutable artifact validation.
+
+        Artifact parsing only needs to establish the selected match's one-use
+        authorization and discovery chain. A global preflight here rereads
+        every other candidate each time a published document is loaded. The
+        campaign manifest and candidate list are still verified, and every
+        event for this candidate is validated by ``_read_events``. Callers
+        needing campaign-wide status continue to use ``preflight``/``inspect``.
+        """
+
+        with self.lock.shared_lock():
+            campaign, _manifest, _plan = self._read_campaign(directory)
+            candidate = self._candidate(campaign, internal_id)
+            events = self._read_events(directory, campaign, internal_id)
+            state = self._state(events)
+            authorization = next(
+                (
+                    event.get("authorization")
+                    for event in events
+                    if event["event_type"] == "AUTHORIZED"
+                ),
+                None,
+            )
+            discovery = next(
+                (
+                    event
+                    for event in events
+                    if event["event_type"] == "DISCOVERY_REVIEW_REQUIRED"
+                ),
+                None,
+            )
+            row = {
+                **candidate,
+                "campaign_id": campaign["campaign_id"],
+                "campaign_version": 2,
+                "state": state,
+                "acquisition_state": "DISCOVERY_REVIEW_REQUIRED"
+                if discovery
+                else state,
+                "authorization_consumed": authorization is not None,
+                "authorization_id": authorization.get("authorization_id")
+                if authorization
+                else None,
+                "navigation_count": 1
+                if any(event["event_type"] == "STARTED" for event in events)
+                else 0,
+                "capture_promoted": False,
+                "event_count": len(events),
+                "artifact": discovery.get("artifact") if discovery else None,
+                "next_operation": self._next_operation(state),
+            }
+            report = {
+                "campaign_id": campaign["campaign_id"],
+                "candidate_count": campaign["candidate_count"],
+                "candidates": [row],
+                "capture_promotion_enabled": False,
+                "automatic_retries": 0,
+                "http_enabled": False,
+                "browser_started": False,
+                "navigation_enabled": False,
+            }
+            return campaign, report, events
+
     def preflight(
         self, campaign_id: str, *, acquire_lock: bool = True
     ) -> dict[str, Any]:
@@ -1956,6 +2022,7 @@ class OperationalMatchCampaignLedger:
             data_root=data_root,
             match_bundle=bundle,
             player_ids=player_ids,
+            internal_ids={internal_id},
         )
         validated = next(
             item
@@ -2206,6 +2273,7 @@ class OperationalMatchCampaignLedger:
             data_root=data_root,
             match_bundle=bundle,
             player_ids=player_ids,
+            internal_ids={internal_id},
         )
         if internal_id not in loaded:
             raise MatchCampaignIntegrityError(
@@ -2343,6 +2411,7 @@ class OperationalMatchCampaignLedger:
                 data_root=data_root,
                 match_bundle=bundle,
                 player_ids=player_ids,
+                internal_ids={internal_id},
             )
         except Exception as exc:
             raise MatchCampaignIntegrityError(

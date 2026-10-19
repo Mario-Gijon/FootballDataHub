@@ -399,9 +399,24 @@ def test_simulated_acquisition_writes_one_immutable_artifact_and_blocks_second_n
         )[-1]["event_type"]
         == "DISCOVERY_REVIEW_REQUIRED"
     )
+    _, scoped_report, _ = fixture.ledger.inspect_artifact_evidence(
+        fixture.ledger.root / fixture.plan["campaign_id"],
+        internal_id=fixture.candidate["internal_id"],
+    )
+    assert scoped_report["candidate_count"] == 3
+    assert len(scoped_report["candidates"]) == 1
+    assert scoped_report["candidates"][0]["acquisition_state"] == "DISCOVERY_REVIEW_REQUIRED"
+    assert scoped_report["candidates"][0]["navigation_count"] == 1
     import football_data_hub.providers.bdfutbol.match_details.campaign_artifact as campaign_artifact
 
     parser_result = object()
+    monkeypatch.setattr(
+        operational.OperationalMatchCampaignLedger,
+        "preflight",
+        lambda *_args, **_kwargs: pytest.fail(
+            "artifact inspection must not scan unrelated campaign candidates"
+        ),
+    )
     monkeypatch.setattr(
         campaign_artifact,
         "parse_match_detail_html",

@@ -662,9 +662,12 @@ def _load_campaign_publication_document(
     )
     if (
         draft.get("schema_version") != CAMPAIGN_DRAFT_SCHEMA
-        or draft.get("details_sha256") != manifest.get("details_sha256")
-        or _canonical_json(document.model_dump(mode="json", exclude_unset=True))
-        != _canonical_json(draft.get("details"))
+        or not _campaign_published_document_matches_revalidated_evidence(
+            document,
+            details_payload,
+            str(manifest.get("details_sha256", "")),
+            draft,
+        )
     ):
         raise MatchDetailsLoadError("El documento público no coincide con la evidencia de campaña revalidada.")
     for key in manifest_fields - {
@@ -683,6 +686,7 @@ def load_published_match_details(
     data_root: Path,
     match_bundle: MatchResultsBundle,
     player_ids: set[int],
+    internal_ids: set[str] | None = None,
 ) -> dict[str, MatchPublishedDetailsResponse]:
     """Load only immutable VALID captures explicitly approved in the publication index.
 
@@ -706,6 +710,8 @@ def load_published_match_details(
     items = index.get("publications")
     if not isinstance(items, list):
         raise MatchDetailsLoadError("publications debe ser una lista.")
+    if internal_ids is not None and any(not isinstance(item, str) for item in internal_ids):
+        raise MatchDetailsLoadError("El filtro interno de partidos contiene IDs no válidos.")
     resolved_active_root = match_bundle.generation_root or generation_root
     generation = load_verified_match_generation(resolved_active_root, data_root=data_root)
     if (
@@ -737,6 +743,8 @@ def load_published_match_details(
         ):
             raise MatchDetailsLoadError("Referencia de paquete no válida o duplicada.")
         seen.add(internal_id)
+        if internal_ids is not None and internal_id not in internal_ids:
+            continue
         relative = PurePosixPath(package_path)
         if relative.is_absolute() or any(part in {".", ".."} for part in relative.parts):
             raise MatchDetailsLoadError("Ruta de paquete insegura.")
@@ -1046,6 +1054,97 @@ def campaign_approval_confirmation(draft: dict[str, Any]) -> str:
     )
 
 
+def _normalize_legacy_campaign_event_fields(details: Any) -> Any:
+    """Normalize only known nullable-field serialization drift in event DTOs.
+
+    Older reviewed drafts serialized ``source_description`` as null and set
+    ``is_own_goal`` to false on every non-own-goal event.  The current DTO may
+    omit the former or serialize it as null, and uses null for the latter.
+    ``event_kind`` is the authoritative event classification, so false/null is
+    equivalent only when the event is explicitly not an own goal.  All other
+    event fields remain byte-for-byte comparable after canonical JSON.
+    """
+
+    if not isinstance(details, dict):
+        return details
+    normalized = json.loads(_canonical_json(details))
+    events = normalized.get("events")
+    non_own_goal_kinds = {
+        "goal", "penalty", "yellow_card", "red_card", "missed_penalty",
+        "second_yellow", "substitution", "substitution_in", "substitution_out", "other",
+    }
+    if isinstance(events, list):
+        for event in events:
+            if not isinstance(event, dict):
+                continue
+            if event.get("source_description", object()) is None:
+                event.pop("source_description", None)
+            if (
+                event.get("event_kind") in non_own_goal_kinds
+                and (
+                    event.get("is_own_goal", object()) is None
+                    or event.get("is_own_goal", object()) is False
+                )
+            ):
+                event.pop("is_own_goal", None)
+    return normalized
+
+
+def _campaign_draft_matches_revalidated_evidence(
+    saved_draft: dict[str, Any], rebuilt_draft: dict[str, Any]
+) -> bool:
+    """Check a saved reviewed draft against a fresh reconstruction.
+
+    Draft content hashes are independently checked before comparison. Only
+    the two documented nullable event-field serialization changes above are
+    normalized; source IDs, artifact hashes, metadata and sports values must
+    still match exactly. The caller must continue publishing ``saved_draft``
+    so its original approval and document hash remain intact.
+    """
+
+    for candidate in (saved_draft, rebuilt_draft):
+        details = candidate.get("details")
+        details_hash = candidate.get("details_sha256")
+        if (
+            not isinstance(details, dict)
+            or not isinstance(details_hash, str)
+            or _sha256(_canonical_json(details)) != details_hash
+        ):
+            return False
+
+    saved = json.loads(_canonical_json(saved_draft))
+    rebuilt = json.loads(_canonical_json(rebuilt_draft))
+    saved.pop("details_sha256", None)
+    rebuilt.pop("details_sha256", None)
+    saved["details"] = _normalize_legacy_campaign_event_fields(saved["details"])
+    rebuilt["details"] = _normalize_legacy_campaign_event_fields(rebuilt["details"])
+    return _canonical_json(saved) == _canonical_json(rebuilt)
+
+
+def _campaign_published_document_matches_revalidated_evidence(
+    document: MatchPublishedDetailsResponse,
+    details_payload: dict[str, Any],
+    details_sha256: str,
+    rebuilt_draft: dict[str, Any],
+) -> bool:
+    """Verify a stored package against current source while retaining its hash.
+
+    The package's raw JSON hash and its parsed public DTO must both match. The
+    current reconstruction is then compared using the same narrow legacy
+    nullable-field rules as publication. This never rewrites the package.
+    """
+
+    if _sha256(_canonical_json(details_payload)) != details_sha256:
+        return False
+    projected = document.model_dump(mode="json", exclude_unset=True)
+    if _canonical_json(projected) != _canonical_json(details_payload):
+        return False
+    saved_draft = json.loads(_canonical_json(rebuilt_draft))
+    saved_draft["details"] = projected
+    saved_draft["details_sha256"] = details_sha256
+    return _campaign_draft_matches_revalidated_evidence(saved_draft, rebuilt_draft)
+
+
 def build_campaign_approval_receipt(
     draft: dict[str, Any],
     *,
@@ -1310,6 +1409,7 @@ def publish_match_detail_draft(
                     data_root=data_root,
                     match_bundle=match_bundle,
                     player_ids=player_ids,
+                    internal_ids={draft["internal_id"]},
                 )
                 if expected_draft["internal_id"] not in loaded:
                     raise MatchDetailsLoadError("La publicación no aparece tras la validación final.")
@@ -1349,15 +1449,15 @@ def publish_campaign_match_detail_draft(
         match_bundle=match_bundle,
         player_ids=player_ids,
     )
-    if _canonical_json(draft) != _canonical_json(expected):
+    if not _campaign_draft_matches_revalidated_evidence(draft, expected):
         raise MatchDetailsLoadError("El borrador ya no coincide con la evidencia de campaña revalidada.")
     expected_approval = build_campaign_approval_receipt(
-        expected,
+        draft,
         approved_by=str(approval_receipt.get("approved_by", "")),
         confirm_internal_id=str(approval_receipt.get("internal_id", "")),
         confirm_source_html_sha256=str(approval_receipt.get("source_html_sha256", "")),
         confirm_details_sha256=str(approval_receipt.get("details_sha256", "")),
-        confirm_action=campaign_approval_confirmation(expected),
+        confirm_action=campaign_approval_confirmation(draft),
         approved_at_utc=_parse_approval_timestamp(approval_receipt.get("approved_at_utc")),
     )
     if _canonical_json(approval_receipt) != _canonical_json(expected_approval):
@@ -1371,7 +1471,10 @@ def publish_campaign_match_detail_draft(
     with lock_path.open("a+b") as lock_file:
         fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
         try:
-            package_id = expected["publication_id"]
+            # Publish the exact reviewed document. The rebuilt form above is
+            # used only to revalidate provenance and semantic equivalence; it
+            # must never replace the hash-bound draft or its receipt.
+            package_id = draft["publication_id"]
             packages_root = root / "packages"
             packages_root.mkdir(exist_ok=True)
             if packages_root.is_symlink() or not packages_root.is_dir():
@@ -1389,12 +1492,12 @@ def publish_campaign_match_detail_draft(
                 current, previous_index = _read_json(index_path)
                 entries = _validated_index_entries(current)
 
-            details_raw = _canonical_json(expected["details"])
+            details_raw = _canonical_json(draft["details"])
             approval_raw = _canonical_json(approval_receipt)
             manifest = {
                 "schema_version": CAMPAIGN_PACKAGE_SCHEMA,
                 **{
-                    key: expected[key]
+                    key: draft[key]
                     for key in (
                         "publication_id", "source_kind", "internal_id", "inventory_id",
                         "source_generation_id", "source_generation_manifest_sha256",
@@ -1409,9 +1512,10 @@ def publish_campaign_match_detail_draft(
                 "approval_sha256": _sha256(approval_raw),
             }
             manifest_raw = _canonical_json(manifest)
+            reuse_exact_orphan_package = False
             if package.exists() or package.is_symlink():
                 active = next(
-                    (entry for entry in entries if entry["internal_id"] == expected["internal_id"]),
+                    (entry for entry in entries if entry["internal_id"] == draft["internal_id"]),
                     None,
                 )
                 if (
@@ -1431,62 +1535,75 @@ def publish_campaign_match_detail_draft(
                     existing_bytes["approval.json"] != approval_raw
                     or existing_bytes["details.json"] != details_raw
                     or existing_bytes["manifest.json"] != manifest_raw
-                    or active is None
-                    or active["publication_id"] != package_id
-                    or active["manifest_sha256"] != _sha256(manifest_raw)
+                    or (active is not None and (
+                        active["publication_id"] != package_id
+                        or active["manifest_sha256"] != _sha256(manifest_raw)
+                    ))
+                    or any(
+                        entry["publication_id"] == package_id
+                        and entry["internal_id"] != draft["internal_id"]
+                        for entry in entries
+                    )
                 ):
                     raise MatchDetailsLoadError("Una publicación inmutable con ese ID ya existe con contenido distinto o inactiva.")
-                loaded = load_published_match_details(
-                    root,
-                    store_root=store_root,
-                    generation_root=generation_root,
-                    data_root=data_root,
-                    match_bundle=match_bundle,
-                    player_ids=player_ids,
-                )
-                if expected["internal_id"] not in loaded:
-                    raise MatchDetailsLoadError("La publicación existente no supera su lectura final.")
-                return {"internal_id": expected["internal_id"], "publication_id": package_id}
-            stage = Path(tempfile.mkdtemp(prefix=f".{package_id}.", dir=packages_root))
-            try:
-                for filename, content in (
-                    ("approval.json", approval_raw),
-                    ("details.json", details_raw),
-                    ("manifest.json", manifest_raw),
-                ):
-                    with (stage / filename).open("xb") as output:
-                        output.write(content)
-                        output.flush()
-                        os.fsync(output.fileno())
-                stage_fd = os.open(stage, os.O_RDONLY)
+                if active is not None:
+                    loaded = load_published_match_details(
+                        root,
+                        store_root=store_root,
+                        generation_root=generation_root,
+                        data_root=data_root,
+                        match_bundle=match_bundle,
+                        player_ids=player_ids,
+                        internal_ids={draft["internal_id"]},
+                    )
+                    if draft["internal_id"] not in loaded:
+                        raise MatchDetailsLoadError("La publicación existente no supera su lectura final.")
+                    return {"internal_id": draft["internal_id"], "publication_id": package_id}
+                # A previous attempt may have completed the immutable package
+                # files but failed before the index passed final verification.
+                # Reuse only the exact hash-bound package; never replace it.
+                reuse_exact_orphan_package = True
+            if not reuse_exact_orphan_package:
+                stage = Path(tempfile.mkdtemp(prefix=f".{package_id}.", dir=packages_root))
                 try:
-                    os.fsync(stage_fd)
+                    for filename, content in (
+                        ("approval.json", approval_raw),
+                        ("details.json", details_raw),
+                        ("manifest.json", manifest_raw),
+                    ):
+                        with (stage / filename).open("xb") as output:
+                            output.write(content)
+                            output.flush()
+                            os.fsync(output.fileno())
+                    stage_fd = os.open(stage, os.O_RDONLY)
+                    try:
+                        os.fsync(stage_fd)
+                    finally:
+                        os.close(stage_fd)
+                    # Reserve the immutable final name without replacing any existing package.
+                    package.mkdir()
+                    for filename in ("approval.json", "details.json", "manifest.json"):
+                        os.rename(stage / filename, package / filename)
+                    package_fd = os.open(package, os.O_RDONLY)
+                    try:
+                        os.fsync(package_fd)
+                    finally:
+                        os.close(package_fd)
+                    packages_fd = os.open(packages_root, os.O_RDONLY)
+                    try:
+                        os.fsync(packages_fd)
+                    finally:
+                        os.close(packages_fd)
                 finally:
-                    os.close(stage_fd)
-                # Reserve the immutable final name without replacing any existing package.
-                package.mkdir()
-                for filename in ("approval.json", "details.json", "manifest.json"):
-                    os.rename(stage / filename, package / filename)
-                package_fd = os.open(package, os.O_RDONLY)
-                try:
-                    os.fsync(package_fd)
-                finally:
-                    os.close(package_fd)
-                packages_fd = os.open(packages_root, os.O_RDONLY)
-                try:
-                    os.fsync(packages_fd)
-                finally:
-                    os.close(packages_fd)
-            finally:
-                shutil.rmtree(stage, ignore_errors=True)
+                    shutil.rmtree(stage, ignore_errors=True)
 
             entry = {
-                "internal_id": expected["internal_id"],
+                "internal_id": draft["internal_id"],
                 "publication_id": package_id,
                 "package_path": f"packages/{package_id}",
                 "manifest_sha256": _sha256(manifest_raw),
             }
-            entries = [item for item in entries if item["internal_id"] != expected["internal_id"]]
+            entries = [item for item in entries if item["internal_id"] != draft["internal_id"]]
             entries.append(entry)
             entries.sort(key=lambda item: item["internal_id"])
             new_index = _canonical_json({"schema_version": INDEX_SCHEMA, "publications": entries})
@@ -1512,8 +1629,9 @@ def publish_campaign_match_detail_draft(
                     data_root=data_root,
                     match_bundle=match_bundle,
                     player_ids=player_ids,
+                    internal_ids={draft["internal_id"]},
                 )
-                if expected["internal_id"] not in loaded:
+                if draft["internal_id"] not in loaded:
                     raise MatchDetailsLoadError("La publicación no aparece en la recarga de verificación.")
             except BaseException:
                 if previous_index is None:
@@ -1528,7 +1646,7 @@ def publish_campaign_match_detail_draft(
                 raise
         finally:
             fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
-    return {"internal_id": expected["internal_id"], "publication_id": package_id}
+    return {"internal_id": draft["internal_id"], "publication_id": package_id}
 
 
 def _parse_approval_timestamp(value: Any) -> datetime:

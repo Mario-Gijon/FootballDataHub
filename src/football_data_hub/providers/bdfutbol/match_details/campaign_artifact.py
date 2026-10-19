@@ -152,7 +152,7 @@ def parse_campaign_saved_artifact(
         if operational_v2:
             from .operational_campaign import OperationalMatchCampaignLedger
 
-            campaign, preflight, events = OperationalMatchCampaignLedger(campaigns_root).inspect(
+            campaign, preflight, events = OperationalMatchCampaignLedger(campaigns_root).inspect_artifact_evidence(
                 campaign_root, internal_id=str(expected_match.get("internal_id"))
             )
         else:
