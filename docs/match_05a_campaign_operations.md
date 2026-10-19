@@ -158,3 +158,13 @@ El dossier presenta resultado del catálogo y de la ficha, fecha, estadio,
 procedencia. No incluye acciones de aprobación/publicación ni cambia el ledger.
 Cada ejecución crea un HTML nuevo bajo `matches/details/review/human/` sin
 reemplazar informes anteriores.
+
+Antes de mostrar los datos de sede y árbitro, el generador vuelve a verificar la
+generación MATCH-00 y reinterpreta el HTML original usando su manifiesto y hash.
+La vista separa las fichas sin discrepancias deportivas específicas de las que
+tienen advertencias, y pagina cada grupo en bloques de 15. La ausencia común de
+hora de inicio y el estado administrativo de revisión aparecen como notas
+separadas, no como anomalías deportivas. Los códigos L-001/A-001 permiten
+referirse a una ficha o a una selección desde la conversación; no sustituyen la
+aprobación. Solo una confirmación explícita para cada ficha permite registrar
+sus recibos, y la publicación por lotes continúa limitada a recibos aprobados.
