@@ -28,6 +28,7 @@ def test_review_html_is_grouped_read_only_and_escapes_source_text():
                 "stadium_url": "https://www.bdfutbol.com/es/s/149.html",
                 "referee_name": "Árbitro",
                 "referee_url": "https://www.bdfutbol.com/es/r/r602714.html",
+                "kickoff_time_local": "21:15",
             },
             "source_html_sha256": "a" * 64,
             "details_sha256": "b" * 64,
@@ -62,6 +63,8 @@ def test_review_html_is_grouped_read_only_and_escapes_source_text():
     assert 'data-category="flagged"' in html
     assert "L-001" in html and "A-001" in html
     assert "Bloques de hasta 15" in html
+    assert "Hora de inicio verificada en el HTML fuente: 1 de 2; no observada en 1" in html
+    assert "Hora 21:15" in html
     assert "Vista solo de lectura" in html
     assert "Lesión" in html
     assert "Estadio seguro" in html

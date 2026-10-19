@@ -230,6 +230,11 @@ def render_review_html(rows: list[dict[str, Any]]) -> str:
     cards = "\n".join(cards_list)
     clean_count = clean_index
     flagged_count = flagged_index
+    kickoff_observed_count = sum(
+        bool((row.get("source_context") or {}).get("kickoff_time_local"))
+        for row in rows
+    )
+    kickoff_missing_count = len(rows) - kickoff_observed_count
     return f'''<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Revisión local de borradores de partidos</title>
 <style>
@@ -251,7 +256,7 @@ def render_review_html(rows: list[dict[str, Any]]) -> str:
   .counter{{color:#aeb5bd}}#cards{{min-height:20vh}}dl{{display:grid;grid-template-columns:max-content 1fr;gap:4px 12px;overflow-wrap:anywhere}}dd{{margin:0}}
   @media(max-width:700px){{body{{padding:12px}}.sides,.rosters{{grid-template-columns:1fr}}.match-card>header{{align-items:flex-start}}input{{min-width:100%}}}}
 </style><body><h1>Revisión local de borradores de partidos</h1>
-<p class="notice">{len(rows)} borradores con fuente y generación verificadas. <b>{clean_count}</b> sin discrepancias deportivas específicas; <b>{flagged_count}</b> con advertencias que requieren atención. La hora de inicio no se observó en estas capturas. Vista solo de lectura: no aprueba ni publica.</p>
+<p class="notice">{len(rows)} borradores con fuente y generación verificadas. <b>{clean_count}</b> sin discrepancias deportivas específicas; <b>{flagged_count}</b> con advertencias que requieren atención. Hora de inicio verificada en el HTML fuente: {kickoff_observed_count} de {len(rows)}; no observada en {kickoff_missing_count}. Se muestra por partido cuando está verificada. Vista solo de lectura: no aprueba ni publica.</p>
 <div class="toolbar"><select id="category"><option value="clean">Sin discrepancias ({clean_count})</option><option value="flagged">Con advertencias ({flagged_count})</option></select><select id="group"><option value="">Ambos grupos</option><option>I</option><option>II</option></select><input id="search" type="search" placeholder="Buscar equipo, partido o jornada"></div>
 <p class="counter" id="batch-status">Bloques de hasta {_PAGE_SIZE} fichas por categoría.</p>
 <div class="pagination"><button id="previous" type="button">Anterior</button><span id="page-status"></span><button id="next" type="button">Siguiente</button></div>
