@@ -224,6 +224,34 @@ conserva como `None` con advertencia; una tabla observada sin filas de jugadores
 se conserva como lista vacía. Una sección desconocida nunca se reclasifica como
 titulares/suplentes.
 
+### Actualización basada en la campaña local de 131 encuentros
+
+La sección anterior describe el estado histórico de MATCH-01C-A; desde entonces
+los artefactos de una campaña posterior aportaron evidencia real para variantes
+que estaban pendientes. El parser pasó a `match-detail-semantic-0.3.2` y ahora:
+
+- Reconoce `GPP` / `Gol en propia puerta` y `(pp)` en el resumen. El resumen
+  sitúa al goleador bajo el lado al que se acredita el tanto; la ficha del
+  jugador y el evento normalizado permanecen asociados a su equipo real. Para
+  contar goles y validar la progresión, el gol se acredita al lado contrario.
+  La marca de alineación y el resumen deben coincidir en jugador y minuto; no se
+  corrige ninguna discrepancia automáticamente.
+- Reconoce `L` / `Lesión` como evento descriptivo `other`, conservando la
+  etiqueta original y el minuto. Las clases/títulos desconocidos continúan
+  bloqueando la validación.
+- Permite que un suplente tenga tanto `Entra` como `Sale` en momentos distintos.
+  Esos dos sucesos se conservan separados y no se emparejan con otro futbolista.
+  Una marca de salida aislada en el banquillo sigue siendo inválida.
+- Conserva como texto el identificador opaco del estadio cuando la ruta real es
+  `/es/s/<slug>.html` (por ejemplo `39b` o `67b`); no fuerza una conversión a
+  entero.
+
+Se añadieron regresiones sintéticas para cada regla y una lectura offline de los
+22 artefactos que habían fallado en la campaña. Esas lecturas no modifican el
+HTML ni el historial: la revalidación operacional añade eventos nuevos al
+ledger, y la preparación posterior crea borradores inmutables que aún requieren
+aprobación humana. Las 109 publicaciones borrador preexistentes se conservan.
+
 ### Rendimiento observado
 
 Se midió el parseo offline de ocho repeticiones del artefacto real de 1.504.876

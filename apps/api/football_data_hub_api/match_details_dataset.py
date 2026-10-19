@@ -253,6 +253,7 @@ def project_verified_detail(
             related_player_name=item.related_player_name,
             is_penalty=item.is_penalty,
             is_own_goal=item.is_own_goal,
+            source_description=item.source_description,
             score_after_home=item.score_after_home,
             score_after_away=item.score_after_away,
             player_profile_available=item.player_id is not None and item.player_id in player_ids,
@@ -1623,12 +1624,14 @@ def build_discovery_preview(
     kind_map = {
         "goal": "goal",
         "penalty_goal": "penalty",
+        "own_goal": "own_goal",
         "missed_penalty": "missed_penalty",
         "yellow_card": "yellow_card",
         "red_card": "red_card",
         "second_yellow": "second_yellow",
         "substitution_in": "substitution_in",
         "substitution_out": "substitution_out",
+        "other": "other",
     }
     events = [
         MatchPublishedEventResponse(
@@ -1640,7 +1643,8 @@ def build_discovery_preview(
             related_player_id=None,
             related_player_name=None,
             is_penalty=event.is_penalty,
-            is_own_goal=None,
+            is_own_goal=True if event.event_type == "own_goal" else None,
+            source_description=(event.raw_icon_title if event.event_type == "other" else None),
             score_after_home=event.score_after_home,
             score_after_away=event.score_after_away,
             player_profile_available=event.player_id is not None and event.player_id in player_ids,

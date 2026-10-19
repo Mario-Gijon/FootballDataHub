@@ -180,6 +180,25 @@ def test_projection_labels_only_explicit_penalty_and_own_goal_facts() -> None:
     assert [event.event_kind for event in document.events or []] == ["penalty", "own_goal"]
 
 
+def test_projection_preserves_source_description_for_other_event():
+    detail = replace(
+        _detail(),
+        events=(MatchEvent(
+            event_kind="other",
+            minute_literal="9",
+            minute_base=9,
+            team_id=49,
+            player_id=123,
+            player_name="Jugador Uno",
+            source_text="9",
+            source_description="Lesión",
+        ),),
+    )
+    document = project_verified_detail(detail, source_html_sha256="f" * 64, player_ids={123})
+    assert document.events is not None
+    assert document.events[0].source_description == "Lesión"
+
+
 def test_public_match_projection_rejects_preview_details() -> None:
     from football_data_hub_api.match_details_dataset import project_verified_detail
 

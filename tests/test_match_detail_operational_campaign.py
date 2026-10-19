@@ -28,6 +28,7 @@ from football_data_hub.providers.bdfutbol.match_details.scalable_campaigns impor
     classify_match_campaign_inventory,
     write_match_campaign_proposal,
 )
+from football_data_hub.providers.bdfutbol.match_details.semantic_parser import PARSER_VERSION
 from football_data_hub_api import match_details_dataset as api_details
 from football_data_hub_api.schemas import MatchPublishedDetailsResponse
 from tests.match_detail_fixtures import make_verified_generation
@@ -1248,7 +1249,7 @@ def test_v2_failed_validation_can_be_revalidated_without_recapture(tmp_path, mon
         data_root=fixture.data_root,
     )
     assert initial["status"] == "VALIDATION_FAILED"
-    assert initial["parser_version"] == "match-detail-semantic-0.3.1"
+    assert initial["parser_version"] == PARSER_VERSION
 
     events_before = fixture.ledger.candidate_events(
         fixture.plan["campaign_id"], fixture.candidate["internal_id"]
@@ -1298,7 +1299,7 @@ def test_v2_failed_validation_can_be_revalidated_without_recapture(tmp_path, mon
         confirmation=operational.REVALIDATE_CONFIRMATION,
     )
     assert failed_again["status"] == "REVALIDATION_FAILED"
-    assert failed_again["parser_version"] == "match-detail-semantic-0.3.1"
+    assert failed_again["parser_version"] == PARSER_VERSION
     assert fixture.ledger.candidate(fixture.plan["campaign_id"], fixture.candidate["internal_id"])["state"] == "REVALIDATION_FAILED"
     from football_data_hub.providers.bdfutbol.match_details.scalable_campaign_cli import (
         _read_campaign_states,
@@ -1339,7 +1340,7 @@ def test_v2_failed_validation_can_be_revalidated_without_recapture(tmp_path, mon
         confirmation=operational.REVALIDATE_CONFIRMATION,
     )
     assert revalidated["status"] == "REVALIDATED"
-    assert revalidated["parser_version"] == "match-detail-semantic-0.3.1"
+    assert revalidated["parser_version"] == PARSER_VERSION
     events_after = fixture.ledger.candidate_events(
         fixture.plan["campaign_id"], fixture.candidate["internal_id"]
     )
@@ -1358,7 +1359,7 @@ def test_v2_failed_validation_can_be_revalidated_without_recapture(tmp_path, mon
     assert candidate_status["state"] == "REVALIDATED"
     assert candidate_status["authorization_consumed"] is True
     assert candidate_status["navigation_count"] == 1
-    assert parser_versions == ["match-detail-semantic-0.3.1"] * 3
+    assert parser_versions == [PARSER_VERSION] * 3
     campaign_states, _ = _read_campaign_states(fixture.ledger.root)
     revalidated_row = next(
         row

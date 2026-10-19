@@ -140,3 +140,21 @@ IDs históricos que se solicitaron vigilar: `269408`, `269409`, `269410`, `27257
 ## Compatibilidad, pruebas y límites
 
 Se conserva el contenido de los ledgers v1/v2 y los contratos de publicación. Los tests adicionales verifican lote temporal, continuación tras interrupción, no duplicación, lock ocupado, fallo de integridad, preservación de informes ante un error de `rename`, hash de informe, revisión hash-checked, cola de publicación y requisito de confirmación. No se realizó adquisición, petición HTTP, inicio de Chromium, aprobación, publicación ni cierre sobre datos reales. Las propuestas, informes, decisiones humanas y paquetes posteriores quedan sujetos a las mismas verificaciones y límites por candidato; aún no se programa ninguna tarea periódica ni despliegue UJA.
+
+## Dossier HTML local de revisión humana
+
+`build_review_queue()` verifica el hash de cada borrador antes de producir una
+ficha compacta. Para revisar varios sin abrir sus JSON completos se puede crear
+un HTML estático, buscable y de solo lectura:
+
+```bash
+PYTHONPATH=src:apps/api .venv/bin/python scripts/build_bdfutbol_match_review_html.py \
+  --campaign-id <campaña-principal> \
+  --include-campaign <campaña-adicional>
+```
+
+El dossier presenta resultado del catálogo y de la ficha, fecha, estadio,
+árbitro, entrenadores, titulares, suplentes, eventos, advertencias y hashes de
+procedencia. No incluye acciones de aprobación/publicación ni cambia el ledger.
+Cada ejecución crea un HTML nuevo bajo `matches/details/review/human/` sin
+reemplazar informes anteriores.

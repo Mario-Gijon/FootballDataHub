@@ -49,9 +49,12 @@ def goal_progression_is_consistent(
                 bit = 1 << index
                 if not remaining & bit:
                     continue
+                scoring_side = (
+                    "away" if goal.side == "home" else "home"
+                ) if goal.event_type == "own_goal" else goal.side
                 expected_after = (
                     (score_home + 1, score_away)
-                    if goal.side == "home"
+                    if scoring_side == "home"
                     else (score_home, score_away + 1)
                 )
                 observed_after = (goal.score_after_home, goal.score_after_away)

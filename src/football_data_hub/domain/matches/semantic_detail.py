@@ -15,12 +15,14 @@ EvidenceOrigin = Literal["match_detail_dom", "match_catalog", "discovery_metadat
 EventKind = Literal[
     "goal",
     "penalty_goal",
+    "own_goal",
     "missed_penalty",
     "yellow_card",
     "red_card",
     "second_yellow",
     "substitution_in",
     "substitution_out",
+    "other",
     "unknown",
 ]
 Side = Literal["home", "away"]

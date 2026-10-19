@@ -123,6 +123,153 @@ def test_parses_semantic_fixture_and_preserves_discovery_only_status():
     assert all(item.parser_version == observation.source.parser_version for item in observation.evidence)
 
 
+def test_own_goal_reconciles_credit_side_with_player_team_and_progression():
+    soup = BeautifulSoup(match_html(), "html.parser")
+    away_summary = soup.select_one(
+        '.hero-partit .col-6.col-sm.f14 .text-left .text-blanc'
+    )
+    assert away_summary is not None
+    away_summary.clear()
+    score = soup.new_tag("span")
+    score.string = "0-1"
+    away_summary.append(score)
+    scorer = soup.new_tag("a", href="../j/j1002.html")
+    scorer.string = "Home Exit"
+    away_summary.append(scorer)
+    away_summary.append(" 6' (pp)")
+
+    old_away_goal = soup.select_one(
+        'div.container table.taula_estil a[href$="/j/j2001.html"]'
+    )
+    assert old_away_goal is not None
+    old_away_goal.find_parent("tr").select_one('.cosa .G[title="Gol"]').find_parent("div", class_="cosa").decompose()
+    home_scorer = soup.select_one(
+        'div.container table.taula_estil a[href$="/j/j1002.html"]'
+    )
+    assert home_scorer is not None
+    event_cell = home_scorer.find_parent("tr").find_all(["td", "th"], recursive=False)[-1]
+    event = soup.new_tag("div", attrs={"class": "cosa"})
+    event.append(soup.new_tag("div", attrs={"class": "GPP", "title": "Gol en propia puerta"}))
+    event.append("6")
+    event_cell.append(event)
+
+    observation = _parse(str(soup).encode())
+
+    assert observation.validation.semantic_valid is True, observation.validation.errors
+    own_goal = next(item for item in observation.events if item.event_type == "own_goal")
+    assert (own_goal.side, own_goal.team_id, own_goal.player_id, own_goal.minute_literal) == (
+        "home", 49, 1002, "6"
+    )
+    assert own_goal.score_after_home == 0 and own_goal.score_after_away == 1
+    assert any(
+        item.check == "goal_score_progression_is_chronologically_consistent" and item.passed
+        for item in observation.validation.checks
+    )
+
+
+def test_own_goal_with_incompatible_partial_score_is_rejected():
+    # Build the same source shape as the accepted own-goal case, then make the
+    # credited score contradict the scorer's own team and chronological result.
+    soup = BeautifulSoup(match_html(), "html.parser")
+    away_summary = soup.select_one('.hero-partit .col-6.col-sm.f14 .text-left .text-blanc')
+    assert away_summary is not None
+    away_summary.clear()
+    score = soup.new_tag("span")
+    score.string = "1-0"
+    away_summary.append(score)
+    scorer = soup.new_tag("a", href="../j/j1002.html")
+    scorer.string = "Home Exit"
+    away_summary.append(scorer)
+    away_summary.append(" 6' (pp)")
+    old_away_goal = soup.select_one('div.container table.taula_estil a[href$="/j/j2001.html"]')
+    assert old_away_goal is not None
+    icon = old_away_goal.find_parent("tr").select_one('.cosa .G[title="Gol"]')
+    assert icon is not None
+    icon.find_parent("div", class_="cosa").decompose()
+    home_scorer = soup.select_one('div.container table.taula_estil a[href$="/j/j1002.html"]')
+    assert home_scorer is not None
+    event_cell = home_scorer.find_parent("tr").find_all(["td", "th"], recursive=False)[-1]
+    event = soup.new_tag("div", attrs={"class": "cosa"})
+    event.append(soup.new_tag("div", attrs={"class": "GPP", "title": "Gol en propia puerta"}))
+    event.append("6")
+    event_cell.append(event)
+
+    observation = _parse(str(soup).encode())
+    assert observation.validation.semantic_valid is False
+    assert "goal_score_progression_invalid" in observation.validation.errors
+
+
+def test_injury_icon_is_preserved_as_a_described_other_event():
+    html = match_html().replace(
+        b'class="TG" title="Tarjeta Amarilla"></div>45',
+        b'class="L" title="Lesi\xc3\xb3n"></div>9',
+        1,
+    )
+    observation = _parse(html)
+    assert observation.validation.semantic_valid is True
+    injury = next(item for item in observation.events if item.event_type == "other")
+    assert injury.raw_icon_class == "L"
+    assert injury.raw_icon_title == "Lesión"
+    assert injury.minute_literal == "9"
+
+
+def test_stadium_opaque_slug_is_preserved_without_numeric_coercion():
+    html = match_html().replace(b"../s/100355.html", b"../s/39b.html")
+    observation = _parse(html)
+    assert observation.validation.semantic_valid is True
+    assert observation.stadium_id.value == "39b"
+    assert observation.stadium_url.value == "https://www.bdfutbol.com/es/s/39b.html"
+
+
+def test_substitute_can_enter_then_leave_without_inventing_a_pair():
+    soup = BeautifulSoup(match_html(), "html.parser")
+    entered = soup.select_one('div.container table.taula_estil a[href$="/j/j1101.html"]')
+    assert entered is not None
+    event_cell = entered.find_parent("tr").find_all(["td", "th"], recursive=False)[-1]
+    outgoing = soup.new_tag("div", attrs={"class": "cosa"})
+    outgoing.append(soup.new_tag("div", attrs={"class": "Surt", "title": "Sale"}))
+    outgoing.append("80")
+    event_cell.append(outgoing)
+
+    table = entered.find_parent("table")
+    replacement = BeautifulSoup(
+        '<tr><td>3</td><td><img class="mini-foto-jugador" src="../../i/m/1103.png"></td>'
+        '<td><div class="pais espanya"></div></td><td><a href="../j/j1103.html">Replacement Sub</a></td>'
+        '<td><div class="cosa"><div class="Entra" title="Entra"></div>80</div></td><td></td></tr>',
+        "html.parser",
+    ).tr
+    assert table is not None and replacement is not None
+    table.tbody.append(replacement)
+
+    observation = _parse(str(soup).encode())
+    assert observation.validation.semantic_valid is True, observation.validation.errors
+    assert any(
+        event.player_id == 1101 and event.event_type == "substitution_out" and event.minute_literal == "80"
+        for event in observation.events
+    )
+    assert any(
+        event.player_id == 1103 and event.event_type == "substitution_in" and event.minute_literal == "80"
+        for event in observation.events
+    )
+    assert not any(hasattr(event, "related_player_id") for event in observation.events)
+
+
+def test_substitute_out_without_incoming_marker_remains_rejected():
+    soup = BeautifulSoup(match_html(), "html.parser")
+    substitute = soup.select_one('div.container table.taula_estil a[href$="/j/j1102.html"]')
+    assert substitute is not None
+    row_cells = substitute.find_parent("tr").find_all(["td", "th"], recursive=False)
+    row_cells[-2].clear()
+    event_cell = row_cells[-1]
+    outgoing = soup.new_tag("div", attrs={"class": "cosa"})
+    outgoing.append(soup.new_tag("div", attrs={"class": "Surt", "title": "Sale"}))
+    outgoing.append("80")
+    event_cell.append(outgoing)
+    observation = _parse(str(soup).encode())
+    assert observation.validation.semantic_valid is False
+    assert "substitute_has_outgoing_marker:home:1102" in observation.validation.errors
+
+
 def test_reconciles_cards_and_simultaneous_substitution_events_without_pairing():
     observation = _parse(match_html())
     home_cards = [event for event in observation.events if event.side == "home" and event.event_type == "yellow_card"]
@@ -206,6 +353,8 @@ def test_tg2_with_an_unverified_title_remains_a_blocking_unknown_icon():
     [
         ('<div class="PF" title="Penalty Fallado"></div>', "missed_penalty"),
         ('<div class="TV" title="Expulsión"></div>', "red_card"),
+        ('<div class="GPP" title="Gol en propia puerta"></div>', "own_goal"),
+        ('<div class="L" title="Lesión"></div>', "other"),
     ],
 )
 def test_campaign_event_icons_keep_their_verified_semantics(icon, expected):

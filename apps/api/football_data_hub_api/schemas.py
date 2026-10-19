@@ -670,6 +670,7 @@ class MatchPublishedEventResponse(ApiModel):
     related_player_name: str | None
     is_penalty: bool | None
     is_own_goal: bool | None
+    source_description: str | None = None
     score_after_home: OptionalInt = Field(default=None, ge=0)
     score_after_away: OptionalInt = Field(default=None, ge=0)
     player_profile_available: bool = False

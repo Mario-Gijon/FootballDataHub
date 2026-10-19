@@ -1190,6 +1190,7 @@ const MatchPublishedEventSchema = z.object({
   related_player_name: z.string().nullable(),
   is_penalty: z.boolean().nullable(),
   is_own_goal: z.boolean().nullable(),
+  source_description: z.string().nullable().optional(),
   score_after_home: nullableInteger,
   score_after_away: nullableInteger,
   player_profile_available: z.boolean(),

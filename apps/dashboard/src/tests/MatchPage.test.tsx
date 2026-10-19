@@ -307,6 +307,24 @@ describe("MatchPage details", () => {
     expect(screen.queryByText("Los detalles de este encuentro todavía no están disponibles.")).not.toBeInTheDocument();
   });
 
+  it("shows the source description for a recognized descriptive event", async () => {
+    const injury = event("other", "9", 49, 1001, "Siverio");
+    injury.source_description = "Lesión";
+    const injured = page("preview_only");
+    injured.details!.events = [injury];
+    loadLocalMatchPreview.mockResolvedValue(injured);
+    const { container } = render(<MatchPage
+      internalId="pf-2026-27-group-ii-bdfutbol-272582"
+      localPreview
+      onNavigate={vi.fn()}
+      onReturnToResults={vi.fn()}
+    />);
+    const timeline = await screen.findByText("Lesión");
+    expect(timeline).toBeInTheDocument();
+    expect(container.querySelector(".match-events .match-event-row.match-event-other")).toHaveTextContent("Lesión");
+    expect(screen.queryByText("Evento")).not.toBeInTheDocument();
+  });
+
   it("keeps match context, linked officials and provenance in the compact hero", async () => {
     const match = page("approved");
     match.match.matchday_date = "2026-10-10";

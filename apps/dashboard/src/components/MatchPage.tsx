@@ -437,7 +437,7 @@ function EventTimelineItem({ event, homeName, awayName, homeTeamId, awayTeamId, 
   const teamName = event.team_id === homeTeamId ? homeName : event.team_id === awayTeamId ? awayName : "Equipo";
   return <li className={`match-event-row match-event-${event.event_kind}`}>
     <time>{event.minute ?? "—"}</time><EventGlyph kind={event.event_kind} />
-    <div className="match-event-main"><div className="match-event-title"><strong>{eventLabel(event.event_kind)}</strong>
+    <div className="match-event-main"><div className="match-event-title"><strong>{eventLabel(event)}</strong>
       {event.score_after_home !== null && event.score_after_away !== null &&
         <span className="match-event-score" aria-label={`Marcador ${event.score_after_home} a ${event.score_after_away}`}>{event.score_after_home}–{event.score_after_away}</span>}
     </div>
@@ -489,10 +489,12 @@ function EventGlyph({ kind }: { kind: MatchEventKind }) {
 
 function accessibleEventDescription(event: MatchEvent): string {
   const minute = event.minute ? `, ${event.minute} minuto` : "";
-  return `${eventLabel(event.event_kind)}${minute}`;
+  return `${eventLabel(event)}${minute}`;
 }
 
-function eventLabel(kind: MatchEventKind): string {
+function eventLabel(event: MatchEvent): string {
+  const kind = event.event_kind;
+  if (kind === "other" && event.source_description) return event.source_description;
   const labels: Record<string, string> = {
     goal: "Gol", penalty: "Gol de penalti", missed_penalty: "Penalti fallado", own_goal: "Gol en propia puerta", yellow_card: "Tarjeta amarilla",
     red_card: "Expulsión", second_yellow: "Segunda amarilla · expulsión", substitution: "Sustitución",

@@ -9,7 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from pathlib import Path
 from typing import Any, Mapping
@@ -38,15 +38,15 @@ from football_data_hub.providers.bdfutbol.match_details.semantic_validation impo
     roster_identity_errors,
 )
 
-PARSER_VERSION = "match-detail-semantic-0.3.1"
+PARSER_VERSION = "match-detail-semantic-0.3.2"
 _TEAM_HREF = re.compile(r"(?:^|/)e/e(\d+)\.html$")
 _COACH_HREF = re.compile(r"(?:^|/)l/l(\d+)\.html$")
-_STADIUM_HREF = re.compile(r"(?:^|/)s/(\d+)\.html$")
+_STADIUM_PATH = re.compile(r"^/es/s/([A-Za-z0-9_-]+)\.html$")
 _REFEREE_HREF = re.compile(r"(?:^|/)r/r(\d+)\.html$")
 _IMAGE_ID = re.compile(r"(?:^|/)i/m/(\d+)\.(?:png|webp|jpe?g)$", re.IGNORECASE)
 _GOAL_SCORE = re.compile(r"^(\d+)\s*-\s*(\d+)$")
 _MINUTE = re.compile(
-    r"^\s*(\d+\s*(?:\+\s*\d+)?)\s*[’']?\s*(?:\(pen\))?\s*$",
+    r"^\s*(\d+\s*(?:\+\s*\d+)?)\s*[’']?\s*(?:\(pen\)|\(pp\))?\s*$",
     re.IGNORECASE,
 )
 _DATE_ONLY = re.compile(r"(?<!\d)(\d{1,2})/(\d{1,2})/(\d{4})(?!\d)")
@@ -321,6 +321,31 @@ def _profile_id(href: str, pattern: re.Pattern[str], label: str) -> int:
     return int(match.group(1))
 
 
+def _stadium_id(href: str, base_url: str) -> str:
+    """Preserve BDFutbol's opaque stadium slug (which is not always numeric)."""
+
+    resolved = urlsplit(urljoin(base_url, href))
+    try:
+        port = resolved.port
+    except ValueError as exc:
+        raise MatchDetailParserError(
+            f"Enlace de estadio contiene un puerto no válido: {href!r}"
+        ) from exc
+    match = _STADIUM_PATH.fullmatch(resolved.path)
+    if (
+        resolved.scheme != "https"
+        or resolved.hostname != "www.bdfutbol.com"
+        or resolved.username is not None
+        or resolved.password is not None
+        or port not in {None, 443}
+        or resolved.query
+        or resolved.fragment
+        or match is None
+    ):
+        raise MatchDetailParserError(f"Enlace de estadio no reconocido: {href!r}")
+    return match.group(1)
+
+
 def _minute(value: str) -> tuple[str | None, int | None, int | None]:
     # Match the complete event text. A number embedded in an unexpected label
     # must not be mistaken for a minute (for example, "Evento 17").
@@ -510,6 +535,8 @@ def _event_kind(icon: Tag) -> str:
         ("entra", "entra"): "substitution_in",
         ("g", "gol"): "goal",
         ("gp", "gol de penalty"): "penalty_goal",
+        ("gpp", "gol en propia puerta"): "own_goal",
+        ("l", "lesión"): "other",
         ("pf", "penalty fallado"): "missed_penalty",
         ("tg", "tarjeta amarilla"): "yellow_card",
         ("tg2", "doble tarjeta amarilla"): "second_yellow",
@@ -663,7 +690,7 @@ def _parse_appearance_table(
         events.extend(row_events)
         if role == "starter" and incoming:
             errors.append(f"starter_has_incoming_marker:{side}:{player_id}")
-        if role == "substitute" and outgoing:
+        if role == "substitute" and outgoing and not incoming:
             errors.append(f"substitute_has_outgoing_marker:{side}:{player_id}")
         appearances.append(
             PlayerAppearance(
@@ -816,8 +843,14 @@ def _parse_goal_summary(
                 )
                 continue
             is_penalty = "(pen)" in raw.casefold()
+            is_own_goal = "(pp)" in raw.casefold()
+            event_type = (
+                "own_goal" if is_own_goal
+                else "penalty_goal" if is_penalty
+                else "goal"
+            )
             event = MatchEvent(
-                event_type="penalty_goal" if is_penalty else "goal",
+                event_type=event_type,
                 side=side,  # type: ignore[arg-type]
                 team_id=teams[side].team_id,
                 player_id=player_id,
@@ -829,7 +862,7 @@ def _parse_goal_summary(
                 score_after_home=int(score_match.group(1)),
                 score_after_away=int(score_match.group(2)),
                 raw_icon_class=None,
-                raw_icon_title="(pen)" if is_penalty else None,
+                raw_icon_title="(pp)" if is_own_goal else "(pen)" if is_penalty else None,
                 raw_text=raw,
                 source_reference=(
                     f"css:div.hero.hero-partit > div.row.pt-1.pt-md-3.pb-2.text-center "
@@ -854,14 +887,16 @@ def _event_signature(event: MatchEvent | _RawRosterEvent) -> tuple[Any, ...]:
             event.player_id,
             event.minute_literal,
             event.event_type == "penalty_goal",
-            event.event_type in {"goal", "penalty_goal"},
+            event.event_type in {"goal", "penalty_goal", "own_goal"},
+            event.event_type == "own_goal",
         )
     return (
         event.side,
         event.player_id,
         event.minute_literal,
         event.kind == "penalty_goal",
-        event.kind in {"goal", "penalty_goal"},
+        event.kind in {"goal", "penalty_goal", "own_goal"},
+        event.kind == "own_goal",
     )
 
 
@@ -872,10 +907,34 @@ def _semantic_events(
     evidence: _EvidenceBuilder,
 ) -> tuple[tuple[MatchEvent, ...], list[str]]:
     errors: list[str] = []
-    summary_keys = sorted(
-        (_event_signature(event) for event in summary_goals), key=repr
-    )
-    icon_goals = [event for event in roster_events if event.kind in {"goal", "penalty_goal"}]
+    player_side_by_goal: dict[tuple[int, str | None], list[_RawRosterEvent]] = {}
+    for event in roster_events:
+        if event.kind == "own_goal":
+            player_side_by_goal.setdefault(
+                (event.player_id, event.minute_literal), []
+            ).append(event)
+    reconciled_goals: list[MatchEvent] = []
+    for event in summary_goals:
+        if event.event_type != "own_goal":
+            reconciled_goals.append(event)
+            continue
+        markers = player_side_by_goal.get((event.player_id, event.minute_literal), [])
+        if len(markers) != 1 or event.side == markers[0].side:
+            errors.append(
+                f"own_goal_summary_and_lineup_marker_disagree:{event.player_id}:{event.minute_literal}"
+            )
+            reconciled_goals.append(event)
+            continue
+        marker = markers[0]
+        reconciled_goals.append(
+            replace(event, side=marker.side, team_id=marker.team_id)
+        )
+    summary_goals = reconciled_goals
+    summary_keys = sorted((_event_signature(event) for event in summary_goals), key=repr)
+    icon_goals = [
+        event for event in roster_events
+        if event.kind in {"goal", "penalty_goal", "own_goal"}
+    ]
     icon_keys = sorted(
         (
             (
@@ -884,6 +943,7 @@ def _semantic_events(
                 event.minute_literal,
                 event.kind == "penalty_goal",
                 True,
+                event.kind == "own_goal",
             )
             for event in icon_goals
         ),
@@ -893,7 +953,7 @@ def _semantic_events(
         errors.append("goal_summary_and_lineup_markers_disagree")
     result_events = list(summary_goals)
     for event in roster_events:
-        if event.kind in {"goal", "penalty_goal"}:
+        if event.kind in {"goal", "penalty_goal", "own_goal"}:
             evidence.add(
                 f"events.goal_marker[{event.side}.{event.player_id}.{event.minute_literal}]",
                 "observed",
@@ -1223,7 +1283,7 @@ def parse_match_detail_html(
     evidence.add("match.kickoff_time_local", kickoff_state, "div.hero.hero-partit .f14 label='Fecha'", date_raw, kickoff)
     evidence.add("match.timezone", "not_observed", "div.hero.hero-partit .f14 label='Fecha'", date_raw, None)
 
-    stadium_id = _profile_id(stadium_href, _STADIUM_HREF, "estadio")
+    stadium_id = _stadium_id(stadium_href, source_url)
     stadium_url = urljoin(source_url, stadium_href)
     stadium_name = stadium_raw
     stadium_id_value = _provenanced(stadium_id, state="observed", origin="match_detail_dom", raw=stadium_href, reference="div.hero.hero-partit .f14 label='Estadio' a[href]")
@@ -1325,23 +1385,30 @@ def parse_match_detail_html(
         for side, values in subs_by_side.items()
         for appearance in values or ()
     }
-    for goal in summary_goals:
-        if (goal.side, goal.player_id or -1) not in roster_player_ids:
-            errors.append(f"goal_scorer_not_in_roster:{goal.side}:{goal.player_id}")
     events, event_errors = _semantic_events(summary_goals, raw_roster_events, teams_by_side, evidence)
     errors.extend(event_errors)
     for event in events:
         if event.player_id is None or (event.side, event.player_id) not in roster_player_ids:
             errors.append(f"event_player_not_in_roster:{event.side}:{event.player_id}")
+    goal_events = [
+        event for event in events
+        if event.event_type in {"goal", "penalty_goal", "own_goal"}
+    ]
+    scored_sides = [
+        ("away" if event.side == "home" else "home")
+        if event.event_type == "own_goal"
+        else event.side
+        for event in goal_events
+    ]
     goals_count_ok = (
-        sum(event.side == "home" and event.event_type in {"goal", "penalty_goal"} for event in events) == home_goals
-        and sum(event.side == "away" and event.event_type in {"goal", "penalty_goal"} for event in events) == away_goals
+        scored_sides.count("home") == home_goals
+        and scored_sides.count("away") == away_goals
     )
     if not goals_count_ok:
         errors.append("goal_event_count_does_not_match_score")
     checks.append(ValidationCheck("goal_summary_count_matches_score", goals_count_ok, f"{len(summary_goals)} goals for {home_goals}-{away_goals}"))
     goal_progression_ok, goal_progression_detail = goal_progression_is_consistent(
-        summary_goals, home_goals, away_goals
+        goal_events, home_goals, away_goals
     )
     if not goal_progression_ok:
         errors.append("goal_score_progression_invalid")

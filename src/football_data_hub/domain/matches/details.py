@@ -110,6 +110,7 @@ class MatchEvent:
     related_player_name: str | None = None
     is_penalty: bool | None = None
     is_own_goal: bool | None = None
+    source_description: str | None = None
     score_after_home: int | None = None
     score_after_away: int | None = None
     source_text: str | None = None
