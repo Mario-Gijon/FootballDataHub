@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import threading
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -246,9 +247,24 @@ def test_batch_fails_closed_on_campaign_integrity_and_lock_contention(tmp_path, 
     real_ledger_root = tmp_path / "actual-store" / "campaigns"
     real_ledger_root.mkdir(parents=True)
     ledger.root = real_ledger_root
-    with operations._batch_lock(real_ledger_root.parent), pytest.raises(operations.CampaignOperationsError, match="otro lote"):
+    contention = []
+    with operations._batch_lock(real_ledger_root.parent):
         with operations._batch_lock(real_ledger_root.parent):
+            contention_thread = threading.Thread(
+                target=lambda: _attempt_batch_lock(real_ledger_root.parent, contention)
+            )
+            contention_thread.start()
+            contention_thread.join(timeout=2)
+            assert not contention_thread.is_alive()
+    assert contention == ["Ya hay otro lote operativo en ejecución"]
+
+
+def _attempt_batch_lock(store_root: Path, errors: list[str]) -> None:
+    try:
+        with operations._batch_lock(store_root):
             pass
+    except operations.CampaignOperationsError as exc:
+        errors.append(str(exc))
 
 
 def test_operation_report_hash_detects_tampering_and_atomic_writer_leaves_previous_run_readable(tmp_path, monkeypatch):

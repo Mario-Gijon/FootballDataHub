@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import fcntl
+import hashlib
+import json
 import os
 import stat
 import uuid
@@ -38,6 +40,9 @@ _VALIDATED_STATES = {
 }
 _DRAFT_STATES = {"DRAFT_PREPARED", "DOCUMENT_APPROVED", "PUBLISHED", "REVIEW_COMPLETED"}
 _BLOCKED_STATES = {"STOPPED", "INTERRUPTED_REQUIRES_REVIEW", "VALIDATION_FAILED", "REVALIDATION_FAILED"}
+CAMPAIGN_AUTHORIZATION_SCHEMA = (
+    "football_data_hub.match_detail_campaign_authorization.v1"
+)
 
 
 def _now() -> str:
@@ -108,6 +113,361 @@ def _campaign_metrics(preflight: dict[str, Any]) -> dict[str, int]:
         "access_failures": states.count("STOPPED"),
         "validation_failures": sum(state in {"VALIDATION_FAILED", "REVALIDATION_FAILED"} for state in states),
     }
+
+
+def build_campaign_run_plan(
+    ledger: OperationalMatchCampaignLedger,
+    campaign_id: str,
+    *,
+    status_report: dict[str, Any] | None = None,
+    context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build the exact read-only candidate set that one campaign confirmation covers."""
+
+    preflight = ledger.preflight(campaign_id)
+    candidates = sorted(
+        preflight["candidates"],
+        key=lambda row: (
+            row["group"], row["matchday"], int(row["source_match_id"])
+        ),
+    )
+    if not candidates:
+        raise CampaignOperationsError("La campaña no contiene partidos para ejecutar")
+    if any(row["state"] != "NOT_AUTHORIZED" for row in candidates):
+        states = sorted({row["state"] for row in candidates})
+        raise CampaignOperationsError(
+            "La confirmación de campaña exige que todos los candidatos estén "
+            f"sin autorizar; estados actuales: {states}"
+        )
+
+    required_identity = (
+        "internal_id", "source_match_id", "source_match_url", "group",
+        "matchday", "home_team_id", "home_team_name", "away_team_id",
+        "away_team_name", "reference_result", "source_match_date",
+        "matchday_date", "source_generation_id",
+        "source_generation_manifest_sha256",
+    )
+    selected = [
+        {key: row.get(key) for key in required_identity} for row in candidates
+    ]
+    internal_ids = [row["internal_id"] for row in selected]
+    match_ids = [row["source_match_id"] for row in selected]
+    urls = [row["source_match_url"] for row in selected]
+    if (
+        len(set(internal_ids)) != len(selected)
+        or len(set(match_ids)) != len(selected)
+        or len(set(urls)) != len(selected)
+        or any(not isinstance(url, str) or not url.startswith("https://www.bdfutbol.com/") for url in urls)
+    ):
+        raise MatchCampaignIntegrityError(
+            "La lista de campaña contiene IDs o URLs duplicados/no válidos"
+        )
+
+    source_generation_ids = {row["source_generation_id"] for row in selected}
+    source_manifest_hashes = {
+        row["source_generation_manifest_sha256"] for row in selected
+    }
+    if len(source_generation_ids) != 1 or len(source_manifest_hashes) != 1:
+        raise MatchCampaignIntegrityError(
+            "La lista de campaña mezcla generaciones de origen"
+        )
+    if status_report is not None:
+        current_by_id = {
+            row["internal_id"]: row for row in status_report.get("matches", [])
+        }
+        context = context or {}
+        for selected_row in selected:
+            current = current_by_id.get(selected_row["internal_id"])
+            if current is None or any(
+                current.get(key) != selected_row.get(key)
+                for key in (
+                    "internal_id", "source_match_id", "source_match_url", "group",
+                    "matchday", "home_team_id", "home_team_name", "away_team_id",
+                    "away_team_name", "reference_result", "source_match_date",
+                    "matchday_date", "source_generation_id",
+                    "source_generation_manifest_sha256",
+                )
+            ):
+                raise MatchCampaignIntegrityError(
+                    "El preflight actual no coincide con la campaña: "
+                    f"{selected_row['internal_id']}"
+                )
+            campaign_state = current.get("campaign")
+            if not isinstance(campaign_state, dict) or (
+                campaign_state.get("campaign_id") != campaign_id
+                or campaign_state.get("state") != "NOT_AUTHORIZED"
+            ):
+                raise CampaignOperationsError(
+                    "El candidato dejó de estar disponible para la campaña: "
+                    f"{selected_row['internal_id']}"
+                )
+            internal_id = selected_row["internal_id"]
+            if (
+                internal_id in context.get("published_ids", set())
+                or internal_id in context.get("captured_ids", set())
+                or internal_id in context.get("blocked_ids", set())
+            ):
+                raise CampaignOperationsError(
+                    "Candidato publicado, capturado o bloqueado en el preflight: "
+                    f"{internal_id}"
+                )
+    digest_body = {
+        "schema_version": CAMPAIGN_AUTHORIZATION_SCHEMA,
+        "campaign_id": campaign_id,
+        "proposal_id": preflight["proposal_id"],
+        "proposal_sha256": preflight["proposal_sha256"],
+        "plan_sha256": preflight["plan_sha256"],
+        "source_generation_id": next(iter(source_generation_ids)),
+        "source_generation_manifest_sha256": next(
+            iter(source_manifest_hashes)
+        ),
+        "candidate_count": len(selected),
+        "candidates": selected,
+    }
+    canonical = json.dumps(
+        digest_body, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    digest = hashlib.sha256(canonical).hexdigest()
+    counts_by_group = {
+        group: sum(row["group"] == group for row in selected)
+        for group in sorted({row["group"] for row in selected})
+    }
+    counts_by_group_matchday: dict[str, dict[str, int]] = {}
+    for row in selected:
+        group_days = counts_by_group_matchday.setdefault(row["group"], {})
+        key = str(row["matchday"])
+        group_days[key] = group_days.get(key, 0) + 1
+    return {
+        **digest_body,
+        "candidate_set_sha256": digest,
+        "counts_by_group": counts_by_group,
+        "counts_by_group_matchday": counts_by_group_matchday,
+        "candidates": selected,
+        "automatic_retries": 0,
+        "maximum_navigations_per_authorization": 1,
+        "http_enabled": False,
+        "browser_started": False,
+        "navigation_enabled": False,
+        "capture_promotion_enabled": False,
+        "approval_enabled": False,
+        "publication_enabled": False,
+    }
+
+
+def run_confirmed_campaign(
+    *,
+    ledger: OperationalMatchCampaignLedger,
+    campaign_id: str,
+    data_root: Path,
+    player_capture_root: Path,
+    operator: str,
+    confirmed_candidate_set_sha256: str,
+    refresh_snapshot: Callable[[], tuple[dict[str, Any], dict[str, Any]]],
+    execute_candidate: Callable[
+        [dict[str, Any], str, dict[str, Any], dict[str, Any]], dict[str, Any]
+    ],
+    progress_callback: Callable[[dict[str, Any]], None] | None = None,
+) -> dict[str, Any]:
+    """Authorize each candidate under one reviewed campaign digest, then reuse the sequential executor."""
+
+    if not operator.strip():
+        raise MatchCampaignAuthorizationError("Se requiere identificar al operador")
+    plan = build_campaign_run_plan(ledger, campaign_id)
+    if confirmed_candidate_set_sha256 != plan["candidate_set_sha256"]:
+        raise MatchCampaignAuthorizationError(
+            "La confirmación no coincide con la huella de la lista completa; "
+            "no se creó ninguna autorización"
+        )
+
+    run_id = "campaign-authorization-" + uuid.uuid4().hex
+    report_root = ledger.root.parent / "operations" / "reports" / campaign_id
+    report: dict[str, Any] = {
+        "schema_version": REPORT_SCHEMA,
+        "operation_type": "campaign_authorization_and_acquisition",
+        "run_id": run_id,
+        "campaign_id": campaign_id,
+        "operator": operator.strip(),
+        "started_at_utc": _now(),
+        "finished_at_utc": None,
+        "status": "AUTHORIZING",
+        "candidate_set_sha256": plan["candidate_set_sha256"],
+        "candidate_count": plan["candidate_count"],
+        "campaign_authorization_id": run_id,
+        "authorized_count": 0,
+        "authorized_candidates": [],
+        "http_enabled": False,
+        "browser_started": False,
+        "navigation_enabled": False,
+        "automatic_retries": 0,
+        "maximum_navigations_per_authorization": 1,
+        "capture_promotion_enabled": False,
+        "approval_enabled": False,
+        "publication_enabled": False,
+    }
+
+    # Serialize campaign approval and execution as one operator session. The
+    # nested executor reuses this thread's lock through the lock manager's
+    # private re-entrant implementation; no caller can bypass lock acquisition.
+    with _batch_lock(ledger.root.parent), _player_acquisition_idle_lock(
+        player_capture_root
+    ) as player_lock_path:
+        current_report, current_context = refresh_snapshot()
+        current_plan = build_campaign_run_plan(
+            ledger,
+            campaign_id,
+            status_report=current_report,
+            context=current_context,
+        )
+        if current_plan["candidate_set_sha256"] != plan["candidate_set_sha256"]:
+            raise MatchCampaignAuthorizationError(
+                "La lista de partidos cambió después de preparar la confirmación"
+            )
+        current_by_id = {
+            row["internal_id"]: row for row in current_report.get("matches", [])
+        }
+        report["player_acquisition_lock"] = str(player_lock_path)
+        _write_report(report_root, report)
+        try:
+            for selected in plan["candidates"]:
+                current = current_by_id.get(selected["internal_id"])
+                if current is None or any(
+                    current.get(key) != selected.get(key)
+                    for key in (
+                        "internal_id", "source_match_id", "source_match_url",
+                        "group", "matchday", "home_team_id", "home_team_name",
+                        "away_team_id", "away_team_name", "reference_result",
+                        "source_match_date", "matchday_date", "source_generation_id",
+                        "source_generation_manifest_sha256",
+                    )
+                ):
+                    raise MatchCampaignIntegrityError(
+                        "El candidato no coincide con la generación actual: "
+                        f"{selected['internal_id']}"
+                    )
+                internal_id = selected["internal_id"]
+                if (
+                    internal_id in current_context.get("published_ids", set())
+                    or internal_id in current_context.get("captured_ids", set())
+                    or internal_id in current_context.get("blocked_ids", set())
+                ):
+                    raise MatchCampaignAuthorizationError(
+                        f"El candidato ya está publicado, capturado o bloqueado: {internal_id}"
+                    )
+                authorization_id = ledger.authorize(
+                    campaign_id=campaign_id,
+                    internal_id=internal_id,
+                    confirmed_url=selected["source_match_url"],
+                    operator=operator,
+                    confirmation=AUTHORIZE_CONFIRMATION,
+                    current_status=current,
+                    published=False,
+                    captured=False,
+                    blocked=False,
+                    campaign_authorization_id=run_id,
+                    campaign_candidate_set_sha256=plan["candidate_set_sha256"],
+                    data_root=data_root,
+                )
+                report["authorized_candidates"].append(
+                    {
+                        "internal_id": internal_id,
+                        "source_match_id": selected["source_match_id"],
+                        "source_match_url": selected["source_match_url"],
+                        "authorization_id": authorization_id,
+                    }
+                )
+                report["authorized_count"] += 1
+                _write_report(report_root, report)
+        except (MatchCampaignAuthorizationError, MatchCampaignIntegrityError, CampaignOperationsError) as exc:
+            report["status"] = "AUTHORIZATION_BLOCKED_NO_NAVIGATION"
+            report["diagnostic"] = f"{type(exc).__name__}: {exc}"
+            report["finished_at_utc"] = _now()
+            _write_report(report_root, report)
+            return {
+                **report,
+                "report_path": str(report_root / f"{run_id}.json"),
+            }
+
+        authorized_preflight = ledger.preflight(campaign_id)
+        authorized_rows = authorized_preflight["candidates"]
+        if (
+            len(authorized_rows) != plan["candidate_count"]
+            or any(row["state"] != "AUTHORIZED" for row in authorized_rows)
+            or report["authorized_count"] != plan["candidate_count"]
+        ):
+            report["status"] = "AUTHORIZATION_BLOCKED_NO_NAVIGATION"
+            report["diagnostic"] = "No se pudieron acreditar todas las autorizaciones individuales"
+            report["finished_at_utc"] = _now()
+            _write_report(report_root, report)
+            return {
+                **report,
+                "report_path": str(report_root / f"{run_id}.json"),
+            }
+        for row in authorized_rows:
+            events = ledger.candidate_events(campaign_id, row["internal_id"])
+            authorization = events[0].get("authorization") if events else None
+            if (
+                len(events) != 1
+                or events[0].get("event_type") != "AUTHORIZED"
+                or authorization is None
+                or authorization.get("campaign_authorization_id") != run_id
+                or authorization.get("campaign_candidate_set_sha256")
+                != plan["candidate_set_sha256"]
+            ):
+                report["status"] = "AUTHORIZATION_BLOCKED_NO_NAVIGATION"
+                report["diagnostic"] = (
+                    "Una autorización individual no pertenece a esta confirmación"
+                )
+                report["finished_at_utc"] = _now()
+                _write_report(report_root, report)
+                return {
+                    **report,
+                    "report_path": str(report_root / f"{run_id}.json"),
+                }
+
+        report["status"] = "AUTHORIZED_CAMPAIGN_EXECUTION_STARTED"
+        report["finished_at_utc"] = _now()
+        _write_report(report_root, report)
+        acquisition = run_authorized_batch(
+            ledger=ledger,
+            campaign_id=campaign_id,
+            data_root=data_root,
+            player_capture_root=player_capture_root,
+            operator=operator,
+            limit=plan["candidate_count"],
+            confirmation=SESSION_CONFIRMATION,
+            player_idle_confirmation=PLAYER_IDLE_CONFIRMATION,
+            refresh_snapshot=refresh_snapshot,
+            execute_candidate=execute_candidate,
+            progress_callback=progress_callback,
+            expected_campaign_authorization_id=run_id,
+            expected_campaign_candidate_set_sha256=plan["candidate_set_sha256"],
+        )
+        report["status"] = f"ACQUISITION_{acquisition['status']}"
+        report["acquisition_run_id"] = acquisition.get("run_id")
+        report["acquisition_report_path"] = acquisition.get("report_path")
+        report["http_enabled"] = acquisition.get("http_enabled", False)
+        report["browser_started"] = acquisition.get("browser_start_requested", False)
+        report["navigation_enabled"] = acquisition.get("navigation_enabled", False)
+        report["navigation_requests"] = acquisition.get("navigation_requests", 0)
+        report["finished_at_utc"] = _now()
+        authorization_report_path = _write_report(report_root, report)
+        return {
+            "status": acquisition["status"],
+            "campaign_id": campaign_id,
+            "campaign_authorization_id": run_id,
+            "candidate_set_sha256": plan["candidate_set_sha256"],
+            "candidate_count": plan["candidate_count"],
+            "authorized_count": report["authorized_count"],
+            "authorization_report_path": str(authorization_report_path),
+            "acquisition_report": acquisition,
+            "http_enabled": acquisition.get("http_enabled", False),
+            "browser_started": acquisition.get("browser_start_requested", False),
+            "navigation_enabled": acquisition.get("navigation_enabled", False),
+            "automatic_retries": 0,
+            "capture_promotion_enabled": False,
+            "approval_enabled": False,
+            "publication_enabled": False,
+        }
 
 
 def authorize_reviewed_candidates(
@@ -323,6 +683,8 @@ def run_authorized_batch(
     refresh_snapshot: Callable[[], tuple[dict[str, Any], dict[str, Any]]],
     execute_candidate: Callable[[dict[str, Any], str, dict[str, Any], dict[str, Any]], dict[str, Any]],
     progress_callback: Callable[[dict[str, Any]], None] | None = None,
+    expected_campaign_authorization_id: str | None = None,
+    expected_campaign_candidate_set_sha256: str | None = None,
 ) -> dict[str, Any]:
     """Run only fresh, individually authorized candidates, one URL at a time."""
 
@@ -359,6 +721,11 @@ def run_authorized_batch(
         "automatic_retries": 0,
         "maximum_navigations_per_authorization": 1,
     }
+    if expected_campaign_authorization_id is not None:
+        report["campaign_authorization_id"] = expected_campaign_authorization_id
+        report["campaign_candidate_set_sha256"] = (
+            expected_campaign_candidate_set_sha256
+        )
     report_root = ledger.root.parent / "operations" / "reports" / campaign_id
     with _batch_lock(ledger.root.parent):
         old_reports = _session_report(ledger, campaign_id)
@@ -391,7 +758,8 @@ def run_authorized_batch(
         report_path = _write_report(report_root, report)
         try:
             with _player_acquisition_idle_lock(player_capture_root) as player_lock_path:
-                report["player_acquisition_lock"] = str(player_lock_path)
+                if player_lock_path is not None:
+                    report["player_acquisition_lock"] = str(player_lock_path)
                 report_path = _write_report(report_root, report)
                 initial = ledger.preflight(campaign_id)
                 stopped_candidates = [
@@ -463,6 +831,18 @@ def run_authorized_batch(
                     authorization_id = authorizations[0].get("authorization_id")
                     if authorization_id != candidate["authorization_id"] or authorizations[0].get("source_match_url") != candidate["source_match_url"]:
                         row = {"internal_id": internal_id, "source_match_id": candidate["source_match_id"], "status": "BLOCKED_INVALID_AUTHORIZATION"}
+                        report["candidates"].append(row)
+                        report.update({"status": "BLOCKED_MANUAL_REVIEW", "stop_acquisition": True, "requires_manual_review": True})
+                        report["error_count"] += 1
+                        report_path = _write_report(report_root, report)
+                        break
+                    if expected_campaign_authorization_id is not None and (
+                        authorizations[0].get("campaign_authorization_id")
+                        != expected_campaign_authorization_id
+                        or authorizations[0].get("campaign_candidate_set_sha256")
+                        != expected_campaign_candidate_set_sha256
+                    ):
+                        row = {"internal_id": internal_id, "source_match_id": candidate["source_match_id"], "status": "BLOCKED_INVALID_CAMPAIGN_AUTHORIZATION"}
                         report["candidates"].append(row)
                         report.update({"status": "BLOCKED_MANUAL_REVIEW", "stop_acquisition": True, "requires_manual_review": True})
                         report["error_count"] += 1

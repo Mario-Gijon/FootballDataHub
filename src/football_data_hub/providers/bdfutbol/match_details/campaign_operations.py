@@ -14,6 +14,7 @@ import os
 import re
 import stat
 import tempfile
+import threading
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -27,6 +28,7 @@ OPERATIONS_SCHEMA = "football_data_hub.match_detail_campaign_operations.v1"
 REPORT_SCHEMA = "football_data_hub.match_detail_campaign_operations_report.v1"
 PUBLISH_CONFIRMATION = "PUBLISH_ONLY_INDIVIDUALLY_APPROVED_MATCH_DETAILS"
 _CAMPAIGN_ID = re.compile(r"^match-detail-campaign-v2-[0-9a-f]{16}$")
+_batch_lock_state = threading.local()
 
 
 class CampaignOperationsError(ValueError):
@@ -89,6 +91,25 @@ def _batch_lock(store_root: Path) -> Iterator[None]:
         operations_root.mkdir(parents=True)
     lock_path = operations_root / "offline-batch.lock"
     _reject_symlink(lock_path, "El lock de operaciones")
+    lock_key = str(lock_path.resolve(strict=False))
+    held = getattr(_batch_lock_state, "held", None)
+    if held is None:
+        held = {}
+        _batch_lock_state.held = held
+    # Campaign authorization and its executor are one operation in one
+    # thread. Reuse that thread's already-held OS lock instead of exposing a
+    # caller-controlled "lock already held" flag that could skip locking.
+    if lock_key in held:
+        descriptor, depth = held[lock_key]
+        held[lock_key] = (descriptor, depth + 1)
+        try:
+            yield
+        finally:
+            current_descriptor, current_depth = held[lock_key]
+            if current_descriptor != descriptor or current_depth <= 1:
+                raise CampaignOperationsError("Estado interno de reentrada del lock inconsistente")
+            held[lock_key] = (descriptor, current_depth - 1)
+        return
     flags = os.O_CREAT | os.O_RDWR | getattr(os, "O_NOFOLLOW", 0)
     descriptor = os.open(lock_path, flags, 0o600)
     try:
@@ -98,8 +119,10 @@ def _batch_lock(store_root: Path) -> Iterator[None]:
             fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as exc:
             raise CampaignOperationsError("Ya hay otro lote operativo en ejecución") from exc
+        held[lock_key] = (descriptor, 1)
         yield
     finally:
+        held.pop(lock_key, None)
         try:
             fcntl.flock(descriptor, fcntl.LOCK_UN)
         finally:

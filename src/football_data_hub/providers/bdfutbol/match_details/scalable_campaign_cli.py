@@ -79,6 +79,18 @@ def _parser() -> argparse.ArgumentParser:
     initialize.add_argument("--proposal-id", required=True)
     campaign_preflight = commands.add_parser("campaign-preflight", help="Consulta integridad y progreso de una campaña v2")
     campaign_preflight.add_argument("--campaign-id", required=True)
+    campaign_run_plan = commands.add_parser(
+        "campaign-run-plan",
+        help="Muestra la lista completa y el hash que cubriría una única confirmación; solo lectura",
+    )
+    campaign_run_plan.add_argument("--campaign-id", required=True)
+    run_campaign = commands.add_parser(
+        "run-confirmed-campaign",
+        help="Autoriza individualmente la lista confirmada y la ejecuta secuencialmente",
+    )
+    run_campaign.add_argument("--campaign-id", required=True)
+    run_campaign.add_argument("--operator", required=True)
+    run_campaign.add_argument("--confirm-candidate-set-sha256", required=True)
     batch_preflight = commands.add_parser("batch-preflight", help="Preflight solo lectura de trabajo offline de una campaña v2")
     batch_preflight.add_argument("--campaign-id", required=True)
     batch_offline = commands.add_parser("batch-offline", help="Valida HTML ya guardado y prepara borradores; nunca navega")
@@ -625,8 +637,19 @@ def main(argv: list[str] | None = None) -> int:
             "store_root": args.store_root,
             "published_root": args.published_root,
         }
-        if args.command in {"status", "worklist", "next", "propose", "initialize", "authorize", "execute", "authorize-reviewed", "execute-authorized-batch"}:
+        if args.command in {"status", "worklist", "next", "propose", "initialize", "authorize", "execute", "authorize-reviewed", "execute-authorized-batch", "campaign-run-plan", "run-confirmed-campaign"}:
             report, proposals, context = _load_report(args)
+        if args.command == "campaign-run-plan":
+            from .supervised_acquisition import build_campaign_run_plan
+
+            result = build_campaign_run_plan(
+                ledger,
+                args.campaign_id,
+                status_report=report,
+                context=context,
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+            return 0
         if args.command == "worklist":
             from .campaign_operations import build_worklist
 
@@ -750,6 +773,94 @@ def main(argv: list[str] | None = None) -> int:
                 execute_candidate=execute_candidate,
                 progress_callback=show_progress,
             )
+            print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+            return 0 if result["status"] == "COMPLETED" else 2
+        if args.command == "run-confirmed-campaign":
+            from .campaign_operations import run_offline_batch
+            from .operational_campaign import EXECUTE_CONFIRMATION, PLAYER_IDLE_CONFIRMATION
+            from .supervised_acquisition import run_confirmed_campaign
+
+            def refresh_snapshot():
+                fresh_report, _fresh_proposals, fresh_context = _load_report(args)
+                return fresh_report, fresh_context
+
+            source_inventory = ledger.source_inventory(args.campaign_id)
+
+            def execute_candidate(candidate, authorization_id, current, fresh_context):
+                internal_id = candidate["internal_id"]
+                return ledger.execute_real(
+                    campaign_id=args.campaign_id,
+                    internal_id=internal_id,
+                    authorization_id=authorization_id,
+                    confirmed_url=candidate["source_match_url"],
+                    data_root=data_root,
+                    profile_dir=data_root / "browser-profiles" / f"match-detail-v2-{candidate['source_match_id']}",
+                    confirmation=EXECUTE_CONFIRMATION,
+                    player_browser_idle_confirmation=PLAYER_IDLE_CONFIRMATION,
+                    store_root=args.store_root,
+                    store_inventory=source_inventory,
+                    current_status=current,
+                    published=internal_id in fresh_context["published_ids"],
+                    captured=internal_id in fresh_context["captured_ids"],
+                    blocked=internal_id in fresh_context["blocked_ids"],
+                )
+
+            def show_progress(event):
+                if event["event"] == "candidate_starting":
+                    reference = event.get("reference_result")
+                    score = (
+                        f"{reference['home_goals']}–{reference['away_goals']}"
+                        if isinstance(reference, dict)
+                        and isinstance(reference.get("home_goals"), int)
+                        and isinstance(reference.get("away_goals"), int)
+                        else "resultado no disponible"
+                    )
+                    date_label = (
+                        f"partido {event['source_match_date']}"
+                        if event.get("source_match_date")
+                        else f"jornada {event.get('matchday_date') or 'sin fecha'}"
+                    )
+                    print(
+                        f"[{event['index']}/{event['total']}] {event['internal_id']} | "
+                        f"Grupo {event['group']} · J{event['matchday']} · {date_label} | "
+                        f"{event['home_team_name']} {score} {event['away_team_name']} | "
+                        f"{event['requested_url']} — navegación única iniciando",
+                        file=sys.stderr,
+                        flush=True,
+                    )
+                else:
+                    print(
+                        f"[{event['index']}/{event['total']}] {event['internal_id']} "
+                        f"— {event['status']} (attempt={event.get('attempt_id')})",
+                        file=sys.stderr,
+                        flush=True,
+                    )
+
+            result = run_confirmed_campaign(
+                ledger=ledger,
+                campaign_id=args.campaign_id,
+                data_root=data_root,
+                player_capture_root=args.player_team_captures_root,
+                operator=args.operator,
+                confirmed_candidate_set_sha256=args.confirm_candidate_set_sha256,
+                refresh_snapshot=refresh_snapshot,
+                execute_candidate=execute_candidate,
+                progress_callback=show_progress,
+            )
+            acquisition = result.get("acquisition_report")
+            if isinstance(acquisition, dict) and acquisition.get("captured_this_session", 0):
+                offline = run_offline_batch(
+                    ledger=ledger,
+                    campaign_id=args.campaign_id,
+                    data_root=data_root,
+                    player_inventory_root=args.player_inventory_root,
+                    player_compact_root=args.player_compact_root,
+                    player_team_captures_root=args.player_team_captures_root,
+                    player_published_index_path=args.player_published_index,
+                )
+                result["offline_processing"] = offline
+                if offline["status"] != "COMPLETED" and result["status"] == "COMPLETED":
+                    result["status"] = "COMPLETED_WITH_VALIDATION_REVIEW"
             print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
             return 0 if result["status"] == "COMPLETED" else 2
         if args.command == "status":

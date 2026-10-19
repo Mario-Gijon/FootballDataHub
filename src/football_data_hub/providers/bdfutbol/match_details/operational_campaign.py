@@ -569,6 +569,25 @@ class OperationalMatchCampaignLedger:
                 raise MatchCampaignIntegrityError(
                     "Autorización v2 inválida o incongruente"
                 )
+            campaign_authorization_id = authorization.get("campaign_authorization_id")
+            campaign_candidate_set_sha256 = authorization.get(
+                "campaign_candidate_set_sha256"
+            )
+            if (campaign_authorization_id is None) != (
+                campaign_candidate_set_sha256 is None
+            ) or (
+                campaign_authorization_id is not None
+                and (
+                    not isinstance(campaign_authorization_id, str)
+                    or not campaign_authorization_id.startswith(
+                        "campaign-authorization-"
+                    )
+                    or not _is_sha(campaign_candidate_set_sha256)
+                )
+            ):
+                raise MatchCampaignIntegrityError(
+                    "La referencia a la autorización de campaña es inválida"
+                )
         elif kind == "STARTED":
             auth = previous[-1].get("authorization") if previous else None
             if (
@@ -1143,6 +1162,12 @@ class OperationalMatchCampaignLedger:
                 "campaign_id": campaign_id,
                 "campaign_version": 2,
                 "proposal_id": campaign["proposal_id"],
+                "proposal_sha256": campaign["proposal_sha256"],
+                "plan_sha256": campaign["plan_sha256"],
+                "source_generation_id": campaign["source"]["generation_id"],
+                "source_generation_manifest_sha256": campaign["source"][
+                    "generation_manifest_sha256"
+                ],
                 "candidate_count": campaign["candidate_count"],
                 "candidate_states": counts,
                 "candidates": rows,
@@ -1183,6 +1208,8 @@ class OperationalMatchCampaignLedger:
         published: bool = False,
         captured: bool = False,
         blocked: bool = False,
+        campaign_authorization_id: str | None = None,
+        campaign_candidate_set_sha256: str | None = None,
         data_root: Path,
     ) -> str:
         if not operator.strip() or confirmation != AUTHORIZE_CONFIRMATION:
@@ -1275,6 +1302,21 @@ class OperationalMatchCampaignLedger:
                 "capture_promotion_enabled": False,
                 "human_confirmation": confirmation,
             }
+            if campaign_authorization_id is not None or campaign_candidate_set_sha256 is not None:
+                if (
+                    not isinstance(campaign_authorization_id, str)
+                    or not campaign_authorization_id.startswith(
+                        "campaign-authorization-"
+                    )
+                    or not _is_sha(campaign_candidate_set_sha256)
+                ):
+                    raise MatchCampaignAuthorizationError(
+                        "La autorización de campaña requiere ID y hash completos"
+                    )
+                auth["campaign_authorization_id"] = campaign_authorization_id
+                auth["campaign_candidate_set_sha256"] = (
+                    campaign_candidate_set_sha256
+                )
             self._append(
                 directory,
                 campaign,

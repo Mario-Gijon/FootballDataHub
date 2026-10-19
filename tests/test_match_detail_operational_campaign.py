@@ -175,6 +175,65 @@ def test_v2_initialization_is_immutable_idempotent_and_never_authorizes(
     assert all(item["navigation_count"] == 0 for item in preflight["candidates"])
 
 
+def test_v2_individual_authorization_can_be_bound_to_one_campaign_confirmation(
+    tmp_path, monkeypatch
+):
+    fixture = _fixture(tmp_path, monkeypatch)
+    _initialize(fixture)
+    candidate = fixture.candidate
+    confirmation_id = "campaign-authorization-" + "f" * 32
+    candidate_set_sha256 = "a" * 64
+
+    authorization_id = fixture.ledger.authorize(
+        campaign_id=fixture.plan["campaign_id"],
+        internal_id=candidate["internal_id"],
+        confirmed_url=candidate["source_match_url"],
+        operator="offline-test-operator",
+        confirmation=operational.AUTHORIZE_CONFIRMATION,
+        current_status=_current_status(fixture),
+        campaign_authorization_id=confirmation_id,
+        campaign_candidate_set_sha256=candidate_set_sha256,
+        data_root=fixture.data_root,
+    )
+    event = fixture.ledger.candidate_events(
+        fixture.plan["campaign_id"], candidate["internal_id"]
+    )[0]
+
+    assert event["event_type"] == "AUTHORIZED"
+    assert event["authorization"]["authorization_id"] == authorization_id
+    assert event["authorization"]["campaign_authorization_id"] == confirmation_id
+    assert event["authorization"]["campaign_candidate_set_sha256"] == candidate_set_sha256
+    assert fixture.ledger.preflight(fixture.plan["campaign_id"])["candidate_states"] == {
+        "AUTHORIZED": 1,
+        "NOT_AUTHORIZED": 2,
+    }
+
+
+def test_v2_campaign_authorization_rejects_incomplete_campaign_reference(
+    tmp_path, monkeypatch
+):
+    fixture = _fixture(tmp_path, monkeypatch)
+    _initialize(fixture)
+    candidate = fixture.candidate
+
+    with pytest.raises(MatchCampaignAuthorizationError, match="ID y hash completos"):
+        fixture.ledger.authorize(
+            campaign_id=fixture.plan["campaign_id"],
+            internal_id=candidate["internal_id"],
+            confirmed_url=candidate["source_match_url"],
+            operator="offline-test-operator",
+            confirmation=operational.AUTHORIZE_CONFIRMATION,
+            current_status=_current_status(fixture),
+            campaign_authorization_id="campaign-authorization-" + "e" * 32,
+            campaign_candidate_set_sha256="invalid",
+            data_root=fixture.data_root,
+        )
+
+    assert fixture.ledger.preflight(fixture.plan["campaign_id"])["candidate_states"] == {
+        "NOT_AUTHORIZED": 3,
+    }
+
+
 def test_v2_rejects_tampered_proposal_and_campaign_manifest(tmp_path, monkeypatch):
     fixture = _fixture(tmp_path, monkeypatch)
     plan_path = fixture.proposal_dir / "plan.json"

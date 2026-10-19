@@ -19,7 +19,9 @@ from football_data_hub.providers.bdfutbol.match_details.operational_campaign imp
 from football_data_hub.providers.bdfutbol.match_details.supervised_acquisition import (
     SESSION_CONFIRMATION,
     authorize_reviewed_candidates,
+    build_campaign_run_plan,
     run_authorized_batch,
+    run_confirmed_campaign,
 )
 from football_data_hub.providers.bdfutbol.match_details.campaign import (
     SimulatedAccessResponse,
@@ -36,7 +38,9 @@ def _candidate(index: int, state: str = "AUTHORIZED") -> dict:
         "matchday": index % 8 + 1,
         "source_match_url": f"https://www.bdfutbol.com/es/p/p.php?id={match_id}",
         "source_generation_id": "match-00-supervised-fixture",
+        "source_generation_manifest_sha256": "a" * 64,
         "source_match_date": "2026-10-10",
+        "matchday_date": "2026-10-10",
         "home_team_name": f"Local {index}",
         "away_team_name": f"Visitante {index}",
         "reference_result": {"home_goals": 1, "away_goals": 0},
@@ -65,12 +69,18 @@ class _Ledger:
         self.authorization_calls = []
 
     def preflight(self, campaign_id):
-        return {"campaign_id": campaign_id, "candidates": [copy.deepcopy(row) for row in self.rows.values()]}
+        return {
+            "campaign_id": campaign_id,
+            "proposal_id": "match-detail-campaign-plan-testfixture",
+            "proposal_sha256": "b" * 64,
+            "plan_sha256": "c" * 64,
+            "candidates": [copy.deepcopy(row) for row in self.rows.values()],
+        }
 
     def candidate_events(self, _campaign_id, internal_id):
         return copy.deepcopy(self.events[internal_id])
 
-    def authorize(self, *, campaign_id, internal_id, confirmed_url, operator, confirmation, current_status, **_kwargs):
+    def authorize(self, *, campaign_id, internal_id, confirmed_url, operator, confirmation, current_status, **kwargs):
         assert confirmation == AUTHORIZE_CONFIRMATION
         assert confirmed_url == self.rows[internal_id]["source_match_url"]
         assert current_status["source_match_url"] == confirmed_url
@@ -81,7 +91,16 @@ class _Ledger:
         self.rows[internal_id]["authorization_id"] = auth_id
         self.events[internal_id] = [{
             "event_type": "AUTHORIZED",
-            "authorization": {"authorization_id": auth_id, "source_match_url": confirmed_url, "operator": operator},
+            "authorization": {
+                "authorization_id": auth_id,
+                "source_match_url": confirmed_url,
+                "source_match_id": self.rows[internal_id]["source_match_id"],
+                "operator": operator,
+                "campaign_authorization_id": kwargs.get("campaign_authorization_id"),
+                "campaign_candidate_set_sha256": kwargs.get("campaign_candidate_set_sha256"),
+                "automatic_retries": 0,
+                "maximum_navigations": 1,
+            },
         }]
         return auth_id
 
@@ -143,6 +162,148 @@ def test_review_session_requires_individual_url_and_token_for_each_authorization
     persisted = load_operation_report(Path(result["report_path"]))
     assert persisted["browser_started"] is False
     assert persisted["navigation_enabled"] is False
+
+
+def test_campaign_run_plan_is_read_only_and_hashes_the_exact_unique_candidate_set(tmp_path):
+    candidates = [_candidate(index, "NOT_AUTHORIZED") for index in range(6)]
+    ledger = _Ledger(tmp_path / "not-written", candidates)
+    report, context = _snapshot(candidates)
+
+    plan = build_campaign_run_plan(
+        ledger,
+        candidates[0]["campaign_id"],
+        status_report=report,
+        context=context,
+    )
+
+    assert plan["candidate_count"] == 6
+    assert plan["counts_by_group"] == {"I": 3, "II": 3}
+    assert len({row["internal_id"] for row in plan["candidates"]}) == 6
+    assert len({row["source_match_url"] for row in plan["candidates"]}) == 6
+    assert len(plan["candidate_set_sha256"]) == 64
+    assert plan["http_enabled"] is False
+    assert plan["browser_started"] is False
+    assert plan["navigation_enabled"] is False
+    assert plan["capture_promotion_enabled"] is False
+    assert plan["publication_enabled"] is False
+    assert ledger.authorization_calls == []
+
+
+def test_campaign_confirmation_mismatch_creates_no_authorizations_or_navigations(tmp_path):
+    candidates = [_candidate(index, "NOT_AUTHORIZED") for index in range(3)]
+    ledger = _Ledger(tmp_path / "data" / "matches" / "details", candidates)
+    capture_root = tmp_path / "data" / "team-captures"
+    capture_root.mkdir(parents=True)
+    report, context = _snapshot(candidates)
+    opened = []
+
+    with pytest.raises(MatchCampaignAuthorizationError, match="no se creó ninguna autorización"):
+        run_confirmed_campaign(
+            ledger=ledger,
+            campaign_id=candidates[0]["campaign_id"],
+            data_root=tmp_path / "data",
+            player_capture_root=capture_root,
+            operator="operator-test",
+            confirmed_candidate_set_sha256="0" * 64,
+            refresh_snapshot=lambda: (report, context),
+            execute_candidate=lambda *args: opened.append(args),
+        )
+
+    assert ledger.authorization_calls == []
+    assert opened == []
+
+
+def test_one_campaign_confirmation_records_individual_authorizations_then_executes_sequentially(tmp_path):
+    candidates = [_candidate(index, "NOT_AUTHORIZED") for index in range(4)]
+    ledger = _Ledger(tmp_path / "data" / "matches" / "details", candidates)
+    capture_root = tmp_path / "data" / "team-captures"
+    capture_root.mkdir(parents=True)
+    report, context = _snapshot(candidates)
+    plan = build_campaign_run_plan(
+        ledger,
+        candidates[0]["campaign_id"],
+        status_report=report,
+        context=context,
+    )
+    opened = []
+
+    def execute(candidate, auth_id, current, _context):
+        assert current["source_match_url"] == candidate["source_match_url"]
+        opened.append((candidate["internal_id"], auth_id))
+        return {"status": "DISCOVERY_REVIEW_REQUIRED", "attempt_id": f"attempt-{len(opened)}"}
+
+    result = run_confirmed_campaign(
+        ledger=ledger,
+        campaign_id=candidates[0]["campaign_id"],
+        data_root=tmp_path / "data",
+        player_capture_root=capture_root,
+        operator="operator-test",
+        confirmed_candidate_set_sha256=plan["candidate_set_sha256"],
+        refresh_snapshot=lambda: _snapshot(list(ledger.rows.values())),
+        execute_candidate=execute,
+    )
+
+    assert result["status"] == "COMPLETED"
+    assert result["authorized_count"] == 4
+    assert len(ledger.authorization_calls) == 4
+    assert len({call[0] for call in ledger.authorization_calls}) == 4
+    assert [internal_id for internal_id, _ in opened] == [
+        row["internal_id"] for row in sorted(
+            candidates, key=lambda row: (row["group"], row["matchday"], int(row["source_match_id"]))
+        )
+    ]
+    authorization_ids = set()
+    for candidate in candidates:
+        authorization = ledger.candidate_events(
+            candidates[0]["campaign_id"], candidate["internal_id"]
+        )[0]["authorization"]
+        authorization_ids.add(authorization["authorization_id"])
+        assert authorization["campaign_authorization_id"] == result["campaign_authorization_id"]
+        assert authorization["campaign_candidate_set_sha256"] == plan["candidate_set_sha256"]
+        assert authorization["automatic_retries"] == 0
+        assert authorization["maximum_navigations"] == 1
+    assert len(authorization_ids) == 4
+    saved = load_operation_report(Path(result["authorization_report_path"]))
+    assert saved["status"] == "ACQUISITION_COMPLETED"
+    assert saved["navigation_requests"] == 4
+    assert saved["publication_enabled"] is False
+
+
+def test_campaign_execution_stops_on_first_access_failure_without_retries(tmp_path):
+    candidates = [_candidate(index, "NOT_AUTHORIZED") for index in range(5)]
+    ledger = _Ledger(tmp_path / "data" / "matches" / "details", candidates)
+    capture_root = tmp_path / "data" / "team-captures"
+    capture_root.mkdir(parents=True)
+    report, context = _snapshot(candidates)
+    plan = build_campaign_run_plan(
+        ledger,
+        candidates[0]["campaign_id"],
+        status_report=report,
+        context=context,
+    )
+    opened = []
+
+    def execute(candidate, _auth_id, _current, _context):
+        opened.append(candidate["internal_id"])
+        if len(opened) == 2:
+            return {"status": "STOPPED", "error_code": "HTTP_403"}
+        return {"status": "DISCOVERY_REVIEW_REQUIRED", "attempt_id": "attempt-1"}
+
+    result = run_confirmed_campaign(
+        ledger=ledger,
+        campaign_id=candidates[0]["campaign_id"],
+        data_root=tmp_path / "data",
+        player_capture_root=capture_root,
+        operator="operator-test",
+        confirmed_candidate_set_sha256=plan["candidate_set_sha256"],
+        refresh_snapshot=lambda: _snapshot(list(ledger.rows.values())),
+        execute_candidate=execute,
+    )
+
+    assert result["status"] == "BLOCKED_MANUAL_REVIEW"
+    assert len(opened) == 2
+    assert result["acquisition_report"]["automatic_retries"] == 0
+    assert result["acquisition_report"]["stop_acquisition"] is True
 
 
 def test_executor_is_sequential_and_only_consumes_authorized_candidates(tmp_path):

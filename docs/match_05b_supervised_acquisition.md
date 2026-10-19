@@ -4,6 +4,35 @@
 
 MATCH-05B añade una revisión explícita, autorización individual y ejecución secuencial para campañas operativas v2. Reutiliza las propuestas inmutables MATCH-04C, el ledger append-only v2, `OperationalMatchCampaignLedger.execute_real()` y los informes atómicos de MATCH-05A. No crea autorizaciones masivas, no cambia los contratos de publicación y no aprueba ni publica documentos.
 
+## Revisión completa con una confirmación de campaña
+
+Para campañas grandes se añadió una ruta simplificada que mantiene el mismo ledger y ejecutor. `campaign-run-plan` muestra la lista completa, el desglose por grupo/jornada y `candidate_set_sha256`, sin autorizar ni iniciar navegador/HTTP. El hash vincula el ID de campaña, propuesta y plan, generación y manifiesto de origen, y la identidad/URL/resultado de cada candidato. Si cambia cualquier dato, la confirmación anterior deja de ser válida.
+
+Después de revisar la lista completa, `run-confirmed-campaign --confirm-candidate-set-sha256 <hash>` registra una autorización v2 independiente por cada candidato. Cada evento conserva su ID de autorización, partido y URL, y referencia el mismo ID de confirmación y hash de conjunto. No solicita pegar cada URL ni una cadena por partido. La revisión única no habilita otras campañas ni candidatos fuera de esa lista.
+
+El comando reutiliza `run_authorized_batch` y `execute_real`: las navegaciones siguen siendo secuenciales, con máximo una por autorización y cero reintentos. Una denegación, desafío, error de acceso o estado inconsistente activa la parada global; no navega los candidatos siguientes. El lock de PLAYER-01C2 sigue comprobándose antes de abrir Chromium. Las capturas obtenidas se procesan luego con el lote offline existente para validar y preparar borradores; errores semánticos quedan para revisión humana. No se llama a `approve`, `publish` ni `complete-review`.
+
+Comandos para una campaña preparada:
+
+```bash
+FDH_DATA="$HOME/FootballDataHub-data"
+CAMPAIGN_ID='match-detail-campaign-v2-75ed7927119a7225'
+GENERATION="$FDH_DATA/matches/generations/match-00-72d8a65d33be2ee8"
+
+# Solo lectura: revisar las 131 filas y copiar candidate_set_sha256.
+PYTHONPATH=src:apps/api .venv/bin/python scripts/manage_bdfutbol_match_detail_campaigns.py \
+  --data-root "$FDH_DATA" --generation-root "$GENERATION" \
+  campaign-run-plan --campaign-id "$CAMPAIGN_ID"
+
+# Solo después de la confirmación explícita de toda la lista revisada.
+PYTHONPATH=src:apps/api .venv/bin/python scripts/manage_bdfutbol_match_detail_campaigns.py \
+  --data-root "$FDH_DATA" --generation-root "$GENERATION" \
+  run-confirmed-campaign --campaign-id "$CAMPAIGN_ID" --operator '<nombre>' \
+  --confirm-candidate-set-sha256 '<hash_completo_del_preflight>'
+```
+
+La generación se pasa explícitamente para que el preflight, las URLs y las autorizaciones usen el mismo origen de la campaña. Este flujo no modifica el puntero activo de FastAPI. La salida y los informes diferencian autorización, adquisición y procesamiento offline; solo los documentos posteriormente aprobados por una persona pueden publicarse.
+
 La revisión (`authorize-reviewed`) no inicia navegador ni HTTP. Para cada candidato muestra competición, temporada, grupo, jornada, equipos, marcador y fechas de referencia; requiere que el operador copie la URL exacta y escriba `AUTHORIZE_ONE_MATCH_DISCOVERY_V2`. Cada confirmación autoriza exactamente un candidato.
 
 La ejecución (`execute-authorized-batch`) selecciona únicamente autorizaciones individuales todavía en estado `AUTHORIZED`, comprueba de nuevo la generación, URL, publicación, capturas, bloqueos y eventos de autorización, y consume cada autorización con `execute_real()` una sola vez. El ledger escribe `STARTED` de forma duradera antes de `access.open()`. El navegador Pure CDP/Xvfb y el perfil temporal dedicado se crean únicamente al ejecutar este comando. Las navegaciones son secuenciales y no hay reintentos automáticos.
