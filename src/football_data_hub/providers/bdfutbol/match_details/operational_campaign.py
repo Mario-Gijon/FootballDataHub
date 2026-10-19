@@ -217,6 +217,10 @@ class OperationalMatchCampaignLedger:
             "automatic_retries": 0,
             "maximum_navigations_per_authorization": 1,
         }
+        if "supersedes_campaigns" in plan.get("selection", {}):
+            expected_campaign["supersedes_campaigns"] = plan["selection"][
+                "supersedes_campaigns"
+            ]
         expected_manifest = {
             "schema_version": OPERATIONAL_MANIFEST_SCHEMA,
             "campaign_id": plan.get("campaign_id"),
@@ -868,6 +872,90 @@ class OperationalMatchCampaignLedger:
                 result.update(item["internal_id"] for item in spec["candidates"])
         return result
 
+    def _candidate_prior_memberships(self, internal_id: str) -> list[dict[str, Any]]:
+        """Read and verify every historical campaign claim for one fixture."""
+
+        from .campaign import MatchDetailCampaignLedger
+
+        memberships: list[dict[str, Any]] = []
+        if not self.root.exists():
+            return memberships
+        for directory in sorted(self.root.iterdir(), key=lambda path: path.name):
+            if directory.name == "campaign-ledger.lock":
+                continue
+            payload, _raw = _read_json(
+                directory / "campaign.json", label="campaign identity"
+            )
+            candidates = payload.get("candidates", [])
+            prior = next(
+                (
+                    row
+                    for row in candidates
+                    if isinstance(row, dict) and row.get("internal_id") == internal_id
+                ),
+                None,
+            )
+            if prior is None:
+                continue
+            campaign_blocked = False
+            if payload.get("schema_version") == OPERATIONAL_CAMPAIGN_SCHEMA:
+                report = self.preflight(directory.name, acquire_lock=False)
+                state_row = next(
+                    row for row in report["candidates"]
+                    if row["internal_id"] == internal_id
+                )
+                state = state_row["state"]
+                event_count = state_row["event_count"]
+                authorization_consumed = state_row["authorization_consumed"]
+                navigation_count = state_row["navigation_count"]
+                campaign_version = 2
+            else:
+                legacy = MatchDetailCampaignLedger(self.root)
+                _spec, report, events = legacy.inspect_persisted_campaign_read_only(
+                    directory, internal_id=internal_id
+                )
+                state_row = next(
+                    row for row in report["candidates"]
+                    if row["internal_id"] == internal_id
+                )
+                state = state_row["state"]
+                event_count = len(events)
+                authorization_consumed = state_row["authorization_consumed"]
+                navigation_count = state_row["navigation_count"]
+                campaign_version = 1
+                campaign_blocked = report.get("status") == "BLOCKED"
+            result_identity = prior.get("reference_result")
+            if not isinstance(result_identity, dict) and all(
+                type(prior.get(key)) is int for key in ("home_goals", "away_goals")
+            ):
+                result_identity = {
+                    "home_goals": prior["home_goals"],
+                    "away_goals": prior["away_goals"],
+                }
+            memberships.append(
+                {
+                    "campaign_id": directory.name,
+                    "campaign_version": campaign_version,
+                    "state": state,
+                    "event_count": event_count,
+                    "authorization_consumed": authorization_consumed,
+                    "navigation_count": navigation_count,
+                    "campaign_blocked": campaign_blocked,
+                    "candidate_identity": {
+                        "internal_id": internal_id,
+                        "source_match_id": prior.get("source_match_id"),
+                        "source_match_url": prior.get("source_match_url"),
+                        "group": prior.get("group"),
+                        "home_team_id": prior.get("home_team_id"),
+                        "away_team_id": prior.get("away_team_id"),
+                        "home_team_name": prior.get("home_team_name"),
+                        "away_team_name": prior.get("away_team_name"),
+                        "reference_result": result_identity,
+                    },
+                }
+            )
+        return memberships
+
     def initialize(
         self,
         *,
@@ -950,6 +1038,10 @@ class OperationalMatchCampaignLedger:
             "automatic_retries": 0,
             "maximum_navigations_per_authorization": 1,
         }
+        if "supersedes_campaigns" in plan.get("selection", {}):
+            campaign["supersedes_campaigns"] = plan["selection"][
+                "supersedes_campaigns"
+            ]
         # Check duplicate campaign membership before creating any files.
         unsafe = set(published_ids) | set(captured_ids) | set(blocked_ids)
         unsafe.update(
@@ -1021,12 +1113,56 @@ class OperationalMatchCampaignLedger:
                         "candidate_count": plan["candidate_count"],
                     }
                 existing_ids = self._all_campaign_ids()
-                collision = existing_ids.intersection(
-                    item["internal_id"] for item in plan["candidates"]
+                candidate_ids = {item["internal_id"] for item in plan["candidates"]}
+                collision = existing_ids.intersection(candidate_ids)
+                supersessions = plan.get("selection", {}).get(
+                    "supersedes_campaigns", {}
                 )
-                if collision:
+                if not isinstance(supersessions, dict):
+                    raise MatchCampaignIntegrityError("Mapa de campañas predecesoras inválido")
+                if set(supersessions) - collision:
                     raise MatchCampaignAuthorizationError(
-                        f"Candidatos ya gestionados en otra campaña: {sorted(collision)}"
+                        "La propuesta declara predecesores que ya no gestionan esos candidatos"
+                    )
+                for internal_id in collision:
+                    expected_prior_ids = supersessions.get(internal_id)
+                    memberships = self._candidate_prior_memberships(internal_id)
+                    actual_prior_ids = sorted(row["campaign_id"] for row in memberships)
+                    if (
+                        not isinstance(expected_prior_ids, list)
+                        or sorted(expected_prior_ids) != actual_prior_ids
+                        or not memberships
+                    ):
+                        raise MatchCampaignAuthorizationError(
+                            f"Candidatos ya gestionados sin transferencia explícita y exacta: {internal_id}"
+                        )
+                    current = next(
+                        row for row in plan["candidates"]
+                        if row["internal_id"] == internal_id
+                    )
+                    for previous in memberships:
+                        prior_identity = previous["candidate_identity"]
+                        if (
+                            previous["state"] != "NOT_AUTHORIZED"
+                            or previous.get("campaign_blocked") is True
+                            or previous["event_count"] != 0
+                            or previous["authorization_consumed"] is not False
+                            or previous["navigation_count"] != 0
+                            or any(
+                                prior_identity.get(key) != current.get(key)
+                                for key in (
+                                    "internal_id", "source_match_id", "source_match_url",
+                                    "group", "home_team_id", "away_team_id",
+                                    "home_team_name", "away_team_name", "reference_result",
+                                )
+                            )
+                        ):
+                            raise MatchCampaignAuthorizationError(
+                                f"La campaña previa ya se inició o su identidad difiere: {internal_id}"
+                            )
+                if collision - set(supersessions):
+                    raise MatchCampaignAuthorizationError(
+                        f"Candidatos ya gestionados en otra campaña: {sorted(collision - set(supersessions))}"
                     )
                 _atomic_directory(
                     self.root,
@@ -1218,6 +1354,9 @@ class OperationalMatchCampaignLedger:
                         if any(item["event_type"] == "STARTED" for item in events)
                         else 0,
                         "capture_promoted": False,
+                        "superseded_campaign_ids": campaign.get(
+                            "supersedes_campaigns", {}
+                        ).get(candidate["internal_id"], []),
                         "event_count": len(events),
                         "artifact": discovery.get("artifact") if discovery else None,
                         "next_operation": self._next_operation(state),

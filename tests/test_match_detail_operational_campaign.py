@@ -292,6 +292,93 @@ def test_v2_campaign_membership_rejects_duplicate_candidate_in_another_campaign(
         )
 
 
+def _successor_proposal(fixture, output_root):
+    inventory = build_match_campaign_inventory(fixture.verified)
+    target_id = fixture.candidate["internal_id"]
+    report = classify_match_campaign_inventory(
+        inventory,
+        campaign_states={
+            target_id: {
+                "campaign_id": fixture.plan["campaign_id"],
+                "campaigns": [fixture.plan["campaign_id"]],
+                "campaign_version": 2,
+                "state": "NOT_AUTHORIZED",
+                "authorization_consumed": False,
+                "navigation_count": 0,
+                "blocked_reasons": [],
+            }
+        },
+    )
+    plan = build_match_campaign_proposal(report, internal_ids=[target_id])
+    proposal_dir = write_match_campaign_proposal(output_root, plan)
+    return plan, proposal_dir
+
+
+def test_unstarted_v2_membership_can_be_superseded_auditably(tmp_path, monkeypatch):
+    fixture = _fixture(tmp_path, monkeypatch)
+    _initialize(fixture)
+    old_dir = fixture.ledger.root / fixture.plan["campaign_id"]
+    old_campaign_bytes = (old_dir / "campaign.json").read_bytes()
+    old_manifest_bytes = (old_dir / "manifest.json").read_bytes()
+    successor, proposal_dir = _successor_proposal(
+        fixture, tmp_path / "successor-proposals"
+    )
+
+    result = fixture.ledger.initialize(
+        proposal_dir=proposal_dir,
+        generation_root=fixture.generation_root,
+        data_root=fixture.data_root,
+    )
+    assert result["status"] == "CAMPAIGN_INITIALIZED_NOT_AUTHORIZED"
+    assert result["campaign_id"] == successor["campaign_id"]
+    assert (old_dir / "campaign.json").read_bytes() == old_campaign_bytes
+    assert (old_dir / "manifest.json").read_bytes() == old_manifest_bytes
+
+    from football_data_hub.providers.bdfutbol.match_details.scalable_campaign_cli import (
+        _read_campaign_states,
+    )
+
+    states, _summaries = _read_campaign_states(fixture.store_root / "campaigns")
+    state = states[fixture.candidate["internal_id"]]
+    assert state["campaign_id"] == successor["campaign_id"]
+    assert state["state"] == "NOT_AUTHORIZED"
+    assert state["campaigns"] == [successor["campaign_id"]]
+    assert state["superseded_campaign_ids"] == [fixture.plan["campaign_id"]]
+
+    current_report = classify_match_campaign_inventory(
+        build_match_campaign_inventory(fixture.verified), campaign_states=states
+    )
+    from football_data_hub.providers.bdfutbol.match_details.supervised_acquisition import (
+        build_campaign_run_plan,
+    )
+
+    run_plan = build_campaign_run_plan(
+        fixture.ledger,
+        successor["campaign_id"],
+        status_report=current_report,
+        context={"published_ids": set(), "captured_ids": set(), "blocked_ids": set()},
+    )
+    assert run_plan["candidate_count"] == 1
+    assert run_plan["candidates"][0]["superseded_campaign_ids"] == [
+        fixture.plan["campaign_id"]
+    ]
+
+
+def test_authorized_prior_membership_cannot_be_superseded(tmp_path, monkeypatch):
+    fixture = _fixture(tmp_path, monkeypatch)
+    _initialize(fixture)
+    _authorize(fixture)
+    _successor, proposal_dir = _successor_proposal(
+        fixture, tmp_path / "successor-proposals"
+    )
+    with pytest.raises(MatchCampaignAuthorizationError, match="inició|transferencia"):
+        fixture.ledger.initialize(
+            proposal_dir=proposal_dir,
+            generation_root=fixture.generation_root,
+            data_root=fixture.data_root,
+        )
+
+
 @pytest.mark.parametrize("changed_field", ["status", "home_team_id", "home_goals"])
 def test_v2_initialization_rejects_nonplayed_or_conflicting_candidate_source(
     tmp_path, monkeypatch, changed_field

@@ -339,8 +339,15 @@ def build_match_campaign_proposal(
     matchday_from: int | None = None,
     matchday_to: int | None = None,
     limit: int | None = None,
+    internal_ids: Iterable[str] | None = None,
 ) -> dict[str, Any]:
-    """Build a deterministic, non-authorizing variable-size candidate plan."""
+    """Build a deterministic, non-authorizing candidate plan.
+
+    ``internal_ids`` supports a deliberately scoped follow-up campaign. An
+    existing campaign membership can be superseded only when its persisted
+    state is still unstarted and unconsumed; initialization verifies that
+    claim against the original ledgers before creating the new campaign.
+    """
 
     selected_groups = tuple(sorted(set(groups)))
     if not selected_groups or set(selected_groups) - {"I", "II"}:
@@ -352,14 +359,62 @@ def build_match_campaign_proposal(
         raise ScalableCampaignError("El rango de jornadas está invertido")
     if limit is not None and (type(limit) is not int or limit < 1):
         raise ScalableCampaignError("El límite de candidatos debe ser positivo")
-    candidates = [
-        row for row in status_report["matches"]
-        if row["group"] in selected_groups
-        and row["detail_status"] == "played_pending_acquisition"
-        and row["source_match_url"] is not None
-        and (matchday_from is None or row["matchday"] >= matchday_from)
-        and (matchday_to is None or row["matchday"] <= matchday_to)
-    ]
+    supersessions: dict[str, list[str]] = {}
+    if internal_ids is None:
+        candidates = [
+            row for row in status_report["matches"]
+            if row["group"] in selected_groups
+            and row["detail_status"] == "played_pending_acquisition"
+            and row["source_match_url"] is not None
+            and (matchday_from is None or row["matchday"] >= matchday_from)
+            and (matchday_to is None or row["matchday"] <= matchday_to)
+        ]
+    else:
+        requested_ids = list(internal_ids)
+        if (
+            not requested_ids
+            or any(not isinstance(item, str) or not item for item in requested_ids)
+            or len(set(requested_ids)) != len(requested_ids)
+        ):
+            raise ScalableCampaignError("La lista explícita de internal_id está vacía o duplicada")
+        rows_by_id = {row["internal_id"]: row for row in status_report["matches"]}
+        missing = set(requested_ids) - set(rows_by_id)
+        if missing:
+            raise ScalableCampaignError(f"IDs ausentes del inventario verificado: {sorted(missing)}")
+        candidates = []
+        for internal_id in requested_ids:
+            row = rows_by_id[internal_id]
+            if (
+                row["group"] not in selected_groups
+                or (matchday_from is not None and row["matchday"] < matchday_from)
+                or (matchday_to is not None and row["matchday"] > matchday_to)
+                or row["source_match_url"] is None
+            ):
+                raise ScalableCampaignError(f"El candidato explícito no coincide con los filtros: {internal_id}")
+            prior_campaigns: list[str] = []
+            if row["detail_status"] == "included_in_existing_campaign":
+                campaign = row.get("campaign")
+                prior_campaigns = list(campaign.get("campaigns", [])) if isinstance(campaign, dict) else []
+                state = campaign.get("state") if isinstance(campaign, dict) else None
+                if (
+                    len(prior_campaigns) != 1
+                    or not isinstance(campaign, dict)
+                    or not isinstance(campaign.get("campaign_id"), str)
+                    or campaign.get("campaign_id") != prior_campaigns[0]
+                    or state not in {"NOT_AUTHORIZED", "PROPOSED_NOT_AUTHORIZED"}
+                    or campaign.get("authorization_consumed") is not False
+                    or campaign.get("navigation_count") != 0
+                    or row.get("blocked_reasons")
+                ):
+                    raise ScalableCampaignError(
+                        f"La pertenencia previa no está sin iniciar y libre de bloqueos: {internal_id}"
+                    )
+                supersessions[internal_id] = prior_campaigns
+            elif row["detail_status"] != "played_pending_acquisition":
+                raise ScalableCampaignError(
+                    f"El candidato explícito no está disponible para adquisición: {internal_id} ({row['detail_status']})"
+                )
+            candidates.append(row)
     candidates.sort(key=lambda item: (
         item["matchday"], item["matchday_date"] or "9999-12-31",
         int(item["source_match_id"]), item["group"],
@@ -374,7 +429,15 @@ def build_match_campaign_proposal(
         "source_generation_manifest_sha256", "source_capture_id", "source_captured_at_utc",
         "source_snapshot_sha256", "source_matches_sha256", "detail_status",
     )
-    candidate_records = [{key: row[key] for key in candidate_fields} for row in candidates]
+    candidate_records = []
+    for row in candidates:
+        record = {key: row[key] for key in candidate_fields}
+        if internal_ids is not None:
+            # The old campaign membership is recorded separately in the
+            # selection's supersession map; this new proposal's own status is
+            # still a fresh, unstarted acquisition candidate.
+            record["detail_status"] = "played_pending_acquisition"
+        candidate_records.append(record)
     source = status_report["source"]
     selection = {
         "groups": list(selected_groups),
@@ -388,6 +451,10 @@ def build_match_campaign_proposal(
         "available_candidates_before_limit": available_count,
         "sort": ["matchday", "matchday_date", "source_match_id", "group"],
     }
+    if internal_ids is not None:
+        selection["explicit_internal_ids"] = [item["internal_id"] for item in candidates]
+        selection["supersedes_campaigns"] = supersessions
+        selection["allow_unstarted_membership_supersession"] = True
     campaign_basis = {
         "source": source,
         "selection": selection,
@@ -605,6 +672,19 @@ def _validate_plan_payload(plan: dict[str, Any]) -> None:
         raise ScalableCampaignError("Los límites o el recuento de candidatos no son coherentes")
     source_ids: set[str] = set()
     internal_ids: set[str] = set()
+    explicit_ids = selection.get("explicit_internal_ids")
+    supersessions = selection.get("supersedes_campaigns", {})
+    if explicit_ids is not None and (
+        not isinstance(explicit_ids, list)
+        or len(explicit_ids) != len(candidates)
+        or any(not isinstance(value, str) or not value for value in explicit_ids)
+        or len(set(explicit_ids)) != len(explicit_ids)
+        or selection.get("allow_unstarted_membership_supersession") is not True
+        or not isinstance(supersessions, dict)
+    ):
+        raise ScalableCampaignError("La selección explícita no conserva sus límites auditables")
+    if explicit_ids is None and (supersessions or "allow_unstarted_membership_supersession" in selection):
+        raise ScalableCampaignError("No se permite supersesión fuera de una selección explícita")
     for item in candidates:
         if not isinstance(item, dict):
             raise ScalableCampaignError("Candidato no es un objeto")
@@ -644,6 +724,19 @@ def _validate_plan_payload(plan: dict[str, Any]) -> None:
         _validate_match_url(item["source_match_url"], source_id)
         source_ids.add(source_id)
         internal_ids.add(internal_id)
+    if explicit_ids is not None:
+        if explicit_ids != [item["internal_id"] for item in candidates]:
+            raise ScalableCampaignError("La lista explícita no coincide con los candidatos")
+        if not set(supersessions).issubset(internal_ids):
+            raise ScalableCampaignError("La supersesión referencia un candidato ajeno a la propuesta")
+        for internal_id, prior_ids in supersessions.items():
+            if (
+                not isinstance(prior_ids, list)
+                or not prior_ids
+                or any(not isinstance(value, str) or not value or Path(value).name != value for value in prior_ids)
+                or len(set(prior_ids)) != len(prior_ids)
+            ):
+                raise ScalableCampaignError(f"Referencias previas inválidas para {internal_id}")
     expected_campaign = "match-detail-campaign-v2-" + _sha(_canonical({
         "source": source,
         "selection": selection,

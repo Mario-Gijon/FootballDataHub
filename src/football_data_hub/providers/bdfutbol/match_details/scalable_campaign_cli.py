@@ -73,6 +73,12 @@ def _parser() -> argparse.ArgumentParser:
     propose.add_argument("--matchday-from", type=int)
     propose.add_argument("--matchday-to", type=int)
     propose.add_argument("--limit", type=int, default=10)
+    propose.add_argument(
+        "--internal-id",
+        action="append",
+        dest="internal_ids",
+        help="Incluye un internal_id exacto; puede repetirse para una campaña acotada",
+    )
     propose.add_argument("--persist", action="store_true", help="Guarda el plan inmutable bajo matches/details/campaign-proposals")
     propose.add_argument("--newly-played-only", action="store_true", help="Limita a nuevos disputados; requiere --previous-generation-root")
     initialize = commands.add_parser("initialize", help="Inicializa una propuesta verificada como campaña v2; no autoriza")
@@ -192,6 +198,7 @@ def _read_campaign_states(campaign_root: Path) -> tuple[dict[str, dict[str, Any]
     if lock_path.is_symlink() or not lock_path.is_file():
         raise ScalableCampaignError("Falta el lock persistido del ledger de campañas")
     states: dict[str, dict[str, Any]] = {}
+    memberships_by_id: dict[str, list[dict[str, Any]]] = {}
     summaries: list[dict[str, Any]] = []
     with lock_path.open("rb") as lock:
         try:
@@ -241,6 +248,9 @@ def _read_campaign_states(campaign_root: Path) -> tuple[dict[str, dict[str, Any]
                             "navigation_count": candidate["navigation_count"],
                             "review_status": "completed" if candidate["state"] == "REVIEW_COMPLETED" else "pending",
                             "blocked_reasons": [],
+                            "superseded_campaign_ids": candidate.get(
+                                "superseded_campaign_ids", []
+                            ),
                             "candidate_identity": {
                                 key: candidate.get(key)
                                 for key in (
@@ -250,13 +260,8 @@ def _read_campaign_states(campaign_root: Path) -> tuple[dict[str, dict[str, Any]
                                 )
                             },
                         }
-                        existing = states.get(internal_id)
-                        if existing is not None and existing.get("campaign_id") != directory.name:
-                            existing.setdefault("campaigns", [existing["campaign_id"]]).append(directory.name)
-                            existing["state"] = "CONFLICTING_CAMPAIGN_MEMBERSHIP"
-                        else:
-                            row["campaigns"] = [directory.name]
-                            states[internal_id] = row
+                        row["campaigns"] = [directory.name]
+                        memberships_by_id.setdefault(internal_id, []).append(row)
                     continue
                 first = candidates[0]
                 first_id = first.get("internal_id") if isinstance(first, dict) else None
@@ -278,7 +283,10 @@ def _read_campaign_states(campaign_root: Path) -> tuple[dict[str, dict[str, Any]
                 })
                 for candidate in report["candidates"]:
                     internal_id = candidate["internal_id"]
-                    existing = states.get(internal_id)
+                    source_candidate = next(
+                        item for item in _spec["candidates"]
+                        if item["internal_id"] == internal_id
+                    )
                     state = candidate["state"]
                     if (
                         report["status"] == "BLOCKED"
@@ -293,15 +301,54 @@ def _read_campaign_states(campaign_root: Path) -> tuple[dict[str, dict[str, Any]
                         "navigation_count": candidate["navigation_count"],
                         "review_status": candidate.get("review_status", "pending"),
                         "blocked_reasons": report["blocked_reasons"],
+                        "superseded_campaign_ids": [],
+                        "candidate_identity": {
+                            "internal_id": internal_id,
+                            "source_match_id": source_candidate.get("source_match_id"),
+                            "group": source_candidate.get("group"),
+                            "home_team_id": source_candidate.get("home_team_id"),
+                            "away_team_id": source_candidate.get("away_team_id"),
+                            "reference_result": source_candidate.get("reference_result")
+                            or {
+                                "home_goals": source_candidate.get("home_goals"),
+                                "away_goals": source_candidate.get("away_goals"),
+                            },
+                            "source_match_url": source_candidate.get("source_match_url"),
+                        },
                     }
-                    if existing is not None:
-                        existing.setdefault("campaigns", [existing["campaign_id"]]).append(item["campaign_id"])
-                        existing["state"] = "CONFLICTING_CAMPAIGN_MEMBERSHIP"
-                    else:
-                        item["campaigns"] = [item["campaign_id"]]
-                        states[internal_id] = item
+                    item["campaigns"] = [item["campaign_id"]]
+                    memberships_by_id.setdefault(internal_id, []).append(item)
         finally:
             fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+    for internal_id, memberships in memberships_by_id.items():
+        if len(memberships) == 1:
+            states[internal_id] = memberships[0]
+            continue
+        campaign_ids = {item["campaign_id"] for item in memberships}
+        successors = [
+            item
+            for item in memberships
+            if set(item.get("superseded_campaign_ids", [])) == campaign_ids - {item["campaign_id"]}
+            and all(
+                prior["state"] in {"NOT_AUTHORIZED", "PROPOSED_NOT_AUTHORIZED"}
+                and prior.get("authorization_consumed") is False
+                and prior.get("navigation_count") == 0
+                for prior in memberships
+                if prior["campaign_id"] != item["campaign_id"]
+            )
+        ]
+        if len(successors) == 1:
+            winner = dict(successors[0])
+            winner["campaigns"] = [winner["campaign_id"]]
+            winner["superseded_campaign_ids"] = sorted(
+                campaign_ids - {winner["campaign_id"]}
+            )
+            states[internal_id] = winner
+        else:
+            winner = dict(memberships[0])
+            winner["campaigns"] = sorted(campaign_ids)
+            winner["state"] = "CONFLICTING_CAMPAIGN_MEMBERSHIP"
+            states[internal_id] = winner
     return states, summaries
 
 
@@ -1039,6 +1086,7 @@ def main(argv: list[str] | None = None) -> int:
             matchday_from=args.matchday_from,
             matchday_to=args.matchday_to,
             limit=args.limit,
+            internal_ids=args.internal_ids,
         )
         result: dict[str, Any] = {
             "status": "PROPOSAL_READY_NOT_AUTHORIZED" if plan["candidate_count"] else "NO_ELIGIBLE_CANDIDATES",

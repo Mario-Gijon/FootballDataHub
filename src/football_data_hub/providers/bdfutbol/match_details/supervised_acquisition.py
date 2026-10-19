@@ -147,9 +147,14 @@ def build_campaign_run_plan(
         "matchday_date", "source_generation_id",
         "source_generation_manifest_sha256",
     )
-    selected = [
-        {key: row.get(key) for key in required_identity} for row in candidates
-    ]
+    selected = []
+    for row in candidates:
+        selected_row = {key: row.get(key) for key in required_identity}
+        if row.get("superseded_campaign_ids"):
+            selected_row["superseded_campaign_ids"] = row[
+                "superseded_campaign_ids"
+            ]
+        selected.append(selected_row)
     internal_ids = [row["internal_id"] for row in selected]
     match_ids = [row["source_match_id"] for row in selected]
     urls = [row["source_match_url"] for row in selected]

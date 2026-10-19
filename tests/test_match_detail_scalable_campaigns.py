@@ -115,6 +115,68 @@ def test_proposal_filters_by_group_matchday_and_limit_in_stable_order():
     assert [candidate["source_match_id"] for candidate in only_ii["candidates"]] == ["20001"]
 
 
+def test_explicit_campaign_selection_can_name_only_unstarted_memberships():
+    inventory = build_match_campaign_inventory(_verified())
+    target = inventory["matches"][0]["internal_id"]
+    report = classify_match_campaign_inventory(
+        inventory,
+        campaign_states={
+            target: {
+                "campaign_id": "match-detail-campaign-v2-0123456789abcdef",
+                "campaigns": ["match-detail-campaign-v2-0123456789abcdef"],
+                "campaign_version": 2,
+                "state": "NOT_AUTHORIZED",
+                "authorization_consumed": False,
+                "navigation_count": 0,
+                "blocked_reasons": [],
+            }
+        },
+    )
+    plan = build_match_campaign_proposal(report, internal_ids=[target])
+
+    assert plan["candidate_count"] == 1
+    assert plan["selection"]["explicit_internal_ids"] == [target]
+    assert plan["selection"]["supersedes_campaigns"] == {
+        target: ["match-detail-campaign-v2-0123456789abcdef"]
+    }
+    assert plan["candidates"][0]["detail_status"] == "played_pending_acquisition"
+    assert plan["authorization"]["is_authorization"] is False
+    assert plan["authorization"]["navigation_enabled"] is False
+
+
+@pytest.mark.parametrize(
+    "state,authorization_consumed,navigation_count,blocked_reasons",
+    [
+        ("AUTHORIZED", False, 0, []),
+        ("NOT_AUTHORIZED", True, 0, []),
+        ("NOT_AUTHORIZED", False, 1, []),
+        ("NOT_AUTHORIZED", False, 0, ["HTTP_403"]),
+    ],
+)
+def test_explicit_selection_rejects_started_or_blocked_prior_membership(
+    state, authorization_consumed, navigation_count, blocked_reasons
+):
+    inventory = build_match_campaign_inventory(_verified())
+    target = inventory["matches"][0]["internal_id"]
+    campaign_id = "match-detail-campaign-v2-0123456789abcdef"
+    report = classify_match_campaign_inventory(
+        inventory,
+        blocked_reasons={target: blocked_reasons},
+        campaign_states={
+            target: {
+                "campaign_id": campaign_id,
+                "campaigns": [campaign_id],
+                "state": state,
+                "authorization_consumed": authorization_consumed,
+                "navigation_count": navigation_count,
+                "blocked_reasons": blocked_reasons,
+            }
+        },
+    )
+    with pytest.raises(ScalableCampaignError):
+        build_match_campaign_proposal(report, internal_ids=[target])
+
+
 def test_proposal_excludes_published_managed_consumed_blocked_and_unverified_url():
     inventory = build_match_campaign_inventory(_verified())
     rows = inventory["matches"]
