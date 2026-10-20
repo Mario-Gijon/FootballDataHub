@@ -192,10 +192,14 @@ def build_batch_preflight(ledger: OperationalMatchCampaignLedger, campaign_id: s
         state = candidate["state"]
         if state == "DISCOVERY_REVIEW_REQUIRED":
             action = "validate_saved_artifact_then_prepare_if_valid"
-        elif state in {"VALIDATED", "REVALIDATED"}:
+        elif state in {"VALIDATED", "REVALIDATED", "AUTO_POLICY_REVALIDATED"}:
             action = "prepare_draft"
+        elif state == "VALIDATION_FAILED":
+            action = "offline_revalidate_only_known_update_pipeline_failure"
         elif state == "DRAFT_PREPARED":
             action = "already_prepared_no_change"
+        elif state == "AUTO_POLICY_APPROVED":
+            action = "resume_automatic_publication_verification"
         elif state in {"VALIDATION_FAILED", "REVALIDATION_FAILED", "STOPPED", "INTERRUPTED_REQUIRES_REVIEW"}:
             action = "manual_review_no_automatic_retry"
         elif state == "DOCUMENT_APPROVED":
@@ -240,6 +244,7 @@ def run_offline_batch(
     player_published_index_path: Path,
     auto_publish_policy: bool = False,
     published_root: Path | None = None,
+    internal_ids: set[str] | None = None,
 ) -> dict[str, Any]:
     """Validate saved HTML, prepare drafts, and optionally apply the strict update policy."""
 
@@ -280,7 +285,14 @@ def run_offline_batch(
         if initial["candidates"]:
             report["source_generation_id"] = initial["candidates"][0].get("source_generation_id")
             report["source_generation_manifest_sha256"] = initial["candidates"][0].get("source_generation_manifest_sha256")
-        candidates = sorted(initial["candidates"], key=lambda item: (item["group"], item["matchday"], int(item["source_match_id"])))
+        all_candidates = initial["candidates"]
+        all_ids = {item["internal_id"] for item in all_candidates}
+        if internal_ids is not None and (not internal_ids or not internal_ids.issubset(all_ids)):
+            raise CampaignOperationsError("El subconjunto solicitado no pertenece a esta campaña")
+        candidates = sorted(
+            (item for item in all_candidates if internal_ids is None or item["internal_id"] in internal_ids),
+            key=lambda item: (item["group"], item["matchday"], int(item["source_match_id"])),
+        )
         report["candidate_count"] = len(candidates)
         report_path = _write_report(report_root, report)
         fatal_integrity_error = False
@@ -300,6 +312,30 @@ def run_offline_batch(
                     current_events = ledger.candidate_events(campaign_id, internal_id)
                     state = ledger._state(current_events)
                 result["state_before"] = state
+                if state in {"VALIDATION_FAILED", "REVALIDATION_FAILED"} and auto_publish_policy:
+                    revalidation = ledger.revalidate_known_update_pipeline_failure(
+                        campaign_id=campaign_id,
+                        internal_id=internal_id,
+                        data_root=data_root,
+                    )
+                    result["actions"].append({"operation": "offline_policy_revalidation", **revalidation})
+                    if revalidation.get("status") == "AUTO_POLICY_REVALIDATED":
+                        state = "AUTO_POLICY_REVALIDATED"
+                    elif revalidation.get("status") == "AUTO_POLICY_REVALIDATION_FAILED":
+                        if revalidation.get("semantic_valid") is True:
+                            result["status"] = "PENDING_POLICY_REVIEW"
+                            result["policy_reason"] = revalidation.get("policy_reason") or "automatic_policy_not_satisfied"
+                            report["policy_pending_count"] += 1
+                        else:
+                            result["status"] = "VALIDATION_FAILED"
+                            result["policy_reason"] = "saved_artifact_did_not_pass_strict_semantic_validation"
+                            report["validation_failed_count"] += 1
+                        report["processed_count"] += 1
+                        state = "AUTO_POLICY_REVALIDATION_FAILED"
+                    else:
+                        result["status"] = "PROTECTED_STATE_SKIPPED"
+                        result["reason"] = revalidation.get("reason") or "La causa del fallo no permite revalidación automática."
+                        report["skipped_count"] += 1
                 if state == "DISCOVERY_REVIEW_REQUIRED":
                     validation = ledger.validate_offline_artifact(
                         campaign_id=campaign_id, internal_id=internal_id, data_root=data_root
@@ -331,7 +367,7 @@ def run_offline_batch(
                     else:
                         raise CampaignOperationsError(f"Resultado de validación inesperado: {validation['status']}")
                     report["processed_count"] += 1
-                elif state in {"VALIDATED", "REVALIDATED"}:
+                elif state in {"VALIDATED", "REVALIDATED", "AUTO_POLICY_REVALIDATED"}:
                     prepared = ledger.prepare_draft(
                         campaign_id=campaign_id,
                         internal_id=internal_id,
@@ -346,6 +382,19 @@ def run_offline_batch(
                     result["status"] = "DRAFT_PREPARED"
                     report["prepared_count"] += 1
                     report["processed_count"] += 1
+                elif state == "AUTO_POLICY_REVALIDATION_FAILED":
+                    # The single offline policy revalidation ran, but the
+                    # parser or sports checks still failed. Keep it pending.
+                    pass
+                elif state == "AUTO_POLICY_APPROVED":
+                    # A prior run may have persisted the strict receipt and
+                    # failed while writing/verifying the immutable package.
+                    # Re-check that receipt and resume publication; never
+                    # issue a new navigation or a second policy decision.
+                    result["status"] = "AUTO_POLICY_APPROVED_PENDING_PUBLICATION"
+                    report["processed_count"] += 1
+                elif result["status"] == "PROTECTED_STATE_SKIPPED":
+                    pass
                 elif state == "DRAFT_PREPARED":
                     result["status"] = "ALREADY_PREPARED"
                     report["skipped_count"] += 1
@@ -353,15 +402,20 @@ def run_offline_batch(
                     result["status"] = "PROTECTED_STATE_SKIPPED"
                     result["reason"] = "No se revalidan fallos ni se procesan operaciones ajenas al lote offline"
                     report["skipped_count"] += 1
-                if auto_publish_policy and result["status"] in {"DRAFT_PREPARED", "ALREADY_PREPARED"}:
+                if auto_publish_policy and result["status"] in {
+                    "DRAFT_PREPARED", "ALREADY_PREPARED", "AUTO_POLICY_APPROVED_PENDING_PUBLICATION"
+                }:
                     events = ledger.candidate_events(campaign_id, internal_id)
                     automatic_authorization = next(
                         (event for event in events if event.get("event_type") == "AUTO_POLICY_AUTHORIZED"),
                         None,
                     )
-                    if automatic_authorization is not None and ledger._state(events) == "DRAFT_PREPARED":
+                    current_state = ledger._state(events)
+                    if automatic_authorization is not None and current_state in {
+                        "DRAFT_PREPARED", "AUTO_POLICY_APPROVED"
+                    }:
                         validation_event = next(
-                            (event for event in reversed(events) if event.get("event_type") in {"VALIDATED", "REVALIDATED"}),
+                            (event for event in reversed(events) if event.get("event_type") in {"VALIDATED", "REVALIDATED", "AUTO_POLICY_REVALIDATED"}),
                             None,
                         )
                         from football_data_hub.providers.bdfutbol.match_details.automatic_publication_policy import (
@@ -466,7 +520,7 @@ def build_review_queue(ledger: OperationalMatchCampaignLedger, campaign_id: str,
             details = draft.get("details") if isinstance(draft.get("details"), dict) else {}
             discovery = next(event for event in events if event["event_type"] == "DISCOVERY_REVIEW_REQUIRED")
             artifact = campaign_dir / discovery["artifact"]["artifact_relative_path"]
-            validation = next((event for event in reversed(events) if event["event_type"] in {"VALIDATED", "REVALIDATED"}), {})
+            validation = next((event for event in reversed(events) if event["event_type"] in {"VALIDATED", "REVALIDATED", "AUTO_POLICY_REVALIDATED"}), {})
             validation_payload = validation.get("validation", {})
             if not isinstance(validation_payload, dict) or validation_payload.get("semantic_valid") is not True:
                 raise MatchCampaignIntegrityError("El borrador no conserva una validación semántica verificable")
@@ -753,6 +807,6 @@ def _coverage_metrics(rows: list[dict[str, Any]]) -> dict[str, int]:
         "published": published,
         "reviewed": sum(row.get("state") == "REVIEW_COMPLETED" for row in rows),
         "pending_acquisition": sum(row.get("state") in {"AVAILABLE_FOR_PROPOSAL", "NOT_AUTHORIZED", "AUTHORIZED"} for row in rows),
-        "pending_review": sum(row.get("state") in {"DISCOVERY_REVIEW_REQUIRED", "VALIDATED", "REVALIDATED", "DRAFT_PREPARED", "DOCUMENT_APPROVED", "PUBLISHED"} for row in rows),
+        "pending_review": sum(row.get("state") in {"DISCOVERY_REVIEW_REQUIRED", "VALIDATED", "REVALIDATED", "AUTO_POLICY_REVALIDATED", "DRAFT_PREPARED", "DOCUMENT_APPROVED", "AUTO_POLICY_APPROVED", "PUBLISHED"} for row in rows),
         "blocked": blocked,
     }

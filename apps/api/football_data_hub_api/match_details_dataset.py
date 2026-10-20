@@ -8,6 +8,7 @@ import os
 import re
 import fcntl
 import shutil
+from dataclasses import asdict
 from datetime import date, datetime, timezone
 from pathlib import Path, PurePosixPath
 import tempfile
@@ -57,6 +58,9 @@ DRAFT_SCHEMA = "football_data_hub.match_detail_publication_draft.v1"
 CAMPAIGN_PACKAGE_SCHEMA = "football_data_hub.match_detail_campaign_publication.v1"
 CAMPAIGN_APPROVAL_SCHEMA = "football_data_hub.match_detail_campaign_approval.v1"
 AUTO_POLICY_RECEIPT_SCHEMA = "football_data_hub.match_detail_auto_policy_receipt.v1"
+LEGACY_RECOVERY_PACKAGE_SCHEMA = "football_data_hub.match_detail_legacy_recovery_publication.v1"
+LEGACY_RECOVERY_DRAFT_SCHEMA = "football_data_hub.match_detail_legacy_recovery_publication_draft.v1"
+LEGACY_RECOVERY_AUTO_RECEIPT_SCHEMA = "football_data_hub.match_detail_legacy_recovery_auto_policy_receipt.v1"
 CAMPAIGN_DRAFT_SCHEMA = "football_data_hub.match_detail_campaign_publication_draft.v1"
 _PUBLICATION_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 _CAMPAIGN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
@@ -73,6 +77,21 @@ def _sha256(raw: bytes) -> str:
 
 def _canonical_json(value: Any) -> bytes:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+
+def _automatic_policy_validation_from_observation(observation: Any) -> dict[str, Any]:
+    """Rebuild the exact validation envelope persisted by automatic campaigns."""
+    validation = json.loads(_canonical_json(asdict(observation.validation)))
+    parser_version = getattr(observation.source, "parser_version", None)
+    if not isinstance(parser_version, str) or not parser_version:
+        raise MatchDetailsLoadError("La observación no conserva la versión del parser.")
+    validation["parser_version"] = parser_version
+    return validation
+
+
+def _legacy_recovery_canonical_json(value: Any) -> bytes:
+    """Canonical encoding used by the immutable historical recovery bundle."""
+    return (json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n").encode("utf-8")
 
 
 def _atomic_bytes(path: Path, content: bytes) -> None:
@@ -105,6 +124,16 @@ def _read_json(path: Path) -> tuple[dict[str, Any], bytes]:
     if not isinstance(value, dict):
         raise MatchDetailsLoadError(f"El JSON de publicación debe ser un objeto: {path}")
     return value, raw
+
+
+def _regular_file_bytes(path: Path, label: str) -> bytes:
+    if path.is_symlink() or not path.is_file():
+        raise MatchDetailsLoadError(f"{label} ausente o no es un archivo regular.")
+    try:
+        path.resolve(strict=True).relative_to(path.parent.resolve(strict=True))
+        return path.read_bytes()
+    except (OSError, ValueError) as exc:
+        raise MatchDetailsLoadError(f"No se puede leer {label} de forma segura.") from exc
 
 
 def _safe_root(root: Path) -> Path:
@@ -719,13 +748,13 @@ def _load_campaign_publication_document(
     ):
         raise MatchDetailsLoadError("El documento público no coincide con la evidencia de campaña revalidada.")
     if not human_receipt:
-        from dataclasses import asdict
-
         from football_data_hub.providers.bdfutbol.match_details.automatic_publication_policy import (
             automatic_publication_decision,
         )
 
-        rebuilt_validation = asdict(observation.validation)
+        # The policy receipt and campaign event bind the parser version in
+        # addition to the semantic dataclass, so reconstruct the same envelope.
+        rebuilt_validation = _automatic_policy_validation_from_observation(observation)
         eligible, reason = automatic_publication_decision(rebuilt_validation)
         if (
             not eligible
@@ -742,6 +771,92 @@ def _load_campaign_publication_document(
     }:
         if manifest.get(key) != draft.get(key):
             raise MatchDetailsLoadError(f"El manifiesto no coincide con la fuente revalidada: {key}.")
+    return document, observation
+
+
+def _load_legacy_recovery_publication_document(
+    *,
+    publication_id: str,
+    indexed_internal_id: str,
+    manifest: dict[str, Any],
+    approval: dict[str, Any],
+    approval_raw: bytes,
+    details_payload: dict[str, Any],
+    details_raw: bytes,
+    data_root: Path,
+    store_root: Path,
+    generation_root: Path,
+    active_match_bundle: MatchResultsBundle,
+    source_match_bundle: MatchResultsBundle,
+    source_generation: Any,
+    source_record: dict[str, Any],
+    player_ids: set[int],
+) -> tuple[MatchPublishedDetailsResponse, Any]:
+    """Read a recovered legacy match only after replaying its original evidence."""
+
+    if (
+        not isinstance(approval, dict)
+        or approval.get("schema_version") != LEGACY_RECOVERY_AUTO_RECEIPT_SCHEMA
+        or approval.get("approval_mode") != "automatic_policy"
+        or approval.get("decision_scope") != "verified_offline_legacy_recovery"
+        or approval.get("publication_status") != "approved"
+    ):
+        raise MatchDetailsLoadError("El paquete de recuperación carece de recibo automático específico.")
+    try:
+        draft, observation, validation = build_legacy_recovery_publication_draft(
+            recovery_id=str(manifest.get("recovery_id", "")),
+            update_job_id=str(approval.get("update_job_id", "")),
+            store_root=store_root,
+            data_root=data_root,
+            generation_root=generation_root,
+            match_bundle=active_match_bundle,
+            player_ids=player_ids,
+        )
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        if isinstance(exc, MatchDetailsLoadError):
+            raise
+        raise MatchDetailsLoadError(f"La recuperación histórica no se pudo reconstruir: {exc}") from exc
+    expected_receipt = build_legacy_recovery_auto_policy_receipt(
+        draft,
+        validation=validation,
+        update_job_id=str(approval.get("update_job_id", "")),
+        evaluated_at_utc=_parse_approval_timestamp(approval.get("evaluated_at_utc")),
+    )
+    expected_manifest = _legacy_recovery_manifest(draft, approval_raw)
+    if (
+        indexed_internal_id != draft["internal_id"]
+        or publication_id != draft["publication_id"]
+        or manifest != expected_manifest
+        or approval != expected_receipt
+        or approval_raw != _canonical_json(approval)
+        or details_raw != _canonical_json(details_payload)
+        or _sha256(details_raw) != draft["details_sha256"]
+        or details_payload != draft["details"]
+        or source_generation.generation_id != draft["source_generation_id"]
+        or source_generation.manifest_sha256 != draft["source_generation_manifest_sha256"]
+        or source_record.get("internal_id") != draft["internal_id"]
+        or source_record.get("source_match_id") != draft["source_match_id"]
+        or approval.get("receipt_sha256") != _sha256(
+            _canonical_json({key: value for key, value in approval.items() if key != "receipt_sha256"})
+        )
+    ):
+        raise MatchDetailsLoadError("Manifiesto, recibo, documento o recuperación no coinciden exactamente.")
+    try:
+        document = MatchPublishedDetailsResponse.model_validate(details_payload)
+    except (ValueError, TypeError) as exc:
+        raise MatchDetailsLoadError("El informe recuperado no cumple el contrato público.") from exc
+    if document.publication_status != "approved":
+        raise MatchDetailsLoadError("El informe de recuperación no está marcado como aprobado por el paquete.")
+    _validate_detail_against_match(
+        document,
+        _published_match(source_match_bundle, indexed_internal_id),
+        generation_id=source_generation.generation_id,
+        generation_sha256=source_generation.manifest_sha256,
+        source_generation_manifest_sha256=draft["source_generation_manifest_sha256"],
+    )
+    _validate_detail_against_active_fixture(
+        document, _published_match(active_match_bundle, indexed_internal_id)
+    )
     return document, observation
 
 
@@ -887,6 +1002,30 @@ def load_published_match_details(
             )
             _validate_detail_against_active_fixture(
                 document, _published_match(match_bundle, internal_id)
+            )
+            document = _with_verified_kickoff(document, observation)
+            loaded[internal_id] = document
+            continue
+        if manifest.get("schema_version") == LEGACY_RECOVERY_PACKAGE_SCHEMA:
+            record = source_records.get(internal_id)
+            if record is None:
+                raise MatchDetailsLoadError("El partido de recuperación no pertenece a su MATCH-00 histórico.")
+            document, observation = _load_legacy_recovery_publication_document(
+                publication_id=publication_id,
+                indexed_internal_id=internal_id,
+                manifest=manifest,
+                approval=approval,
+                approval_raw=approval_raw,
+                details_payload=details_payload,
+                details_raw=details_raw,
+                data_root=data_root,
+                store_root=store_root,
+                generation_root=resolved_active_root,
+                active_match_bundle=match_bundle,
+                source_match_bundle=source_bundle,
+                source_generation=source_generation,
+                source_record=record,
+                player_ids=player_ids,
             )
             document = _with_verified_kickoff(document, observation)
             loaded[internal_id] = document
@@ -1136,6 +1275,308 @@ def _build_campaign_publication_draft_from_verified(
         "details": details,
     }
     return draft, observation
+
+
+def _legacy_recovery_manifest(draft: dict[str, Any], receipt_raw: bytes) -> dict[str, Any]:
+    fields = (
+        "publication_id", "source_kind", "internal_id", "source_match_id", "season",
+        "competition", "group", "matchday", "source_match_date", "home_team_id",
+        "away_team_id", "home_team_name", "away_team_name", "recovery_id",
+        "recovery_candidate_sha256", "recovery_source_receipt_sha256",
+        "recovery_manifest_sha256", "inventory_id", "original_attempt_id", "artifact_id",
+        "artifact_manifest_sha256", "source_html_sha256", "checkpoint_sha256",
+        "diagnostic_sha256", "source_generation_id", "source_generation_manifest_sha256",
+        "source_capture_id", "active_generation_id", "active_generation_manifest_sha256",
+        "details_sha256",
+    )
+    return {
+        "schema_version": LEGACY_RECOVERY_PACKAGE_SCHEMA,
+        **{key: draft[key] for key in fields},
+        "approval_sha256": _sha256(receipt_raw),
+    }
+
+
+def build_legacy_recovery_publication_draft(
+    *,
+    recovery_id: str,
+    update_job_id: str,
+    store_root: Path,
+    data_root: Path,
+    generation_root: Path,
+    match_bundle: MatchResultsBundle,
+    player_ids: set[int],
+) -> tuple[dict[str, Any], Any, dict[str, Any]]:
+    """Reparse and project the single immutable 272582 recovery without HTTP."""
+
+    if not re.fullmatch(r"legacy-recovery-272582-[a-f0-9]{16}", recovery_id):
+        raise MatchDetailsLoadError("ID de recuperación legado no válido.")
+    if not re.fullmatch(r"[0-9a-f-]{36}", update_job_id):
+        raise MatchDetailsLoadError("El trabajo local de actualización no tiene un UUID válido.")
+    from football_data_hub.providers.bdfutbol.match_details.historical_review import (
+        HISTORICAL_272582_HTML_SHA256,
+        verify_historical_recovery_candidate,
+    )
+
+    active_root = match_bundle.generation_root or resolve_match_generation_root(
+        generation_root, data_root=data_root
+    )
+    active_generation = load_verified_match_generation(active_root, data_root=data_root)
+    if (
+        active_generation.generation_id != match_bundle.bootstrap.metadata.generation_id
+        or active_generation.manifest_sha256 != match_bundle.bootstrap.metadata.generation_sha256
+    ):
+        raise MatchDetailsLoadError("La recuperación se evalúa contra una generación activa distinta de Resultados.")
+    active_inventory = build_match_detail_inventory(active_generation)
+    active_records = [
+        row for row in active_inventory["matches"]
+        if row.get("internal_id") == "pf-2026-27-group-ii-bdfutbol-272582"
+    ]
+    if len(active_records) != 1:
+        raise MatchDetailsLoadError("272582 no figura como partido único en MATCH-00 activo.")
+    active_record = active_records[0]
+    store_root = store_root.expanduser().resolve(strict=True)
+    recovery_root = store_root / "recoveries" / recovery_id
+    verified_recovery = verify_historical_recovery_candidate(
+        store_root,
+        data_root=data_root,
+        expected_match=active_record,
+        active_generation_id=active_generation.generation_id,
+        active_generation_manifest_sha256=active_generation.manifest_sha256,
+    )
+    if verified_recovery is None or verified_recovery.get("recovery_id") != recovery_id:
+        raise MatchDetailsLoadError("No existe una recuperación legado válida para 272582.")
+    candidate_raw = _regular_file_bytes(recovery_root / "candidate.json", "candidato de recuperación")
+    source_receipt_raw = _regular_file_bytes(recovery_root / "receipt.json", "recibo original de recuperación")
+    recovery_manifest_raw = _regular_file_bytes(recovery_root / "manifest.json", "manifiesto de recuperación")
+    try:
+        candidate = json.loads(candidate_raw)
+        source_receipt = json.loads(source_receipt_raw)
+        recovery_manifest = json.loads(recovery_manifest_raw)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise MatchDetailsLoadError("El bundle de recuperación no contiene JSON válido.") from exc
+    if (
+        not isinstance(candidate, dict)
+        or not isinstance(source_receipt, dict)
+        or not isinstance(recovery_manifest, dict)
+        or _sha256(candidate_raw) != verified_recovery.get("candidate_sha256")
+        or source_receipt.get("receipt_sha256") != verified_recovery.get("receipt_sha256")
+        or source_receipt.get("candidate_sha256") != verified_recovery.get("candidate_sha256")
+        or source_receipt.get("receipt_sha256") != _sha256(_legacy_recovery_canonical_json({
+            key: value for key, value in source_receipt.items() if key != "receipt_sha256"
+        }))
+        or source_receipt.get("status") != "VALIDATED_PENDING_EXPLICIT_REVIEW"
+        or source_receipt.get("publication_status") != "NOT_PUBLISHED"
+        or recovery_manifest.get("recovery_id") != recovery_id
+        or recovery_manifest_raw != _legacy_recovery_canonical_json(recovery_manifest)
+        or recovery_manifest.get("files") != {
+            "candidate.json": {"sha256": _sha256(candidate_raw), "bytes": len(candidate_raw)},
+            "receipt.json": {"sha256": _sha256(source_receipt_raw), "bytes": len(source_receipt_raw)},
+        }
+    ):
+        raise MatchDetailsLoadError("Los hashes o el estado histórico del bundle de recuperación cambiaron.")
+    evidence = candidate["evidence"]
+    historic_root = data_root.expanduser().resolve(strict=True) / "matches" / "generations" / evidence["generation_id"]
+    historic_generation = load_verified_match_generation(historic_root, data_root=data_root)
+    if (
+        historic_generation.generation_id != evidence["generation_id"]
+        or historic_generation.manifest_sha256 != evidence["generation_manifest_sha256"]
+    ):
+        raise MatchDetailsLoadError("La generación deportiva histórica de la recuperación no es íntegra.")
+    historic_inventory = build_match_detail_inventory(historic_generation)
+    historic_records = [
+        row for row in historic_inventory["matches"]
+        if row.get("internal_id") == active_record["internal_id"]
+    ]
+    if len(historic_records) != 1:
+        raise MatchDetailsLoadError("La generación original no contiene un fixture 272582 único.")
+    historic_record = historic_records[0]
+    sporting_fields = (
+        "internal_id", "source_match_id", "source_match_url", "season", "competition",
+        "group", "matchday", "source_match_date", "home_team_id", "away_team_id",
+        "reference_result",
+    )
+    if any(historic_record.get(key) != active_record.get(key) for key in sporting_fields):
+        raise MatchDetailsLoadError("El fixture histórico de la recuperación difiere del MATCH-00 activo.")
+
+    artifact = store_root / "diagnostics" / evidence["inventory_id"] / evidence["artifact_id"]
+    if evidence.get("artifact_relative_path") != artifact.relative_to(store_root).as_posix():
+        raise MatchDetailsLoadError("La ruta del HTML original no coincide con el recibo de recuperación.")
+    try:
+        observation = parse_saved_artifact(artifact, expected_match=historic_record)
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise MatchDetailsLoadError(f"El HTML original de 272582 no se pudo revalidar offline: {exc}") from exc
+    if (
+        observation.validation.semantic_valid is not True
+        or observation.validation.errors
+        or any(not check.passed for check in observation.validation.checks)
+        or observation.source.source_html_sha256 != HISTORICAL_272582_HTML_SHA256
+        or observation.source.artifact_access_status != "INVALID_CONTENT"
+        or observation.source.promotion_eligible is not False
+        or json.loads(_canonical_json(asdict(observation))) != candidate.get("observation")
+        or json.loads(_canonical_json(asdict(observation.validation)))
+        != candidate.get("semantic_validation")
+    ):
+        raise MatchDetailsLoadError("La nueva validación del HTML no coincide con la recuperación inmutable.")
+    from football_data_hub.providers.bdfutbol.match_details.automatic_publication_policy import (
+        RECOVERY_POLICY_ID,
+        RECOVERY_POLICY_VERSION,
+        legacy_recovery_publication_decision,
+    )
+
+    validation = json.loads(_canonical_json(asdict(observation.validation)))
+    allowed, reason = legacy_recovery_publication_decision(validation)
+    if not allowed:
+        raise MatchDetailsLoadError(f"272582 no supera la política automática de recuperación ({reason}).")
+    from football_data_hub_api.match_results_dataset import load_match_results_dataset
+
+    historic_bundle = load_match_results_dataset(historic_root, data_root=data_root)
+    historic_page = build_match_page(historic_bundle, active_record["internal_id"])
+    if historic_page is None:
+        raise MatchDetailsLoadError("La generación histórica no puede construir la ficha de 272582.")
+    preview = build_discovery_preview(observation, match_page=historic_page, player_ids=player_ids)
+    document = MatchPublishedDetailsResponse.model_validate({
+        **preview.model_dump(mode="json", exclude_unset=True),
+        "publication_status": "approved",
+    })
+    current_page = build_match_page(match_bundle, active_record["internal_id"])
+    if current_page is None or current_page.match.status != "played":
+        raise MatchDetailsLoadError("272582 no figura como partido disputado en MATCH-00 activo.")
+    _validate_detail_against_match(
+        document,
+        historic_page.match,
+        generation_id=historic_generation.generation_id,
+        generation_sha256=historic_generation.manifest_sha256,
+        source_generation_manifest_sha256=historic_generation.manifest_sha256,
+    )
+    _validate_detail_against_active_fixture(document, current_page.match)
+    details = document.model_dump(mode="json", exclude_unset=True)
+    details_raw = _canonical_json(details)
+    candidate_sha = _sha256(candidate_raw)
+    source_receipt_sha = _sha256(source_receipt_raw)
+    recovery_manifest_sha = _sha256(recovery_manifest_raw)
+    publication_id = f"recovery-272582-{_sha256(details_raw)[:16]}"
+    draft = {
+        "schema_version": LEGACY_RECOVERY_DRAFT_SCHEMA,
+        "publication_id": publication_id,
+        "source_kind": "offline_legacy_recovery",
+        "internal_id": active_record["internal_id"],
+        "source_match_id": "272582",
+        "season": active_record["season"],
+        "competition": active_record["competition"],
+        "group": active_record["group"],
+        "matchday": active_record["matchday"],
+        "source_match_date": active_record["source_match_date"],
+        "home_team_id": active_record["home_team_id"],
+        "away_team_id": active_record["away_team_id"],
+        "home_team_name": current_page.match.home_team.name,
+        "away_team_name": current_page.match.away_team.name,
+        "recovery_id": recovery_id,
+        "recovery_candidate_sha256": candidate_sha,
+        "recovery_source_receipt_sha256": source_receipt_sha,
+        "recovery_manifest_sha256": recovery_manifest_sha,
+        "inventory_id": evidence["inventory_id"],
+        "original_attempt_id": evidence["original_attempt_id"],
+        "artifact_id": evidence["artifact_id"],
+        "artifact_manifest_sha256": evidence["artifact_manifest_sha256"],
+        "source_html_sha256": observation.source.source_html_sha256,
+        "checkpoint_sha256": evidence["checkpoint_sha256"],
+        "diagnostic_sha256": evidence["diagnostic_sha256"],
+        "source_generation_id": historic_generation.generation_id,
+        "source_generation_manifest_sha256": historic_generation.manifest_sha256,
+        "source_capture_id": observation.source.source_capture_id,
+        "active_generation_id": active_generation.generation_id,
+        "active_generation_manifest_sha256": active_generation.manifest_sha256,
+        "parser_version": observation.source.parser_version,
+        "policy_id": RECOVERY_POLICY_ID,
+        "policy_version": RECOVERY_POLICY_VERSION,
+        "semantic_valid": True,
+        "details_sha256": _sha256(details_raw),
+        "details": details,
+    }
+    return draft, observation, validation
+
+
+def build_legacy_recovery_auto_policy_receipt(
+    draft: dict[str, Any],
+    *,
+    validation: dict[str, Any],
+    update_job_id: str,
+    evaluated_at_utc: datetime | None = None,
+) -> dict[str, Any]:
+    """Build an auditable, non-human policy receipt for offline 272582 recovery."""
+
+    from football_data_hub.providers.bdfutbol.match_details.automatic_publication_policy import (
+        RECOVERY_POLICY_ID,
+        RECOVERY_POLICY_VERSION,
+        legacy_recovery_publication_decision,
+    )
+
+    eligible, reason = legacy_recovery_publication_decision(validation)
+    if (
+        draft.get("schema_version") != LEGACY_RECOVERY_DRAFT_SCHEMA
+        or draft.get("source_kind") != "offline_legacy_recovery"
+        or draft.get("source_match_id") != "272582"
+        or draft.get("internal_id") != "pf-2026-27-group-ii-bdfutbol-272582"
+        or draft.get("source_html_sha256") != "9242edad00b43a4e83c649ddad006edb0d1172e0d88640082312a0fe1cf16997"
+        or draft.get("policy_id") != RECOVERY_POLICY_ID
+        or draft.get("policy_version") != RECOVERY_POLICY_VERSION
+        or draft.get("semantic_valid") is not True
+        or _sha256(_canonical_json(draft.get("details"))) != draft.get("details_sha256")
+        or not eligible
+        or not re.fullmatch(r"[0-9a-f-]{36}", update_job_id)
+    ):
+        raise MatchDetailsLoadError(f"No se puede emitir recibo automático de recuperación ({reason or 'evidencia inválida'}).")
+    evaluated_at_utc = evaluated_at_utc or datetime.now(timezone.utc)
+    if evaluated_at_utc.tzinfo is None:
+        raise MatchDetailsLoadError("La decisión automática debe incluir zona horaria.")
+    candidate_set = {
+        "schema_version": "football_data_hub.legacy_recovery_policy_candidate.v1",
+        "policy_id": RECOVERY_POLICY_ID,
+        "policy_version": RECOVERY_POLICY_VERSION,
+        "update_job_id": update_job_id,
+        **{
+            key: draft[key]
+            for key in (
+                "internal_id", "source_match_id", "recovery_id",
+                "recovery_candidate_sha256", "recovery_source_receipt_sha256",
+                "recovery_manifest_sha256", "artifact_manifest_sha256",
+                "source_html_sha256", "checkpoint_sha256", "diagnostic_sha256",
+                "source_generation_id", "source_generation_manifest_sha256",
+                "active_generation_id", "active_generation_manifest_sha256", "details_sha256",
+            )
+        },
+        "acquisition_count": 0,
+        "offline_revalidation_only": True,
+    }
+    receipt = {
+        "schema_version": LEGACY_RECOVERY_AUTO_RECEIPT_SCHEMA,
+        "publication_status": "approved",
+        "approval_mode": "automatic_policy",
+        "policy_id": RECOVERY_POLICY_ID,
+        "policy_version": RECOVERY_POLICY_VERSION,
+        "decision_scope": "verified_offline_legacy_recovery",
+        "update_job_id": update_job_id,
+        "candidate_set_sha256": _sha256(_canonical_json(candidate_set)),
+        "validation_evidence_sha256": _sha256(_canonical_json(validation)),
+        "validation": json.loads(_canonical_json(validation)),
+        "evaluated_at_utc": evaluated_at_utc.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
+        **{
+            key: draft[key]
+            for key in (
+                "publication_id", "source_kind", "internal_id", "source_match_id", "season",
+                "competition", "group", "matchday", "source_match_date", "home_team_id",
+                "away_team_id", "home_team_name", "away_team_name", "recovery_id",
+                "recovery_candidate_sha256", "recovery_source_receipt_sha256",
+                "recovery_manifest_sha256", "inventory_id", "original_attempt_id", "artifact_id",
+                "artifact_manifest_sha256", "source_html_sha256", "checkpoint_sha256",
+                "diagnostic_sha256", "source_generation_id", "source_generation_manifest_sha256",
+                "source_capture_id", "active_generation_id", "active_generation_manifest_sha256",
+                "parser_version", "details_sha256",
+            )
+        },
+    }
+    receipt["receipt_sha256"] = _sha256(_canonical_json(receipt))
+    return receipt
 
 
 def campaign_approval_confirmation(draft: dict[str, Any]) -> str:
@@ -1817,6 +2258,180 @@ def publish_campaign_match_detail_draft(
         finally:
             fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
     return {"internal_id": draft["internal_id"], "publication_id": package_id}
+
+
+def publish_legacy_recovery_match_detail_by_policy(
+    *,
+    recovery_id: str,
+    update_job_id: str,
+    published_root: Path,
+    store_root: Path,
+    generation_root: Path,
+    data_root: Path,
+    match_bundle: MatchResultsBundle,
+    player_ids: set[int],
+) -> dict[str, Any]:
+    """Publish 272582 only from its reverified offline recovery and specific policy receipt."""
+
+    draft, _observation, validation = build_legacy_recovery_publication_draft(
+        recovery_id=recovery_id,
+        update_job_id=update_job_id,
+        store_root=store_root,
+        data_root=data_root,
+        generation_root=generation_root,
+        match_bundle=match_bundle,
+        player_ids=player_ids,
+    )
+    receipt = build_legacy_recovery_auto_policy_receipt(
+        draft, validation=validation, update_job_id=update_job_id
+    )
+    receipt_raw = _canonical_json(receipt)
+    details_raw = _canonical_json(draft["details"])
+    manifest = _legacy_recovery_manifest(draft, receipt_raw)
+    manifest_raw = _canonical_json(manifest)
+
+    root = _safe_root(published_root)
+    root.mkdir(parents=True, exist_ok=True)
+    lock_path = root / ".publication.lock"
+    if lock_path.is_symlink():
+        raise MatchDetailsLoadError("El bloqueo de publicación no puede ser symlink.")
+    with lock_path.open("a+b") as lock_file:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+        try:
+            packages_root = root / "packages"
+            packages_root.mkdir(exist_ok=True)
+            if packages_root.is_symlink() or not packages_root.is_dir():
+                raise MatchDetailsLoadError("El directorio de paquetes publicados no es regular.")
+            index_path = root / "index.json"
+            previous_index: bytes | None = None
+            entries: list[dict[str, str]] = []
+            if index_path.is_symlink():
+                raise MatchDetailsLoadError("El índice publicado no puede ser symlink.")
+            if index_path.exists():
+                current, previous_index = _read_json(index_path)
+                entries = _validated_index_entries(current)
+            existing = next(
+                (entry for entry in entries if entry["internal_id"] == draft["internal_id"]),
+                None,
+            )
+            package_id = draft["publication_id"]
+            package = packages_root / package_id
+            if existing is not None:
+                if existing["publication_id"] != package_id or existing["manifest_sha256"] != _sha256(manifest_raw):
+                    raise MatchDetailsLoadError("272582 ya tiene una publicación distinta; no se reemplaza.")
+                loaded = load_published_match_details(
+                    root,
+                    store_root=store_root,
+                    generation_root=generation_root,
+                    data_root=data_root,
+                    match_bundle=match_bundle,
+                    player_ids=player_ids,
+                    internal_ids={draft["internal_id"]},
+                )
+                if draft["internal_id"] not in loaded:
+                    raise MatchDetailsLoadError("La recuperación existente no supera la lectura final.")
+                return {
+                    "status": "ALREADY_PUBLISHED_VERIFIED",
+                    "internal_id": draft["internal_id"],
+                    "publication_id": package_id,
+                    "manifest_sha256": _sha256(manifest_raw),
+                }
+            if any(entry["publication_id"] == package_id for entry in entries):
+                raise MatchDetailsLoadError("El ID de publicación de recuperación ya pertenece a otro partido.")
+
+            package_files = {
+                "approval.json": receipt_raw,
+                "details.json": details_raw,
+                "manifest.json": manifest_raw,
+            }
+            if package.exists() or package.is_symlink():
+                if (
+                    package.is_symlink()
+                    or not package.is_dir()
+                    or any(path.is_symlink() for path in package.rglob("*"))
+                    or {path.name for path in package.iterdir()} != set(package_files)
+                    or any((package / name).read_bytes() != content for name, content in package_files.items())
+                ):
+                    raise MatchDetailsLoadError("Existe un paquete huérfano de recuperación con datos distintos.")
+            else:
+                stage = Path(tempfile.mkdtemp(prefix=f".{package_id}.", dir=packages_root))
+                try:
+                    for name, content in package_files.items():
+                        with (stage / name).open("xb") as output:
+                            output.write(content)
+                            output.flush()
+                            os.fsync(output.fileno())
+                    stage_fd = os.open(stage, os.O_RDONLY)
+                    try:
+                        os.fsync(stage_fd)
+                    finally:
+                        os.close(stage_fd)
+                    os.replace(stage, package)
+                    packages_fd = os.open(packages_root, os.O_RDONLY)
+                    try:
+                        os.fsync(packages_fd)
+                    finally:
+                        os.close(packages_fd)
+                finally:
+                    if stage.exists():
+                        shutil.rmtree(stage, ignore_errors=True)
+
+            entry = {
+                "internal_id": draft["internal_id"],
+                "publication_id": package_id,
+                "package_path": f"packages/{package_id}",
+                "manifest_sha256": _sha256(manifest_raw),
+            }
+            entries.append(entry)
+            entries.sort(key=lambda item: item["internal_id"])
+            new_index_raw = _canonical_json({"schema_version": INDEX_SCHEMA, "publications": entries})
+            if previous_index is not None:
+                history = root / "indexes"
+                history.mkdir(exist_ok=True)
+                if history.is_symlink() or not history.is_dir():
+                    raise MatchDetailsLoadError("El historial del índice publicado no es regular.")
+                history_path = history / f"{_sha256(previous_index)}.json"
+                if history_path.is_symlink():
+                    raise MatchDetailsLoadError("El índice histórico no puede ser symlink.")
+                if history_path.exists():
+                    if not history_path.is_file() or history_path.read_bytes() != previous_index:
+                        raise MatchDetailsLoadError("El índice histórico existente no conserva sus bytes.")
+                else:
+                    _atomic_bytes(history_path, previous_index)
+            _atomic_bytes(index_path, new_index_raw)
+            try:
+                loaded = load_published_match_details(
+                    root,
+                    store_root=store_root,
+                    generation_root=generation_root,
+                    data_root=data_root,
+                    match_bundle=match_bundle,
+                    player_ids=player_ids,
+                    internal_ids={draft["internal_id"]},
+                )
+                if draft["internal_id"] not in loaded:
+                    raise MatchDetailsLoadError("El paquete recuperado no aparece tras la validación final.")
+            except BaseException:
+                if previous_index is None:
+                    index_path.unlink(missing_ok=True)
+                    root_fd = os.open(root, os.O_RDONLY)
+                    try:
+                        os.fsync(root_fd)
+                    finally:
+                        os.close(root_fd)
+                else:
+                    _atomic_bytes(index_path, previous_index)
+                raise
+        finally:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+    return {
+        "status": "PUBLISHED_VERIFIED",
+        "internal_id": draft["internal_id"],
+        "publication_id": package_id,
+        "manifest_sha256": _sha256(manifest_raw),
+        "details_sha256": draft["details_sha256"],
+        "receipt_sha256": receipt["receipt_sha256"],
+    }
 
 
 def _parse_approval_timestamp(value: Any) -> datetime:

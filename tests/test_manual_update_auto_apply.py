@@ -486,3 +486,110 @@ def test_auto_detail_pipeline_reuses_exact_unstarted_proposal_without_duplicate_
     assert result["match_details_candidate_count"] == 2
     assert result["match_details_navigation_count"] == 0
     manager.close()
+
+
+def test_global_update_processes_saved_auto_authorized_campaign_before_acquisition(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from football_data_hub.providers.bdfutbol.match_details import (
+        campaign_operations,
+        operational_campaign,
+        scalable_campaign_cli,
+        supervised_acquisition,
+    )
+
+    manager = _manager(tmp_path)
+    data = manager.data_root
+    assert data is not None
+    manager.match_generation_root = data / "matches"
+    generation = data / "matches/generations/match-00-active"
+    generation.mkdir(parents=True)
+    manager.match_details_store_root = data / "matches/details"
+    manager.match_details_store_root.mkdir(parents=True, exist_ok=True)
+    manager.match_details_published_root = data / "matches/details/published"
+    manager.match_details_published_root.mkdir(parents=True)
+    manager.player_inventory_root = data / "players/inventory"
+    manager.player_inventory_root.mkdir(parents=True)
+    manager.player_compact_root = data / "players/compact"
+    manager.player_compact_root.mkdir(parents=True)
+    manager.player_team_captures_root = data / "team-captures"
+    manager.player_team_captures_root.mkdir()
+    manager.player_published_index_path = data / "published/teams.json"
+    manager.player_published_index_path.parent.mkdir(parents=True)
+    manager.player_published_index_path.write_text("{}\n", encoding="utf-8")
+
+    internal_id = "pf-2026-27-group-ii-bdfutbol-272590"
+    campaign_id = "match-detail-campaign-v2-0123456789abcdef"
+    (manager.match_details_store_root / "campaigns" / campaign_id).mkdir(parents=True)
+    row = {
+        "internal_id": internal_id,
+        "source_match_id": "272590",
+        "source_match_url": "https://www.bdfutbol.com/es/p/p.php?id=272590",
+        "group": "II",
+        "matchday": 8,
+        "status": "played",
+        "detail_status": "included_in_existing_campaign",
+        "blocked_reasons": [],
+    }
+    proposal = {"campaign_id": campaign_id, "source": {"generation_id": generation.name}}
+    context_before = {
+        "generation_root": generation,
+        "active_generation_id": generation.name,
+        "active_generation_manifest_sha256": "a" * 64,
+        "published_ids": set(),
+        "captured_ids": {internal_id},
+        "blocked_ids": set(),
+        "match_bundle": None,
+        "player_ids": set(),
+    }
+    reports = [({"matches": [row]}, [proposal], context_before)]
+    monkeypatch.setattr(scalable_campaign_cli, "_load_report", lambda _args: reports.pop(0))
+
+    class FakeLedger:
+        def __init__(self, root: Path):
+            self.root = root
+
+        def preflight(self, _campaign_id):
+            return {
+                "source_generation_id": generation.name,
+                "source_generation_manifest_sha256": "a" * 64,
+                "candidates": [{
+                    "internal_id": internal_id,
+                    "authorization_mode": "competition_update_auto_policy",
+                    "state": "VALIDATION_FAILED",
+                    "artifact": {"artifact_id": "saved", "source_html_sha256": "b" * 64},
+                }],
+            }
+
+    monkeypatch.setattr(operational_campaign, "OperationalMatchCampaignLedger", FakeLedger)
+    offline_calls = []
+
+    def process_saved(**kwargs):
+        offline_calls.append(kwargs)
+        return {
+            "published_count": 1,
+            "policy_pending_count": 0,
+            "validation_failed_count": 0,
+            "error_count": 0,
+            "candidates": [{"internal_id": internal_id, "status": "PUBLISHED_VERIFIED"}],
+        }
+
+    monkeypatch.setattr(campaign_operations, "run_offline_batch", process_saved)
+    monkeypatch.setattr(
+        supervised_acquisition,
+        "run_competition_update_detail_acquisition",
+        lambda **_kwargs: pytest.fail("Una captura guardada válida no debe navegar otra vez"),
+    )
+    reloads = []
+    manager.on_match_details_published = lambda _job: reloads.append(True)
+
+    result = manager._process_new_match_details({"job_id": str(uuid.uuid4())})
+
+    assert result["match_details_published_count"] == 1
+    assert result["match_details_navigation_count"] == 0
+    assert result["match_details_campaigns_processed"] == [campaign_id]
+    assert offline_calls[0]["internal_ids"] == {internal_id}
+    assert offline_calls[0]["auto_publish_policy"] is True
+    assert reloads == [True]
+    assert reports == []
+    manager.close()

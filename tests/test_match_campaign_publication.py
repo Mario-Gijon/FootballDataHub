@@ -11,7 +11,9 @@ import football_data_hub_api.match_details_dataset as match_details_dataset
 from football_data_hub_api.match_details_dataset import (
     CAMPAIGN_DRAFT_SCHEMA,
     MatchDetailsLoadError,
+    _automatic_policy_validation_from_observation,
     build_campaign_approval_receipt,
+    build_auto_policy_receipt,
     campaign_approval_confirmation,
     publish_campaign_match_detail_draft,
     write_immutable_publication_json,
@@ -106,6 +108,41 @@ def test_campaign_approval_rejects_modified_draft_content() -> None:
 
     with pytest.raises(MatchDetailsLoadError, match="aprobación"):
         build_campaign_approval_receipt(draft, **_approval_args(draft))
+
+
+def test_automatic_policy_receipt_replay_preserves_parser_version() -> None:
+    from football_data_hub.domain.matches.semantic_detail import SemanticValidation, ValidationCheck
+    from football_data_hub.providers.bdfutbol.match_details.automatic_publication_policy import (
+        REQUIRED_CHECKS,
+    )
+
+    draft = _draft()
+    validation = SemanticValidation(
+        semantic_valid=True,
+        errors=(),
+        warnings=("campaign_discovery_remains_unpromoted_pending_independent_review",),
+        checks=tuple(
+            ValidationCheck(name, True, "verified") for name in sorted(REQUIRED_CHECKS)
+        ),
+    )
+    observation = SimpleNamespace(
+        validation=validation,
+        source=SimpleNamespace(parser_version="match-detail-semantic-test"),
+    )
+    reconstructed = _automatic_policy_validation_from_observation(observation)
+    receipt = build_auto_policy_receipt(
+        draft,
+        validation=reconstructed,
+        update_job_id="d34db33f-15b4-4aef-a6d1-7c4f8aeb5d02",
+        candidate_set_sha256="b" * 64,
+        validation_event_sha256="c" * 64,
+    )
+
+    assert reconstructed["parser_version"] == "match-detail-semantic-test"
+    assert receipt["validation"] == reconstructed
+    assert receipt["validation_evidence_sha256"] == hashlib.sha256(
+        json.dumps(reconstructed, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
 
 
 def test_derived_drafts_are_immutable_and_never_overwrite(tmp_path) -> None:

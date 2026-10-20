@@ -1238,6 +1238,7 @@ class ManualUpdateManager:
         from types import SimpleNamespace
 
         from football_data_hub.providers.bdfutbol.match_details.campaign_operations import run_offline_batch
+        from .match_details_dataset import publish_legacy_recovery_match_detail_by_policy
         from football_data_hub.providers.bdfutbol.match_details.operational_campaign import (
             OperationalMatchCampaignLedger,
         )
@@ -1264,6 +1265,147 @@ class ManualUpdateManager:
         job["stage"] = "scanning_unpublished_matches"
         self._save(job)
         status_report, existing_proposals, context = _load_report(args)
+        ledger = OperationalMatchCampaignLedger(self.match_details_store_root / "campaigns")
+        offline_reports: list[dict[str, Any]] = []
+        saved_capture_count = 0
+        saved_policy_pending = 0
+        saved_validation_failed = 0
+        saved_error_count = 0
+        saved_terminal_policy_pending = 0
+        processed_campaign_ids: list[str] = []
+
+        # The global button first consumes already-authorized, hash-checked
+        # campaign artifacts offline. It never turns a previous STARTED event
+        # into another navigation.
+        for proposal in existing_proposals:
+            campaign_id = proposal.get("campaign_id")
+            if not isinstance(campaign_id, str) or not re.fullmatch(
+                r"match-detail-campaign-v2-[0-9a-f]{16}", campaign_id
+            ):
+                continue
+            campaign_dir = ledger.root / campaign_id
+            if campaign_dir.is_symlink():
+                saved_error_count += 1
+                continue
+            if not campaign_dir.is_dir():
+                # Old proposals without an initialized v2 ledger have no
+                # consumed authorization or captured artifact to process.
+                continue
+            try:
+                preflight = ledger.preflight(campaign_id)
+            except Exception:
+                # _load_report has already performed a global integrity pass;
+                # keep a campaign-local diagnostic and continue independent IDs.
+                saved_error_count += 1
+                continue
+            if (
+                preflight.get("source_generation_id") != context.get("active_generation_id")
+                or preflight.get("source_generation_manifest_sha256")
+                != context.get("active_generation_manifest_sha256")
+            ):
+                continue
+            auto_pending_ids = {
+                item["internal_id"]
+                for item in preflight.get("candidates", [])
+                if item.get("authorization_mode") == "competition_update_auto_policy"
+                and item.get("state") in {
+                    "DISCOVERY_REVIEW_REQUIRED", "VALIDATION_FAILED", "REVALIDATION_FAILED",
+                    "VALIDATED", "REVALIDATED", "AUTO_POLICY_REVALIDATED", "DRAFT_PREPARED",
+                    "AUTO_POLICY_APPROVED",
+                }
+                and isinstance(item.get("artifact"), dict)
+            }
+            if not auto_pending_ids:
+                saved_terminal_policy_pending += sum(
+                    1
+                    for item in preflight.get("candidates", [])
+                    if item.get("authorization_mode") == "competition_update_auto_policy"
+                    and item.get("state") == "AUTO_POLICY_REVALIDATION_FAILED"
+                    and isinstance(item.get("artifact"), dict)
+                )
+                continue
+            saved_terminal_policy_pending += sum(
+                1
+                for item in preflight.get("candidates", [])
+                if item.get("authorization_mode") == "competition_update_auto_policy"
+                and item.get("state") == "AUTO_POLICY_REVALIDATION_FAILED"
+                and isinstance(item.get("artifact"), dict)
+            )
+            job["stage"] = "validating_saved_match_details"
+            job["match_details_progress"] = {
+                "phase": "offline_validation",
+                "completed": 0,
+                "total": len(auto_pending_ids),
+                "campaign_id": campaign_id,
+            }
+            self._save(job)
+            offline_report = run_offline_batch(
+                ledger=ledger,
+                campaign_id=campaign_id,
+                data_root=self.data_root,
+                player_inventory_root=self.player_inventory_root,
+                player_compact_root=self.player_compact_root,
+                player_team_captures_root=self.player_team_captures_root,
+                player_published_index_path=self.player_published_index_path,
+                auto_publish_policy=True,
+                published_root=self.match_details_published_root,
+                internal_ids=auto_pending_ids,
+            )
+            offline_reports.append(offline_report)
+            saved_capture_count += len(auto_pending_ids)
+            saved_policy_pending += int(offline_report.get("policy_pending_count", 0))
+            saved_validation_failed += int(offline_report.get("validation_failed_count", 0))
+            saved_error_count += int(offline_report.get("error_count", 0))
+            processed_campaign_ids.append(campaign_id)
+
+        legacy_recovery_result: dict[str, Any] | None = None
+        legacy_recovery_error: str | None = None
+        legacy_recovery_id = "legacy-recovery-272582-812c3e44fbbc6941"
+        legacy_internal_id = "pf-2026-27-group-ii-bdfutbol-272582"
+        recovery_report = status_report.get("historical_recovery")
+        recovery_candidate_pending = bool(
+            legacy_internal_id not in context["published_ids"]
+            and isinstance(recovery_report, dict)
+            and recovery_report.get("recovery_id") == legacy_recovery_id
+        )
+        if (
+            legacy_internal_id not in context["published_ids"]
+            and context.get("match_bundle") is not None
+            and context.get("active_generation_id")
+        ):
+            if isinstance(recovery_report, dict) and recovery_report.get("recovery_id") == legacy_recovery_id:
+                try:
+                    job["stage"] = "validating_legacy_recovery"
+                    self._save(job)
+                    legacy_recovery_result = publish_legacy_recovery_match_detail_by_policy(
+                        recovery_id=legacy_recovery_id,
+                        update_job_id=str(job["job_id"]),
+                        published_root=self.match_details_published_root,
+                        store_root=self.match_details_store_root,
+                        generation_root=self.match_generation_root,
+                        data_root=self.data_root,
+                        match_bundle=context["match_bundle"],
+                        player_ids=set(context["player_ids"]),
+                    )
+                except Exception as exc:
+                    legacy_recovery_error = f"{type(exc).__name__}: {str(exc)[:300]}"
+
+        offline_published_count = sum(int(report.get("published_count", 0)) for report in offline_reports)
+        recovery_published_count = int(
+            legacy_recovery_result is not None
+            and legacy_recovery_result.get("status") in {"PUBLISHED_VERIFIED", "ALREADY_PUBLISHED_VERIFIED"}
+            and legacy_internal_id not in context["published_ids"]
+        )
+        saved_published_count = offline_published_count + recovery_published_count
+        for offline_report in offline_reports:
+            context["published_ids"].update(
+                item.get("internal_id")
+                for item in offline_report.get("candidates", [])
+                if item.get("status") == "PUBLISHED_VERIFIED"
+            )
+        if recovery_published_count:
+            context["published_ids"].add(legacy_internal_id)
+
         rows = status_report.get("matches", [])
         eligible = [
             row for row in rows
@@ -1279,22 +1421,61 @@ class ManualUpdateManager:
             1 for row in rows
             if row.get("status") == "played"
             and row.get("detail_status") == "blocked_requires_human_review"
+            and row.get("internal_id") not in context["published_ids"]
+            and row.get("internal_id") not in context["captured_ids"]
         )
-        if not eligible:
-            return {
-                "match_details_candidate_count": 0,
-                "match_details_captured_count": 0,
-                "match_details_navigation_count": 0,
-                "match_details_published_count": 0,
-                "match_details_pending_count": 0,
-                "match_details_policy_review_count": 0,
-                "match_details_stopped": False,
-                "match_details_blocked_excluded_count": blocked_excluded,
-                "match_details_message": "No hay nuevos informes elegibles para adquirir.",
-            }
 
         selected_ids = [row["internal_id"] for row in eligible]
         selected_id_set = set(selected_ids)
+        if not selected_ids:
+            published_ids_from_saved = {
+                item.get("internal_id")
+                for report in offline_reports
+                for item in report.get("candidates", [])
+                if item.get("status") == "PUBLISHED_VERIFIED"
+            }
+            saved_pending_count = max(0, saved_capture_count - len(published_ids_from_saved))
+            reload_error = None
+            if saved_published_count and self.on_match_details_published is not None:
+                job["stage"] = "refreshing_match_details"
+                self._save(job)
+                try:
+                    self.on_match_details_published(job)
+                except Exception as exc:
+                    reload_error = f"{type(exc).__name__}: {str(exc)[:300]}"
+            pending_count = (
+                saved_pending_count
+                + saved_terminal_policy_pending
+                + int(recovery_candidate_pending and not recovery_published_count)
+            )
+            return {
+                "match_details_candidate_count": saved_capture_count + saved_terminal_policy_pending + int(recovery_candidate_pending),
+                "match_details_captured_count": saved_capture_count + saved_terminal_policy_pending,
+                "match_details_navigation_count": 0,
+                "match_details_published_count": saved_published_count,
+                "match_details_pending_count": pending_count,
+                "match_details_policy_review_count": saved_policy_pending + saved_terminal_policy_pending,
+                "match_details_validation_failed_count": saved_validation_failed,
+                "match_details_error_count": saved_error_count,
+                "match_details_campaigns_processed": processed_campaign_ids,
+                "match_details_recovery_status": (
+                    legacy_recovery_result.get("status") if legacy_recovery_result else None
+                ),
+                "match_details_recovery_error": legacy_recovery_error,
+                "match_details_recovery_published_count": recovery_published_count,
+                "match_details_recovery_pending_count": int(
+                    recovery_candidate_pending and not recovery_published_count
+                ),
+                "match_details_stopped": False,
+                "match_details_blocked_excluded_count": blocked_excluded,
+                "match_details_reload_error": reload_error,
+                "match_details_message": (
+                    f"Informes publicados con política estricta: {saved_published_count}. "
+                    f"Pendientes: {pending_count}."
+                    if saved_published_count
+                    else "Los informes dudosos o no disponibles permanecen pendientes."
+                ),
+            }
         source_generation_id = context["generation_root"].name
         matching_proposals = [
             proposal
@@ -1347,7 +1528,6 @@ class ManualUpdateManager:
             proposal_dir = write_match_campaign_proposal(
                 self.match_details_store_root / "campaign-proposals", plan
             )
-        ledger = OperationalMatchCampaignLedger(self.match_details_store_root / "campaigns")
         ledger.initialize(
             proposal_dir=proposal_dir,
             # _load_report resolves an active-generation.json store pointer
@@ -1414,8 +1594,9 @@ class ManualUpdateManager:
                 player_published_index_path=self.player_published_index_path,
                 auto_publish_policy=True,
                 published_root=self.match_details_published_root,
+                internal_ids=selected_id_set,
             )
-        published_count = int(offline.get("published_count", 0))
+        published_count = saved_published_count + int(offline.get("published_count", 0))
         reload_error = None
         if published_count and self.on_match_details_published is not None:
             job["stage"] = "refreshing_match_details"
@@ -1425,17 +1606,32 @@ class ManualUpdateManager:
             except Exception as exc:
                 reload_error = f"{type(exc).__name__}: {str(exc)[:300]}"
         return {
-            "match_details_candidate_count": len(selected_ids),
-            "match_details_captured_count": int(acquisition.get("captured_count", 0)),
+            "match_details_candidate_count": saved_capture_count + saved_terminal_policy_pending + len(selected_ids) + int(recovery_candidate_pending),
+            "match_details_captured_count": saved_capture_count + saved_terminal_policy_pending + int(acquisition.get("captured_count", 0)),
             "match_details_navigation_count": int(acquisition.get("navigation_requests", 0)),
             "match_details_published_count": published_count,
-            "match_details_pending_count": max(0, len(selected_ids) - published_count),
-            "match_details_policy_review_count": int(offline.get("policy_pending_count", 0)),
+            "match_details_pending_count": max(
+                0,
+                saved_capture_count + saved_terminal_policy_pending + len(selected_ids) + int(recovery_candidate_pending) - published_count,
+            ),
+            "match_details_policy_review_count": saved_policy_pending + saved_terminal_policy_pending + int(offline.get("policy_pending_count", 0)),
+            "match_details_validation_failed_count": saved_validation_failed + int(offline.get("validation_failed_count", 0)),
+            "match_details_error_count": saved_error_count + int(offline.get("error_count", 0)),
+            "match_details_campaigns_processed": processed_campaign_ids,
+            "match_details_recovery_status": (
+                legacy_recovery_result.get("status") if legacy_recovery_result else None
+            ),
+            "match_details_recovery_error": legacy_recovery_error,
+            "match_details_recovery_published_count": recovery_published_count,
+            "match_details_recovery_pending_count": int(
+                legacy_internal_id not in context["published_ids"] and recovery_published_count == 0
+            ),
             "match_details_stopped": acquisition.get("stop_acquisition") is True,
             "match_details_blocked_excluded_count": blocked_excluded,
             "match_details_reload_error": reload_error,
             "match_details_message": (
-                "Informes validados y publicados según la política estricta."
+                f"Informes publicados con política estricta: {published_count}. "
+                f"Pendientes: {max(0, saved_capture_count + saved_terminal_policy_pending + len(selected_ids) + int(recovery_candidate_pending) - published_count)}."
                 if published_count else "Los informes dudosos o no disponibles permanecen pendientes."
             ),
         }

@@ -5,11 +5,13 @@ import uuid
 import pytest
 
 from football_data_hub.providers.bdfutbol.match_details.automatic_publication_policy import (
+    LEGACY_RECOVERY_WARNING,
     POLICY_ID,
     POLICY_VERSION,
     REQUIRED_CHECKS,
     automatic_publication_decision,
     candidate_set_sha256,
+    legacy_recovery_publication_decision,
 )
 from football_data_hub.providers.bdfutbol.match_details.campaign import MatchCampaignIntegrityError
 from football_data_hub.providers.bdfutbol.match_details.operational_campaign import (
@@ -141,3 +143,24 @@ def test_ledger_rejects_candidate_set_tampering_without_id_specific_exclusions()
 def test_policy_version_and_identity_are_explicit() -> None:
     assert POLICY_ID == "football-data-hub.strict-match-details"
     assert POLICY_VERSION == "1"
+
+
+def test_offline_legacy_recovery_relaxes_only_the_historic_access_warning() -> None:
+    validation = _validation()
+    validation["warnings"] = [LEGACY_RECOVERY_WARNING]
+    assert legacy_recovery_publication_decision(validation) == (True, None)
+
+    validation["warnings"].append("lineup_event_unresolved")
+    assert legacy_recovery_publication_decision(validation)[0] is False
+
+    validation["warnings"] = [LEGACY_RECOVERY_WARNING, LEGACY_RECOVERY_WARNING]
+    assert legacy_recovery_publication_decision(validation) == (
+        False,
+        "legacy_recovery_warning_duplicated",
+    )
+
+    validation["warnings"] = []
+    assert legacy_recovery_publication_decision(validation) == (
+        False,
+        "expected_legacy_recovery_warning_missing",
+    )

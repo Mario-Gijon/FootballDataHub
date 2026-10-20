@@ -10,6 +10,7 @@ import asyncio
 import hashlib
 import json
 import os
+import uuid
 from collections import Counter
 from dataclasses import replace
 from pathlib import Path
@@ -36,6 +37,7 @@ from football_data_hub_api.match_details_dataset import (
     build_campaign_publication_draft,
     campaign_approval_confirmation,
     load_published_match_details,
+    publish_legacy_recovery_match_detail_by_policy,
     publish_campaign_match_detail_draft,
     write_immutable_publication_json,
 )
@@ -316,3 +318,69 @@ def test_272525_campaign_publication_cycle_is_temporary_and_api_readable(tmp_pat
     assert legacy_response.json()["detail_status"] == "not_available"
     assert legacy_response.json()["details"] is None
     assert before == _hash_paths(source_paths)
+
+
+def test_272582_offline_legacy_recovery_auto_policy_is_temporary_and_auditable(tmp_path):
+    data_root = DATA_ROOT
+    store_root = data_root / "matches/details"
+    recovery_id = "legacy-recovery-272582-812c3e44fbbc6941"
+    recovery_root = store_root / "recoveries" / recovery_id
+    candidate_path = recovery_root / "candidate.json"
+    if not candidate_path.is_file():
+        pytest.skip("Falta el bundle local de recuperación 272582")
+    candidate = json.loads(candidate_path.read_bytes())
+    evidence = candidate["evidence"]
+    artifact = store_root / evidence["artifact_relative_path"]
+    checkpoint = store_root / "states" / f"{evidence['inventory_id']}.json"
+    generation_store = data_root / "matches"
+    player_roots = (
+        data_root / "players/inventory-2026-27",
+        data_root / "players/compact-2026-27",
+        data_root / "team-captures",
+        data_root / "published/team_profiles_2026-27.json",
+    )
+    if not all(path.exists() for path in (artifact, checkpoint, *player_roots)):
+        pytest.skip("Faltan capturas locales verificadas para reconstruir 272582")
+
+    historical_paths = [recovery_root, artifact, checkpoint]
+    before = _hash_paths(historical_paths)
+    match_bundle = load_match_results_dataset(generation_store, data_root=data_root)
+    player_directory = load_player_directory(
+        inventory_root=player_roots[0],
+        compact_root=player_roots[1],
+        team_captures_root=player_roots[2],
+        published_index_path=player_roots[3],
+    )
+    published_root = tmp_path / "published"
+    result = publish_legacy_recovery_match_detail_by_policy(
+        recovery_id=recovery_id,
+        update_job_id=str(uuid.uuid4()),
+        published_root=published_root,
+        store_root=store_root,
+        generation_root=generation_store,
+        data_root=data_root,
+        match_bundle=match_bundle,
+        player_ids=set(player_directory.players_by_id),
+    )
+    assert result["status"] == "PUBLISHED_VERIFIED"
+    assert result["internal_id"] == LEGACY_INTERNAL_ID
+    loaded = load_published_match_details(
+        published_root,
+        store_root=store_root,
+        generation_root=generation_store,
+        data_root=data_root,
+        match_bundle=match_bundle,
+        player_ids=set(player_directory.players_by_id),
+        internal_ids={LEGACY_INTERNAL_ID},
+    )
+    assert set(loaded) == {LEGACY_INTERNAL_ID}
+    assert loaded[LEGACY_INTERNAL_ID].publication_status == "approved"
+    assert loaded[LEGACY_INTERNAL_ID].home_goals == 3
+    assert loaded[LEGACY_INTERNAL_ID].away_goals == 3
+    index = json.loads((published_root / "index.json").read_bytes())
+    entry = next(row for row in index["publications"] if row["internal_id"] == LEGACY_INTERNAL_ID)
+    receipt = json.loads((published_root / entry["package_path"] / "approval.json").read_bytes())
+    assert receipt["approval_mode"] == "automatic_policy"
+    assert receipt["decision_scope"] == "verified_offline_legacy_recovery"
+    assert receipt["validation"]["semantic_valid"] is True
+    assert _hash_paths(historical_paths) == before

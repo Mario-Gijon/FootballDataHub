@@ -54,6 +54,9 @@ PLAYER_IDLE_CONFIRMATION = "PLAYER_BROWSER_IDLE_CONFIRMED"
 REVALIDATE_CONFIRMATION = "REVALIDATE_FAILED_ARTIFACT_V2"
 AUTO_UPDATE_AUTHORIZATION_SCHEMA = "football_data_hub.match_detail_update_authorization.v1"
 AUTO_UPDATE_CANDIDATE_SET_ID = "competition-update-candidate-set-v1"
+AUTO_REVALIDATION_POLICY_ID = "football-data-hub.saved-campaign-sequence-fix"
+AUTO_REVALIDATION_POLICY_VERSION = "1"
+KNOWN_ARTIFACT_SEQUENCE_DIAGNOSTIC = "La secuencia del candidato no es la adquisición esperada"
 _CAMPAIGN_ID = re.compile(r"^match-detail-campaign-v2-[0-9a-f]{16}$")
 _INTERNAL_ID = re.compile(r"^pf-2026-27-group-(?:i|ii)-bdfutbol-[0-9]{5,10}$")
 _EVENT_FILE = re.compile(r"^[0-9]{6}-[0-9a-f]{32}\.json$")
@@ -70,9 +73,11 @@ _TRANSITIONS = {
     "AUTO_POLICY_APPROVED": {"PUBLISHED"},
     "PUBLISHED": {"REVIEW_COMPLETED"},
     "STOPPED": set(),
-    "VALIDATION_FAILED": {"REVALIDATED", "REVALIDATION_FAILED"},
-    "REVALIDATION_FAILED": {"REVALIDATED", "REVALIDATION_FAILED"},
+    "VALIDATION_FAILED": {"REVALIDATED", "REVALIDATION_FAILED", "AUTO_POLICY_REVALIDATED", "AUTO_POLICY_REVALIDATION_FAILED"},
+    "REVALIDATION_FAILED": {"REVALIDATED", "REVALIDATION_FAILED", "AUTO_POLICY_REVALIDATED", "AUTO_POLICY_REVALIDATION_FAILED"},
     "REVALIDATED": {"DRAFT_PREPARED"},
+    "AUTO_POLICY_REVALIDATED": {"DRAFT_PREPARED"},
+    "AUTO_POLICY_REVALIDATION_FAILED": set(),
     "REVIEW_COMPLETED": set(),
 }
 
@@ -509,7 +514,7 @@ class OperationalMatchCampaignLedger:
                 receipt = json.loads(policy_path.read_bytes())
                 validation_event = next(
                     row for row in reversed(events)
-                    if row.get("event_type") in {"VALIDATED", "REVALIDATED"}
+                    if row.get("event_type") in {"VALIDATED", "REVALIDATED", "AUTO_POLICY_REVALIDATED"}
                 )
                 authorization_event = next(
                     row for row in events if row.get("event_type") == "AUTO_POLICY_AUTHORIZED"
@@ -854,6 +859,64 @@ class OperationalMatchCampaignLedger:
                 raise MatchCampaignIntegrityError(
                     "El hash de evidencia de revalidación no coincide"
                 )
+        elif kind in {"AUTO_POLICY_REVALIDATED", "AUTO_POLICY_REVALIDATION_FAILED"}:
+            discovery = next(
+                (row for row in previous if row["event_type"] == "DISCOVERY_REVIEW_REQUIRED"),
+                None,
+            )
+            failure = previous[-1] if previous else {}
+            authorization_event = next(
+                (row for row in previous if row["event_type"] == "AUTO_POLICY_AUTHORIZED"),
+                None,
+            )
+            authorization = authorization_event.get("authorization") if authorization_event else None
+            validation = event.get("validation")
+            policy_eligible, policy_reason = (False, "validation_missing")
+            if isinstance(validation, dict):
+                from .automatic_publication_policy import automatic_publication_decision
+
+                policy_eligible, policy_reason = automatic_publication_decision(validation)
+            semantic_valid = validation.get("semantic_valid") if isinstance(validation, dict) else None
+            expected_published_state = kind == "AUTO_POLICY_REVALIDATED"
+            if (
+                failure.get("event_type") != "VALIDATION_FAILED"
+                or failure.get("semantic_valid") is not False
+                or (failure.get("validation") or {}).get("error_type") != "CampaignArtifactError"
+                or (failure.get("validation") or {}).get("diagnostic") != KNOWN_ARTIFACT_SEQUENCE_DIAGNOSTIC
+                or discovery is None
+                or not isinstance(authorization, dict)
+                or event.get("based_on_event_sha256") != failure.get("event_sha256")
+                or event.get("artifact_id") != discovery["artifact"].get("artifact_id")
+                or event.get("source_html_sha256") != discovery["artifact"].get("source_html_sha256")
+                or event.get("authorization_id") != authorization.get("authorization_id")
+                or event.get("update_job_id") != authorization.get("update_job_id")
+                or event.get("candidate_set_sha256") != authorization.get("candidate_set_sha256")
+                or event.get("policy_id") != AUTO_REVALIDATION_POLICY_ID
+                or event.get("policy_version") != AUTO_REVALIDATION_POLICY_VERSION
+                or not isinstance(event.get("parser_version"), str)
+                or not isinstance(validation, dict)
+                or validation.get("parser_version") != event.get("parser_version")
+                or type(semantic_valid) is not bool
+                or event.get("semantic_valid") is not semantic_valid
+                or event.get("policy_eligible") is not policy_eligible
+                or event.get("policy_reason") != policy_reason
+                or (expected_published_state and (semantic_valid is not True or not policy_eligible))
+                or (not expected_published_state and semantic_valid is True and policy_eligible)
+                or not _is_sha(event.get("evidence_sha256"))
+            ):
+                raise MatchCampaignIntegrityError("La revalidación automática no está ligada al fallo técnico y autorización originales")
+            evidence = {
+                key: event[key]
+                for key in (
+                    "based_on_event_sha256", "artifact_id", "source_html_sha256",
+                    "authorization_id", "update_job_id", "candidate_set_sha256",
+                    "policy_id", "policy_version", "semantic_valid", "policy_eligible",
+                    "policy_reason", "validation",
+                    "parser_version", "validated_at_utc",
+                )
+            }
+            if event.get("evidence_sha256") != _sha(_canonical(evidence)):
+                raise MatchCampaignIntegrityError("El hash de revalidación automática no coincide")
         elif kind == "DRAFT_PREPARED":
             if (
                 not _is_sha(event.get("draft_sha256"))
@@ -1547,11 +1610,13 @@ class OperationalMatchCampaignLedger:
             "DISCOVERY_REVIEW_REQUIRED": "validate_offline_artifact",
             "VALIDATED": "prepare_offline_draft",
             "REVALIDATED": "prepare_offline_draft",
+            "AUTO_POLICY_REVALIDATED": "prepare_offline_draft",
+            "AUTO_POLICY_REVALIDATION_FAILED": "pending_policy_validation_failure",
             "VALIDATION_FAILED": "revalidate_failed_artifact_offline_with_operator_confirmation",
             "REVALIDATION_FAILED": "revalidate_failed_artifact_offline_with_operator_confirmation",
             "DRAFT_PREPARED": "human_review_or_strict_auto_policy_evaluation",
             "DOCUMENT_APPROVED": "publish_approved_document",
-            "AUTO_POLICY_APPROVED": "publish_policy_approved_document",
+            "AUTO_POLICY_APPROVED": "resume_automatic_publication_verification",
             "PUBLISHED": "verify_then_complete_review",
             "REVIEW_COMPLETED": "none",
             "STOPPED": "manual_review_no_retry",
@@ -2265,6 +2330,10 @@ class OperationalMatchCampaignLedger:
             valid = False
             diagnostic = str(exc)[:500]
             parser_version = PARSER_VERSION
+        # Canonical JSON normalization converts the semantic dataclass tuples
+        # into the list shapes persisted in ledger events and accepted by the
+        # strict automatic-publication policy.
+        validation = json.loads(_canonical(validation))
         validation["parser_version"] = parser_version
         evidence = {
             "source_html_sha256": discovery["artifact"]["source_html_sha256"],
@@ -2458,6 +2527,144 @@ class OperationalMatchCampaignLedger:
             )
         return {"status": event_type, "internal_id": internal_id, **evidence}
 
+    def revalidate_known_update_pipeline_failure(
+        self, *, campaign_id: str, internal_id: str, data_root: Path
+    ) -> dict[str, Any]:
+        """Re-parse one saved update capture after the known authorization-event parser bug.
+
+        This is a one-shot offline repair, not a navigation retry. It is available
+        only when an update-policy authorization was consumed and the immediately
+        preceding failure is the exact, known CampaignArtifactError caused by
+        the parser rejecting AUTO_POLICY_AUTHORIZED. Sporting/identity errors,
+        malformed evidence and all other failures remain stopped.
+        """
+
+        from .campaign_artifact import parse_campaign_saved_artifact
+        from .semantic_parser import PARSER_VERSION
+
+        data_root = data_root.expanduser().resolve(strict=True)
+        with self.lock.shared_lock():
+            directory, campaign, events = self._events(campaign_id, internal_id)
+            if self._state(events) != "VALIDATION_FAILED" or not events:
+                return {"status": "PROTECTED_STATE_SKIPPED", "internal_id": internal_id}
+            failure = events[-1]
+            failure_validation = failure.get("validation")
+            if (
+                failure.get("semantic_valid") is not False
+                or not isinstance(failure_validation, dict)
+                or failure_validation.get("error_type") != "CampaignArtifactError"
+                or failure_validation.get("diagnostic") != KNOWN_ARTIFACT_SEQUENCE_DIAGNOSTIC
+            ):
+                return {
+                    "status": "PROTECTED_STATE_SKIPPED",
+                    "internal_id": internal_id,
+                    "reason": "failure_is_not_the_known_update-authorization parser defect",
+                }
+            authorization_event = next(
+                (item for item in events if item.get("event_type") == "AUTO_POLICY_AUTHORIZED"),
+                None,
+            )
+            authorization = authorization_event.get("authorization") if authorization_event else None
+            if not isinstance(authorization, dict) or authorization.get("authorization_mode") != "competition_update_auto_policy":
+                return {
+                    "status": "PROTECTED_STATE_SKIPPED",
+                    "internal_id": internal_id,
+                    "reason": "no matching update-button automatic-policy authorization",
+                }
+            discovery = next(
+                (item for item in events if item.get("event_type") == "DISCOVERY_REVIEW_REQUIRED"),
+                None,
+            )
+            if discovery is None or failure.get("source_html_sha256") != discovery["artifact"].get("source_html_sha256"):
+                raise MatchCampaignIntegrityError("El fallo técnico no está ligado al HTML de la adquisición")
+            artifact_reference = discovery["artifact"]
+            artifact = directory / artifact_reference["artifact_relative_path"]
+            failure_event_sha256 = failure["event_sha256"]
+            source_generation_id = campaign["source"]["generation_id"]
+            source_generation_sha256 = campaign["source"]["generation_manifest_sha256"]
+            update_job_id = authorization["update_job_id"]
+            authorization_id = authorization["authorization_id"]
+            candidate_set_sha256_value = authorization["candidate_set_sha256"]
+
+        generation_root = data_root / "matches" / "generations" / source_generation_id
+        generation = load_verified_match_generation(generation_root, data_root=data_root)
+        if generation.generation_id != source_generation_id or generation.manifest_sha256 != source_generation_sha256:
+            raise MatchCampaignIntegrityError("La generación histórica de la autorización automática cambió")
+        inventory = build_match_detail_inventory(generation)
+        matching = [item for item in inventory["matches"] if item.get("internal_id") == internal_id]
+        if len(matching) != 1:
+            raise MatchCampaignIntegrityError("La generación no contiene una identidad única para revalidar")
+
+        diagnostic = None
+        try:
+            observation = parse_campaign_saved_artifact(
+                artifact,
+                expected_match=matching[0],
+                verified_generation=generation,
+                data_root=data_root,
+                parser_version=PARSER_VERSION,
+            )
+            validation = dataclasses.asdict(observation.validation)
+            semantic_valid = observation.validation.semantic_valid is True
+            parser_version = observation.source.parser_version
+        except Exception as exc:
+            validation = {
+                "error_type": type(exc).__name__,
+                "diagnostic": str(exc)[:1000],
+                "semantic_valid": False,
+                "errors": [str(exc)[:500]],
+                "warnings": [],
+                "checks": [],
+            }
+            semantic_valid = False
+            diagnostic = str(exc)[:500]
+            parser_version = PARSER_VERSION
+        validation = json.loads(_canonical(validation))
+        validation["parser_version"] = parser_version
+        from .automatic_publication_policy import automatic_publication_decision
+
+        policy_eligible, policy_reason = automatic_publication_decision(validation)
+        valid = semantic_valid and policy_eligible
+        evidence = {
+            "based_on_event_sha256": failure_event_sha256,
+            "artifact_id": artifact_reference["artifact_id"],
+            "source_html_sha256": artifact_reference["source_html_sha256"],
+            "authorization_id": authorization_id,
+            "update_job_id": update_job_id,
+            "candidate_set_sha256": candidate_set_sha256_value,
+            "policy_id": AUTO_REVALIDATION_POLICY_ID,
+            "policy_version": AUTO_REVALIDATION_POLICY_VERSION,
+            "semantic_valid": semantic_valid,
+            "policy_eligible": policy_eligible,
+            "policy_reason": policy_reason,
+            "validation": validation,
+            "parser_version": parser_version,
+            "validated_at_utc": _now(),
+        }
+        evidence["evidence_sha256"] = _sha(_canonical(evidence))
+        if diagnostic:
+            evidence["diagnostic"] = diagnostic
+        event_type = "AUTO_POLICY_REVALIDATED" if valid else "AUTO_POLICY_REVALIDATION_FAILED"
+        with self.lock.exclusive_lock():
+            current_directory, current_campaign, current_events = self._events(campaign_id, internal_id)
+            if (
+                self._state(current_events) != "VALIDATION_FAILED"
+                or current_events[-1].get("event_sha256") != failure_event_sha256
+            ):
+                raise MatchCampaignAuthorizationError("El fallo cambió durante la revalidación offline")
+            self._append(
+                current_directory,
+                current_campaign,
+                internal_id,
+                {
+                    "event_type": event_type,
+                    "campaign_id": campaign_id,
+                    "internal_id": internal_id,
+                    **evidence,
+                },
+            )
+        return {"status": event_type, "internal_id": internal_id, **evidence}
+
     def _publication_inputs(
         self,
         *,
@@ -2504,7 +2711,7 @@ class OperationalMatchCampaignLedger:
 
         directory, campaign, events = self._events(campaign_id, internal_id)
         state = self._state(events)
-        if state not in {"VALIDATED", "REVALIDATED", "DRAFT_PREPARED"}:
+        if state not in {"VALIDATED", "REVALIDATED", "AUTO_POLICY_REVALIDATED", "DRAFT_PREPARED"}:
             raise MatchCampaignAuthorizationError(
                 f"No se puede preparar borrador desde {state}"
             )
@@ -2531,7 +2738,7 @@ class OperationalMatchCampaignLedger:
         validated = next(
             item
             for item in reversed(events)
-            if item["event_type"] in {"VALIDATED", "REVALIDATED"}
+            if item["event_type"] in {"VALIDATED", "REVALIDATED", "AUTO_POLICY_REVALIDATED"}
         )
         if draft.get("semantic_valid") is not True or draft.get(
             "source_html_sha256"
@@ -2546,7 +2753,7 @@ class OperationalMatchCampaignLedger:
         with self.lock.exclusive_lock():
             directory, campaign, current_events = self._events(campaign_id, internal_id)
             current_state = self._state(current_events)
-            if current_state not in {"VALIDATED", "REVALIDATED", "DRAFT_PREPARED"}:
+            if current_state not in {"VALIDATED", "REVALIDATED", "AUTO_POLICY_REVALIDATED", "DRAFT_PREPARED"}:
                 raise MatchCampaignAuthorizationError(
                     f"No se puede guardar borrador desde {current_state}"
                 )
@@ -2571,7 +2778,7 @@ class OperationalMatchCampaignLedger:
                 "source_html_sha256": draft["source_html_sha256"],
                 "details_sha256": draft["details_sha256"],
             }
-            if current_state in {"VALIDATED", "REVALIDATED"}:
+            if current_state in {"VALIDATED", "REVALIDATED", "AUTO_POLICY_REVALIDATED"}:
                 self._append(directory, campaign, internal_id, event)
             elif current_events[-1].get("draft_sha256") != event["draft_sha256"]:
                 raise MatchCampaignIntegrityError(
@@ -2742,7 +2949,7 @@ class OperationalMatchCampaignLedger:
                 None,
             )
             validation_event = next(
-                (item for item in reversed(events) if item["event_type"] in {"VALIDATED", "REVALIDATED"}),
+                (item for item in reversed(events) if item["event_type"] in {"VALIDATED", "REVALIDATED", "AUTO_POLICY_REVALIDATED"}),
                 None,
             )
             if not isinstance(authorization, dict) or validation_event is None:

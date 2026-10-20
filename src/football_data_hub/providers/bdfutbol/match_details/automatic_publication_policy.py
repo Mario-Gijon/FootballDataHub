@@ -14,6 +14,9 @@ from typing import Any
 
 POLICY_ID = "football-data-hub.strict-match-details"
 POLICY_VERSION = "1"
+RECOVERY_POLICY_ID = "football-data-hub.strict-match-details-offline-recovery"
+RECOVERY_POLICY_VERSION = "1"
+LEGACY_RECOVERY_WARNING = "source_artifact_remains_INVALID_CONTENT_and_discovery_only"
 NON_BLOCKING_WARNINGS = frozenset(
     {
         "campaign_discovery_remains_unpromoted_pending_independent_review",
@@ -113,3 +116,23 @@ def automatic_publication_decision(validation: Any) -> tuple[bool, str | None]:
     if missing:
         return False, "required_validation_checks_missing:" + ",".join(sorted(missing))
     return True, None
+
+
+def legacy_recovery_publication_decision(validation: Any) -> tuple[bool, str | None]:
+    """Apply the same 17 checks to the one verified offline recovery case.
+
+    The old INVALID_CONTENT warning is allowed only here because a separate
+    recovery verifier binds the original diagnostic, checkpoint, HTML and
+    generation hashes. No other warning is relaxed.
+    """
+
+    if not isinstance(validation, dict):
+        return False, "semantic_validation_not_valid"
+    warnings = validation.get("warnings")
+    if not isinstance(warnings, list) or LEGACY_RECOVERY_WARNING not in warnings:
+        return False, "expected_legacy_recovery_warning_missing"
+    if warnings.count(LEGACY_RECOVERY_WARNING) != 1:
+        return False, "legacy_recovery_warning_duplicated"
+    adjusted = dict(validation)
+    adjusted["warnings"] = [item for item in warnings if item != LEGACY_RECOVERY_WARNING]
+    return automatic_publication_decision(adjusted)

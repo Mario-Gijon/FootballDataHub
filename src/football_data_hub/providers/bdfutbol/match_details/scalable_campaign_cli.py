@@ -608,7 +608,7 @@ def _load_report(args: argparse.Namespace) -> tuple[dict[str, Any], list[dict[st
             ):
                 continue
             blocked.setdefault(internal_id, []).append(str(diag.get("error_code") or "STOP_DIAGNOSTIC"))
-    if historical_recovery is not None:
+    if historical_recovery is not None and "pf-2026-27-group-ii-bdfutbol-272582" not in published_ids:
         blocked.setdefault("pf-2026-27-group-ii-bdfutbol-272582", []).append(
             "LEGACY_RECOVERY_VALIDATED_PENDING_EXPLICIT_REVIEW"
         )
@@ -680,6 +680,10 @@ def _load_report(args: argparse.Namespace) -> tuple[dict[str, Any], list[dict[st
         "published_ids": published_ids,
         "captured_ids": set(reconciliation["verified_by_internal_id"]),
         "blocked_ids": set(blocked),
+        "match_bundle": bundle,
+        "player_ids": set(player_dir.players_by_id),
+        "active_generation_id": verified.generation_id,
+        "active_generation_manifest_sha256": verified.manifest_sha256,
     }
 
 

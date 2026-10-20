@@ -82,17 +82,31 @@ def _validate_discovery_event_sequence(events: list[dict[str, Any]], *, operatio
     """Keep acquisition evidence valid while allowing versioned offline lifecycle events."""
 
     event_types = [event.get("event_type") for event in events]
-    if event_types[:3] != ["AUTHORIZED", "STARTED", "DISCOVERY_REVIEW_REQUIRED"]:
+    allowed_authorizations = {"AUTHORIZED", "AUTO_POLICY_AUTHORIZED"} if operational_v2 else {"AUTHORIZED"}
+    if (
+        len(event_types) < 3
+        or event_types[1:3] != ["STARTED", "DISCOVERY_REVIEW_REQUIRED"]
+        or event_types[0] not in allowed_authorizations
+    ):
         raise CampaignArtifactError("La secuencia del candidato no es la adquisición esperada")
     if operational_v2:
         transitions = {
             None: {"VALIDATED", "VALIDATION_FAILED"},
-            "VALIDATION_FAILED": {"REVALIDATED", "REVALIDATION_FAILED"},
-            "REVALIDATION_FAILED": {"REVALIDATED", "REVALIDATION_FAILED"},
+            "AUTO_POLICY_REVALIDATED": {"DRAFT_PREPARED"},
+            "AUTO_POLICY_REVALIDATION_FAILED": set(),
+            "VALIDATION_FAILED": {
+                "REVALIDATED", "REVALIDATION_FAILED",
+                "AUTO_POLICY_REVALIDATED", "AUTO_POLICY_REVALIDATION_FAILED",
+            },
+            "REVALIDATION_FAILED": {
+                "REVALIDATED", "REVALIDATION_FAILED",
+                "AUTO_POLICY_REVALIDATED", "AUTO_POLICY_REVALIDATION_FAILED",
+            },
             "VALIDATED": {"DRAFT_PREPARED"},
             "REVALIDATED": {"DRAFT_PREPARED"},
-            "DRAFT_PREPARED": {"DOCUMENT_APPROVED"},
+            "DRAFT_PREPARED": {"DOCUMENT_APPROVED", "AUTO_POLICY_APPROVED"},
             "DOCUMENT_APPROVED": {"PUBLISHED"},
+            "AUTO_POLICY_APPROVED": {"PUBLISHED"},
             "PUBLISHED": {"REVIEW_COMPLETED"},
             "REVIEW_COMPLETED": set(),
         }

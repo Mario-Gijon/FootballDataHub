@@ -227,6 +227,98 @@ def test_batch_preflight_and_worklist_keep_exact_states_and_coverage(tmp_path, _
     assert report["navigation_enabled"] is False
 
 
+def test_strict_policy_pending_candidate_does_not_stop_later_candidates(tmp_path, _null_test_lock):
+    first, second = _candidate(31, "I", "REVALIDATION_FAILED"), _candidate(32, "II", "VALIDATED")
+    ledger = _FakeLedger(tmp_path / "store", [first, second])
+
+    def policy_revalidation(*, campaign_id, internal_id, data_root):
+        assert internal_id == first["internal_id"]
+        ledger.states[internal_id] = "AUTO_POLICY_REVALIDATION_FAILED"
+        return {
+            "status": "AUTO_POLICY_REVALIDATION_FAILED",
+            "semantic_valid": True,
+            "policy_eligible": False,
+            "policy_reason": "blocking_validation_warnings:direct_red_card_absence_not_asserted_second_yellow_present",
+        }
+
+    ledger.revalidate_known_update_pipeline_failure = policy_revalidation
+    result = operations.run_offline_batch(
+        ledger=ledger,
+        campaign_id=first["campaign_id"],
+        data_root=tmp_path,
+        player_inventory_root=tmp_path,
+        player_compact_root=tmp_path,
+        player_team_captures_root=tmp_path,
+        player_published_index_path=tmp_path / "players.json",
+        auto_publish_policy=True,
+        published_root=tmp_path / "published",
+    )
+
+    by_id = {item["internal_id"]: item for item in result["candidates"]}
+    assert result["status"] == "COMPLETED"
+    assert result["policy_pending_count"] == 2
+    assert result["prepared_count"] == 1
+    assert by_id[first["internal_id"]]["status"] == "PENDING_POLICY_REVIEW"
+    assert by_id[first["internal_id"]]["policy_reason"].startswith("blocking_validation_warnings:")
+    assert by_id[second["internal_id"]]["status"] == "PENDING_HUMAN_REVIEW"
+    assert ledger.states[second["internal_id"]] == "DRAFT_PREPARED"
+    assert ledger.calls == [("prepare", second["internal_id"])]
+
+
+def test_auto_policy_approved_candidate_resumes_publication_without_new_approval(tmp_path, _null_test_lock):
+    from football_data_hub.providers.bdfutbol.match_details.automatic_publication_policy import (
+        REQUIRED_CHECKS,
+    )
+
+    candidate = _candidate(33, "I", "AUTO_POLICY_APPROVED")
+    ledger = _FakeLedger(tmp_path / "store", [candidate])
+    update_job_id = "d34db33f-15b4-4aef-a6d1-7c4f8aeb5d02"
+    validation = {
+        "semantic_valid": True,
+        "errors": [],
+        "warnings": ["campaign_discovery_remains_unpromoted_pending_independent_review"],
+        "checks": [{"check": name, "passed": True, "detail": "verified"} for name in sorted(REQUIRED_CHECKS)],
+    }
+    events = [
+        {"event_type": "AUTO_POLICY_AUTHORIZED", "authorization": {"update_job_id": update_job_id}},
+        {"event_type": "AUTO_POLICY_REVALIDATED", "validation": validation},
+        {"event_type": "DRAFT_PREPARED"},
+        {"event_type": "AUTO_POLICY_APPROVED"},
+    ]
+    ledger.candidate_events = lambda _campaign, _internal: list(events)
+    ledger.approve_draft_by_update_policy = lambda **_kwargs: {
+        "status": "AUTO_POLICY_ALREADY_APPROVED",
+        "idempotent": True,
+    }
+
+    def publish(**_kwargs):
+        events.append({"event_type": "PUBLISHED"})
+        return {"status": "PUBLISHED_VERIFIED"}
+
+    ledger.publish = publish
+    ledger.verify_publication = lambda **_kwargs: {"status": "PUBLISHED_VERIFIED"}
+    result = operations.run_offline_batch(
+        ledger=ledger,
+        campaign_id=candidate["campaign_id"],
+        data_root=tmp_path,
+        player_inventory_root=tmp_path,
+        player_compact_root=tmp_path,
+        player_team_captures_root=tmp_path,
+        player_published_index_path=tmp_path / "players.json",
+        auto_publish_policy=True,
+        published_root=tmp_path / "published",
+    )
+
+    assert result["status"] == "COMPLETED"
+    assert result["published_count"] == 1
+    assert result["candidates"][0]["status"] == "PUBLISHED_VERIFIED"
+    assert [event["event_type"] for event in events][-1] == "PUBLISHED"
+    assert [action["status"] for action in result["candidates"][0]["actions"] if action["operation"] == "automatic_policy_decision"] == [
+        "AUTO_POLICY_ALREADY_APPROVED"
+    ]
+    assert ledger.calls == []
+
+
 def test_batch_fails_closed_on_campaign_integrity_and_lock_contention(tmp_path, _null_test_lock):
     candidates = _mixed_candidates()
     ledger = _FakeLedger(tmp_path / "store", candidates)
