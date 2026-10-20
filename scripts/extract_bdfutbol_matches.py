@@ -33,6 +33,14 @@ def main() -> int:
     parser.add_argument("--snapshot", type=Path, required=True, help="raw/source.html")
     parser.add_argument("--capture", type=Path, required=True, help="metadata/capture.json")
     parser.add_argument("--output", type=Path, required=True, help="Nueva ruta matches.json")
+    parser.add_argument(
+        "--validation-output",
+        type=Path,
+        help=(
+            "Ruta explícita para el informe de validación. Si se omite, "
+            "se conserva la ubicación histórica relativa al archivo de salida."
+        ),
+    )
     args = parser.parse_args()
 
     snapshot_path = args.snapshot.expanduser().resolve()
@@ -76,7 +84,11 @@ def main() -> int:
         "source_snapshot": metadata["source_snapshot"],
         "source_snapshot_sha256": metadata["source_snapshot_sha256"],
     }
-    validation_path = output.parents[1] / "validation" / "matches.json"
+    validation_path = (
+        args.validation_output.expanduser()
+        if args.validation_output is not None
+        else output.parents[1] / "validation" / "matches.json"
+    )
     validation_path.parent.mkdir(parents=True, exist_ok=True)
     with validation_path.open("x", encoding="utf-8") as stream:
         json.dump(validation, stream, ensure_ascii=False, indent=2)

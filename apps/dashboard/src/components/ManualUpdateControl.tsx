@@ -70,8 +70,14 @@ export function ManualUpdateControl({ onApplied }: Props) {
         </button>
       </form>
       {(active || job || error) && <div className="manual-update-status" aria-live="polite" role="status">
-        {active && <><strong>Actualizando…</strong> {stageLabel(job.stage)}</>}
-        {isNoChange && <strong>Sin cambios</strong>}
+        {active && <>
+          <strong>Actualizando…</strong> {stageLabel(job.stage)}
+          {job.progress && job.progress.total > 0 && <span> · Informes {job.progress.completed}/{job.progress.total}</span>}
+        </>}
+        {isNoChange && <>
+          <strong>{result && (Number(result.match_details_candidate_count ?? 0) > 0 || Number(result.match_details_blocked_excluded_count ?? 0) > 0) ? "Sin cambios en resultados." : "Sin cambios"}</strong>
+          {result && (Number(result.match_details_candidate_count ?? 0) > 0 || Number(result.match_details_blocked_excluded_count ?? 0) > 0) && <span> {summaryText(result)}</span>}
+        </>}
         {isApplied && <>
           <strong>Actualización completada.</strong>
           {result && <span> {summaryText(result)}</span>}
@@ -90,11 +96,19 @@ function stageLabel(stage: string): string {
     preflight: "preparando la captura",
     capturing_group_i: "consultando Grupo I",
     capturing_group_ii: "consultando Grupo II",
+    normalizing_matches_group_i: "normalizando partidos del Grupo I",
+    normalizing_matches_group_ii: "normalizando partidos del Grupo II",
     building_generation: "validando calendario y resultados",
     comparing_candidate: "comparando los cambios",
     activating_generation: "aplicando los datos verificados",
     refreshing_api: "recargando los datos de la aplicación",
     refresh_failed: "la API necesita recargarse",
+    checking_match_details: "buscando informes de partidos sin publicar",
+    scanning_unpublished_matches: "comprobando partidos disputados sin informe",
+    acquiring_match_details: "adquiriendo informes de partidos",
+    validating_match_details: "validando y publicando informes completos",
+    refreshing_match_details: "recargando los informes en la aplicación",
+    completed: "completado",
   };
   return labels[stage] ?? "procesando los datos verificados";
 }
@@ -121,7 +135,16 @@ function summaryText(summary: Record<string, unknown>): string {
   if (newlyPlayed) pieces.push(`${newlyPlayed} partidos disputados nuevos`);
   if (corrected) pieces.push(`${corrected} marcadores corregidos`);
   if (fixtureUpdated) pieces.push(`${fixtureUpdated} cambios de calendario`);
+  const detailPublished = Number(summary.match_details_published_count ?? 0);
+  const detailPending = Number(summary.match_details_pending_count ?? 0);
+  if (detailPublished) pieces.push(`${detailPublished} informes completos publicados`);
+  if (detailPending) pieces.push(`${detailPending} informes pendientes de disponibilidad o revisión`);
+  if (summary.match_details_stopped === true) pieces.push("adquisición detenida por una restricción o error");
+  if (typeof summary.match_details_error === "string") pieces.push("informes no procesados por un error de integridad o configuración");
+  if (typeof summary.match_details_reload_error === "string") pieces.push("recarga de informes pendiente");
+  const excluded = Number(summary.match_details_blocked_excluded_count ?? 0);
+  if (excluded) pieces.push(`${excluded} partido bloqueado excluido`);
   const pending = Number(summary.played_without_approved_details ?? 0);
-  if (pending) pieces.push(`${pending} fichas detalladas pendientes`);
+  if (pending && summary.match_details_candidate_count === undefined) pieces.push(`${pending} fichas detalladas pendientes`);
   return pieces.length ? pieces.join(" · ") : "Los datos verificados se actualizaron.";
 }

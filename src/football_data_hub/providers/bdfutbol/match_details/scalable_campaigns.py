@@ -231,13 +231,13 @@ def classify_match_campaign_inventory(
             status = "published_approved"
         elif internal_id in approved:
             status = "approved_pending_publication"
-        elif campaign_state in {"DOCUMENT_APPROVED"} or internal_id in approved:
+        elif campaign_state in {"DOCUMENT_APPROVED", "AUTO_POLICY_APPROVED"} or internal_id in approved:
             status = "approved_pending_publication"
         elif campaign_state in {"VALIDATED", "REVALIDATED", "DRAFT_PREPARED"} or internal_id in validated:
             status = "validated_pending_approval"
         elif campaign_state == "DISCOVERY_REVIEW_REQUIRED":
             status = "captured_pending_validation"
-        elif campaign_state == "AUTHORIZED":
+        elif campaign_state in {"AUTHORIZED", "AUTO_POLICY_AUTHORIZED"}:
             status = "authorized_not_executed"
         elif campaign_state == "STARTED":
             status = "blocked_requires_human_review"
@@ -255,12 +255,16 @@ def classify_match_campaign_inventory(
                 next_operation = "review_proposal_then_use_a_separate_individual_authorization_workflow"
         if campaign_state == "AUTHORIZED":
             next_operation = "execute_one_authorized_navigation"
+        elif campaign_state == "AUTO_POLICY_AUTHORIZED":
+            next_operation = "execute_one_update_policy_navigation"
         elif campaign_state == "DISCOVERY_REVIEW_REQUIRED":
             next_operation = "validate_offline_artifact"
         elif campaign_state in {"VALIDATED", "DRAFT_PREPARED"}:
             next_operation = "prepare_or_review_offline_draft"
         elif campaign_state == "DOCUMENT_APPROVED":
             next_operation = "publish_approved_document_offline"
+        elif campaign_state == "AUTO_POLICY_APPROVED":
+            next_operation = "publish_policy_approved_document"
         elif campaign_state == "PUBLISHED":
             next_operation = "verify_publication_and_complete_review"
         elif campaign_state in {"VALIDATED", "REVALIDATED"}:

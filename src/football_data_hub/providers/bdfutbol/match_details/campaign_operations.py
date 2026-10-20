@@ -238,8 +238,10 @@ def run_offline_batch(
     player_compact_root: Path,
     player_team_captures_root: Path,
     player_published_index_path: Path,
+    auto_publish_policy: bool = False,
+    published_root: Path | None = None,
 ) -> dict[str, Any]:
-    """Validate already-saved HTML and prepare valid drafts, resumably."""
+    """Validate saved HTML, prepare drafts, and optionally apply the strict update policy."""
 
     if not _CAMPAIGN_ID.fullmatch(campaign_id):
         raise CampaignOperationsError("campaign_id v2 inválido")
@@ -259,10 +261,16 @@ def run_offline_batch(
         "validation_failed_count": 0,
         "skipped_count": 0,
         "error_count": 0,
+        "published_count": 0,
+        "policy_pending_count": 0,
         "http_enabled": False,
         "browser_started": False,
         "navigation_enabled": False,
+        "automatic_policy_enabled": auto_publish_policy,
+        "human_approval_created": False,
     }
+    if auto_publish_policy and published_root is None:
+        raise CampaignOperationsError("Falta published_root para la política de publicación automática")
     report_root = ledger.root.parent / "operations" / "reports" / campaign_id
     report_path: Path | None = None
     with _batch_lock(ledger.root.parent):
@@ -345,6 +353,66 @@ def run_offline_batch(
                     result["status"] = "PROTECTED_STATE_SKIPPED"
                     result["reason"] = "No se revalidan fallos ni se procesan operaciones ajenas al lote offline"
                     report["skipped_count"] += 1
+                if auto_publish_policy and result["status"] in {"DRAFT_PREPARED", "ALREADY_PREPARED"}:
+                    events = ledger.candidate_events(campaign_id, internal_id)
+                    automatic_authorization = next(
+                        (event for event in events if event.get("event_type") == "AUTO_POLICY_AUTHORIZED"),
+                        None,
+                    )
+                    if automatic_authorization is not None and ledger._state(events) == "DRAFT_PREPARED":
+                        validation_event = next(
+                            (event for event in reversed(events) if event.get("event_type") in {"VALIDATED", "REVALIDATED"}),
+                            None,
+                        )
+                        from football_data_hub.providers.bdfutbol.match_details.automatic_publication_policy import (
+                            automatic_publication_decision,
+                        )
+
+                        allowed, reason = automatic_publication_decision(
+                            validation_event.get("validation") if validation_event else None
+                        )
+                        if not allowed:
+                            result["status"] = "PENDING_POLICY_REVIEW"
+                            result["policy_reason"] = reason
+                            report["policy_pending_count"] += 1
+                        else:
+                            policy_decision = ledger.approve_draft_by_update_policy(
+                                campaign_id=campaign_id,
+                                internal_id=internal_id,
+                                data_root=data_root,
+                            )
+                            result["actions"].append({"operation": "automatic_policy_decision", **policy_decision})
+                            publication = ledger.publish(
+                                campaign_id=campaign_id,
+                                internal_id=internal_id,
+                                data_root=data_root,
+                                generation_root=ledger.generation_root(campaign_id, data_root),
+                                published_root=published_root,
+                                store_root=ledger.root.parent,
+                                player_inventory_root=player_inventory_root,
+                                player_compact_root=player_compact_root,
+                                player_team_captures_root=player_team_captures_root,
+                                player_published_index_path=player_published_index_path,
+                            )
+                            verification = ledger.verify_publication(
+                                campaign_id=campaign_id,
+                                internal_id=internal_id,
+                                data_root=data_root,
+                                generation_root=ledger.generation_root(campaign_id, data_root),
+                                published_root=published_root,
+                                store_root=ledger.root.parent,
+                                player_inventory_root=player_inventory_root,
+                                player_compact_root=player_compact_root,
+                                player_team_captures_root=player_team_captures_root,
+                                player_published_index_path=player_published_index_path,
+                            )
+                            result["actions"].append({"operation": "publish_and_verify", **publication, **verification})
+                            result["status"] = "PUBLISHED_VERIFIED"
+                            report["published_count"] += 1
+                    elif automatic_authorization is None:
+                        result["status"] = "PENDING_HUMAN_REVIEW"
+                        result["reason"] = "El artefacto no fue iniciado desde el botón global; no se aplica la política automática."
+                        report["policy_pending_count"] += 1
                 with ledger.lock.exclusive_lock():
                     final_events = ledger.candidate_events(campaign_id, internal_id)
                     result["state_after"] = ledger._state(final_events)

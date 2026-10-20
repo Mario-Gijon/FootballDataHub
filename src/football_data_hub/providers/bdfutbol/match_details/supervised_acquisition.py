@@ -6,7 +6,9 @@ import fcntl
 import hashlib
 import json
 import os
+import re
 import stat
+import time
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -473,6 +475,215 @@ def run_confirmed_campaign(
             "approval_enabled": False,
             "publication_enabled": False,
         }
+
+
+def run_competition_update_detail_acquisition(
+    *,
+    ledger: OperationalMatchCampaignLedger,
+    campaign_id: str,
+    update_job_id: str,
+    data_root: Path,
+    player_capture_root: Path,
+    status_report: dict[str, Any],
+    context: dict[str, Any],
+    execute_candidate: Callable[[dict[str, Any], str, dict[str, Any]], dict[str, Any]],
+    progress_callback: Callable[[dict[str, Any]], None] | None = None,
+    pause_seconds: float = 5.0,
+) -> dict[str, Any]:
+    """Use the global competition-update invocation as a distinct policy scope.
+
+    Each candidate receives its own append-only machine authorization bound to
+    the same update job and exact candidate-set digest. Acquisition remains
+    sequential, single-navigation, and stops on the first access restriction.
+    No human approval is fabricated or written.
+    """
+
+    if not isinstance(update_job_id, str) or not re.fullmatch(
+        r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+        update_job_id,
+    ):
+        raise MatchCampaignAuthorizationError("El ID de trabajo global no es válido")
+    from football_data_hub.providers.bdfutbol.match_details.automatic_publication_policy import (
+        BLOCKED_SOURCE_MATCH_IDS,
+        POLICY_ID,
+        POLICY_VERSION,
+        candidate_set_sha256 as build_candidate_set_sha256,
+    )
+
+    rows_by_id = {row["internal_id"]: row for row in status_report.get("matches", [])}
+    preflight = ledger.preflight(campaign_id)
+    candidates = sorted(
+        (row for row in preflight["candidates"] if row["state"] == "NOT_AUTHORIZED"),
+        key=lambda row: (
+            row["matchday"], row.get("matchday_date") or "9999-12-31",
+            int(row["source_match_id"]), row["group"],
+        ),
+    )
+    if not candidates:
+        return {
+            "status": "NO_CANDIDATES",
+            "candidate_count": 0,
+            "captured_count": 0,
+            "stop_acquisition": False,
+            "automatic_retries": 0,
+            "navigation_requests": 0,
+        }
+    selected = []
+    for candidate in candidates:
+        current = rows_by_id.get(candidate["internal_id"])
+        if current is None or any(
+            current.get(key) != candidate.get(key)
+            for key in (
+                "internal_id", "source_match_id", "source_match_url", "group",
+                "matchday", "home_team_id", "away_team_id", "reference_result",
+                "source_generation_id", "source_generation_manifest_sha256",
+            )
+        ):
+            raise MatchCampaignIntegrityError(
+                "El candidato automático no coincide con el inventario activo: "
+                + candidate["internal_id"]
+            )
+        if (
+            candidate["source_match_id"] in BLOCKED_SOURCE_MATCH_IDS
+            or candidate["internal_id"] in context.get("published_ids", set())
+            or candidate["internal_id"] in context.get("captured_ids", set())
+            or candidate["internal_id"] in context.get("blocked_ids", set())
+            or current.get("detail_status") not in {
+                "played_pending_acquisition", "included_in_existing_campaign"
+            }
+        ):
+            raise MatchCampaignAuthorizationError(
+                "Un partido de la propuesta ya está publicado, capturado o bloqueado: "
+                + candidate["internal_id"]
+            )
+        selected.append({"candidate": candidate, "current": current})
+    candidate_set_sha256 = build_candidate_set_sha256(
+        update_job_id=update_job_id,
+        campaign_id=campaign_id,
+        source_generation_id=preflight["source_generation_id"],
+        source_generation_manifest_sha256=preflight["source_generation_manifest_sha256"],
+        candidates=[item["candidate"] for item in selected],
+    )
+    run_id = "automatic-update-" + uuid.uuid4().hex
+    report_root = ledger.root.parent / "operations" / "reports" / campaign_id
+    report: dict[str, Any] = {
+        "schema_version": REPORT_SCHEMA,
+        "operation_type": "competition_update_match_detail_acquisition",
+        "run_id": run_id,
+        "campaign_id": campaign_id,
+        "update_job_id": update_job_id,
+        "policy_id": POLICY_ID,
+        "policy_version": POLICY_VERSION,
+        "candidate_set_sha256": candidate_set_sha256,
+        "candidate_count": len(selected),
+        "started_at_utc": _now(),
+        "finished_at_utc": None,
+        "status": "RUNNING",
+        "candidates": [],
+        "captured_count": 0,
+        "stop_acquisition": False,
+        "requires_manual_review": False,
+        "http_enabled": False,
+        "browser_started": False,
+        "navigation_enabled": False,
+        "navigation_requests": 0,
+        "automatic_retries": 0,
+        "maximum_navigations_per_candidate": 1,
+        "human_approvals_created": 0,
+    }
+    with _batch_lock(ledger.root.parent), _player_acquisition_idle_lock(
+        player_capture_root
+    ) as player_lock_path:
+        report["player_acquisition_lock"] = str(player_lock_path) if player_lock_path else None
+        report_path = _write_report(report_root, report)
+        for index, item in enumerate(selected, start=1):
+            candidate, source_status = item["candidate"], item["current"]
+            internal_id = candidate["internal_id"]
+            current = {
+                **source_status,
+                "detail_status": "played_pending_acquisition",
+                "campaign": {
+                    "campaign_id": campaign_id,
+                    "campaign_version": 2,
+                    "state": "NOT_AUTHORIZED",
+                    "authorization_consumed": False,
+                    "navigation_count": 0,
+                },
+            }
+            row: dict[str, Any] = {
+                "internal_id": internal_id,
+                "source_match_id": candidate["source_match_id"],
+                "group": candidate["group"],
+                "matchday": candidate["matchday"],
+                "status": "PENDING",
+            }
+            report["candidates"].append(row)
+            try:
+                authorization_id = ledger.authorize_for_competition_update(
+                    campaign_id=campaign_id,
+                    internal_id=internal_id,
+                    confirmed_url=candidate["source_match_url"],
+                    update_job_id=update_job_id,
+                    candidate_set_sha256=candidate_set_sha256,
+                    current_status=current,
+                    published=internal_id in context.get("published_ids", set()),
+                    captured=internal_id in context.get("captured_ids", set()),
+                    blocked=internal_id in context.get("blocked_ids", set()),
+                    data_root=data_root,
+                )
+                row["authorization_recorded"] = True
+                row["navigation_index"] = index
+                report["navigation_requests"] += 1
+                report["browser_started"] = True
+                report["http_enabled"] = True
+                report["navigation_enabled"] = True
+                if progress_callback is not None:
+                    progress_callback({
+                        "event": "candidate_starting",
+                        "index": index,
+                        "total": len(selected),
+                        "internal_id": internal_id,
+                        "source_match_id": candidate["source_match_id"],
+                        "group": candidate["group"],
+                        "matchday": candidate["matchday"],
+                    })
+                result = execute_candidate(candidate, authorization_id, current)
+                row["status"] = result.get("status", "UNKNOWN")
+                row["access_result"] = result.get("error_code")
+                if result.get("status") == "DISCOVERY_REVIEW_REQUIRED":
+                    report["captured_count"] += 1
+                else:
+                    # Any denial, challenge, HTTP error, timeout or unexpected
+                    # response ends acquisition for this update. Never retry.
+                    report["stop_acquisition"] = True
+                    report["requires_manual_review"] = True
+                    report["status"] = "STOPPED_ACCESS_OR_NAVIGATION"
+                if progress_callback is not None:
+                    progress_callback({
+                        "event": "candidate_finished",
+                        "index": index,
+                        "total": len(selected),
+                        "internal_id": internal_id,
+                        "status": row["status"],
+                    })
+            except Exception as exc:
+                row["status"] = "STOPPED_OPERATIONAL_ERROR"
+                row["diagnostic"] = f"{type(exc).__name__}: {str(exc)[:500]}"
+                report["stop_acquisition"] = True
+                report["requires_manual_review"] = True
+                report["status"] = "STOPPED_OPERATIONAL_ERROR"
+            report["pending_count"] = len(selected) - report["captured_count"]
+            report_path = _write_report(report_root, report)
+            if report["stop_acquisition"]:
+                break
+            if index < len(selected) and pause_seconds > 0:
+                time.sleep(pause_seconds)
+        if report["status"] == "RUNNING":
+            report["status"] = "ACQUISITION_COMPLETED"
+        report["finished_at_utc"] = _now()
+        report["report_path"] = str(report_path)
+        report_path = _write_report(report_root, report)
+    return {**report, "report_path": str(report_path)}
 
 
 def authorize_reviewed_candidates(

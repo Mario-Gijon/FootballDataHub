@@ -43,6 +43,7 @@ export interface ManualUpdateJob {
   updated_at: string;
   finished_at: string | null;
   summary: Record<string, unknown> | null;
+  progress: { completed: number; total: number } | null;
   error: string | null;
 }
 

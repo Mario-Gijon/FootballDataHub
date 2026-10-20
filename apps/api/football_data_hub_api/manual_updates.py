@@ -13,6 +13,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -154,13 +155,49 @@ def public_manual_update_job(job: dict[str, Any] | None) -> dict[str, Any] | Non
     """Project only user-facing progress; source paths and integrity hashes stay local."""
     if job is None:
         return None
+    error = job.get("error")
+    log_tail = job.get("log_tail")
+    if isinstance(error, str) and "código " in error and isinstance(log_tail, str):
+        error = _friendly_process_failure(log_tail, error)
+    elif isinstance(error, str) and error.startswith("ManualUpdateError: "):
+        error = error.removeprefix("ManualUpdateError: ")
     return {
         key: job.get(key)
-        for key in (
-            "job_id", "scope", "team_id", "group", "status", "stage",
-            "created_at", "updated_at", "finished_at", "summary", "error",
-        )
+        for key in ("job_id", "scope", "team_id", "group", "status", "stage",
+                    "created_at", "updated_at", "finished_at", "summary")
+    } | {
+        "error": error,
+        "progress": (
+            {
+                "completed": job["match_details_progress"].get("completed", 0),
+                "total": job["match_details_progress"].get("total", 0),
+            }
+            if isinstance(job.get("match_details_progress"), dict)
+            else None
+        ),
     }
+
+
+def _friendly_process_failure(log_tail: str, fallback: str) -> str:
+    """Summarize known subprocess failures without returning private paths/logs."""
+    if "FileExistsError" in log_tail and "validation/matches.json" in log_tail:
+        group = "II" if "group-ii" in log_tail else "I"
+        return (
+            f"Falló la normalización de partidos del Grupo {group}: el informe de "
+            "validación ya existía en una ruta compartida. Las capturas se conservaron "
+            "y no se reintentó la adquisición."
+        )
+    diagnostic_lines = [
+        line.strip()
+        for line in log_tail.splitlines()
+        if re.search(r"\b[A-Za-z_][A-Za-z0-9_.]*(?:Error|Exception)\s*:", line)
+    ]
+    if not diagnostic_lines:
+        return fallback
+    diagnostic = diagnostic_lines[-1]
+    diagnostic = re.sub(r"['\"]/(?:[^\s'\"]+/)*[^\s'\"]*['\"]", "<ruta local>", diagnostic)
+    diagnostic = re.sub(r"(?<![\w:])/(?:[^\s:'\"]+/)*[^\s:'\"]+", "<ruta local>", diagnostic)
+    return f"Falló un proceso de actualización. Diagnóstico: {diagnostic[:240]}"
 
 
 def _reject_symlink_components(path: Path) -> None:
@@ -258,7 +295,8 @@ def _tail(path: Path, limit: int = 5000) -> str:
 def _last_json_object(text: str) -> dict[str, Any]:
     decoder = json.JSONDecoder()
     parsed: dict[str, Any] | None = None
-    consumed = -1
+    best_end = -1
+    best_start = len(text)
     for index, character in enumerate(text):
         if character != "{":
             continue
@@ -266,9 +304,15 @@ def _last_json_object(text: str) -> dict[str, Any]:
             value, size = decoder.raw_decode(text[index:])
         except json.JSONDecodeError:
             continue
-        if isinstance(value, dict) and size > consumed:
+        end = index + size
+        # Worker logs contain several JSON receipts (one per captured group,
+        # then the activation receipt). Select the final complete object, not
+        # the largest one: the final activation receipt is intentionally much
+        # smaller than either capture receipt.
+        if isinstance(value, dict) and (end > best_end or (end == best_end and index < best_start)):
             parsed = value
-            consumed = size
+            best_end = end
+            best_start = index
     if parsed is None:
         raise ManualUpdateError("El comando terminó sin un recibo JSON verificable.")
     return parsed
@@ -718,6 +762,7 @@ class ManualUpdateManager:
         player_compact_root: Path | None,
         player_team_captures_root: Path | None,
         player_published_index_path: Path | None,
+        match_details_published_root: Path | None = None,
     ) -> None:
         self.project_root = project_root.resolve()
         self.data_root = data_root.resolve() if data_root else None
@@ -733,12 +778,14 @@ class ManualUpdateManager:
         self.player_compact_root = player_compact_root.resolve() if player_compact_root else None
         self.player_team_captures_root = player_team_captures_root.resolve() if player_team_captures_root else None
         self.player_published_index_path = player_published_index_path.resolve() if player_published_index_path else None
+        self.match_details_published_root = match_details_published_root.resolve() if match_details_published_root else None
         self.root = (self.data_root / "operations" / "manual-updates") if self.data_root else None
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="fdh-manual-update")
         self._mutex = threading.RLock()
         self._leases: dict[str, tuple[int, int]] = {}
         self._active_processes: set[subprocess.Popen[bytes]] = set()
         self.on_competition_applied: Callable[[dict[str, Any]], None] | None = None
+        self.on_match_details_published: Callable[[dict[str, Any]], None] | None = None
         self._recover_interrupted_jobs()
 
     def close(self) -> None:
@@ -789,6 +836,16 @@ class ManualUpdateManager:
                 and not self.match_generation_root.is_relative_to(self.project_root)
                 and self.match_details_store_root and self.match_details_store_root.is_dir()
                 and not self.match_details_store_root.is_relative_to(self.project_root)
+                and self.match_details_published_root and self.match_details_published_root.is_dir()
+                and not self.match_details_published_root.is_relative_to(self.project_root)
+                and self.player_inventory_root and self.player_inventory_root.is_dir()
+                and not self.player_inventory_root.is_relative_to(self.project_root)
+                and self.player_compact_root and self.player_compact_root.is_dir()
+                and not self.player_compact_root.is_relative_to(self.project_root)
+                and self.player_team_captures_root and self.player_team_captures_root.is_dir()
+                and not self.player_team_captures_root.is_relative_to(self.project_root)
+                and self.player_published_index_path and self.player_published_index_path.is_file()
+                and not self.player_published_index_path.is_relative_to(self.project_root)
                 and set(self.group_match_paths) == {"I", "II"}
                 and set(self.group_classification_paths) == {"I", "II"}
                 and set(self.group_progress_paths) == {"I", "II"}
@@ -1018,9 +1075,11 @@ class ManualUpdateManager:
                 })
                 self._save(job)
         except Exception as exc:  # errors are stored for the local update panel
+            failed_stage = job.get("stage")
             job.update({
                 "status": "failed",
                 "stage": "failed",
+                "failed_stage": failed_stage,
                 "finished_at": utc_now(),
                 "error": f"{type(exc).__name__}: {exc}",
                 "log_tail": _tail(log_path),
@@ -1043,11 +1102,19 @@ class ManualUpdateManager:
         if not isinstance(candidate, dict):
             raise ManualUpdateError("La actualización no produjo un candidato verificable.")
         if no_changes:
+            job.update({"status": "running", "stage": "checking_match_details"})
+            self._save(job)
+            detail_summary = self._safe_process_new_match_details(job)
+            summary = {
+                "message": "Informes de partidos añadidos" if detail_summary.get("match_details_published_count") else "Sin cambios",
+                "changed_groups": candidate.get("changed_groups", {}),
+                **detail_summary,
+            }
             job.update({
-                "status": "completed",
-                "stage": "no_changes",
+                "status": "applied" if detail_summary.get("match_details_published_count") else "completed",
+                "stage": "completed",
                 "finished_at": utc_now(),
-                "summary": {"message": "Sin cambios", "changed_groups": candidate.get("changed_groups", {})},
+                "summary": summary,
             })
             self._save(job)
             return
@@ -1116,8 +1183,216 @@ class ManualUpdateManager:
                 })
                 self._save(job)
                 return
+        job.update({"status": "running", "stage": "checking_match_details"})
+        self._save(job)
+        summary.update(self._safe_process_new_match_details(job))
+        job["summary"] = summary
+        job["status"] = "applied"
+        self._save(job)
         job.update({"stage": "completed", "finished_at": utc_now()})
         self._save(job)
+
+    def _safe_process_new_match_details(self, job: dict[str, Any]) -> dict[str, Any]:
+        try:
+            return self._process_new_match_details(job)
+        except Exception as exc:
+            candidate = job.get("candidate") if isinstance(job.get("candidate"), dict) else {}
+            candidate_summary = candidate.get("summary") if isinstance(candidate.get("summary"), dict) else {}
+            pending = int(candidate_summary.get("played_without_approved_details", 0) or 0)
+            return {
+                "match_details_candidate_count": pending,
+                "match_details_captured_count": 0,
+                "match_details_navigation_count": 0,
+                "match_details_published_count": 0,
+                "match_details_pending_count": pending,
+                "match_details_policy_review_count": 0,
+                "match_details_stopped": True,
+                "match_details_error": f"{type(exc).__name__}: {str(exc)[:300]}",
+                "match_details_message": "No se pudo completar el procesamiento de informes; se conservan los datos anteriores y los informes siguen pendientes.",
+            }
+
+    def _process_new_match_details(self, job: dict[str, Any]) -> dict[str, Any]:
+        """Acquire only unpublished played fixtures and apply the strict policy."""
+
+        paths = (
+            self.match_generation_root,
+            self.match_details_store_root,
+            self.match_details_published_root,
+            self.player_inventory_root,
+            self.player_compact_root,
+            self.player_team_captures_root,
+            self.player_published_index_path,
+        )
+        if self.data_root is None or any(path is None for path in paths):
+            return {
+                "match_details_candidate_count": 0,
+                "match_details_captured_count": 0,
+                "match_details_navigation_count": 0,
+                "match_details_published_count": 0,
+                "match_details_pending_count": 0,
+                "match_details_policy_review_count": 0,
+                "match_details_stopped": False,
+                "match_details_message": "No se ejecutó la adquisición de informes: faltan almacenes configurados.",
+            }
+
+        from types import SimpleNamespace
+
+        from football_data_hub.providers.bdfutbol.match_details.campaign_operations import run_offline_batch
+        from football_data_hub.providers.bdfutbol.match_details.automatic_publication_policy import (
+            BLOCKED_SOURCE_MATCH_IDS,
+        )
+        from football_data_hub.providers.bdfutbol.match_details.operational_campaign import (
+            OperationalMatchCampaignLedger,
+        )
+        from football_data_hub.providers.bdfutbol.match_details.scalable_campaign_cli import _load_report
+        from football_data_hub.providers.bdfutbol.match_details.scalable_campaigns import (
+            build_match_campaign_proposal,
+            write_match_campaign_proposal,
+        )
+        from football_data_hub.providers.bdfutbol.match_details.supervised_acquisition import (
+            run_competition_update_detail_acquisition,
+        )
+
+        args = SimpleNamespace(
+            data_root=self.data_root,
+            generation_root=self.match_generation_root,
+            previous_generation_root=None,
+            store_root=self.match_details_store_root,
+            published_root=self.match_details_published_root,
+            player_inventory_root=self.player_inventory_root,
+            player_compact_root=self.player_compact_root,
+            player_team_captures_root=self.player_team_captures_root,
+            player_published_index=self.player_published_index_path,
+        )
+        job["stage"] = "scanning_unpublished_matches"
+        self._save(job)
+        status_report, _proposals, context = _load_report(args)
+        rows = status_report.get("matches", [])
+        blocked_source_ids = set(BLOCKED_SOURCE_MATCH_IDS)
+        eligible = [
+            row for row in rows
+            if row.get("status") == "played"
+            and row.get("source_match_url")
+            and row.get("detail_status") in {"played_pending_acquisition", "included_in_existing_campaign"}
+            and row.get("source_match_id") not in blocked_source_ids
+            and row.get("internal_id") not in context["published_ids"]
+            and row.get("internal_id") not in context["captured_ids"]
+            and row.get("internal_id") not in context["blocked_ids"]
+            and not row.get("blocked_reasons")
+        ]
+        blocked_excluded = sum(
+            1 for row in rows
+            if row.get("status") == "played"
+            and row.get("source_match_id") in blocked_source_ids
+            and row.get("internal_id") not in context["published_ids"]
+        )
+        if not eligible:
+            return {
+                "match_details_candidate_count": 0,
+                "match_details_captured_count": 0,
+                "match_details_navigation_count": 0,
+                "match_details_published_count": 0,
+                "match_details_pending_count": 0,
+                "match_details_policy_review_count": 0,
+                "match_details_stopped": False,
+                "match_details_blocked_excluded_count": blocked_excluded,
+                "match_details_message": "No hay nuevos informes elegibles para adquirir.",
+            }
+
+        selected_ids = [row["internal_id"] for row in eligible]
+        plan = build_match_campaign_proposal(status_report, internal_ids=selected_ids)
+        proposal_dir = write_match_campaign_proposal(
+            self.match_details_store_root / "campaign-proposals", plan
+        )
+        ledger = OperationalMatchCampaignLedger(self.match_details_store_root / "campaigns")
+        ledger.initialize(
+            proposal_dir=proposal_dir,
+            generation_root=self.match_generation_root,
+            data_root=self.data_root,
+            published_ids=context["published_ids"],
+            captured_ids=context["captured_ids"],
+            blocked_ids=context["blocked_ids"],
+        )
+        campaign_id = str(plan["campaign_id"])
+        source_inventory = ledger.source_inventory(campaign_id)
+        completed_count = 0
+
+        def progress(event: dict[str, Any]) -> None:
+            nonlocal completed_count
+            if event.get("event") == "candidate_finished":
+                completed_count = int(event.get("index", completed_count))
+            job["match_details_progress"] = {"completed": completed_count, "total": len(selected_ids)}
+            job["stage"] = "acquiring_match_details"
+            self._save(job)
+
+        def execute_candidate(candidate: dict[str, Any], authorization_id: str, current: dict[str, Any]) -> dict[str, Any]:
+            internal_id = candidate["internal_id"]
+            return ledger.execute_for_competition_update(
+                campaign_id=campaign_id,
+                internal_id=internal_id,
+                authorization_id=authorization_id,
+                confirmed_url=candidate["source_match_url"],
+                update_job_id=str(job["job_id"]),
+                data_root=self.data_root,
+                profile_dir=self.data_root / "browser-profiles" / f"match-detail-v2-{candidate['source_match_id']}",
+                store_root=self.match_details_store_root,
+                store_inventory=source_inventory,
+                current_status=current,
+                published=internal_id in context["published_ids"],
+                captured=internal_id in context["captured_ids"],
+                blocked=internal_id in context["blocked_ids"],
+            )
+
+        acquisition = run_competition_update_detail_acquisition(
+            ledger=ledger,
+            campaign_id=campaign_id,
+            update_job_id=str(job["job_id"]),
+            data_root=self.data_root,
+            player_capture_root=self.player_team_captures_root,
+            status_report=status_report,
+            context=context,
+            execute_candidate=execute_candidate,
+            progress_callback=progress,
+        )
+        offline: dict[str, Any] = {"published_count": 0, "policy_pending_count": 0}
+        if acquisition.get("captured_count"):
+            job["stage"] = "validating_match_details"
+            self._save(job)
+            offline = run_offline_batch(
+                ledger=ledger,
+                campaign_id=campaign_id,
+                data_root=self.data_root,
+                player_inventory_root=self.player_inventory_root,
+                player_compact_root=self.player_compact_root,
+                player_team_captures_root=self.player_team_captures_root,
+                player_published_index_path=self.player_published_index_path,
+                auto_publish_policy=True,
+                published_root=self.match_details_published_root,
+            )
+        published_count = int(offline.get("published_count", 0))
+        reload_error = None
+        if published_count and self.on_match_details_published is not None:
+            job["stage"] = "refreshing_match_details"
+            self._save(job)
+            try:
+                self.on_match_details_published(job)
+            except Exception as exc:
+                reload_error = f"{type(exc).__name__}: {str(exc)[:300]}"
+        return {
+            "match_details_candidate_count": len(selected_ids),
+            "match_details_captured_count": int(acquisition.get("captured_count", 0)),
+            "match_details_navigation_count": int(acquisition.get("navigation_requests", 0)),
+            "match_details_published_count": published_count,
+            "match_details_pending_count": max(0, len(selected_ids) - published_count),
+            "match_details_policy_review_count": int(offline.get("policy_pending_count", 0)),
+            "match_details_stopped": acquisition.get("stop_acquisition") is True,
+            "match_details_blocked_excluded_count": blocked_excluded,
+            "match_details_reload_error": reload_error,
+            "match_details_message": (
+                "Informes validados y publicados según la política estricta."
+                if published_count else "Los informes dudosos o no disponibles permanecen pendientes."
+            ),
+        }
 
     @staticmethod
     def _assert_automatic_competition_candidate(candidate: dict[str, Any]) -> None:
@@ -1203,7 +1478,12 @@ class ManualUpdateManager:
                 with self._mutex:
                     self._active_processes.discard(process)
         if return_code != 0:
-            raise ManualUpdateError(f"El proceso terminó con código {return_code}; no se reintentó.")
+            raise ManualUpdateError(
+                _friendly_process_failure(
+                    _tail(log_path, 20000),
+                    f"El proceso terminó con código {return_code}; no se reintentó.",
+                )
+            )
         return _tail(log_path, 20000)
 
     def _update_competition(self, job: dict[str, Any], log_path: Path) -> dict[str, Any]:
@@ -1232,15 +1512,20 @@ class ManualUpdateManager:
             if len(run_dirs) != 1:
                 raise ManualUpdateError(f"No hay exactamente una captura nueva validable para Grupo {group}.")
             roots[group] = run_dirs[0]
+            job["stage"] = f"normalizing_matches_group_{group.lower()}"
+            self._save(job)
             normalized[group] = base / "normalized" / f"group-{group.lower()}" / "matches.json"
             normalized[group].parent.mkdir(parents=True, exist_ok=False, mode=0o700)
+            validation_path = base / "normalized" / "validation" / f"group-{group.lower()}-matches.json"
+            validation_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
             self._command([
                 sys.executable, "scripts/extract_bdfutbol_matches.py",
                 "--snapshot", str(roots[group] / "raw/source.html"),
                 "--capture", str(roots[group] / "metadata/capture.json"),
                 "--output", str(normalized[group]),
+                "--validation-output", str(validation_path),
             ], log_path, timeout=300)
-            validation = json.loads((roots[group] / "validation/results.json").read_text(encoding="utf-8"))
+            validation = json.loads(validation_path.read_text(encoding="utf-8"))
             if validation.get("valid") is not True:
                 raise ManualUpdateError(f"La captura del Grupo {group} no superó la validación existente.")
 

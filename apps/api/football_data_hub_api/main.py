@@ -173,6 +173,37 @@ def _reload_after_manual_update(app: FastAPI, configured: ApiSettings, manager: 
     manager.group_progress_paths = {"I": group_settings["1"].progress_path, "II": group_settings["2"].progress_path}
 
 
+def _reload_match_details_after_manual_update(
+    app: FastAPI, configured: ApiSettings, _manager: ManualUpdateManager, _job: dict[str, object]
+) -> None:
+    """Swap the fully revalidated published details after a MATCH batch completes."""
+
+    if (
+        configured.match_details_published_root is None
+        or configured.match_details_store_root is None
+        or configured.local_data_root is None
+        or configured.match_generation_root is None
+    ):
+        raise ManualUpdateError("Faltan rutas verificadas para recargar los detalles publicados.")
+    match_results = app.state.match_results
+    if match_results is None:
+        raise ManualUpdateError("No hay catálogo activo para verificar las publicaciones de partidos.")
+    player_ids = set(app.state.player_directory.players_by_id) if app.state.player_directory else set()
+    replacement = load_published_match_details(
+        configured.match_details_published_root,
+        store_root=configured.match_details_store_root,
+        generation_root=configured.match_generation_root,
+        data_root=configured.local_data_root,
+        match_bundle=match_results,
+        player_ids=player_ids,
+    )
+    blocked_id = "pf-2026-27-group-ii-bdfutbol-272582"
+    if blocked_id in replacement:
+        raise ManualUpdateError("El partido 272582 sigue excluido de publicaciones automáticas.")
+    app.state.match_detail_documents = replacement
+    app.state.match_detail_publication_error = None
+
+
 def _assert_group_catalogs_match_generation(datasets: dict[str, DatasetBundle], match_results: MatchResultsBundle) -> None:
     """Guard the shared fixture truth used by group and team pages after activation."""
     for group_number, group_roman in (("1", "I"), ("2", "II")):
@@ -262,6 +293,7 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
             team_profiles_index=configured.team_profiles_index_path,
             match_generation_root=configured.match_generation_root,
             match_details_store_root=configured.match_details_store_root,
+            match_details_published_root=configured.match_details_published_root,
             player_inventory_root=configured.player_inventory_root,
             player_compact_root=configured.player_compact_root,
             player_team_captures_root=configured.player_team_captures_root,
@@ -269,6 +301,11 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         )
         app.state.manual_update_manager.on_competition_applied = (
             lambda job: _reload_after_manual_update(
+                app, configured, app.state.manual_update_manager, job
+            )
+        )
+        app.state.manual_update_manager.on_match_details_published = (
+            lambda job: _reload_match_details_after_manual_update(
                 app, configured, app.state.manual_update_manager, job
             )
         )

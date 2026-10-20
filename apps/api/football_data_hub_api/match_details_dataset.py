@@ -56,6 +56,7 @@ APPROVAL_SCHEMA = "football_data_hub.match_detail_publication_approval.v1"
 DRAFT_SCHEMA = "football_data_hub.match_detail_publication_draft.v1"
 CAMPAIGN_PACKAGE_SCHEMA = "football_data_hub.match_detail_campaign_publication.v1"
 CAMPAIGN_APPROVAL_SCHEMA = "football_data_hub.match_detail_campaign_approval.v1"
+AUTO_POLICY_RECEIPT_SCHEMA = "football_data_hub.match_detail_auto_policy_receipt.v1"
 CAMPAIGN_DRAFT_SCHEMA = "football_data_hub.match_detail_campaign_publication_draft.v1"
 _PUBLICATION_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 _CAMPAIGN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
@@ -600,20 +601,67 @@ def _load_campaign_publication_document(
         raise MatchDetailsLoadError("El manifiesto de campaña no cumple el contrato exacto.")
     if manifest.get("publication_id") != publication_id or manifest.get("internal_id") != indexed_internal_id:
         raise MatchDetailsLoadError("La publicación de campaña no coincide con el índice.")
-    if set(approval) != approval_fields or approval.get("schema_version") != CAMPAIGN_APPROVAL_SCHEMA:
-        raise MatchDetailsLoadError("Falta un recibo explícito de aprobación de campaña.")
-    if (
-        approval.get("publication_status") != "approved"
-        or approval.get("source_kind") != "campaign_discovery"
-        or not isinstance(approval.get("approved_by"), str)
-        or not approval["approved_by"].strip()
-        or approval.get("approval_confirmation") != (
-            f"APPROVE-{manifest.get('source_match_id')}-"
-            f"{str(manifest.get('source_html_sha256', ''))[:12]}-"
-            f"{str(manifest.get('details_sha256', ''))[:12]}"
+    human_receipt = approval.get("schema_version") == CAMPAIGN_APPROVAL_SCHEMA
+    if human_receipt:
+        if set(approval) != approval_fields:
+            raise MatchDetailsLoadError("El recibo humano no cumple el contrato exacto.")
+        if (
+            approval.get("publication_status") != "approved"
+            or approval.get("source_kind") != "campaign_discovery"
+            or not isinstance(approval.get("approved_by"), str)
+            or not approval["approved_by"].strip()
+            or approval.get("approval_confirmation") != (
+                f"APPROVE-{manifest.get('source_match_id')}-"
+                f"{str(manifest.get('source_html_sha256', ''))[:12]}-"
+                f"{str(manifest.get('details_sha256', ''))[:12]}"
+            )
+        ):
+            raise MatchDetailsLoadError("La aprobación humana no corresponde al paquete.")
+        approval_identity_fields = approval_fields - {
+            "schema_version", "publication_status", "approval_confirmation", "approved_by", "approved_at_utc"
+        }
+    elif approval.get("schema_version") == AUTO_POLICY_RECEIPT_SCHEMA:
+        from football_data_hub.providers.bdfutbol.match_details.automatic_publication_policy import (
+            POLICY_ID,
+            POLICY_VERSION,
+            automatic_publication_decision,
         )
-    ):
-        raise MatchDetailsLoadError("Se requiere aprobación humana explícita para esta campaña.")
+
+        auto_fields = {
+            "schema_version", "publication_status", "approval_mode", "policy_id",
+            "policy_version", "update_job_id", "candidate_set_sha256",
+            "validation_event_sha256", "validation_evidence_sha256", "validation",
+            "approved_at_utc", *approval_fields - {
+                "schema_version", "publication_status", "approved_by", "approved_at_utc",
+                "approval_confirmation",
+            },
+        }
+        if set(approval) != auto_fields:
+            raise MatchDetailsLoadError("El recibo de política automática no cumple el contrato exacto.")
+        allowed, reason = automatic_publication_decision(approval.get("validation"))
+        if (
+            approval.get("publication_status") != "approved"
+            or approval.get("approval_mode") != "automatic_policy"
+            or approval.get("policy_id") != POLICY_ID
+            or approval.get("policy_version") != POLICY_VERSION
+            or not isinstance(approval.get("update_job_id"), str)
+            or not re.fullmatch(r"[0-9a-f-]{36}", approval["update_job_id"])
+            or not re.fullmatch(r"[a-f0-9]{64}", str(approval.get("candidate_set_sha256", "")))
+            or not re.fullmatch(r"[a-f0-9]{64}", str(approval.get("validation_event_sha256", "")))
+            or not re.fullmatch(r"[a-f0-9]{64}", str(approval.get("validation_evidence_sha256", "")))
+            or not allowed
+        ):
+            raise MatchDetailsLoadError(
+                f"El recibo automático no satisface la política publicada ({reason or 'evidencia inválida'})."
+            )
+        approval_identity_fields = auto_fields - {
+            "schema_version", "publication_status", "approval_mode", "policy_id",
+            "policy_version", "update_job_id", "candidate_set_sha256",
+            "validation_event_sha256", "validation_evidence_sha256", "validation",
+            "approved_at_utc",
+        }
+    else:
+        raise MatchDetailsLoadError("Falta una aprobación humana o un recibo de política automática válido.")
     approved_at = approval.get("approved_at_utc")
     if not isinstance(approved_at, str):
         raise MatchDetailsLoadError("El recibo de campaña no tiene fecha de aprobación.")
@@ -627,9 +675,7 @@ def _load_campaign_publication_document(
         raise MatchDetailsLoadError("Los JSON aprobados no usan la codificación canónica del paquete.")
     if manifest.get("approval_sha256") != _sha256(approval_raw):
         raise MatchDetailsLoadError("El hash del recibo de campaña no coincide.")
-    for key in approval_fields - {
-        "schema_version", "publication_status", "approval_confirmation", "approved_by", "approved_at_utc"
-    }:
+    for key in approval_identity_fields:
         if approval.get(key) != manifest.get(key):
             raise MatchDetailsLoadError(f"La aprobación no autoriza el campo exacto {key}.")
     if (
@@ -672,6 +718,25 @@ def _load_campaign_publication_document(
         )
     ):
         raise MatchDetailsLoadError("El documento público no coincide con la evidencia de campaña revalidada.")
+    if not human_receipt:
+        from dataclasses import asdict
+
+        from football_data_hub.providers.bdfutbol.match_details.automatic_publication_policy import (
+            automatic_publication_decision,
+        )
+
+        rebuilt_validation = asdict(observation.validation)
+        eligible, reason = automatic_publication_decision(rebuilt_validation)
+        if (
+            not eligible
+            or _sha256(_canonical_json(rebuilt_validation))
+            != approval.get("validation_evidence_sha256")
+            or _canonical_json(rebuilt_validation)
+            != _canonical_json(approval.get("validation"))
+        ):
+            raise MatchDetailsLoadError(
+                f"La validación reconstruida ya no autoriza la política automática ({reason or 'evidencia distinta'})."
+            )
     for key in manifest_fields - {
         "schema_version", "publication_id", "approval_sha256", "details_sha256"
     }:
@@ -1226,6 +1291,68 @@ def build_campaign_approval_receipt(
     }
 
 
+def build_auto_policy_receipt(
+    draft: dict[str, Any],
+    *,
+    validation: dict[str, Any],
+    update_job_id: str,
+    candidate_set_sha256: str,
+    validation_event_sha256: str,
+    approved_at_utc: datetime | None = None,
+) -> dict[str, Any]:
+    """Create a machine-policy receipt distinct from human approval records."""
+
+    from football_data_hub.providers.bdfutbol.match_details.automatic_publication_policy import (
+        POLICY_ID,
+        POLICY_VERSION,
+        automatic_publication_decision,
+    )
+
+    eligible, reason = automatic_publication_decision(validation)
+    if (
+        draft.get("schema_version") != CAMPAIGN_DRAFT_SCHEMA
+        or draft.get("source_kind") != "campaign_discovery"
+        or draft.get("access_status") != "VALID"
+        or draft.get("semantic_valid") is not True
+        or draft.get("capture_promotion_enabled") is not False
+        or draft.get("promotion_eligible") is not False
+        or _sha256(_canonical_json(draft.get("details"))) != draft.get("details_sha256")
+        or not eligible
+        or not isinstance(update_job_id, str)
+        or not re.fullmatch(r"[0-9a-f-]{36}", update_job_id)
+        or not re.fullmatch(r"[a-f0-9]{64}", candidate_set_sha256)
+        or not re.fullmatch(r"[a-f0-9]{64}", validation_event_sha256)
+    ):
+        raise MatchDetailsLoadError(
+            f"El documento no cumple la política automática estricta ({reason or 'procedencia inválida'})."
+        )
+    approved_at_utc = approved_at_utc or datetime.now(timezone.utc)
+    if approved_at_utc.tzinfo is None:
+        raise MatchDetailsLoadError("La decisión automática debe incluir zona horaria.")
+    identity_fields = (
+        "publication_id", "source_kind", "internal_id", "inventory_id",
+        "source_generation_id", "source_generation_manifest_sha256", "source_capture_id",
+        "source_match_id", "season", "competition", "group", "matchday", "source_match_date",
+        "home_team_id", "away_team_id", "home_team_name", "away_team_name",
+        "campaign_id", "artifact_id", "navigation_attempt_id", "artifact_manifest_sha256",
+        "source_html_sha256", "details_sha256",
+    )
+    return {
+        "schema_version": AUTO_POLICY_RECEIPT_SCHEMA,
+        "publication_status": "approved",
+        "approval_mode": "automatic_policy",
+        "policy_id": POLICY_ID,
+        "policy_version": POLICY_VERSION,
+        "update_job_id": update_job_id,
+        "candidate_set_sha256": candidate_set_sha256,
+        "validation_event_sha256": validation_event_sha256,
+        "validation_evidence_sha256": _sha256(_canonical_json(validation)),
+        "validation": json.loads(_canonical_json(validation)),
+        "approved_at_utc": approved_at_utc.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
+        **{key: draft[key] for key in identity_fields},
+    }
+
+
 def write_immutable_publication_json(path: Path, value: dict[str, Any]) -> Path:
     """Write one canonical derived record without replacing previous evidence."""
 
@@ -1466,7 +1593,7 @@ def publish_campaign_match_detail_draft(
     match_bundle: MatchResultsBundle,
     player_ids: set[int],
 ) -> dict[str, str]:
-    """Publish one freshly revalidated campaign discovery after exact human approval."""
+    """Publish one freshly revalidated campaign discovery after human or policy approval."""
 
     if not isinstance(draft, dict) or not isinstance(approval_receipt, dict):
         raise MatchDetailsLoadError("Se requiere borrador y aprobación individual explícita.")
@@ -1482,15 +1609,27 @@ def publish_campaign_match_detail_draft(
     )
     if not _campaign_draft_matches_revalidated_evidence(draft, expected):
         raise MatchDetailsLoadError("El borrador ya no coincide con la evidencia de campaña revalidada.")
-    expected_approval = build_campaign_approval_receipt(
-        draft,
-        approved_by=str(approval_receipt.get("approved_by", "")),
-        confirm_internal_id=str(approval_receipt.get("internal_id", "")),
-        confirm_source_html_sha256=str(approval_receipt.get("source_html_sha256", "")),
-        confirm_details_sha256=str(approval_receipt.get("details_sha256", "")),
-        confirm_action=campaign_approval_confirmation(draft),
-        approved_at_utc=_parse_approval_timestamp(approval_receipt.get("approved_at_utc")),
-    )
+    if approval_receipt.get("schema_version") == CAMPAIGN_APPROVAL_SCHEMA:
+        expected_approval = build_campaign_approval_receipt(
+            draft,
+            approved_by=str(approval_receipt.get("approved_by", "")),
+            confirm_internal_id=str(approval_receipt.get("internal_id", "")),
+            confirm_source_html_sha256=str(approval_receipt.get("source_html_sha256", "")),
+            confirm_details_sha256=str(approval_receipt.get("details_sha256", "")),
+            confirm_action=campaign_approval_confirmation(draft),
+            approved_at_utc=_parse_approval_timestamp(approval_receipt.get("approved_at_utc")),
+        )
+    elif approval_receipt.get("schema_version") == AUTO_POLICY_RECEIPT_SCHEMA:
+        expected_approval = build_auto_policy_receipt(
+            draft,
+            validation=approval_receipt.get("validation"),
+            update_job_id=str(approval_receipt.get("update_job_id", "")),
+            candidate_set_sha256=str(approval_receipt.get("candidate_set_sha256", "")),
+            validation_event_sha256=str(approval_receipt.get("validation_event_sha256", "")),
+            approved_at_utc=_parse_approval_timestamp(approval_receipt.get("approved_at_utc")),
+        )
+    else:
+        raise MatchDetailsLoadError("El recibo no corresponde a un contrato humano o automático conocido.")
     if _canonical_json(approval_receipt) != _canonical_json(expected_approval):
         raise MatchDetailsLoadError("El recibo de aprobación no autoriza exactamente este borrador.")
 

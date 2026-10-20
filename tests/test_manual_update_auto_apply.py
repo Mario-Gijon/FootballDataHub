@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sys
 import uuid
 from pathlib import Path
 from types import SimpleNamespace
@@ -14,6 +15,7 @@ from football_data_hub_api.manual_updates import (
     ManualUpdateError,
     ManualUpdateManager,
     _candidate_sha256,
+    _last_json_object,
     public_manual_update_job,
 )
 
@@ -162,6 +164,60 @@ def test_public_job_hides_internal_candidate_paths_hashes_and_logs() -> None:
     assert "candidate" not in projected and "candidate_sha256" not in projected and "log_tail" not in projected
 
 
+def test_public_failed_job_explains_existing_match_validation_collision_without_paths() -> None:
+    private_path = "/home/private/update/normalized/validation/matches.json"
+    projected = public_manual_update_job({
+        "job_id": "failed-job", "scope": "competition", "status": "failed", "stage": "failed",
+        "error": "ManualUpdateError: El proceso terminó con código 1; no se reintentó.",
+        "log_tail": (
+            "$ python scripts/extract_bdfutbol_matches.py --snapshot group-ii/raw/source.html\n"
+            f"FileExistsError: [Errno 17] File exists: '{private_path}'\n"
+        ),
+    })
+
+    assert projected is not None
+    assert projected["error"] == (
+        "Falló la normalización de partidos del Grupo II: el informe de validación ya "
+        "existía en una ruta compartida. Las capturas se conservaron y no se reintentó "
+        "la adquisición."
+    )
+    assert private_path not in str(projected)
+
+
+def test_subprocess_failure_includes_a_concise_exception_diagnostic(tmp_path: Path) -> None:
+    manager = _manager(tmp_path)
+    with pytest.raises(ManualUpdateError, match="RuntimeError: datos de prueba"):
+        manager._command(
+            [sys.executable, "-c", "raise RuntimeError('datos de prueba')"],
+            tmp_path / "worker.log",
+            timeout=10,
+        )
+    manager.close()
+
+
+def test_last_json_object_selects_small_activation_receipt_after_larger_capture_receipts() -> None:
+    earlier_group_receipt = json.dumps({
+        "group": "II",
+        "files": {"raw_snapshot": "/external/path/" + "x" * 400, "metadata": "capture.json"},
+        "validation": {"checks": 8, "failures": 0},
+    }, indent=2)
+    activation_receipt = json.dumps({
+        "activation_id": "activation-123",
+        "generation_id": "match-00-candidate",
+        "report_sha256": "a" * 64,
+        "status": "activated",
+    }, indent=2)
+
+    assert _last_json_object(
+        f"first capture\n{earlier_group_receipt}\nactivated\n{activation_receipt}\n"
+    ) == json.loads(activation_receipt)
+
+
+def test_last_json_object_returns_outer_receipt_when_it_contains_nested_objects() -> None:
+    receipt = {"status": "complete", "details": {"checks": 4, "valid": True}}
+    assert _last_json_object(f"prefix\n{json.dumps(receipt, indent=2)}\n") == receipt
+
+
 def _match_record(source_id: str, **changes: object) -> SimpleNamespace:
     fields = {
         "match_id": source_id, "source_match_id": source_id, "matchday": 1,
@@ -189,3 +245,111 @@ def test_team_fixture_catalog_and_match_detail_generation_share_one_result_by_id
     datasets["2"].bootstrap.matches[0].home_goals = 2
     with pytest.raises(ManualUpdateError, match="discrepa entre el catálogo"):
         _assert_group_catalogs_match_generation(datasets, generated)
+
+
+def test_auto_detail_pipeline_targets_only_unpublished_unblocked_played_matches(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from football_data_hub.providers.bdfutbol.match_details import (
+        campaign_operations,
+        operational_campaign,
+        scalable_campaign_cli,
+        scalable_campaigns,
+        supervised_acquisition,
+    )
+
+    manager = _manager(tmp_path)
+    data = manager.data_root
+    assert data is not None
+    manager.match_details_published_root = data / "matches/details/published"
+    manager.match_details_published_root.mkdir(parents=True)
+    manager.player_inventory_root = data / "players/inventory-2026-27"
+    manager.player_inventory_root.mkdir(parents=True)
+    manager.player_compact_root = data / "players/compact-2026-27"
+    manager.player_compact_root.mkdir(parents=True)
+    manager.player_team_captures_root = data / "team-captures"
+    manager.player_team_captures_root.mkdir()
+    manager.player_published_index_path = data / "published/team_profiles_2026-27.json"
+    manager.player_published_index_path.parent.mkdir()
+    manager.player_published_index_path.write_text("{}", encoding="utf-8")
+
+    def fixture(source_id: str, status: str) -> dict[str, object]:
+        return {
+            "internal_id": f"pf-2026-27-group-ii-bdfutbol-{source_id}",
+            "source_match_id": source_id,
+            "source_match_url": f"https://www.bdfutbol.com/es/p/p.php?id={source_id}",
+            "group": "II",
+            "matchday": 8,
+            "matchday_date": "2026-10-18",
+            "home_team_id": 49,
+            "away_team_id": 16,
+            "reference_result": {"home_goals": 1, "away_goals": 0},
+            "status": "played",
+            "detail_status": status,
+            "blocked_reasons": [],
+        }
+
+    pending = fixture("272590", "played_pending_acquisition")
+    legacy_unstarted = fixture("272591", "included_in_existing_campaign")
+    blocked = fixture("272582", "blocked_requires_human_review")
+    published = fixture("270001", "published_approved")
+    blocked["blocked_reasons"] = ["historical_access_block"]
+    rows = [pending, legacy_unstarted, blocked, published]
+    context = {
+        "published_ids": {published["internal_id"]},
+        "captured_ids": set(),
+        "blocked_ids": {blocked["internal_id"]},
+    }
+    monkeypatch.setattr(scalable_campaign_cli, "_load_report", lambda _args: ({"matches": rows}, [], context))
+
+    proposal: dict[str, object] = {}
+    campaign_id = "match-detail-campaign-v2-0123456789abcdef"
+
+    def build_proposal(_report, *, internal_ids):
+        proposal["ids"] = list(internal_ids)
+        return {"campaign_id": campaign_id, "candidate_count": len(internal_ids)}
+
+    monkeypatch.setattr(scalable_campaigns, "build_match_campaign_proposal", build_proposal)
+    monkeypatch.setattr(scalable_campaigns, "write_match_campaign_proposal", lambda *_args: tmp_path / "proposal")
+
+    class FakeLedger:
+        def __init__(self, root: Path):
+            self.root = root
+
+        def initialize(self, **_kwargs):
+            return {"status": "CAMPAIGN_INITIALIZED"}
+
+        def source_inventory(self, _campaign_id):
+            return {"matches": []}
+
+    monkeypatch.setattr(operational_campaign, "OperationalMatchCampaignLedger", FakeLedger)
+
+    def acquire(**kwargs):
+        assert kwargs["campaign_id"] == campaign_id
+        assert kwargs["context"]["blocked_ids"] == {blocked["internal_id"]}
+        return {"captured_count": 2, "navigation_requests": 2, "stop_acquisition": False}
+
+    monkeypatch.setattr(supervised_acquisition, "run_competition_update_detail_acquisition", acquire)
+
+    def process_offline(**kwargs):
+        assert kwargs["auto_publish_policy"] is True
+        assert kwargs["published_root"] == manager.match_details_published_root
+        return {"published_count": 1, "policy_pending_count": 1}
+
+    monkeypatch.setattr(campaign_operations, "run_offline_batch", process_offline)
+    reloads: list[bool] = []
+    manager.on_match_details_published = lambda _job: reloads.append(True)
+
+    result = manager._process_new_match_details({"job_id": str(uuid.uuid4())})
+
+    assert proposal["ids"] == [pending["internal_id"], legacy_unstarted["internal_id"]]
+    assert blocked["internal_id"] not in proposal["ids"]
+    assert published["internal_id"] not in proposal["ids"]
+    assert result["match_details_candidate_count"] == 2
+    assert result["match_details_captured_count"] == 2
+    assert result["match_details_navigation_count"] == 2
+    assert result["match_details_published_count"] == 1
+    assert result["match_details_pending_count"] == 1
+    assert result["match_details_blocked_excluded_count"] == 1
+    assert reloads == [True]
+    manager.close()

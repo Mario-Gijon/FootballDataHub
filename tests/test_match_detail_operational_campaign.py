@@ -599,8 +599,9 @@ def test_simulated_challenge_stops_and_consumes_the_single_authorization(
 class _FakeValidation:
     semantic_valid: bool = True
     parser_version: str = "offline-test-parser"
-    checks: tuple = ()
-    errors: tuple = ()
+    checks: list = dataclasses.field(default_factory=list)
+    errors: list = dataclasses.field(default_factory=list)
+    warnings: list = dataclasses.field(default_factory=list)
 
 
 def _valid_draft(fixture, artifact_event):
@@ -708,6 +709,14 @@ def _publication_verification_fixture(tmp_path, monkeypatch):
         "source_html_sha256": "a" * 64,
     }
     approval_raw = api_details._canonical_json(approval_receipt)
+    review_receipt_path = (
+        tmp_path
+        / "matches/details/review/v2"
+        / "match-detail-campaign-v2-06aa2259b14b95a7"
+        / "269408-approval.json"
+    )
+    review_receipt_path.parent.mkdir(parents=True, exist_ok=True)
+    review_receipt_path.write_bytes(approval_raw)
     manifest = {
         "schema_version": api_details.CAMPAIGN_PACKAGE_SCHEMA,
         "publication_id": publication_id,
@@ -742,6 +751,7 @@ def _publication_verification_fixture(tmp_path, monkeypatch):
         "internal_id": internal_id,
         "details_sha256": details_sha,
         "approval_sha256": _sha(approval_raw),
+        "approval_path": review_receipt_path.relative_to(tmp_path).as_posix(),
         "approved_by": "synthetic review",
         "approval_confirmation": "APPROVE-269408-test",
         "source_html_sha256": "a" * 64,
@@ -1272,6 +1282,192 @@ def test_offline_batch_uses_v2_parser_and_is_idempotent(tmp_path, monkeypatch):
     assert [event["event_sha256"] for event in events_after_second] == [
         event["event_sha256"] for event in events_after_first
     ]
+
+
+@pytest.mark.parametrize(
+    ("extra_warning", "expected_published_count"),
+    [(None, 1), ("lineup_event_unresolved", 0)],
+)
+def test_global_update_policy_publishes_only_strictly_validated_authorized_capture(
+    tmp_path, monkeypatch, extra_warning, expected_published_count
+):
+    import uuid
+
+    from football_data_hub.providers.bdfutbol.match_details.automatic_publication_policy import (
+        REQUIRED_CHECKS,
+        candidate_set_sha256,
+    )
+    from football_data_hub.providers.bdfutbol.match_details.campaign_operations import (
+        run_offline_batch,
+    )
+    from football_data_hub.providers.bdfutbol.match_details.real_acquisition import (
+        RealDiscoveryResponse,
+    )
+    from football_data_hub.providers.bdfutbol.match_details.semantic_parser import (
+        ValidationCheck,
+    )
+
+    fixture = _fixture(tmp_path, monkeypatch)
+    _initialize(fixture)
+    campaign, _manifest, _plan = fixture.ledger._read_campaign(
+        fixture.ledger.root / fixture.plan["campaign_id"]
+    )
+    update_job_id = str(uuid.uuid4())
+    candidate_digest = candidate_set_sha256(
+        update_job_id=update_job_id,
+        campaign_id=fixture.plan["campaign_id"],
+        source_generation_id=campaign["source"]["generation_id"],
+        source_generation_manifest_sha256=campaign["source"][
+            "generation_manifest_sha256"
+        ],
+        candidates=campaign["candidates"],
+    )
+    initial_status = _current_status(fixture)
+    initial_status["campaign"].update(
+        campaign_version=2, authorization_consumed=False, navigation_count=0
+    )
+    authorization_id = fixture.ledger.authorize_for_competition_update(
+        campaign_id=fixture.plan["campaign_id"],
+        internal_id=fixture.candidate["internal_id"],
+        confirmed_url=fixture.candidate["source_match_url"],
+        update_job_id=update_job_id,
+        candidate_set_sha256=candidate_digest,
+        current_status=initial_status,
+        published=False,
+        captured=False,
+        blocked=False,
+        data_root=fixture.data_root,
+    )
+    accesses = []
+
+    def access_once(config, *, url, session_factory):
+        accesses.append((config.backend, url))
+        return RealDiscoveryResponse(
+            final_url=url,
+            http_status=200,
+            html=b"<!doctype html><html><head><title>Offline fixture</title></head><body>stored</body></html>",
+            page_title="Offline fixture",
+            access_classification="VALID",
+            captured_at_utc="2026-10-20T10:00:00Z",
+        )
+
+    acquired = fixture.ledger.execute_for_competition_update(
+        campaign_id=fixture.plan["campaign_id"],
+        internal_id=fixture.candidate["internal_id"],
+        authorization_id=authorization_id,
+        confirmed_url=fixture.candidate["source_match_url"],
+        update_job_id=update_job_id,
+        data_root=fixture.data_root,
+        profile_dir=fixture.data_root
+        / "browser-profiles"
+        / f"match-detail-v2-{fixture.candidate['source_match_id']}",
+        store_root=fixture.store_root,
+        store_inventory=fixture.inventory,
+        current_status=_current_status(fixture, "AUTO_POLICY_AUTHORIZED"),
+        published=False,
+        captured=False,
+        blocked=False,
+        access_runner=access_once,
+    )
+    assert acquired["status"] == "DISCOVERY_REVIEW_REQUIRED"
+    assert accesses == [("seleniumbase-pure-cdp", fixture.candidate["source_match_url"])]
+
+    checks = [ValidationCheck(name, True, "offline verified") for name in sorted(REQUIRED_CHECKS)]
+    warnings = ["campaign_discovery_remains_unpromoted_pending_independent_review"]
+    if extra_warning:
+        warnings.append(extra_warning)
+    validation = _FakeValidation(checks=checks, warnings=warnings)
+    import football_data_hub.providers.bdfutbol.match_details.campaign_artifact as artifacts
+
+    monkeypatch.setattr(
+        artifacts,
+        "parse_campaign_saved_artifact",
+        lambda *_a, **_kw: SimpleNamespace(
+            validation=validation,
+            source=SimpleNamespace(parser_version="offline-test-parser"),
+        ),
+    )
+    discovery = next(
+        event
+        for event in fixture.ledger.candidate_events(
+            fixture.plan["campaign_id"], fixture.candidate["internal_id"]
+        )
+        if event["event_type"] == "DISCOVERY_REVIEW_REQUIRED"
+    )
+    draft = _valid_draft(fixture, discovery)
+    monkeypatch.setattr(
+        api_details,
+        "build_campaign_publication_draft",
+        lambda **_kwargs: draft,
+    )
+    monkeypatch.setattr(
+        fixture.ledger,
+        "_publication_inputs",
+        lambda **_kwargs: (
+            fixture.data_root,
+            fixture.generation_root,
+            SimpleNamespace(),
+            set(),
+        ),
+    )
+    loaded_document = MatchPublishedDetailsResponse.model_validate(draft["details"])
+    monkeypatch.setattr(
+        api_details,
+        "load_published_match_details",
+        lambda *_a, **_kw: {fixture.candidate["internal_id"]: loaded_document},
+    )
+    result = run_offline_batch(
+        ledger=fixture.ledger,
+        campaign_id=fixture.plan["campaign_id"],
+        data_root=fixture.data_root,
+        player_inventory_root=tmp_path,
+        player_compact_root=tmp_path,
+        player_team_captures_root=tmp_path,
+        player_published_index_path=tmp_path / "players.json",
+        auto_publish_policy=True,
+        published_root=fixture.store_root / "published",
+    )
+
+    assert result["status"] == "COMPLETED", json.dumps(result, ensure_ascii=False, indent=2)
+    assert result["published_count"] == expected_published_count, result
+    assert accesses == [("seleniumbase-pure-cdp", fixture.candidate["source_match_url"])]
+    events = fixture.ledger.candidate_events(
+        fixture.plan["campaign_id"], fixture.candidate["internal_id"]
+    )
+    event_types = [event["event_type"] for event in events]
+    if expected_published_count == 0:
+        assert result["policy_pending_count"] == 1
+        assert result["candidates"][0]["status"] == "PENDING_POLICY_REVIEW"
+        assert "AUTO_POLICY_APPROVED" not in event_types
+        assert not (fixture.store_root / "published" / "index.json").exists()
+        return
+
+    assert result["policy_pending_count"] == 0
+    assert result["candidates"][0]["status"] == "PUBLISHED_VERIFIED"
+    assert event_types[-2:] == [
+        "AUTO_POLICY_APPROVED",
+        "PUBLISHED",
+    ]
+    assert "DOCUMENT_APPROVED" not in event_types
+    assert "REVIEW_COMPLETED" not in event_types
+    receipt = json.loads(
+        (fixture.store_root / "published" / "packages" / draft["publication_id"] / "approval.json").read_bytes()
+    )
+    assert receipt["approval_mode"] == "automatic_policy"
+    assert receipt["update_job_id"] == update_job_id
+    verified = fixture.ledger.verify_publication(
+        campaign_id=fixture.plan["campaign_id"],
+        internal_id=fixture.candidate["internal_id"],
+        data_root=fixture.data_root,
+        generation_root=fixture.generation_root,
+        published_root=fixture.store_root / "published",
+        store_root=fixture.store_root,
+        player_inventory_root=tmp_path,
+        player_compact_root=tmp_path,
+        player_team_captures_root=tmp_path,
+        player_published_index_path=tmp_path / "players.json",
+    )
+    assert verified["status"] == "PUBLISHED_VERIFIED"
 
 
 def test_offline_validation_rechecks_state_before_appending_after_concurrent_change(tmp_path, monkeypatch):

@@ -52,17 +52,22 @@ AUTHORIZE_CONFIRMATION = "AUTHORIZE_ONE_MATCH_DISCOVERY_V2"
 EXECUTE_CONFIRMATION = "EXECUTE_ONE_MATCH_DISCOVERY_V2"
 PLAYER_IDLE_CONFIRMATION = "PLAYER_BROWSER_IDLE_CONFIRMED"
 REVALIDATE_CONFIRMATION = "REVALIDATE_FAILED_ARTIFACT_V2"
+AUTO_UPDATE_AUTHORIZATION_SCHEMA = "football_data_hub.match_detail_update_authorization.v1"
+AUTO_UPDATE_CANDIDATE_SET_ID = "competition-update-candidate-set-v1"
 _CAMPAIGN_ID = re.compile(r"^match-detail-campaign-v2-[0-9a-f]{16}$")
 _INTERNAL_ID = re.compile(r"^pf-2026-27-group-(?:i|ii)-bdfutbol-[0-9]{5,10}$")
 _EVENT_FILE = re.compile(r"^[0-9]{6}-[0-9a-f]{32}\.json$")
+_UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 _TRANSITIONS = {
-    "NOT_AUTHORIZED": {"AUTHORIZED"},
+    "NOT_AUTHORIZED": {"AUTHORIZED", "AUTO_POLICY_AUTHORIZED"},
     "AUTHORIZED": {"STARTED"},
+    "AUTO_POLICY_AUTHORIZED": {"STARTED"},
     "STARTED": {"DISCOVERY_REVIEW_REQUIRED", "STOPPED"},
     "DISCOVERY_REVIEW_REQUIRED": {"VALIDATED", "VALIDATION_FAILED"},
     "VALIDATED": {"DRAFT_PREPARED"},
-    "DRAFT_PREPARED": {"DOCUMENT_APPROVED"},
+    "DRAFT_PREPARED": {"DOCUMENT_APPROVED", "AUTO_POLICY_APPROVED"},
     "DOCUMENT_APPROVED": {"PUBLISHED"},
+    "AUTO_POLICY_APPROVED": {"PUBLISHED"},
     "PUBLISHED": {"REVIEW_COMPLETED"},
     "STOPPED": set(),
     "VALIDATION_FAILED": {"REVALIDATED", "REVALIDATION_FAILED"},
@@ -316,7 +321,7 @@ class OperationalMatchCampaignLedger:
             state = event_type
             if event_type == "DISCOVERY_REVIEW_REQUIRED":
                 self._verify_artifact(directory, campaign, internal_id, payload)
-            elif event_type in {"DRAFT_PREPARED", "DOCUMENT_APPROVED"}:
+            elif event_type in {"DRAFT_PREPARED", "DOCUMENT_APPROVED", "AUTO_POLICY_APPROVED"}:
                 self._verify_review_record(campaign, internal_id, payload, events)
         return events
 
@@ -437,7 +442,7 @@ class OperationalMatchCampaignLedger:
                 raise MatchCampaignIntegrityError(
                     "La ruta del borrador v2 no es canónica"
                 )
-        else:
+        elif event["event_type"] == "DOCUMENT_APPROVED":
             approval_path = (
                 review_root / f"{candidate['source_match_id']}-approval.json"
             )
@@ -445,6 +450,13 @@ class OperationalMatchCampaignLedger:
             if event.get("approval_path") != expected_relative:
                 raise MatchCampaignIntegrityError(
                     "La ruta del recibo v2 no es canónica"
+                )
+        else:
+            policy_path = review_root / f"{candidate['source_match_id']}-auto-policy.json"
+            expected_relative = policy_path.relative_to(data_root).as_posix()
+            if event.get("policy_receipt_path") != expected_relative:
+                raise MatchCampaignIntegrityError(
+                    "La ruta del recibo de política automática no es canónica"
                 )
 
         cursor = data_root
@@ -487,6 +499,56 @@ class OperationalMatchCampaignLedger:
             raise MatchCampaignIntegrityError(
                 "El borrador no está ligado a la adquisición validada"
             )
+        if event["event_type"] == "DRAFT_PREPARED":
+            return
+        if event["event_type"] == "AUTO_POLICY_APPROVED":
+            policy_path = review_root / f"{candidate['source_match_id']}-auto-policy.json"
+            if not policy_path.is_file() or _file_hash(policy_path) != event.get("policy_receipt_sha256"):
+                raise MatchCampaignIntegrityError("El recibo de política no coincide con el ledger")
+            try:
+                receipt = json.loads(policy_path.read_bytes())
+                validation_event = next(
+                    row for row in reversed(events)
+                    if row.get("event_type") in {"VALIDATED", "REVALIDATED"}
+                )
+                authorization_event = next(
+                    row for row in events if row.get("event_type") == "AUTO_POLICY_AUTHORIZED"
+                )
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError, StopIteration) as exc:
+                raise MatchCampaignIntegrityError("Evidencia de política automática ilegible") from exc
+            authorization = authorization_event.get("authorization") or {}
+            if (
+                event.get("update_job_id") != authorization.get("update_job_id")
+                or event.get("candidate_set_sha256") != authorization.get("candidate_set_sha256")
+            ):
+                raise MatchCampaignIntegrityError("La decisión automática no pertenece a la autorización de este trabajo")
+            from football_data_hub_api.match_details_dataset import build_auto_policy_receipt
+
+            try:
+                expected = build_auto_policy_receipt(
+                    draft,
+                    validation=validation_event["validation"],
+                    update_job_id=str(event.get("update_job_id", "")),
+                    candidate_set_sha256=str(event.get("candidate_set_sha256", "")),
+                    validation_event_sha256=str(validation_event.get("event_sha256", "")),
+                    approved_at_utc=datetime.fromisoformat(
+                        str(receipt.get("approved_at_utc", "")).replace("Z", "+00:00")
+                    ),
+                )
+            except (ValueError, KeyError, TypeError) as exc:
+                raise MatchCampaignIntegrityError("La política no autoriza la validación") from exc
+            if (
+                receipt != expected
+                or event.get("details_sha256") != draft.get("details_sha256")
+                or event.get("source_html_sha256") != draft.get("source_html_sha256")
+                or event.get("validation_event_sha256") != validation_event.get("event_sha256")
+                or event.get("validation_evidence_sha256") != receipt.get("validation_evidence_sha256")
+                or event.get("policy_id") != receipt.get("policy_id")
+                or event.get("policy_version") != receipt.get("policy_version")
+                or event.get("approval_mode") != "automatic_policy"
+            ):
+                raise MatchCampaignIntegrityError("El recibo automático no autoriza exactamente el borrador")
+            return
         if event["event_type"] != "DOCUMENT_APPROVED":
             return
         approval_path = review_root / f"{candidate['source_match_id']}-approval.json"
@@ -592,8 +654,54 @@ class OperationalMatchCampaignLedger:
                 raise MatchCampaignIntegrityError(
                     "La referencia a la autorización de campaña es inválida"
                 )
+        elif kind == "AUTO_POLICY_AUTHORIZED":
+            authorization = event.get("authorization")
+            from football_data_hub.providers.bdfutbol.match_details.automatic_publication_policy import (
+                BLOCKED_SOURCE_MATCH_IDS,
+                candidate_set_sha256 as build_candidate_set_sha256,
+            )
+
+            expected_candidate_set = None
+            if isinstance(authorization, dict):
+                try:
+                    expected_candidate_set = build_candidate_set_sha256(
+                        update_job_id=str(authorization.get("update_job_id", "")),
+                        campaign_id=campaign["campaign_id"],
+                        source_generation_id=campaign["source"]["generation_id"],
+                        source_generation_manifest_sha256=campaign["source"]["generation_manifest_sha256"],
+                        candidates=campaign["candidates"],
+                    )
+                except (KeyError, TypeError):
+                    expected_candidate_set = None
+            if (
+                not isinstance(authorization, dict)
+                or authorization.get("schema_version") != AUTO_UPDATE_AUTHORIZATION_SCHEMA
+                or authorization.get("authorization_mode") != "competition_update_auto_policy"
+                or authorization.get("internal_id") != internal_id
+                or authorization.get("source_match_id") != candidate["source_match_id"]
+                or authorization.get("source_match_url") != candidate["source_match_url"]
+                or candidate["source_match_id"] in BLOCKED_SOURCE_MATCH_IDS
+                or authorization.get("proposal_sha256") != campaign["proposal_sha256"]
+                or authorization.get("source_generation_id") != campaign["source"]["generation_id"]
+                or authorization.get("source_generation_manifest_sha256")
+                != campaign["source"]["generation_manifest_sha256"]
+                or not _UUID.fullmatch(str(authorization.get("update_job_id", "")))
+                or not _is_sha(authorization.get("candidate_set_sha256"))
+                or authorization.get("candidate_set_sha256") != expected_candidate_set
+                or not isinstance(authorization.get("authorization_id"), str)
+                or not authorization["authorization_id"].startswith("match-detail-update-authorization-v1-")
+                or authorization.get("maximum_navigations") != 1
+                or authorization.get("automatic_retries") != 0
+                or authorization.get("capture_promotion_enabled") is not False
+                or authorization.get("human_approval") is not False
+                or not isinstance(authorization.get("authorized_at_utc"), str)
+            ):
+                raise MatchCampaignIntegrityError(
+                    "La autorización automática no está ligada al trabajo y candidato exactos"
+                )
         elif kind == "STARTED":
-            auth = previous[-1].get("authorization") if previous else None
+            authorization_event = previous[-1] if previous else {}
+            auth = authorization_event.get("authorization")
             if (
                 not isinstance(auth, dict)
                 or event.get("authorization_id") != auth.get("authorization_id")
@@ -767,15 +875,45 @@ class OperationalMatchCampaignLedger:
                 or not _is_sha(event.get("details_sha256"))
             ):
                 raise MatchCampaignIntegrityError("Aprobación v2 inválida")
+        elif kind == "AUTO_POLICY_APPROVED":
+            authorization_event = next(
+                (row for row in previous if row.get("event_type") == "AUTO_POLICY_AUTHORIZED"),
+                None,
+            )
+            authorization = authorization_event.get("authorization") if authorization_event else None
+            from football_data_hub.providers.bdfutbol.match_details.automatic_publication_policy import (
+                POLICY_ID,
+                POLICY_VERSION,
+            )
+
+            if (
+                not _is_sha(event.get("policy_receipt_sha256"))
+                or not isinstance(event.get("policy_receipt_path"), str)
+                or not _UUID.fullmatch(str(event.get("update_job_id", "")))
+                or not _is_sha(event.get("candidate_set_sha256"))
+                or not _is_sha(event.get("validation_event_sha256"))
+                or not _is_sha(event.get("validation_evidence_sha256"))
+                or event.get("approval_mode") != "automatic_policy"
+                or event.get("policy_id") != POLICY_ID
+                or event.get("policy_version") != POLICY_VERSION
+                or not _is_sha(event.get("source_html_sha256"))
+                or not _is_sha(event.get("details_sha256"))
+                or not isinstance(authorization, dict)
+                or event.get("update_job_id") != authorization.get("update_job_id")
+                or event.get("candidate_set_sha256") != authorization.get("candidate_set_sha256")
+            ):
+                raise MatchCampaignIntegrityError("Decisión automática v2 inválida")
         elif kind == "PUBLISHED":
             approved = next(
-                (row for row in previous if row["event_type"] == "DOCUMENT_APPROVED"),
+                (row for row in previous if row["event_type"] in {"DOCUMENT_APPROVED", "AUTO_POLICY_APPROVED"}),
                 None,
             )
             if (
                 not _is_sha(event.get("publication_manifest_sha256"))
                 or approved is None
-                or event.get("approval_sha256") != approved.get("approval_sha256")
+                or event.get("approval_sha256") != approved.get(
+                    "approval_sha256", approved.get("policy_receipt_sha256")
+                )
                 or event.get("details_sha256") != approved.get("details_sha256")
                 or not isinstance(event.get("publication_id"), str)
             ):
@@ -1262,7 +1400,7 @@ class OperationalMatchCampaignLedger:
                 (
                     event.get("authorization")
                     for event in events
-                    if event["event_type"] == "AUTHORIZED"
+                if event["event_type"] in {"AUTHORIZED", "AUTO_POLICY_AUTHORIZED"}
                 ),
                 None,
             )
@@ -1284,6 +1422,15 @@ class OperationalMatchCampaignLedger:
                 else state,
                 "authorization_consumed": authorization is not None,
                 "authorization_id": authorization.get("authorization_id")
+                if authorization
+                else None,
+                "authorization_mode": authorization.get("authorization_mode", "human")
+                if authorization
+                else None,
+                "update_job_id": authorization.get("update_job_id")
+                if authorization
+                else None,
+                "candidate_set_sha256": authorization.get("candidate_set_sha256")
                 if authorization
                 else None,
                 "navigation_count": 1
@@ -1325,7 +1472,7 @@ class OperationalMatchCampaignLedger:
                     (
                         event.get("authorization")
                         for event in events
-                        if event["event_type"] == "AUTHORIZED"
+                        if event["event_type"] in {"AUTHORIZED", "AUTO_POLICY_AUTHORIZED"}
                     ),
                     None,
                 )
@@ -1348,6 +1495,15 @@ class OperationalMatchCampaignLedger:
                         else state,
                         "authorization_consumed": auth is not None,
                         "authorization_id": auth.get("authorization_id")
+                        if auth
+                        else None,
+                        "authorization_mode": auth.get("authorization_mode", "human")
+                        if auth
+                        else None,
+                        "update_job_id": auth.get("update_job_id")
+                        if auth
+                        else None,
+                        "candidate_set_sha256": auth.get("candidate_set_sha256")
                         if auth
                         else None,
                         "navigation_count": 1
@@ -1388,14 +1544,16 @@ class OperationalMatchCampaignLedger:
         return {
             "NOT_AUTHORIZED": "review_candidate_then_authorize_individually",
             "AUTHORIZED": "execute_one_authorized_navigation",
+            "AUTO_POLICY_AUTHORIZED": "execute_one_update_policy_navigation",
             "INTERRUPTED_REQUIRES_REVIEW": "manual_review_no_retry",
             "DISCOVERY_REVIEW_REQUIRED": "validate_offline_artifact",
             "VALIDATED": "prepare_offline_draft",
             "REVALIDATED": "prepare_offline_draft",
             "VALIDATION_FAILED": "revalidate_failed_artifact_offline_with_operator_confirmation",
             "REVALIDATION_FAILED": "revalidate_failed_artifact_offline_with_operator_confirmation",
-            "DRAFT_PREPARED": "human_document_review_and_approval",
+            "DRAFT_PREPARED": "human_review_or_strict_auto_policy_evaluation",
             "DOCUMENT_APPROVED": "publish_approved_document",
+            "AUTO_POLICY_APPROVED": "publish_policy_approved_document",
             "PUBLISHED": "verify_then_complete_review",
             "REVIEW_COMPLETED": "none",
             "STOPPED": "manual_review_no_retry",
@@ -1535,6 +1693,123 @@ class OperationalMatchCampaignLedger:
             )
             return authorization_id
 
+    def authorize_for_competition_update(
+        self,
+        *,
+        campaign_id: str,
+        internal_id: str,
+        confirmed_url: str,
+        update_job_id: str,
+        candidate_set_sha256: str,
+        current_status: dict[str, Any],
+        published: bool,
+        captured: bool,
+        blocked: bool,
+        data_root: Path,
+    ) -> str:
+        """Record one machine-policy authorization from the local update action.
+
+        This is explicitly not a human approval. It binds one candidate to the
+        initiating competition-update job and a fixed eligible candidate set.
+        """
+
+        from football_data_hub.providers.bdfutbol.match_details.automatic_publication_policy import (
+            BLOCKED_SOURCE_MATCH_IDS,
+            candidate_set_sha256 as build_candidate_set_sha256,
+        )
+
+        if (
+            not _UUID.fullmatch(update_job_id)
+            or not _is_sha(candidate_set_sha256)
+            or not confirmed_url
+        ):
+            raise MatchCampaignAuthorizationError(
+                "Faltan referencias válidas del trabajo o conjunto de candidatos"
+            )
+        directory = _campaign_dir(self.root, campaign_id)
+        with self.lock.exclusive_lock():
+            campaign, _manifest, _plan = self._read_campaign(directory)
+            candidate = self._candidate(campaign, internal_id)
+            expected_candidate_set = build_candidate_set_sha256(
+                update_job_id=update_job_id,
+                campaign_id=campaign_id,
+                source_generation_id=campaign["source"]["generation_id"],
+                source_generation_manifest_sha256=campaign["source"]["generation_manifest_sha256"],
+                candidates=campaign["candidates"],
+            )
+            generation_root = data_root.expanduser().resolve(strict=True) / "matches" / "generations" / campaign["source"]["generation_id"]
+            generation = load_verified_match_generation(generation_root, data_root=data_root)
+            if generation.manifest_sha256 != campaign["source"]["generation_manifest_sha256"]:
+                raise MatchCampaignIntegrityError("Cambió la generación de la campaña automática")
+            current_state = current_status.get("campaign", {}) if isinstance(current_status.get("campaign"), dict) else {}
+            eligible_status = current_status.get("detail_status") in {
+                "played_pending_acquisition", "included_in_existing_campaign"
+            }
+            same_match = all(
+                current_status.get(key) == candidate.get(key)
+                for key in (
+                    "internal_id", "source_match_id", "source_match_url", "group",
+                    "matchday", "home_team_id", "away_team_id", "reference_result",
+                )
+            )
+            if (
+                candidate["source_match_id"] in BLOCKED_SOURCE_MATCH_IDS
+                or candidate_set_sha256 != expected_candidate_set
+                or not eligible_status
+                or not same_match
+                or current_status.get("source_match_url") != candidate["source_match_url"]
+                or confirmed_url != candidate["source_match_url"]
+                or published
+                or captured
+                or blocked
+                or (current_status.get("blocked_reasons") or [])
+                or (current_status.get("detail_status") == "included_in_existing_campaign" and (
+                    current_state.get("campaign_id") != campaign_id
+                    or current_state.get("state") != "NOT_AUTHORIZED"
+                    or current_state.get("authorization_consumed") is not False
+                    or current_state.get("navigation_count") != 0
+                ))
+            ):
+                raise MatchCampaignAuthorizationError(
+                    "El partido está publicado, adquirido, bloqueado o cambió de identidad"
+                )
+            if self._read_events(directory, campaign, internal_id):
+                raise MatchCampaignAuthorizationError(
+                    "El candidato ya tiene una autorización o un intento consumido"
+                )
+            authorization_id = "match-detail-update-authorization-v1-" + uuid.uuid4().hex
+            authorization = {
+                "schema_version": AUTO_UPDATE_AUTHORIZATION_SCHEMA,
+                "authorization_mode": "competition_update_auto_policy",
+                "authorization_id": authorization_id,
+                "update_job_id": update_job_id,
+                "candidate_set_sha256": candidate_set_sha256,
+                "campaign_id": campaign_id,
+                "proposal_sha256": campaign["proposal_sha256"],
+                "source_generation_id": campaign["source"]["generation_id"],
+                "source_generation_manifest_sha256": campaign["source"]["generation_manifest_sha256"],
+                "internal_id": internal_id,
+                "source_match_id": candidate["source_match_id"],
+                "source_match_url": candidate["source_match_url"],
+                "authorized_at_utc": _now(),
+                "maximum_navigations": 1,
+                "automatic_retries": 0,
+                "capture_promotion_enabled": False,
+                "human_approval": False,
+            }
+            self._append(
+                directory,
+                campaign,
+                internal_id,
+                {
+                    "event_type": "AUTO_POLICY_AUTHORIZED",
+                    "campaign_id": campaign_id,
+                    "internal_id": internal_id,
+                    "authorization": authorization,
+                },
+            )
+        return authorization_id
+
     def _execute(
         self,
         *,
@@ -1549,6 +1824,7 @@ class OperationalMatchCampaignLedger:
         published: bool,
         captured: bool,
         blocked: bool,
+        authorization_mode: str = "human",
     ) -> dict[str, Any]:
         directory = _campaign_dir(self.root, campaign_id)
         store = MatchDetailStore(store_root)
@@ -1557,7 +1833,14 @@ class OperationalMatchCampaignLedger:
                 campaign, _manifest, _plan = self._read_campaign(directory)
                 candidate = self._candidate(campaign, internal_id)
                 events = self._read_events(directory, campaign, internal_id)
-                if self._state(events) != "AUTHORIZED" or len(events) != 1:
+                expected_authorization_event = (
+                    "AUTHORIZED" if authorization_mode == "human" else "AUTO_POLICY_AUTHORIZED"
+                )
+                if (
+                    authorization_mode not in {"human", "competition_update_auto_policy"}
+                    or self._state(events) != expected_authorization_event
+                    or len(events) != 1
+                ):
                     raise MatchCampaignAuthorizationError(
                         "Solo se puede consumir una autorización nueva y no usada"
                     )
@@ -1575,7 +1858,7 @@ class OperationalMatchCampaignLedger:
                     == "included_in_existing_campaign"
                     and current_state.get("campaign_id") == campaign_id
                     and current_state.get("campaign_version") == 2
-                    and current_state.get("state") == "AUTHORIZED"
+                    and current_state.get("state") == expected_authorization_event
                 )
                 same_match = all(
                     current_status.get(key) == candidate.get(key)
@@ -1790,6 +2073,92 @@ class OperationalMatchCampaignLedger:
             raise MatchCampaignAuthorizationError(
                 "Faltan confirmaciones explícitas para una navegación v2 única"
             )
+        return self._execute_real_access(
+            campaign_id=campaign_id,
+            internal_id=internal_id,
+            authorization_id=authorization_id,
+            confirmed_url=confirmed_url,
+            data_root=data_root,
+            profile_dir=profile_dir,
+            store_root=store_root,
+            store_inventory=store_inventory,
+            current_status=current_status,
+            published=published,
+            captured=captured,
+            blocked=blocked,
+            session_factory=session_factory,
+            access_runner=access_runner,
+            authorization_mode="human",
+        )
+
+    def execute_for_competition_update(
+        self,
+        *,
+        campaign_id: str,
+        internal_id: str,
+        authorization_id: str,
+        confirmed_url: str,
+        update_job_id: str,
+        data_root: Path,
+        profile_dir: Path,
+        store_root: Path,
+        store_inventory: dict[str, Any],
+        current_status: dict[str, Any],
+        published: bool,
+        captured: bool,
+        blocked: bool,
+        session_factory: Any = None,
+        access_runner: Callable[..., Any] | None = None,
+    ) -> dict[str, Any]:
+        if not _UUID.fullmatch(update_job_id):
+            raise MatchCampaignAuthorizationError("El trabajo de actualización no es válido")
+        events = self.candidate_events(campaign_id, internal_id)
+        if (
+            len(events) != 1
+            or events[0].get("event_type") != "AUTO_POLICY_AUTHORIZED"
+            or (events[0].get("authorization") or {}).get("update_job_id") != update_job_id
+            or (events[0].get("authorization") or {}).get("authorization_id") != authorization_id
+        ):
+            raise MatchCampaignAuthorizationError(
+                "No existe autorización automática para este trabajo y partido"
+            )
+        return self._execute_real_access(
+            campaign_id=campaign_id,
+            internal_id=internal_id,
+            authorization_id=authorization_id,
+            confirmed_url=confirmed_url,
+            data_root=data_root,
+            profile_dir=profile_dir,
+            store_root=store_root,
+            store_inventory=store_inventory,
+            current_status=current_status,
+            published=published,
+            captured=captured,
+            blocked=blocked,
+            session_factory=session_factory,
+            access_runner=access_runner,
+            authorization_mode="competition_update_auto_policy",
+        )
+
+    def _execute_real_access(
+        self,
+        *,
+        campaign_id: str,
+        internal_id: str,
+        authorization_id: str,
+        confirmed_url: str,
+        data_root: Path,
+        profile_dir: Path,
+        store_root: Path,
+        store_inventory: dict[str, Any],
+        current_status: dict[str, Any],
+        published: bool,
+        captured: bool,
+        blocked: bool,
+        session_factory: Any,
+        access_runner: Callable[..., Any] | None,
+        authorization_mode: str,
+    ) -> dict[str, Any]:
         directory, campaign, _events = self._events(campaign_id, internal_id)
         candidate = self._candidate(campaign, internal_id)
         if confirmed_url != candidate["source_match_url"]:
@@ -1851,6 +2220,7 @@ class OperationalMatchCampaignLedger:
             published=published,
             captured=captured,
             blocked=blocked,
+            authorization_mode=authorization_mode,
         )
 
     def validate_offline_artifact(
@@ -2345,6 +2715,101 @@ class OperationalMatchCampaignLedger:
             "approval_sha256": _sha(raw),
         }
 
+    def approve_draft_by_update_policy(
+        self, *, campaign_id: str, internal_id: str, data_root: Path
+    ) -> dict[str, Any]:
+        """Append a non-human policy decision for a draft from the update button."""
+
+        from football_data_hub_api.match_details_dataset import (
+            build_auto_policy_receipt,
+            write_immutable_publication_json,
+        )
+
+        data_root = data_root.expanduser().resolve(strict=True)
+        with self.lock.exclusive_lock():
+            directory, campaign, events = self._events(campaign_id, internal_id)
+            state = self._state(events)
+            if state == "AUTO_POLICY_APPROVED":
+                prior = events[-1]
+                return {
+                    "status": "AUTO_POLICY_ALREADY_APPROVED",
+                    "idempotent": True,
+                    "policy_receipt_path": str(data_root / prior["policy_receipt_path"]),
+                    "policy_receipt_sha256": prior["policy_receipt_sha256"],
+                }
+            if state != "DRAFT_PREPARED":
+                raise MatchCampaignAuthorizationError(
+                    "Solo se evalúan borradores preparados y no publicados"
+                )
+            authorization = next(
+                (item.get("authorization") for item in events if item["event_type"] == "AUTO_POLICY_AUTHORIZED"),
+                None,
+            )
+            validation_event = next(
+                (item for item in reversed(events) if item["event_type"] in {"VALIDATED", "REVALIDATED"}),
+                None,
+            )
+            if not isinstance(authorization, dict) or validation_event is None:
+                raise MatchCampaignAuthorizationError(
+                    "Falta autorización del botón global o validación semántica"
+                )
+            prepared = next(item for item in events if item["event_type"] == "DRAFT_PREPARED")
+            relative_draft = Path(prepared["draft_path"])
+            if relative_draft.is_absolute() or ".." in relative_draft.parts:
+                raise MatchCampaignIntegrityError("La ruta del borrador automático no es relativa")
+            unresolved_path = data_root / relative_draft
+            if unresolved_path.is_symlink() or not unresolved_path.is_file():
+                raise MatchCampaignIntegrityError("El borrador automático no es un archivo regular")
+            path = unresolved_path.resolve(strict=True)
+            if not path.is_relative_to(data_root) or _file_hash(path) != prepared["draft_sha256"]:
+                raise MatchCampaignIntegrityError("El borrador cambió desde su preparación")
+            try:
+                draft = json.loads(path.read_bytes())
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+                raise MatchCampaignIntegrityError("El borrador automático es ilegible") from exc
+            receipt = build_auto_policy_receipt(
+                draft,
+                validation=validation_event["validation"],
+                update_job_id=str(authorization.get("update_job_id", "")),
+                candidate_set_sha256=str(authorization.get("candidate_set_sha256", "")),
+                validation_event_sha256=str(validation_event.get("event_sha256", "")),
+            )
+            output = path.with_name(path.name.removesuffix("-draft.json") + "-auto-policy.json")
+            if output.exists():
+                if output.is_symlink() or not output.is_file() or json.loads(output.read_bytes()) != receipt:
+                    raise MatchCampaignIntegrityError("El recibo automático existente difiere; no se sobrescribe")
+            else:
+                write_immutable_publication_json(output, receipt)
+            raw = output.read_bytes()
+            self._append(
+                directory,
+                campaign,
+                internal_id,
+                {
+                    "event_type": "AUTO_POLICY_APPROVED",
+                    "campaign_id": campaign_id,
+                    "internal_id": internal_id,
+                    "policy_receipt_path": output.relative_to(data_root).as_posix(),
+                    "policy_receipt_sha256": _sha(raw),
+                    "approval_mode": "automatic_policy",
+                    "policy_id": receipt["policy_id"],
+                    "policy_version": receipt["policy_version"],
+                    "update_job_id": receipt["update_job_id"],
+                    "candidate_set_sha256": receipt["candidate_set_sha256"],
+                    "validation_event_sha256": receipt["validation_event_sha256"],
+                    "validation_evidence_sha256": receipt["validation_evidence_sha256"],
+                    "source_html_sha256": receipt["source_html_sha256"],
+                    "details_sha256": receipt["details_sha256"],
+                    "decided_at_utc": receipt["approved_at_utc"],
+                },
+            )
+        return {
+            "status": "AUTO_POLICY_APPROVED",
+            "policy_receipt_path": str(output),
+            "policy_receipt_sha256": _sha(raw),
+            "details_sha256": receipt["details_sha256"],
+        }
+
     def publish(
         self,
         *,
@@ -2365,15 +2830,20 @@ class OperationalMatchCampaignLedger:
         )
 
         directory, campaign, events = self._events(campaign_id, internal_id)
-        if self._state(events) != "DOCUMENT_APPROVED":
+        approval_state = self._state(events)
+        if approval_state not in {"DOCUMENT_APPROVED", "AUTO_POLICY_APPROVED"}:
             raise MatchCampaignAuthorizationError(
-                "No se puede publicar sin aprobación humana individual"
+                "No se puede publicar sin aprobación humana o decisión automática estricta válida"
             )
         prepared = next(
             item for item in events if item["event_type"] == "DRAFT_PREPARED"
         )
         approved = next(
-            item for item in events if item["event_type"] == "DOCUMENT_APPROVED"
+            item for item in events
+            if item["event_type"] in {"DOCUMENT_APPROVED", "AUTO_POLICY_APPROVED"}
+        )
+        approved_receipt_sha256 = approved.get(
+            "approval_sha256", approved.get("policy_receipt_sha256")
         )
         data_root, generation_root, bundle, player_ids = self._publication_inputs(
             data_root=data_root,
@@ -2383,13 +2853,12 @@ class OperationalMatchCampaignLedger:
             player_team_captures_root=player_team_captures_root,
             player_published_index_path=player_published_index_path,
         )
-        draft_path, approval_path = (
-            data_root / prepared["draft_path"],
-            data_root / approved["approval_path"],
-        )
+        receipt_relative = approved.get("approval_path", approved.get("policy_receipt_path"))
+        draft_path, approval_path = data_root / prepared["draft_path"], data_root / str(receipt_relative)
         if (
             _file_hash(draft_path) != prepared["draft_sha256"]
-            or _file_hash(approval_path) != approved["approval_sha256"]
+            or not _is_sha(approved_receipt_sha256)
+            or _file_hash(approval_path) != approved_receipt_sha256
         ):
             raise MatchCampaignIntegrityError("Borrador o aprobación alterados")
         draft = json.loads(draft_path.read_text(encoding="utf-8"))
@@ -2446,7 +2915,7 @@ class OperationalMatchCampaignLedger:
                 raise MatchCampaignIntegrityError(
                     "La publicación existente difiere del ledger v2"
                 )
-            if current_state != "DOCUMENT_APPROVED":
+            if current_state != approval_state:
                 raise MatchCampaignAuthorizationError(
                     f"La campaña cambió durante la publicación: {current_state}"
                 )
@@ -2461,7 +2930,9 @@ class OperationalMatchCampaignLedger:
                     "publication_id": result["publication_id"],
                     "publication_manifest_sha256": manifest_sha,
                     "details_sha256": approved["details_sha256"],
-                    "approval_sha256": approved["approval_sha256"],
+                    "approval_sha256": approved.get(
+                        "approval_sha256", approved.get("policy_receipt_sha256")
+                    ),
                     "published_at_utc": _now(),
                 },
             )
@@ -2514,7 +2985,8 @@ class OperationalMatchCampaignLedger:
 
         _directory, _campaign, events = self._events(campaign_id, internal_id)
         approved_events = [
-            event for event in events if event["event_type"] == "DOCUMENT_APPROVED"
+            event for event in events
+            if event["event_type"] in {"DOCUMENT_APPROVED", "AUTO_POLICY_APPROVED"}
         ]
         published_events = [
             event for event in events if event["event_type"] == "PUBLISHED"
@@ -2602,6 +3074,35 @@ class OperationalMatchCampaignLedger:
             manifest, manifest_raw = _read_json(manifest_path)
             details_payload, details_raw = _read_json(details_path)
             approval_receipt, approval_raw = _read_json(approval_path)
+            review_receipt_relative = Path(
+                approved.get("approval_path", approved.get("policy_receipt_path", ""))
+            )
+            if (
+                not str(review_receipt_relative)
+                or review_receipt_relative.is_absolute()
+                or ".." in review_receipt_relative.parts
+            ):
+                raise MatchCampaignIntegrityError("La ruta del recibo del ledger no es relativa")
+            review_receipt_path = data_root / review_receipt_relative
+            expected_receipt_sha = approved.get(
+                "approval_sha256", approved.get("policy_receipt_sha256")
+            )
+            if (
+                review_receipt_path.is_symlink()
+                or not review_receipt_path.is_file()
+                or not _is_sha(expected_receipt_sha)
+                or _file_hash(review_receipt_path) != expected_receipt_sha
+            ):
+                raise MatchCampaignIntegrityError(
+                    "El recibo publicado ya no coincide con la evidencia del ledger"
+                )
+            review_receipt, _review_receipt_raw = _read_json(
+                review_receipt_path
+            )
+            if review_receipt != approval_receipt:
+                raise MatchCampaignIntegrityError(
+                    "El recibo del paquete no conserva exactamente la decisión del ledger"
+                )
         except MatchCampaignIntegrityError:
             raise
         except (MatchDetailsLoadError, OSError, TypeError, ValueError, KeyError) as exc:
@@ -2631,9 +3132,6 @@ class OperationalMatchCampaignLedger:
             or approval_receipt.get("publication_id") != row["publication_id"]
             or approval_receipt.get("internal_id") != internal_id
             or approval_receipt.get("details_sha256") != details_sha
-            or approval_receipt.get("approved_by") != approved.get("approved_by")
-            or approval_receipt.get("approval_confirmation")
-            != approved.get("approval_confirmation")
             or approval_receipt.get("source_html_sha256")
             != approved.get("source_html_sha256")
             or manifest.get("approval_sha256") != _sha(approval_raw)
@@ -2642,6 +3140,23 @@ class OperationalMatchCampaignLedger:
             raise MatchCampaignIntegrityError(
                 "El manifiesto, recibo, documento y eventos del ledger no coinciden"
             )
+        if approved["event_type"] == "DOCUMENT_APPROVED":
+            if (
+                approval_receipt.get("approved_by") != approved.get("approved_by")
+                or approval_receipt.get("approval_confirmation") != approved.get("approval_confirmation")
+            ):
+                raise MatchCampaignIntegrityError("El recibo humano difiere del evento del ledger")
+        elif (
+            approval_receipt.get("schema_version") != "football_data_hub.match_detail_auto_policy_receipt.v1"
+            or approval_receipt.get("approval_mode") != "automatic_policy"
+            or approval_receipt.get("policy_id") != approved.get("policy_id")
+            or approval_receipt.get("policy_version") != approved.get("policy_version")
+            or approval_receipt.get("update_job_id") != approved.get("update_job_id")
+            or approval_receipt.get("candidate_set_sha256") != approved.get("candidate_set_sha256")
+            or approval_receipt.get("validation_event_sha256") != approved.get("validation_event_sha256")
+            or approval_receipt.get("validation_evidence_sha256") != approved.get("validation_evidence_sha256")
+        ):
+            raise MatchCampaignIntegrityError("El recibo automático difiere del evento del ledger")
         return {
             "internal_id": internal_id,
             "publication_id": row["publication_id"],

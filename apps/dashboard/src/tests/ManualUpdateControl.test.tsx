@@ -59,6 +59,20 @@ describe("ManualUpdateControl", () => {
     expect(api.loadManualUpdateJob).toHaveBeenCalledWith("job-competition-1");
   });
 
+  it("reports the excluded blocked match even when there are no eligible detail candidates", async () => {
+    api.startCompetitionUpdate.mockResolvedValue(job());
+    api.loadManualUpdateJob.mockResolvedValue(job({
+      status: "completed", stage: "no_changes", finished_at: "2026-10-20T10:02:00Z",
+      summary: { message: "Sin cambios", changed_groups: { I: [], II: [] },
+        match_details_candidate_count: 0, match_details_blocked_excluded_count: 1 },
+    }));
+    render(<ManualUpdateControl />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Actualizar Primera Federación" }));
+    expect(await screen.findByText("Sin cambios en resultados.", {}, { timeout: 4000 })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("1 partido bloqueado excluido");
+  });
+
   it("reports the automatic result summary and refreshes the visible competition", async () => {
     const onApplied = vi.fn();
     api.startCompetitionUpdate.mockResolvedValue(job());
@@ -99,4 +113,22 @@ describe("ManualUpdateControl", () => {
     expect(api.loadManualUpdateJob).not.toHaveBeenCalled();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
+
+  it("shows the diagnosed normalization failure and leaves the global button available", async () => {
+    api.startCompetitionUpdate.mockResolvedValue(job());
+    api.loadManualUpdateJob.mockResolvedValue(job({
+      status: "failed", stage: "failed", finished_at: "2026-10-20T10:02:00Z",
+      error: "Falló la normalización de partidos del Grupo II: el informe de validación ya existía en una ruta compartida. Las capturas se conservaron y no se reintentó la adquisición.",
+    }));
+    render(<ManualUpdateControl />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Actualizar Primera Federación" }));
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(
+      "Falló la normalización de partidos del Grupo II",
+    ), { timeout: 4000 });
+    expect(screen.getByRole("status")).not.toHaveTextContent(/código 1|ManualUpdateError/);
+    expect(screen.getByRole("button", { name: "Actualizar Primera Federación" })).toBeEnabled();
+    expect(api.startCompetitionUpdate).toHaveBeenCalledOnce();
+  });
+
 });
