@@ -1266,7 +1266,7 @@ class ManualUpdateManager:
         )
         job["stage"] = "scanning_unpublished_matches"
         self._save(job)
-        status_report, _proposals, context = _load_report(args)
+        status_report, existing_proposals, context = _load_report(args)
         rows = status_report.get("matches", [])
         blocked_source_ids = set(BLOCKED_SOURCE_MATCH_IDS)
         eligible = [
@@ -1300,14 +1300,66 @@ class ManualUpdateManager:
             }
 
         selected_ids = [row["internal_id"] for row in eligible]
-        plan = build_match_campaign_proposal(status_report, internal_ids=selected_ids)
-        proposal_dir = write_match_campaign_proposal(
-            self.match_details_store_root / "campaign-proposals", plan
-        )
+        selected_id_set = set(selected_ids)
+        source_generation_id = context["generation_root"].name
+        matching_proposals = [
+            proposal
+            for proposal in existing_proposals
+            if proposal.get("source", {}).get("generation_id") == source_generation_id
+            and {
+                item.get("internal_id")
+                for item in proposal.get("candidates", [])
+                if isinstance(item, dict)
+            } == selected_id_set
+        ]
+        if len(matching_proposals) > 1:
+            raise ManualUpdateError(
+                "Hay varias propuestas íntegras para el mismo conjunto de partidos; "
+                "se requiere resolver el duplicado antes de continuar."
+            )
+        if matching_proposals:
+            plan = matching_proposals[0]
+            authorization = plan.get("authorization")
+            if (
+                not isinstance(authorization, dict)
+                or authorization.get("is_authorization") is not False
+                or authorization.get("status") not in {"NOT_AUTHORIZED", "PROPOSED_NOT_AUTHORIZED"}
+            ):
+                raise ManualUpdateError(
+                    "La propuesta coincidente no está en estado íntegro y no autorizado."
+                )
+            proposal_dir = (
+                self.match_details_store_root
+                / "campaign-proposals"
+                / "plans"
+                / str(plan["proposal_id"])
+            )
+        else:
+            overlapping_proposals = [
+                proposal
+                for proposal in existing_proposals
+                if selected_id_set.intersection(
+                    item.get("internal_id")
+                    for item in proposal.get("candidates", [])
+                    if isinstance(item, dict)
+                )
+            ]
+            if overlapping_proposals:
+                raise ManualUpdateError(
+                    "Existe una propuesta anterior que solo cubre parte de los partidos "
+                    "pendientes; no se creará una campaña duplicada ni se alterará su plan."
+                )
+            plan = build_match_campaign_proposal(status_report, internal_ids=selected_ids)
+            proposal_dir = write_match_campaign_proposal(
+                self.match_details_store_root / "campaign-proposals", plan
+            )
         ledger = OperationalMatchCampaignLedger(self.match_details_store_root / "campaigns")
         ledger.initialize(
             proposal_dir=proposal_dir,
-            generation_root=self.match_generation_root,
+            # _load_report resolves an active-generation.json store pointer
+            # and returns the exact verified immutable generation. The ledger
+            # initializer accepts only that concrete generation directory.
+            generation_root=context["generation_root"],
             data_root=self.data_root,
             published_ids=context["published_ids"],
             captured_ids=context["captured_ids"],

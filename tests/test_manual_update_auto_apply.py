@@ -130,10 +130,20 @@ def test_valid_competition_candidate_is_applied_and_audited_without_human_approv
 def test_equal_group_snapshots_report_sin_cambios_without_activation(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     manager = _manager(tmp_path)
     job = _job(_candidate(no_changes=True))
+    pending_report_checks: list[str] = []
+    monkeypatch.setattr(
+        manager,
+        "_safe_process_new_match_details",
+        lambda current: pending_report_checks.append(current["job_id"]) or {
+            "match_details_published_count": 0,
+            "match_details_pending_count": 0,
+        },
+    )
     monkeypatch.setattr(manager, "_activate_competition", lambda *_args: pytest.fail("No debe activarse una captura sin cambios"))
     manager._finish_competition_update(job, manager._jobs_dir() / job["job_id"] / "worker.log", no_changes=True)
     assert job["status"] == "completed"
     assert job["summary"]["message"] == "Sin cambios"
+    assert pending_report_checks == [job["job_id"]]
     assert not (manager.root / "reviews").exists()
     manager.close()
 
@@ -261,6 +271,11 @@ def test_auto_detail_pipeline_targets_only_unpublished_unblocked_played_matches(
     manager = _manager(tmp_path)
     data = manager.data_root
     assert data is not None
+    # Production config may give the manager the MATCH store root (which has
+    # active-generation.json); _load_report resolves it to this concrete path.
+    manager.match_generation_root = data / "matches"
+    resolved_generation_root = data / "matches" / "generations" / "match-00-verified-active"
+    resolved_generation_root.mkdir(parents=True)
     manager.match_details_published_root = data / "matches/details/published"
     manager.match_details_published_root.mkdir(parents=True)
     manager.player_inventory_root = data / "players/inventory-2026-27"
@@ -296,6 +311,7 @@ def test_auto_detail_pipeline_targets_only_unpublished_unblocked_played_matches(
     blocked["blocked_reasons"] = ["historical_access_block"]
     rows = [pending, legacy_unstarted, blocked, published]
     context = {
+        "generation_root": resolved_generation_root,
         "published_ids": {published["internal_id"]},
         "captured_ids": set(),
         "blocked_ids": {blocked["internal_id"]},
@@ -316,7 +332,8 @@ def test_auto_detail_pipeline_targets_only_unpublished_unblocked_played_matches(
         def __init__(self, root: Path):
             self.root = root
 
-        def initialize(self, **_kwargs):
+        def initialize(self, **kwargs):
+            assert kwargs["generation_root"] == resolved_generation_root
             return {"status": "CAMPAIGN_INITIALIZED"}
 
         def source_inventory(self, _campaign_id):
@@ -352,4 +369,120 @@ def test_auto_detail_pipeline_targets_only_unpublished_unblocked_played_matches(
     assert result["match_details_pending_count"] == 1
     assert result["match_details_blocked_excluded_count"] == 1
     assert reloads == [True]
+    manager.close()
+
+
+def test_auto_detail_pipeline_reuses_exact_unstarted_proposal_without_duplicate_plan(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from football_data_hub.providers.bdfutbol.match_details import (
+        campaign_operations,
+        operational_campaign,
+        scalable_campaign_cli,
+        scalable_campaigns,
+        supervised_acquisition,
+    )
+
+    manager = _manager(tmp_path)
+    data = manager.data_root
+    assert data is not None
+    manager.match_generation_root = data / "matches"
+    generation = data / "matches/generations/match-00-verified-active"
+    generation.mkdir(parents=True)
+    manager.match_details_published_root = data / "matches/details/published"
+    manager.match_details_published_root.mkdir(parents=True)
+    manager.player_inventory_root = data / "players/inventory-2026-27"
+    manager.player_inventory_root.mkdir(parents=True)
+    manager.player_compact_root = data / "players/compact-2026-27"
+    manager.player_compact_root.mkdir(parents=True)
+    manager.player_team_captures_root = data / "team-captures"
+    manager.player_team_captures_root.mkdir()
+    manager.player_published_index_path = data / "published/team_profiles_2026-27.json"
+    manager.player_published_index_path.parent.mkdir()
+    manager.player_published_index_path.write_text("{}", encoding="utf-8")
+
+    def fixture(source_id: str, status: str) -> dict[str, object]:
+        return {
+            "internal_id": f"pf-2026-27-group-i-bdfutbol-{source_id}",
+            "source_match_id": source_id,
+            "source_match_url": f"https://www.bdfutbol.com/es/p/p.php?id={source_id}",
+            "group": "I",
+            "matchday": 8,
+            "matchday_date": "2026-10-18",
+            "home_team_id": 20,
+            "away_team_id": 21,
+            "reference_result": {"home_goals": 0, "away_goals": 1},
+            "status": "played",
+            "detail_status": status,
+            "blocked_reasons": [],
+        }
+
+    rows = [fixture("269478", "included_in_existing_campaign"), fixture("269479", "included_in_existing_campaign")]
+    campaign_id = "match-detail-campaign-v2-0123456789abcdef"
+    proposal_id = "match-detail-campaign-plan-0123456789abcdef"
+    proposal_dir = manager.match_details_store_root / "campaign-proposals/plans" / proposal_id
+    plan = {
+        "campaign_id": campaign_id,
+        "proposal_id": proposal_id,
+        "source": {"generation_id": generation.name},
+        "authorization": {"status": "NOT_AUTHORIZED", "is_authorization": False},
+        "candidates": [{"internal_id": row["internal_id"]} for row in rows],
+        "candidate_count": len(rows),
+    }
+    context = {
+        "generation_root": generation,
+        "published_ids": set(),
+        "captured_ids": set(),
+        "blocked_ids": set(),
+    }
+    monkeypatch.setattr(
+        scalable_campaign_cli,
+        "_load_report",
+        lambda _args: ({"matches": rows}, [plan], context),
+    )
+    monkeypatch.setattr(
+        scalable_campaigns,
+        "build_match_campaign_proposal",
+        lambda *_args, **_kwargs: pytest.fail("No debe duplicar una propuesta idéntica"),
+    )
+    monkeypatch.setattr(
+        scalable_campaigns,
+        "write_match_campaign_proposal",
+        lambda *_args, **_kwargs: pytest.fail("No debe escribir un segundo plan"),
+    )
+
+    initialized: list[dict[str, object]] = []
+
+    class FakeLedger:
+        def __init__(self, root: Path):
+            self.root = root
+
+        def initialize(self, **kwargs):
+            initialized.append(kwargs)
+            assert kwargs["proposal_dir"] == proposal_dir
+            assert kwargs["generation_root"] == generation
+            return {"status": "CAMPAIGN_INITIALIZED_NOT_AUTHORIZED", "candidate_count": 2}
+
+        def source_inventory(self, _campaign_id):
+            return {"matches": []}
+
+    monkeypatch.setattr(operational_campaign, "OperationalMatchCampaignLedger", FakeLedger)
+
+    def acquire(**kwargs):
+        assert kwargs["campaign_id"] == campaign_id
+        # This unit test only verifies orchestration; no browser adapter is called.
+        return {"captured_count": 0, "navigation_requests": 0, "stop_acquisition": False}
+
+    monkeypatch.setattr(supervised_acquisition, "run_competition_update_detail_acquisition", acquire)
+    monkeypatch.setattr(
+        campaign_operations,
+        "run_offline_batch",
+        lambda **_kwargs: pytest.fail("No hay capturas que procesar en esta prueba"),
+    )
+
+    result = manager._process_new_match_details({"job_id": str(uuid.uuid4())})
+
+    assert len(initialized) == 1
+    assert result["match_details_candidate_count"] == 2
+    assert result["match_details_navigation_count"] == 0
     manager.close()
