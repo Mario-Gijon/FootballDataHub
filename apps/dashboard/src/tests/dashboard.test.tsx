@@ -606,6 +606,7 @@ const statisticsBootstrap = {
     match_dataset_capture_id: statisticsCapture.match_dataset.source_capture_id,
     match_dataset_captured_at: statisticsCapture.match_dataset.source_captured_at_utc,
     active_match_capture_id: apiBootstrap.metadata.capture_id,
+    active_match_captured_at: apiBootstrap.metadata.captured_at,
   },
   statistics: {
     ...statisticsDerived.statistics.context,
@@ -639,6 +640,7 @@ const group1StatisticsBootstrap = {
     match_dataset_capture_id: group1StatisticsCapture.match_dataset.source_capture_id,
     match_dataset_captured_at: group1StatisticsCapture.match_dataset.source_captured_at_utc,
     active_match_capture_id: group1Bootstrap.metadata.capture_id,
+    active_match_captured_at: group1Bootstrap.metadata.captured_at,
   },
   statistics: {
     ...group1StatisticsDerived.statistics.context,

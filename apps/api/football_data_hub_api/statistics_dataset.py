@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import copy
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
@@ -12,6 +13,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from football_data_hub.domain.classification.models import MatchResult, Team
+from football_data_hub.providers.bdfutbol.classification.match_io import load_match_dataset
 from football_data_hub.domain.statistics.engine import (
     STATISTICS_ENGINE_VERSION,
     calculate_competition_statistics,
@@ -89,6 +91,27 @@ def load_statistics_dataset(
     active = active_dataset.bootstrap
     active_match_bytes = _read_bytes(settings.matches_path)
     active_match_sha256 = hashlib.sha256(active_match_bytes).hexdigest()
+    source_match_path = _resolve_match_reference(match_reference_path=capture.get("match_dataset", {}).get("path"), settings=settings)
+    source_match_bytes = _read_bytes(source_match_path)
+    source_reference = capture.get("match_dataset")
+    if not isinstance(source_reference, dict) or hashlib.sha256(source_match_bytes).hexdigest() != source_reference.get("sha256"):
+        raise StatisticsDatasetLoadError(
+            "El catálogo original de Resultados de STAT-01 no coincide con su hash; "
+            "es una versión distinta de Resultados"
+        )
+    try:
+        source_metadata, source_teams, source_matches = load_match_dataset(source_match_path)
+        source_report = calculate_competition_statistics(
+            source_teams,
+            source_matches,
+            CompetitionContext(
+                competition=active.metadata.competition,
+                season=active.metadata.season,
+                group=active.metadata.group,
+            ),
+        )
+    except (OSError, KeyError, TypeError, ValueError) as exc:
+        raise StatisticsDatasetLoadError("No se pudo validar el catálogo original de Resultados de STAT-01") from exc
 
     _validate_capture(
         capture,
@@ -98,11 +121,16 @@ def load_statistics_dataset(
         decoded["access"],
         files,
         active,
-        active_match_sha256,
-        reconciliation,
+        source_match_sha256=hashlib.sha256(source_match_bytes).hexdigest(),
+        source_metadata=source_metadata,
+        source_teams=source_teams,
+        source_matches=source_matches,
+        reconciliation=reconciliation,
     )
-    report = _validate_derived_against_active(derived, active)
-    _validate_reconciliation(reconciliation, report, active)
+    _validate_derived_against_report(derived, source_report)
+    source_bundle = type("SourceMatches", (), {"teams": source_teams, "matches": source_matches})()
+    _validate_reconciliation(reconciliation, source_report, source_bundle)
+    report = _calculate_active_statistics(active, derived)
 
     match_reference = capture["match_dataset"]
     capture_id = str(capture["capture_id"])
@@ -129,8 +157,9 @@ def load_statistics_dataset(
             match_dataset_capture_id=match_reference["source_capture_id"],
             match_dataset_captured_at=_parse_datetime(match_reference["source_captured_at_utc"]),
             active_match_capture_id=active.metadata.capture_id,
+            active_match_captured_at=active.metadata.captured_at,
         )
-        statistics_payload = dict(derived["statistics"])
+        statistics_payload = json.loads(json.dumps(asdict(report.statistics), ensure_ascii=False))
         context = statistics_payload.pop("context")
         statistics = CompetitionStatisticsResponse.model_validate({**statistics_payload, **context})
         penalties_payload = exclusive["items"]["penalties"]
@@ -141,8 +170,17 @@ def load_statistics_dataset(
                 or capture["requested_url"],
             }
         )
-        records = StatisticsRecords.model_validate(derived["records"])
-        reconciliation_payload = dict(reconciliation)
+        records = StatisticsRecords.model_validate(
+            json.loads(json.dumps(asdict(report.records), ensure_ascii=False))
+        )
+        reconciliation_payload = _rebase_reconciliation(
+            reconciliation,
+            report,
+            active,
+            source_capture_id=str(match_reference["source_capture_id"]),
+            source_match_sha256=str(match_reference["sha256"]),
+            active_match_sha256=active_match_sha256,
+        )
         reconciliation_payload.pop("schema_version", None)
         reconciliation_payload["statistics_captured_at_utc"] = _parse_datetime(
             reconciliation_payload["statistics_captured_at_utc"]
@@ -158,7 +196,15 @@ def load_statistics_dataset(
 
     if penalties.penalties_awarded != penalties.penalties_scored + penalties.penalties_missed:
         raise StatisticsDatasetLoadError("Los penaltis no cumplen la suma marcados + fallados")
-    limitations = _limitations(derived.get("methodology"), reconciliation)
+    limitations = _limitations(derived.get("methodology"), reconciliation_payload)
+    if (
+        match_reference.get("source_capture_id") != active.metadata.capture_id
+        or match_reference.get("sha256") != active_match_sha256
+    ):
+        limitations.extend([
+            "Los agregados deportivos, récords y rachas se recalculan desde Resultados activos.",
+            "Penaltis y el gráfico publicado de BDFutbol conservan la fecha de su captura original.",
+        ])
     bootstrap = StatisticsBootstrapResponse(
         metadata=metadata,
         statistics=statistics,
@@ -180,7 +226,11 @@ def _validate_capture(
     access: dict[str, Any],
     files: dict[str, bytes],
     active: Any,
-    active_match_sha256: str,
+    *,
+    source_match_sha256: str,
+    source_metadata: dict[str, Any],
+    source_teams: tuple[Team, ...],
+    source_matches: tuple[MatchResult, ...],
     reconciliation: dict[str, Any],
 ) -> None:
     if (
@@ -236,8 +286,9 @@ def _validate_capture(
     if not isinstance(match_reference, dict) or derived_reference != match_reference:
         raise StatisticsDatasetLoadError("La captura y los datos derivados no comparten la referencia de Resultados")
     if (
-        match_reference.get("sha256") != active_match_sha256
-        or match_reference.get("source_capture_id") != active.metadata.capture_id
+        match_reference.get("sha256") != source_match_sha256
+        or match_reference.get("source_capture_id") != source_metadata.get("source_capture_id")
+        or match_reference.get("source_captured_at_utc") != source_metadata.get("source_captured_at_utc")
         or derived.get("algorithm") != "football_data_hub.domain.statistics.engine"
         or derived.get("algorithm_version") != STATISTICS_ENGINE_VERSION
     ):
@@ -258,42 +309,49 @@ def _validate_capture(
     ):
         raise StatisticsDatasetLoadError("La reconciliación no confirma la referencia activa de partidos")
     counts = match_reference.get("counts")
-    actual_status_counts = {
-        "played": active.metadata.availability.played_matches,
-        "unplayed": active.metadata.availability.unplayed_matches,
-        "incomplete": active.metadata.availability.incomplete_matches,
+    source_status_counts = {
+        "played": sum(match.status == "played" for match in source_matches),
+        "unplayed": sum(match.status == "unplayed" for match in source_matches),
+        "incomplete": sum(match.status == "incomplete" for match in source_matches),
     }
     if (
         not isinstance(counts, dict)
-        or counts.get("teams") != len(active.teams)
-        or counts.get("matches") != len(active.matches)
-        or any(counts.get(key) != value for key, value in actual_status_counts.items())
+        or counts.get("teams") != len(source_teams)
+        or counts.get("matches") != len(source_matches)
+        or any(counts.get(key) != value for key, value in source_status_counts.items())
     ):
-        raise StatisticsDatasetLoadError("Los recuentos de Resultados no coinciden con el dataset activo")
+        raise StatisticsDatasetLoadError("Los recuentos de Resultados no coinciden con la referencia de origen")
     validation_counts = match_validation.get("counts", {})
     if (
-        validation_counts.get("teams") != len(active.teams)
-        or validation_counts.get("matches") != len(active.matches)
-        or any(validation_counts.get(key) != value for key, value in actual_status_counts.items())
+        validation_counts.get("teams") != len(source_teams)
+        or validation_counts.get("matches") != len(source_matches)
+        or any(validation_counts.get(key) != value for key, value in source_status_counts.items())
     ):
-        raise StatisticsDatasetLoadError("El informe de validación no corresponde a Resultados activos")
+        raise StatisticsDatasetLoadError("El informe de validación no corresponde a Resultados de origen")
     source_summary = source_validation.get("summary", {})
     if (
         source_summary.get("season") != capture.get("season")
         or source_summary.get("group") != capture.get("group")
-        or source_summary.get("source_matches") != actual_status_counts["played"]
+        or source_summary.get("source_matches") != source_status_counts["played"]
         or source_summary.get("source_records") != len(reconciliation.get("published_match_records", []))
         or source_summary.get("source_streaks") != len(reconciliation.get("published_streaks", []))
         or source_summary.get("chart_rounds") != len(derived.get("statistics", {}).get("rounds", []))
     ):
         raise StatisticsDatasetLoadError("El resumen de validación no coincide con los artefactos de Estadísticas")
-    team_ids = {team.team_id for team in active.teams}
+    team_ids = {team.team_id for team in source_teams}
     if len(team_ids) != 20 or any(
         item.home_team_id not in team_ids or item.away_team_id not in team_ids
-        for item in active.matches
+        for item in source_matches
     ):
-        raise StatisticsDatasetLoadError("El dataset activo no contiene referencias de equipo válidas")
-def _validate_derived_against_active(derived: dict[str, Any], active: Any) -> Any:
+        raise StatisticsDatasetLoadError("El dataset de origen no contiene referencias de equipo válidas")
+def _validate_derived_against_report(derived: dict[str, Any], report: Any) -> None:
+    calculated_statistics = json.loads(json.dumps(asdict(report.statistics), ensure_ascii=False))
+    calculated_records = json.loads(json.dumps(asdict(report.records), ensure_ascii=False))
+    if calculated_statistics != derived.get("statistics") or calculated_records != derived.get("records"):
+        raise StatisticsDatasetLoadError("Los valores derivados no coinciden con el catálogo de Resultados de su captura")
+
+
+def _calculate_active_statistics(active: Any, derived: dict[str, Any]) -> Any:
     try:
         teams = [Team(team_id=item.team_id, name=item.name, team_url=item.team_url, crest_url=item.crest_url) for item in active.teams]
         matches = [MatchResult(**item.model_dump()) for item in active.matches]
@@ -307,15 +365,102 @@ def _validate_derived_against_active(derived: dict[str, Any], active: Any) -> An
                 group=context_data["group"],
             ),
         )
-        calculated_statistics = json.loads(json.dumps(asdict(report.statistics), ensure_ascii=False))
-        calculated_records = json.loads(json.dumps(asdict(report.records), ensure_ascii=False))
     except (KeyError, TypeError, ValueError) as exc:
         raise StatisticsDatasetLoadError("No se pudo verificar STAT-01 con el motor local") from exc
-    if calculated_statistics != derived.get("statistics") or calculated_records != derived.get("records"):
-        raise StatisticsDatasetLoadError(
-            "Los valores derivados no coinciden con el cálculo sobre Resultados activos"
-        )
     return report
+
+
+def _resolve_match_reference(match_reference_path: Any, *, settings: ApiSettings) -> Path:
+    if not isinstance(match_reference_path, str) or not match_reference_path:
+        raise StatisticsDatasetLoadError("STAT-01 no declara la ruta de su catálogo original de Resultados")
+    candidate = Path(match_reference_path).expanduser()
+    if candidate.is_absolute():
+        return candidate.resolve()
+    project_candidate = (PROJECT_ROOT / candidate).resolve()
+    if project_candidate.is_file():
+        return project_candidate
+    # Historical exports can be moved together with their source snapshot.
+    # Resolve only a path whose file still exists; never substitute the active
+    # catalog for a missing historical source.
+    return project_candidate
+
+
+def _rebase_reconciliation(
+    original: dict[str, Any], report: Any, active: Any, *, source_capture_id: str,
+    source_match_sha256: str, active_match_sha256: str
+) -> dict[str, Any]:
+    payload = copy.deepcopy(original)
+    stale = (
+        source_capture_id != active.metadata.capture_id
+        or source_match_sha256 != active_match_sha256
+    )
+    payload["capture_windows_differ"] = stale
+    payload["temporal_comparison_status"] = (
+        "source_capture_older_than_active_results" if stale else "same_match_records_verified"
+    )
+    alignment = dict(payload.get("match_data_alignment", {}))
+    alignment.update({
+        "status": "source_capture_older_than_active_results" if stale else "identical",
+        "active_capture_id": active.metadata.capture_id,
+        "active_match_count": len(active.matches),
+        "source_match_capture_id": source_capture_id,
+    })
+    payload["match_data_alignment"] = alignment
+    round_by_day = {item.matchday: item for item in report.statistics.rounds}
+    for item in payload.get("round_series", []):
+        current = round_by_day.get(item.get("matchday"))
+        if current is None:
+            continue
+        statistic = item.get("statistic")
+        calculated = getattr(current, statistic, None)
+        item["calculated"] = calculated
+        item["difference_published_minus_calculated"] = (
+            item.get("published") - calculated
+            if item.get("published") is not None and calculated is not None else None
+        )
+        item["played_matches"] = current.played_matches
+        item["scheduled_matches"] = current.scheduled_matches
+        item["coverage"] = current.coverage
+        item["status"] = "different_capture_windows" if stale else (
+            "match" if item.get("difference_published_minus_calculated") == 0 else "difference"
+        )
+        if stale:
+            item["cause"] = "La serie publicada y Resultados activos proceden de capturas distintas."
+    field_by_stat = {
+        "teams": "team_count", "played_matches": "played_matches", "home_wins": "home_wins",
+        "away_wins": "away_wins", "draws": "draws", "goals": "goals",
+        "goals_per_match": "goals_per_match", "yellow_cards": "yellow_cards",
+        "yellow_cards_per_match": "yellow_cards_per_match", "red_cards": "red_cards",
+        "red_cards_per_match_vs_expulsions_per_match": "red_cards_per_match",
+    }
+    for item in payload.get("metrics", []):
+        field = field_by_stat.get(item.get("statistic"))
+        if field is None:
+            continue
+        calculated = getattr(report.statistics, field)
+        published = item.get("published")
+        item["calculated"] = calculated
+        item["difference_published_minus_calculated"] = (
+            published - calculated if published is not None and calculated is not None else None
+        )
+        item["status"] = "different_capture_windows" if stale else (
+            "match" if item.get("difference_published_minus_calculated") == 0 else "difference"
+        )
+        if stale:
+            item["cause"] = "La estadística publicada y Resultados activos proceden de capturas distintas."
+    if stale:
+        for section in ("published_match_records", "published_streaks"):
+            for item in payload.get(section, []):
+                item["status"] = "historical_source_capture"
+    metrics = payload.get("metrics", [])
+    round_series = payload.get("round_series", [])
+    payload.setdefault("summary", {}).update({
+        "metric_count": len(metrics),
+        "metric_matches": sum(item.get("status") == "match" for item in metrics),
+        "metric_differences": sum(item.get("status") == "difference" for item in metrics),
+        "round_series_differences": sum(item.get("status") == "difference" for item in round_series),
+    })
+    return payload
 
 
 def _validate_reconciliation(reconciliation: dict[str, Any], report: Any, active: Any) -> None:

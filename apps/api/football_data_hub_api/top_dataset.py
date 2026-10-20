@@ -318,20 +318,32 @@ def _top_paths(settings: ApiSettings) -> dict[str, Path]:
         for name, path in configured.items()
         if name != "teams"
     }
-    if settings.top_team_catalog_path is not None:
-        result["teams"] = settings.top_team_catalog_path.resolve()
+    capture_data = _decode_json(_read_bytes(result["capture"]), result["capture"])
+    related_catalog = capture_data.get("related_team_catalog")
+    catalog_path = related_catalog.get("path") if isinstance(related_catalog, dict) else None
+    catalog_sha256 = related_catalog.get("sha256") if isinstance(related_catalog, dict) else None
+    if not isinstance(catalog_path, str) or not catalog_path or not isinstance(catalog_sha256, str):
+        raise TopDatasetLoadError("La captura TOP no declara la ruta y el hash de su catálogo original")
+
+    # A configured path may identify the *current* standings catalog. TOP's
+    # source provenance, however, is bound to the catalog used when that
+    # capture was extracted. Prefer the configured path only when it proves
+    # the declared hash; otherwise resolve the immutable source reference and
+    # let the normal hash and active-team-ID checks validate both relations.
+    referenced_path = Path(catalog_path)
+    referenced_path = (
+        referenced_path.resolve()
+        if referenced_path.is_absolute()
+        else (PROJECT_ROOT / referenced_path).resolve()
+    )
+    configured_path = settings.top_team_catalog_path.resolve() if settings.top_team_catalog_path else None
+    if configured_path is not None and configured_path.is_file():
+        if hashlib.sha256(configured_path.read_bytes()).hexdigest() == catalog_sha256:
+            result["teams"] = configured_path
+        else:
+            result["teams"] = referenced_path
     else:
-        capture_data = _decode_json(_read_bytes(result["capture"]), result["capture"])
-        related_catalog = capture_data.get("related_team_catalog")
-        catalog_path = related_catalog.get("path") if isinstance(related_catalog, dict) else None
-        if not isinstance(catalog_path, str) or not catalog_path:
-            raise TopDatasetLoadError("La captura TOP no declara la ruta de su catálogo original")
-        referenced_path = Path(catalog_path)
-        result["teams"] = (
-            referenced_path.resolve()
-            if referenced_path.is_absolute()
-            else (PROJECT_ROOT / referenced_path).resolve()
-        )
+        result["teams"] = referenced_path
     return result
 
 

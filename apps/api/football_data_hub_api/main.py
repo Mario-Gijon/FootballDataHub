@@ -86,6 +86,8 @@ from football_data_hub_api.manual_updates import (
     ManualUpdateManager,
     UpdateAlreadyRunning,
     apply_active_group_data,
+    apply_active_group_section,
+    apply_active_referee_data,
     public_manual_update_job,
 )
 
@@ -94,83 +96,215 @@ GROUP_CODES = {"1": "I", "2": "II"}
 
 
 def _reload_after_manual_update(app: FastAPI, configured: ApiSettings, manager: ManualUpdateManager, job: dict[str, object]) -> None:
-    """Load the applied two-group state, then swap validated bundles together."""
+    """Reload only the activated scopes; optional-section failures stay isolated."""
     datasets = dict(app.state.datasets)
     group_settings = dict(app.state.group_settings)
+    top_datasets = dict(app.state.top_datasets)
+    top_errors = dict(app.state.top_dataset_errors)
+    statistics_datasets = dict(app.state.statistics_datasets)
+    statistics_errors = dict(app.state.statistics_dataset_errors)
+    referee_bundle = app.state.referee_dataset
+    referee_error = app.state.referee_dataset_error
+    referee_group_errors = dict(app.state.referee_group_errors)
+    related_group_settings = dict(manager.group_related_settings)
     match_results = app.state.match_results
     match_details = app.state.match_detail_documents
+    candidate: dict[str, object] = {}
     if job.get("scope") == "competition":
         candidate = job["candidate"]
         if not isinstance(candidate, dict):
             raise ManualUpdateError("La activación no contiene su candidato validado.")
-        for roman, number in (("I", "1"), ("II", "2")):
-            base_settings = group_settings.get(number) or configured.for_group(roman)
-            capture_root = Path(candidate["source_captures"][roman])
-            replacement = replace(
-                base_settings,
-                matches_path=Path(candidate["normalized_matches"][roman]),
-                classification_path=capture_root / "normalized/classification.json",
-                progress_path=capture_root / "normalized/progress.json",
-                capture_metadata_path=capture_root / "metadata/capture.json",
+        no_core_changes = candidate.get("no_competition_changes") is True or candidate.get("no_changes") is True
+        related = candidate.get("related_sections", {})
+        raw_group_sections = related.get("groups", {}) if isinstance(related, dict) else {}
+        changed_group_sections = raw_group_sections if isinstance(raw_group_sections, dict) else {}
+        groups_to_reload = {"I", "II"} if not no_core_changes else {
+            group for group, sections in changed_group_sections.items()
+            if group in {"I", "II"} and isinstance(sections, dict) and sections
+        }
+        for roman in ("I", "II"):
+            if roman not in groups_to_reload:
+                continue
+            number = "1" if roman == "I" else "2"
+            if not no_core_changes:
+                capture_root = Path(candidate["source_captures"][roman])
+                replacement = replace(
+                    configured.for_group(roman),
+                    matches_path=Path(candidate["normalized_matches"][roman]),
+                    classification_path=capture_root / "normalized/classification.json",
+                    progress_path=capture_root / "normalized/progress.json",
+                    capture_metadata_path=capture_root / "metadata/capture.json",
+                )
+                group_settings[number] = replacement
+                datasets[number] = load_dataset(replacement)
+            else:
+                replacement = group_settings.get(number)
+                if replacement is None or number not in datasets:
+                    raise ManualUpdateError(f"No hay datos activos para recargar el Grupo {roman}.")
+
+            previous_related = related_group_settings.get(roman, replacement)
+            top_settings = previous_related
+            statistics_settings = previous_related
+            section_changes = changed_group_sections.get(roman, {})
+            if not no_core_changes or "top" in section_changes:
+                try:
+                    proposed_top_settings = apply_active_group_section(
+                        replacement, roman, configured.local_data_root, "top"
+                    )
+                    active = datasets[number]
+                    top_datasets[number] = load_top_dataset(
+                        proposed_top_settings,
+                        active_teams=active.bootstrap.teams,
+                        active_team_capture_id=active.bootstrap.metadata.capture_id,
+                    )
+                    top_settings = proposed_top_settings
+                    top_errors.pop(number, None)
+                except (ManualUpdateError, TopDatasetLoadError, KeyError, TypeError, ValueError) as exc:
+                    top_errors[number] = exc
+            if not no_core_changes or "statistics" in section_changes:
+                try:
+                    proposed_statistics_settings = apply_active_group_section(
+                        replacement, roman, configured.local_data_root, "statistics"
+                    )
+                    statistics_datasets[number] = load_statistics_dataset(
+                        proposed_statistics_settings, datasets[number]
+                    )
+                    statistics_settings = proposed_statistics_settings
+                    statistics_errors.pop(number, None)
+                except (ManualUpdateError, StatisticsDatasetLoadError, KeyError, TypeError, ValueError) as exc:
+                    statistics_errors[number] = exc
+            related_group_settings[roman] = replace(
+                replacement,
+                top_players_path=top_settings.top_players_path,
+                top_rankings_path=top_settings.top_rankings_path,
+                top_progress_path=top_settings.top_progress_path,
+                top_foreigners_path=top_settings.top_foreigners_path,
+                top_capture_metadata_path=top_settings.top_capture_metadata_path,
+                top_validation_path=top_settings.top_validation_path,
+                top_source_html_path=top_settings.top_source_html_path,
+                top_team_catalog_path=top_settings.top_team_catalog_path,
+                statistics_root=statistics_settings.statistics_root,
             )
-            group_settings[number] = replacement
-            datasets[number] = load_dataset(replacement)
-        if configured.match_generation_root is None or configured.local_data_root is None:
-            raise ManualUpdateError("No se puede recargar la generación activa de resultados.")
-        match_results = load_match_results_dataset(
-            configured.match_generation_root,
-            data_root=configured.local_data_root,
-        )
-        _assert_group_catalogs_match_generation(datasets, match_results)
-        match_details = {}
-        if configured.match_details_published_root and configured.match_details_store_root:
-            player_ids = set(app.state.player_directory.players_by_id) if app.state.player_directory else set()
-            match_details = load_published_match_details(
-                configured.match_details_published_root,
-                store_root=configured.match_details_store_root,
-                generation_root=configured.match_generation_root,
+        if not no_core_changes:
+            if configured.match_generation_root is None or configured.local_data_root is None:
+                raise ManualUpdateError("No se puede recargar la generación activa de resultados.")
+            match_results = load_match_results_dataset(
+                configured.match_generation_root,
                 data_root=configured.local_data_root,
-                match_bundle=match_results,
-                player_ids=player_ids,
+            )
+            _assert_group_catalogs_match_generation(datasets, match_results)
+            match_details = {}
+            if configured.match_details_published_root and configured.match_details_store_root:
+                player_ids = set(app.state.player_directory.players_by_id) if app.state.player_directory else set()
+                match_details = load_published_match_details(
+                    configured.match_details_published_root,
+                    store_root=configured.match_details_store_root,
+                    generation_root=configured.match_generation_root,
+                    data_root=configured.local_data_root,
+                    match_bundle=match_results,
+                    player_ids=player_ids,
+                )
+            matches_paths = {key: value.matches_path for key, value in group_settings.items()}
+            unavailable_groups = {
+                "I" if key == "1" else "II": str(value)
+                for key, value in app.state.dataset_errors.items()
+                if key not in datasets
+            }
+            roster = load_team_roster_registry(
+                configured.team_profiles_index_path,
+                datasets=datasets,
+                matches_paths=matches_paths,
+                unavailable_group_errors=unavailable_groups,
+            )
+            follow = load_team_follow_registry(
+                configured.team_profiles_index_path,
+                datasets=datasets,
+                matches_paths=matches_paths,
+                roster_registry=roster,
+                unavailable_group_errors=unavailable_groups,
+            )
+            transfers = load_team_transfers_registry(
+                configured.team_profiles_index_path,
+                roster_registry=roster,
+                unavailable_group_errors=unavailable_groups,
             )
 
-    matches_paths = {key: value.matches_path for key, value in group_settings.items()}
-    unavailable_groups = {
-        "I" if key == "1" else "II": str(value)
-        for key, value in app.state.dataset_errors.items()
-        if key not in datasets
-    }
-    roster = load_team_roster_registry(
-        configured.team_profiles_index_path,
-        datasets=datasets,
-        matches_paths=matches_paths,
-        unavailable_group_errors=unavailable_groups,
-    )
-    follow = load_team_follow_registry(
-        configured.team_profiles_index_path,
-        datasets=datasets,
-        matches_paths=matches_paths,
-        roster_registry=roster,
-        unavailable_group_errors=unavailable_groups,
-    )
-    transfers = load_team_transfers_registry(
-        configured.team_profiles_index_path,
-        roster_registry=roster,
-        unavailable_group_errors=unavailable_groups,
-    )
+            try:
+                referee_settings = apply_active_referee_data(configured, configured.local_data_root)
+                referee_root = referee_settings.referees_root or (
+                    PROJECT_ROOT / DEFAULT_GROUP2_REFEREES_CAPTURE
+                ).resolve()
+                match_sources = {
+                    "I": (
+                        group_settings["1"].matches_path,
+                        group_settings["1"].referee_match_reference_path
+                        or group_settings["1"].capture_metadata_path.parent / "validation/referee_reference.json",
+                    ),
+                    "II": (
+                        group_settings["2"].matches_path,
+                        referee_root / "validation/match_reference.json",
+                    ),
+                }
+                referee_bundle = load_referee_dataset(
+                    referee_settings, group_match_sources=match_sources
+                )
+                referee_group_errors = dict(referee_bundle.group_reference_errors)
+                referee_error = None
+            except (ManualUpdateError, RefereeDatasetLoadError, KeyError, TypeError, ValueError) as exc:
+                referee_error = exc
+                referee_group_errors = dict(app.state.referee_group_errors)
+        elif isinstance(related, dict) and isinstance(related.get("referees"), dict):
+            try:
+                referee_settings = apply_active_referee_data(configured, configured.local_data_root)
+                referee_root = referee_settings.referees_root or (
+                    PROJECT_ROOT / DEFAULT_GROUP2_REFEREES_CAPTURE
+                ).resolve()
+                match_sources = {
+                    "I": (
+                        group_settings["1"].matches_path,
+                        group_settings["1"].referee_match_reference_path
+                        or group_settings["1"].capture_metadata_path.parent / "validation/referee_reference.json",
+                    ),
+                    "II": (
+                        group_settings["2"].matches_path,
+                        referee_root / "validation/match_reference.json",
+                    ),
+                }
+                referee_bundle = load_referee_dataset(referee_settings, group_match_sources=match_sources)
+                referee_group_errors = dict(referee_bundle.group_reference_errors)
+                referee_error = None
+            except (ManualUpdateError, RefereeDatasetLoadError, KeyError, TypeError, ValueError) as exc:
+                referee_error = exc
 
     app.state.datasets = datasets
     app.state.group_settings = group_settings
-    app.state.team_roster_registry = roster
-    app.state.team_follow_registry = follow
-    app.state.team_transfers_registry = transfers
+    app.state.top_datasets = top_datasets
+    app.state.top_dataset_errors = top_errors
+    app.state.statistics_datasets = statistics_datasets
+    app.state.statistics_dataset_errors = statistics_errors
+    app.state.referee_dataset = referee_bundle
+    app.state.referee_dataset_error = referee_error
+    app.state.referee_group_errors = referee_group_errors
+    if job.get("scope") == "competition" and candidate.get("no_competition_changes") is not True and candidate.get("no_changes") is not True:
+        app.state.team_roster_registry = roster
+        app.state.team_follow_registry = follow
+        app.state.team_transfers_registry = transfers
     app.state.match_results = match_results
     app.state.match_results_error = None if match_results is not None else app.state.match_results_error
     app.state.match_detail_documents = match_details
     app.state.match_detail_publication_error = None
-    manager.group_match_paths = {"I": group_settings["1"].matches_path, "II": group_settings["2"].matches_path}
-    manager.group_classification_paths = {"I": group_settings["1"].classification_path, "II": group_settings["2"].classification_path}
-    manager.group_progress_paths = {"I": group_settings["1"].progress_path, "II": group_settings["2"].progress_path}
+    if job.get("scope") == "competition" and candidate.get("no_competition_changes") is not True and candidate.get("no_changes") is not True:
+        manager.group_match_paths = {"I": group_settings["1"].matches_path, "II": group_settings["2"].matches_path}
+        manager.group_classification_paths = {"I": group_settings["1"].classification_path, "II": group_settings["2"].classification_path}
+        manager.group_progress_paths = {"I": group_settings["1"].progress_path, "II": group_settings["2"].progress_path}
+    manager.group_related_settings = related_group_settings
+    if referee_bundle is not None and isinstance(candidate.get("related_sections", {}), dict) and candidate.get("related_sections", {}).get("referees"):
+        try:
+            manager.referees_root = apply_active_referee_data(
+                configured, configured.local_data_root
+            ).referees_root
+        except (ManualUpdateError, ValueError, TypeError):
+            pass
 
 
 def _reload_match_details_after_manual_update(
@@ -189,6 +323,10 @@ def _reload_match_details_after_manual_update(
     if match_results is None:
         raise ManualUpdateError("No hay catálogo activo para verificar las publicaciones de partidos.")
     player_ids = set(app.state.player_directory.players_by_id) if app.state.player_directory else set()
+    published_ids = _job.get("_match_details_published_internal_ids")
+    internal_ids = set(published_ids) if isinstance(published_ids, list) and all(
+        isinstance(item, str) for item in published_ids
+    ) else None
     replacement = load_published_match_details(
         configured.match_details_published_root,
         store_root=configured.match_details_store_root,
@@ -196,11 +334,16 @@ def _reload_match_details_after_manual_update(
         data_root=configured.local_data_root,
         match_bundle=match_results,
         player_ids=player_ids,
+        internal_ids=internal_ids,
     )
+    current = dict(app.state.match_detail_documents)
+    if internal_ids is not None and set(replacement) != internal_ids:
+        raise ManualUpdateError("La recarga parcial no devolvió todas las publicaciones nuevas verificadas.")
+    current.update(replacement)
     # Do not keep a permanent ID-based exclusion here. The publication loader
     # remains the gate: a recovered legacy match is served only after the same
     # integrity, provenance, identity and approval checks as every publication.
-    app.state.match_detail_documents = replacement
+    app.state.match_detail_documents = current
     app.state.match_detail_publication_error = None
 
 
@@ -256,6 +399,8 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         app.state.player_directory_error = None
 
         group_settings = {}
+        top_group_settings = {}
+        statistics_group_settings = {}
         group_match_paths = {}
         group_classification_paths = {}
         group_progress_paths = {}
@@ -274,6 +419,45 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
             group_match_paths[group] = group_settings[group_key].matches_path
             group_classification_paths[group] = group_settings[group_key].classification_path
             group_progress_paths[group] = group_settings[group_key].progress_path
+        for group in ("I", "II"):
+            number = "1" if group == "I" else "2"
+            if number not in group_settings:
+                continue
+            try:
+                top_group_settings[number] = apply_active_group_section(
+                    group_settings[number], group, configured.local_data_root, "top"
+                )
+            except (ManualUpdateError, ValueError, TypeError) as exc:
+                app.state.top_dataset_errors[number] = exc
+                top_group_settings[number] = group_settings[number]
+            try:
+                statistics_group_settings[number] = apply_active_group_section(
+                    group_settings[number], group, configured.local_data_root, "statistics"
+                )
+            except (ManualUpdateError, ValueError, TypeError) as exc:
+                app.state.statistics_dataset_errors[number] = exc
+                statistics_group_settings[number] = group_settings[number]
+        group_related_settings = {}
+        for number, core in group_settings.items():
+            top = top_group_settings.get(number, core)
+            statistics = statistics_group_settings.get(number, core)
+            group_related_settings["I" if number == "1" else "II"] = replace(
+                core,
+                top_players_path=top.top_players_path,
+                top_rankings_path=top.top_rankings_path,
+                top_progress_path=top.top_progress_path,
+                top_foreigners_path=top.top_foreigners_path,
+                top_capture_metadata_path=top.top_capture_metadata_path,
+                top_validation_path=top.top_validation_path,
+                top_source_html_path=top.top_source_html_path,
+                top_team_catalog_path=top.top_team_catalog_path,
+                statistics_root=statistics.statistics_root,
+            )
+        try:
+            referee_settings = apply_active_referee_data(configured, configured.local_data_root)
+        except (ManualUpdateError, ValueError, TypeError) as exc:
+            referee_settings = configured
+            app.state.referee_dataset_error = exc
         app.state.group_settings = group_settings
         app.state.manual_update_manager = ManualUpdateManager(
             project_root=PROJECT_ROOT,
@@ -298,6 +482,9 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
             player_compact_root=configured.player_compact_root,
             player_team_captures_root=configured.player_team_captures_root,
             player_published_index_path=configured.player_published_index_path,
+            group_related_settings=group_related_settings,
+            referees_root=referee_settings.referees_root,
+            api_settings=configured,
         )
         app.state.manual_update_manager.on_competition_applied = (
             lambda job: _reload_after_manual_update(
@@ -323,7 +510,7 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
             active = app.state.datasets.get(group)
             try:
                 app.state.top_datasets[group] = load_top_dataset(
-                    group_settings[group],
+                    top_group_settings.get(group, group_settings[group]),
                     active_teams=active.bootstrap.teams if active is not None else None,
                     active_team_capture_id=(
                         active.bootstrap.metadata.capture_id if active is not None else None
@@ -335,14 +522,14 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
 
             try:
                 app.state.statistics_datasets[group] = load_statistics_dataset(
-                    group_settings[group], active
+                    statistics_group_settings.get(group, group_settings[group]), active
                 )
             except (StatisticsDatasetLoadError, KeyError, TypeError, ValueError) as exc:
                 app.state.statistics_dataset_errors[group] = exc
                 logger.exception("Estadísticas de Grupo %s no están disponibles", group)
 
         try:
-            referee_root = configured.referees_root or (
+            referee_root = referee_settings.referees_root or (
                 PROJECT_ROOT / DEFAULT_GROUP2_REFEREES_CAPTURE
             ).resolve()
             match_sources: dict[str, tuple[Path, Path]] = {}
@@ -359,7 +546,7 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
                     referee_root / "validation/match_reference.json",
                 )
             app.state.referee_dataset = load_referee_dataset(
-                configured, group_match_sources=match_sources
+                referee_settings, group_match_sources=match_sources
             )
             app.state.referee_group_errors.update(
                 app.state.referee_dataset.group_reference_errors

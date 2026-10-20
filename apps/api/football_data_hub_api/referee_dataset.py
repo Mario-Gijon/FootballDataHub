@@ -14,6 +14,15 @@ from urllib.parse import urlsplit
 
 from pydantic import ValidationError
 
+from football_data_hub.providers.bdfutbol.referees.parser import (
+    merge_referee_pages,
+    parse_referee_page,
+)
+from football_data_hub.providers.bdfutbol.referees.validation import (
+    build_match_reference_report,
+    validate_referee_data,
+)
+
 from football_data_hub_api.config import (
     ApiSettings,
     DEFAULT_GROUP2_REFEREES_CAPTURE,
@@ -111,6 +120,17 @@ def load_referee_dataset(
     referee_payload = decoded["referees"]
     statistics_payload = decoded["statistics"]
     _validate_payload_provenance(decoded)
+    parsed_source = merge_referee_pages(tuple(
+        parse_referee_page(
+            raw_files[f"html_{scope}"].decode("utf-8"),
+            scope=scope,
+            source_url=str(capture["scope_captures"][scope]["requested_url"]),
+        )
+        for scope in _SCOPES
+    ))
+    source_validation = validate_referee_data(parsed_source)
+    if not source_validation.get("valid"):
+        raise RefereeDatasetLoadError("Los snapshots originales de Árbitros no superan la validación semántica")
     referees = _parse_referees(referee_payload)
     statistics = _parse_statistics(statistics_payload)
     referee_by_id = {item.referee_id: item for item in referees}
@@ -124,23 +144,23 @@ def load_referee_dataset(
         try:
             related_matches_bytes = _read_bytes(matches_path)
             related_matches = _decode_json(related_matches_bytes, matches_path)
-            report = (
-                decoded["match_reference"]
-                if report_path.resolve() == paths["match_reference"].resolve()
-                else _decode_json(_read_bytes(report_path), report_path)
-            )
             related_matches_digest = hashlib.sha256(related_matches_bytes).hexdigest()
+            match_metadata = related_matches.get("metadata", {})
+            if match_metadata.get("group") != group or match_metadata.get("season") != capture.get("season"):
+                raise RefereeDatasetLoadError(f"Resultados no corresponde al Grupo {group} de la temporada capturada")
+            # REF-01 contains dated counts, but the exact referee IDs can be
+            # joined again against each currently selected Results catalog.
+            # Rebuild this small, auditable cross-reference in memory; never
+            # rewrite the historical REF capture or claim its statistics are
+            # current. The source pages and their hashes remain authoritative.
+            report = build_match_reference_report(
+                parsed_source,
+                related_matches,
+                reference_path=matches_path.as_posix(),
+                reference_sha256=related_matches_digest,
+                group_scope="group1" if group == "I" else "group2",
+            )
             reference = report.get("reference_dataset")
-            if group == "II":
-                reference = related_reference
-                if report_path.resolve() != paths["match_reference"].resolve():
-                    raise RefereeDatasetLoadError(
-                        "La referencia de Grupo II debe pertenecer a la captura REF compartida"
-                    )
-            if not isinstance(reference, dict) or related_matches_digest != reference.get("sha256"):
-                raise RefereeDatasetLoadError(
-                    f"El hash de Resultados de Grupo {group} no coincide con su informe de referencia"
-                )
             warnings_by_group[group] = _validate_match_references(
                 related_matches,
                 referee_by_id,
@@ -172,6 +192,11 @@ def load_referee_dataset(
         f"No se pudo verificar la referencia de partidos del Grupo {group}: {group_reference_errors[group]}"
         for group in sorted(group_reference_errors)
     )
+    referee_capture_time = _parse_datetime(str(capture["captured_at_utc"]))
+    if any(dataset.captured_at > referee_capture_time for dataset in related_match_metadata.values()):
+        compatibility_warnings.append(
+            "Las estadísticas por árbitro conservan la fecha de su captura; las referencias a partidos se han recalculado con los Resultados activos."
+        )
 
     scope_summaries = _scope_summaries(statistics, group_options)
     source_hashes = {

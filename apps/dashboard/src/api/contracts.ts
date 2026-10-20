@@ -934,6 +934,7 @@ export const StatisticsBootstrapSchema = z.object({
     match_dataset_capture_id: z.string(),
     match_dataset_captured_at: z.string().datetime({ offset: true }),
     active_match_capture_id: z.string(),
+    active_match_captured_at: z.string().datetime({ offset: true }),
   }).strict(),
   statistics: z.object({
     competition: z.string(),

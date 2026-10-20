@@ -51,7 +51,10 @@ def apply_active_group_data(settings: GroupDatasetSettings, group: str, data_roo
         return settings
     try:
         pointer = json.loads(pointer_path.read_text(encoding="utf-8"))
-        if pointer.get("schema_version") != "football_data_hub.manual_group_data.v1":
+        if pointer.get("schema_version") not in {
+            "football_data_hub.manual_group_data.v1",
+            "football_data_hub.manual_group_data.v2",
+        }:
             raise ValueError("versión de puntero no compatible")
         entry = pointer.get("groups", {}).get(group)
         if not isinstance(entry, dict):
@@ -74,13 +77,134 @@ def apply_active_group_data(settings: GroupDatasetSettings, group: str, data_roo
             paths[key] = path
     except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as exc:
         raise ManualUpdateError(f"El puntero activo del Grupo {group} no supera la verificación: {exc}") from exc
-    return replace(
+    replacement = replace(
         settings,
         matches_path=paths["matches"],
         classification_path=paths["classification"],
         progress_path=paths["progress"],
         capture_metadata_path=paths["capture_metadata"],
     )
+    return replacement
+
+
+def apply_active_group_sections(
+    settings: GroupDatasetSettings, group: str, data_root: Path | None
+) -> GroupDatasetSettings:
+    """Resolve optional TOP/STAT captures independently from core Results.
+
+    A missing or corrupt optional section must not prevent the verified
+    classification/results catalogue from loading.
+    """
+    pointer = _read_active_pointer(data_root)
+    if pointer is None:
+        return settings
+    sections = pointer.get("sections", {})
+    groups = sections.get("groups", {}) if isinstance(sections, dict) else {}
+    group_sections = groups.get(group, {}) if isinstance(groups, dict) else {}
+    if not isinstance(group_sections, dict):
+        raise ManualUpdateError(f"Las secciones activas del Grupo {group} no cumplen el contrato.")
+    replacement = settings
+    top_root = _verified_active_section_root(data_root, group_sections.get("top")) if data_root else None
+    if top_root is not None:
+        replacement = replace(
+            replacement,
+            top_players_path=top_root / "normalized/players.json",
+            top_rankings_path=top_root / "normalized/rankings.json",
+            top_progress_path=top_root / "normalized/progress.json",
+            top_foreigners_path=top_root / "normalized/foreigners.json",
+            top_capture_metadata_path=top_root / "metadata/capture.json",
+            top_validation_path=top_root / "validation/results.json",
+            top_source_html_path=top_root / "raw/source.html",
+            top_team_catalog_path=None,
+        )
+    statistics_root = _verified_active_section_root(data_root, group_sections.get("statistics")) if data_root else None
+    if statistics_root is not None:
+        replacement = replace(replacement, statistics_root=statistics_root)
+    return replacement
+
+
+def apply_active_group_section(
+    settings: GroupDatasetSettings,
+    group: str,
+    data_root: Path | None,
+    section: str,
+) -> GroupDatasetSettings:
+    """Resolve one optional section while keeping failures section-local."""
+    if section not in {"top", "statistics"}:
+        raise ValueError("Sección de grupo no válida")
+    pointer = _read_active_pointer(data_root)
+    if pointer is None:
+        return settings
+    sections = pointer.get("sections", {})
+    groups = sections.get("groups", {}) if isinstance(sections, dict) else {}
+    group_sections = groups.get(group, {}) if isinstance(groups, dict) else {}
+    if not isinstance(group_sections, dict):
+        raise ManualUpdateError(f"Las secciones activas del Grupo {group} no cumplen el contrato.")
+    root = _verified_active_section_root(data_root, group_sections.get(section)) if data_root else None
+    if root is None:
+        return settings
+    if section == "statistics":
+        return replace(settings, statistics_root=root)
+    return replace(
+        settings,
+        top_players_path=root / "normalized/players.json",
+        top_rankings_path=root / "normalized/rankings.json",
+        top_progress_path=root / "normalized/progress.json",
+        top_foreigners_path=root / "normalized/foreigners.json",
+        top_capture_metadata_path=root / "metadata/capture.json",
+        top_validation_path=root / "validation/results.json",
+        top_source_html_path=root / "raw/source.html",
+        top_team_catalog_path=None,
+    )
+
+
+def apply_active_referee_data(settings: Any, data_root: Path | None) -> Any:
+    """Resolve a versioned REF capture from the same atomic active-data pointer."""
+    pointer = _read_active_pointer(data_root)
+    if pointer is None:
+        return settings
+    root = _verified_active_section_root(data_root, pointer.get("sections", {}).get("referees"))
+    return replace(settings, referees_root=root) if root is not None else settings
+
+
+def _read_active_pointer(data_root: Path | None) -> dict[str, Any] | None:
+    if data_root is None:
+        return None
+    pointer_path = data_root / "operations" / "manual-updates" / "active-group-data.json"
+    if pointer_path.is_symlink():
+        raise ManualUpdateError("El puntero activo de grupos es un symlink.")
+    if not pointer_path.is_file():
+        return None
+    try:
+        pointer = json.loads(pointer_path.read_text(encoding="utf-8"))
+        if pointer.get("schema_version") not in {
+            "football_data_hub.manual_group_data.v1",
+            "football_data_hub.manual_group_data.v2",
+        }:
+            raise ValueError("versión de puntero no compatible")
+        if not isinstance(pointer.get("groups"), dict):
+            raise ValueError("grupos ausentes")
+        return pointer
+    except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        raise ManualUpdateError(f"El puntero activo de secciones no se pudo verificar: {exc}") from exc
+
+
+def _verified_active_section_root(data_root: Path, entry: Any) -> Path | None:
+    if entry is None:
+        return None
+    if not isinstance(entry, dict) or not isinstance(entry.get("path"), str):
+        raise ManualUpdateError("Una ruta de sección activa no cumple el contrato.")
+    relative = Path(entry["path"])
+    if relative.is_absolute() or ".." in relative.parts:
+        raise ManualUpdateError("La ruta de sección activa debe ser relativa a FDH_LOCAL_DATA_ROOT.")
+    unresolved = data_root / relative
+    _reject_symlink_components(unresolved)
+    root = unresolved.resolve()
+    if not root.is_relative_to(data_root.resolve()) or not root.is_dir():
+        raise ManualUpdateError("La captura activa de sección no está disponible en el almacén.")
+    if _tree_sha256(root) != entry.get("sha256"):
+        raise ManualUpdateError("El hash de una captura activa de sección cambió.")
+    return root
 
 
 def _activate_group_data_pointer(data_root: Path, candidate: dict[str, Any]) -> str:
@@ -90,7 +214,10 @@ def _activate_group_data_pointer(data_root: Path, candidate: dict[str, Any]) -> 
     if pointer_path.is_file():
         pointer_bytes = pointer_path.read_bytes()
         pointer = json.loads(pointer_bytes)
-        if pointer.get("schema_version") != "football_data_hub.manual_group_data.v1" or not isinstance(pointer.get("groups"), dict):
+        if pointer.get("schema_version") not in {
+            "football_data_hub.manual_group_data.v1",
+            "football_data_hub.manual_group_data.v2",
+        } or not isinstance(pointer.get("groups"), dict):
             raise ManualUpdateError("El puntero activo de grupos no cumple el contrato esperado.")
         groups = dict(pointer["groups"])
     else:
@@ -98,31 +225,69 @@ def _activate_group_data_pointer(data_root: Path, candidate: dict[str, Any]) -> 
         groups = {}
     sources = candidate.get("source_captures") or {}
     normalized = candidate.get("normalized_matches") or {}
-    for group in ("I", "II"):
-        capture_root_unresolved = Path(sources[group])
-        match_path_unresolved = Path(normalized[group])
-        _reject_symlink_components(capture_root_unresolved)
-        _reject_symlink_components(match_path_unresolved)
-        capture_root = capture_root_unresolved.resolve()
-        match_path = match_path_unresolved.resolve()
-        values = {
-            "matches": match_path,
-            "classification": capture_root / "normalized/classification.json",
-            "progress": capture_root / "normalized/progress.json",
-            "capture_metadata": capture_root / "metadata/capture.json",
-        }
-        entry = {}
-        for key, path in values.items():
-            if not path.is_relative_to(data_root.resolve()) or not path.is_file() or path.is_symlink():
-                raise ManualUpdateError(f"El nuevo archivo activo de Grupo {group} no está en el almacén verificado.")
-            entry[key] = {
-                "path": path.relative_to(data_root.resolve()).as_posix(),
-                "sha256": _sha256(path.read_bytes()),
+    if not candidate.get("no_competition_changes", candidate.get("no_changes") is True):
+        for group in ("I", "II"):
+            capture_root_unresolved = Path(sources[group])
+            match_path_unresolved = Path(normalized[group])
+            _reject_symlink_components(capture_root_unresolved)
+            _reject_symlink_components(match_path_unresolved)
+            capture_root = capture_root_unresolved.resolve()
+            match_path = match_path_unresolved.resolve()
+            values = {
+                "matches": match_path,
+                "classification": capture_root / "normalized/classification.json",
+                "progress": capture_root / "normalized/progress.json",
+                "capture_metadata": capture_root / "metadata/capture.json",
             }
-        capture = json.loads(values["capture_metadata"].read_text(encoding="utf-8"))
-        entry["capture_id"] = capture.get("capture_id")
-        entry["activated_at"] = utc_now()
-        groups[group] = entry
+            entry = {}
+            for key, path in values.items():
+                if not path.is_relative_to(data_root.resolve()) or not path.is_file() or path.is_symlink():
+                    raise ManualUpdateError(f"El nuevo archivo activo de Grupo {group} no está en el almacén verificado.")
+                entry[key] = {
+                    "path": path.relative_to(data_root.resolve()).as_posix(),
+                    "sha256": _sha256(path.read_bytes()),
+                }
+            capture = json.loads(values["capture_metadata"].read_text(encoding="utf-8"))
+            entry["capture_id"] = capture.get("capture_id")
+            entry["activated_at"] = utc_now()
+            groups[group] = entry
+    sections = dict(pointer.get("sections", {})) if pointer_bytes is not None else {}
+    related = candidate.get("related_sections", {})
+    group_sections = dict(sections.get("groups", {}))
+    for group, section_map in (related.get("groups", {}) if isinstance(related, dict) else {}).items():
+        if group not in {"I", "II"} or not isinstance(section_map, dict):
+            raise ManualUpdateError("El candidato contiene una sección de grupo desconocida.")
+        active_group_sections = dict(group_sections.get(group, {}))
+        for section, item in section_map.items():
+            if section not in {"top", "statistics"} or not isinstance(item, dict):
+                raise ManualUpdateError("El candidato contiene una captura de sección inválida.")
+            root_unresolved = Path(str(item.get("path", "")))
+            _reject_symlink_components(root_unresolved)
+            root = root_unresolved.resolve()
+            digest = _tree_sha256(root)
+            if not root.is_relative_to(data_root.resolve()) or digest != item.get("sha256"):
+                raise ManualUpdateError(f"La captura {section} del Grupo {group} no supera integridad/procedencia.")
+            active_group_sections[section] = {
+                "path": root.relative_to(data_root.resolve()).as_posix(),
+                "sha256": digest,
+                "capture_id": item.get("capture_id"),
+            }
+        group_sections[group] = active_group_sections
+    if group_sections:
+        sections["groups"] = group_sections
+    referee_item = related.get("referees") if isinstance(related, dict) else None
+    if isinstance(referee_item, dict):
+        root_unresolved = Path(str(referee_item.get("path", "")))
+        _reject_symlink_components(root_unresolved)
+        root = root_unresolved.resolve()
+        digest = _tree_sha256(root)
+        if not root.is_relative_to(data_root.resolve()) or digest != referee_item.get("sha256"):
+            raise ManualUpdateError("La captura de Árbitros no supera integridad/procedencia.")
+        sections["referees"] = {
+            "path": root.relative_to(data_root.resolve()).as_posix(),
+            "sha256": digest,
+            "capture_id": referee_item.get("capture_id"),
+        }
     if pointer_bytes is not None:
         history = pointer_path.parent / "active-group-data-history"
         history.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -130,9 +295,10 @@ def _activate_group_data_pointer(data_root: Path, candidate: dict[str, Any]) -> 
         history_path = history / f"{previous_id}.json"
         _create_once(history_path, pointer_bytes)
     _atomic_json(pointer_path, {
-        "schema_version": "football_data_hub.manual_group_data.v1",
+        "schema_version": "football_data_hub.manual_group_data.v2" if sections else "football_data_hub.manual_group_data.v1",
         "season": "2026-27",
         "groups": groups,
+        **({"sections": sections} if sections else {}),
         "updated_at": utc_now(),
     })
     return _sha256(pointer_path.read_bytes())
@@ -441,6 +607,41 @@ def _without_capture_provenance(value: Any) -> Any:
     if isinstance(value, list):
         return [_without_capture_provenance(item) for item in value]
     return value
+
+
+def _related_section_content_sha256(root: Path, section: str) -> str:
+    """Hash normalized source data, excluding capture-specific provenance."""
+    files_by_section = {
+        "top": (
+            "normalized/players.json", "normalized/rankings.json",
+            "normalized/progress.json", "normalized/foreigners.json",
+        ),
+        "statistics": (
+            "normalized/derived_statistics.json", "normalized/exclusive_statistics.json",
+        ),
+        "referees": (
+            "normalized/referees.json", "normalized/statistics.json",
+            "normalized/filter_options.json",
+        ),
+    }
+    if section not in files_by_section:
+        raise ManualUpdateError(f"Sección relacionada desconocida: {section}")
+    digest = hashlib.sha256()
+    for relative in files_by_section[section]:
+        path = root / relative
+        if path.is_symlink() or not path.is_file():
+            raise ManualUpdateError(f"Falta un archivo normalizado de {section}: {relative}.")
+        try:
+            payload = _without_capture_provenance(json.loads(path.read_text(encoding="utf-8")))
+            canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
+        except (OSError, ValueError, TypeError) as exc:
+            raise ManualUpdateError(f"No se pudo comparar el contenido normalizado de {section}.") from exc
+        encoded_name = relative.encode("utf-8")
+        digest.update(len(encoded_name).to_bytes(8, "big"))
+        digest.update(encoded_name)
+        digest.update(len(canonical).to_bytes(8, "big"))
+        digest.update(canonical)
+    return digest.hexdigest()
 
 
 def _team_comparison_value(relative: str, value: Any) -> Any:
@@ -763,6 +964,9 @@ class ManualUpdateManager:
         player_team_captures_root: Path | None,
         player_published_index_path: Path | None,
         match_details_published_root: Path | None = None,
+        group_related_settings: dict[str, GroupDatasetSettings] | None = None,
+        referees_root: Path | None = None,
+        api_settings: Any | None = None,
     ) -> None:
         self.project_root = project_root.resolve()
         self.data_root = data_root.resolve() if data_root else None
@@ -779,6 +983,9 @@ class ManualUpdateManager:
         self.player_team_captures_root = player_team_captures_root.resolve() if player_team_captures_root else None
         self.player_published_index_path = player_published_index_path.resolve() if player_published_index_path else None
         self.match_details_published_root = match_details_published_root.resolve() if match_details_published_root else None
+        self.group_related_settings = dict(group_related_settings or {})
+        self.referees_root = referees_root.resolve() if referees_root else None
+        self.api_settings = api_settings
         self.root = (self.data_root / "operations" / "manual-updates") if self.data_root else None
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="fdh-manual-update")
         self._mutex = threading.RLock()
@@ -1101,17 +1308,63 @@ class ManualUpdateManager:
         candidate = job.get("candidate")
         if not isinstance(candidate, dict):
             raise ManualUpdateError("La actualización no produjo un candidato verificable.")
+        self._verify_candidate_fingerprint(job, candidate)
         if no_changes:
+            related_changed = candidate.get("related_sections_changed") is True
+            if related_changed:
+                event_root = self.root / "reviews"  # type: ignore[operator]
+                event_root.mkdir(parents=True, exist_ok=True, mode=0o700)
+                event_id = str(job["job_id"])
+                event_base = {
+                    "schema_version": 1,
+                    "job_id": event_id,
+                    "scope": "competition_related_sections",
+                    "candidate_sha256": job["candidate_sha256"],
+                    "related_section_status": candidate.get("related_section_status", {}),
+                }
+                _create_once(
+                    event_root / f"{event_id}-sections-apply-started.json",
+                    (json.dumps({**event_base, "event": "RELATED_SECTIONS_APPLY_STARTED", "started_at": utc_now()}, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode(),
+                )
+                job.update({"status": "running", "stage": "activating_related_sections"})
+                self._save(job)
+                assert self.data_root is not None
+                pointer_sha256 = _activate_group_data_pointer(self.data_root, candidate)
+                publication = {"status": "activated", "active_pointer_sha256": pointer_sha256}
+                _create_once(
+                    event_root / f"{event_id}-sections-applied.json",
+                    (json.dumps({
+                        **event_base,
+                        "event": "RELATED_SECTIONS_APPLIED",
+                        "actor": "football-data-hub-local-update-service",
+                        "applied_at": utc_now(),
+                        "publication": publication,
+                    }, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode(),
+                )
+                job["publication"] = publication
+                if self.on_competition_applied is not None:
+                    try:
+                        self.on_competition_applied(job)
+                    except Exception as exc:
+                        job.update({
+                            "status": "applied_reload_failed",
+                            "stage": "refresh_failed",
+                            "error": f"Las secciones quedaron activadas, pero FastAPI no pudo recargarlas: {type(exc).__name__}: {exc}",
+                            "finished_at": utc_now(),
+                        })
+                        self._save(job)
+                        return
             job.update({"status": "running", "stage": "checking_match_details"})
             self._save(job)
             detail_summary = self._safe_process_new_match_details(job)
             summary = {
-                "message": "Informes de partidos añadidos" if detail_summary.get("match_details_published_count") else "Sin cambios",
+                "message": self._related_sections_message(candidate, detail_summary),
                 "changed_groups": candidate.get("changed_groups", {}),
+                "related_section_status": candidate.get("related_section_status", {}),
                 **detail_summary,
             }
             job.update({
-                "status": "applied" if detail_summary.get("match_details_published_count") else "completed",
+                "status": "applied" if related_changed or detail_summary.get("match_details_published_count") else "completed",
                 "stage": "completed",
                 "finished_at": utc_now(),
                 "summary": summary,
@@ -1119,15 +1372,6 @@ class ManualUpdateManager:
             self._save(job)
             return
 
-        stored_hash = job.get("candidate_sha256")
-        candidate_hash = candidate.get("candidate_sha256")
-        candidate_body = {key: value for key, value in candidate.items() if key != "candidate_sha256"}
-        if (
-            not isinstance(stored_hash, str)
-            or candidate_hash != stored_hash
-            or not hmac.compare_digest(stored_hash, _candidate_sha256(candidate_body))
-        ):
-            raise ManualUpdateError("La huella interna del candidato no coincide.")
         if candidate.get("kind") != "competition_generation":
             raise ManualUpdateError("El resultado no es una generación de Primera Federación.")
         self._assert_automatic_competition_candidate(candidate)
@@ -1139,7 +1383,7 @@ class ManualUpdateManager:
             "schema_version": 1,
             "job_id": event_id,
             "scope": "competition",
-            "candidate_sha256": stored_hash,
+            "candidate_sha256": job["candidate_sha256"],
             "candidate_generation_id": candidate.get("candidate_generation_id"),
             "report_sha256": candidate.get("report_sha256"),
         }
@@ -1191,6 +1435,40 @@ class ManualUpdateManager:
         self._save(job)
         job.update({"stage": "completed", "finished_at": utc_now()})
         self._save(job)
+
+    @staticmethod
+    def _verify_candidate_fingerprint(job: dict[str, Any], candidate: dict[str, Any]) -> None:
+        stored_hash = job.get("candidate_sha256")
+        candidate_hash = candidate.get("candidate_sha256")
+        candidate_body = {key: value for key, value in candidate.items() if key != "candidate_sha256"}
+        if (
+            not isinstance(stored_hash, str)
+            or candidate_hash != stored_hash
+            or not hmac.compare_digest(stored_hash, _candidate_sha256(candidate_body))
+        ):
+            raise ManualUpdateError("La huella interna del candidato no coincide.")
+
+    @staticmethod
+    def _related_sections_message(candidate: dict[str, Any], details: dict[str, Any]) -> str:
+        status = candidate.get("related_section_status", {})
+        statuses = [
+            item.get("status")
+            for groups in (status.get("groups", {}) if isinstance(status, dict) else {}).values()
+            for item in groups.values()
+            if isinstance(item, dict)
+        ]
+        if isinstance(status, dict) and isinstance(status.get("referees"), dict):
+            statuses.append(status["referees"].get("status"))
+        if "error" in statuses:
+            return "Actualización parcial: una fuente relacionada dio error; se conservaron sus datos anteriores."
+        changed_groups = candidate.get("changed_groups", {})
+        if isinstance(changed_groups, dict) and any(changed_groups.values()):
+            return "Actualización aplicada"
+        if candidate.get("related_sections_changed"):
+            return "Secciones relacionadas actualizadas."
+        if details.get("match_details_published_count"):
+            return "Informes de partidos añadidos."
+        return "Sin cambios"
 
     def _safe_process_new_match_details(self, job: dict[str, Any]) -> dict[str, Any]:
         try:
@@ -1428,13 +1706,19 @@ class ManualUpdateManager:
         selected_ids = [row["internal_id"] for row in eligible]
         selected_id_set = set(selected_ids)
         if not selected_ids:
-            published_ids_from_saved = {
+            saved_published_ids = {
                 item.get("internal_id")
                 for report in offline_reports
                 for item in report.get("candidates", [])
                 if item.get("status") == "PUBLISHED_VERIFIED"
             }
-            saved_pending_count = max(0, saved_capture_count - len(published_ids_from_saved))
+            published_ids_from_saved = set(saved_published_ids)
+            if recovery_published_count:
+                published_ids_from_saved.add(legacy_internal_id)
+            job["_match_details_published_internal_ids"] = sorted(
+                item for item in published_ids_from_saved if isinstance(item, str)
+            )
+            saved_pending_count = max(0, saved_capture_count - len(saved_published_ids))
             reload_error = None
             if saved_published_count and self.on_match_details_published is not None:
                 job["stage"] = "refreshing_match_details"
@@ -1597,6 +1881,22 @@ class ManualUpdateManager:
                 internal_ids=selected_id_set,
             )
         published_count = saved_published_count + int(offline.get("published_count", 0))
+        newly_published_ids = {
+            item.get("internal_id")
+            for report in offline_reports
+            for item in report.get("candidates", [])
+            if item.get("status") == "PUBLISHED_VERIFIED"
+        }
+        newly_published_ids.update(
+            item.get("internal_id")
+            for item in offline.get("candidates", [])
+            if item.get("status") == "PUBLISHED_VERIFIED"
+        )
+        if recovery_published_count:
+            newly_published_ids.add(legacy_internal_id)
+        job["_match_details_published_internal_ids"] = sorted(
+            item for item in newly_published_ids if isinstance(item, str)
+        )
         reload_error = None
         if published_count and self.on_match_details_published is not None:
             job["stage"] = "refreshing_match_details"
@@ -1655,8 +1955,10 @@ class ManualUpdateManager:
     def _competition_result_summary(candidate: dict[str, Any]) -> dict[str, Any]:
         source = candidate.get("summary") or {}
         return {
-            "message": "Actualización aplicada",
+            "message": ManualUpdateManager._related_sections_message(candidate, {}),
             "changed_groups": candidate.get("changed_groups", {}),
+            "related_section_status": candidate.get("related_section_status", {}),
+            "related_sections_changed": candidate.get("related_sections_changed", False),
             "newly_played": source.get("newly_played", 0),
             "result_corrected": source.get("result_corrected", 0),
             "fixture_updated": source.get("fixture_updated", 0),
@@ -1792,10 +2094,23 @@ class ManualUpdateManager:
                 ) if changed
             ]
 
+        related_sections, related_section_status = self._capture_related_sections(
+            job, log_path, roots=roots, normalized=normalized
+        )
+        core_no_changes = not any(changed_groups.values())
+        has_related_changes = any(
+            item.get("status") == "changed"
+            for group_sections in related_section_status.get("groups", {}).values()
+            for item in group_sections.values()
+        ) or related_section_status.get("referees", {}).get("status") == "changed"
         if not any(changed_groups.values()):
             return {
                 "kind": "competition_generation",
                 "no_changes": True,
+                "no_competition_changes": True,
+                "related_sections_changed": has_related_changes,
+                "related_sections": related_sections,
+                "related_section_status": related_section_status,
                 "changed_groups": changed_groups,
                 "standings_changes": standings_changes,
                 "progress_changes": progress_changes,
@@ -1847,6 +2162,10 @@ class ManualUpdateManager:
             "report_sha256": diff.get("report_sha256"),
             "summary": diff.get("summary", {}),
             "changed_groups": changed_groups,
+            "no_competition_changes": core_no_changes,
+            "related_sections_changed": has_related_changes,
+            "related_sections": related_sections,
+            "related_section_status": related_section_status,
             "standings_changes": standings_changes,
             "progress_changes": progress_changes,
             "changed_fixtures": [
@@ -1861,6 +2180,229 @@ class ManualUpdateManager:
             "activated": False,
             "published_match_details": False,
         }
+
+    def _capture_related_sections(
+        self,
+        job: dict[str, Any],
+        log_path: Path,
+        *,
+        roots: dict[str, Path],
+        normalized: dict[str, Path],
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        """Capture supported competition sections in order, stopping at access errors.
+
+        Each provider CLI validates and exports its own immutable capture. These
+        captures are only added to the active pointer when their normalized
+        semantic data differs from the currently active snapshot.
+        """
+        related: dict[str, Any] = {"groups": {}}
+        status: dict[str, Any] = {"groups": {"I": {}, "II": {}}, "referees": {"status": "not_attempted"}}
+        base = self._jobs_dir() / str(job["job_id"]) / "captures" / "related"
+        base.mkdir(parents=True, exist_ok=False, mode=0o700)
+        stop_reason: str | None = None
+        # The competition core capture ends immediately before this helper is
+        # called. Treat it as the previous browser navigation so the first
+        # related acquisition also respects the configured five-second gap.
+        last_browser_finished: float | None = time.monotonic()
+
+        def command_before_navigation() -> None:
+            nonlocal last_browser_finished
+            if last_browser_finished is not None:
+                remaining = 5.0 - (time.monotonic() - last_browser_finished)
+                if remaining > 0:
+                    time.sleep(remaining)
+
+        def capture(
+            *, section: str, group: str | None, args: list[str], output: Path, timeout: int
+        ) -> Path:
+            nonlocal last_browser_finished
+            output.mkdir(parents=True, exist_ok=False, mode=0o700)
+            command_before_navigation()
+            self._command(args, log_path, timeout=timeout)
+            last_browser_finished = time.monotonic()
+            captures = [path for path in output.iterdir() if path.is_dir() and not path.name.startswith(".")]
+            if len(captures) != 1:
+                raise ManualUpdateError(f"{section} {group or ''} no produjo exactamente una captura versionada.")
+            return captures[0]
+
+        for group, number in (("I", "1"), ("II", "2")):
+            for section in ("top", "statistics"):
+                if stop_reason:
+                    status["groups"][group][section] = {
+                        "status": "not_attempted", "reason": stop_reason,
+                    }
+                    continue
+                job["stage"] = f"capturing_{section}_group_{group.lower()}"
+                self._save(job)
+                output = base / f"group-{group.lower()}-{section}"
+                if section == "top":
+                    args = [
+                        sys.executable, "scripts/scrape_bdfutbol_top.py",
+                        "--season", "2026-27", "--group", number,
+                        "--team-catalog", str(normalized[group]),
+                        "--output-root", str(output), "--profile", str(self.profile_dir),
+                    ]
+                    timeout = 900
+                else:
+                    args = [
+                        sys.executable, "scripts/scrape_bdfutbol_statistics.py",
+                        "--season", "2026-27", "--group", number,
+                        "--matches", str(normalized[group]),
+                        "--output-root", str(output), "--profile", str(self.profile_dir),
+                    ]
+                    timeout = 900
+                if self.browser_executable:
+                    args.extend(["--browser-executable", str(self.browser_executable)])
+                try:
+                    capture_root = capture(
+                        section=section, group=group, args=args, output=output, timeout=timeout
+                    )
+                    capture_metadata = json.loads((capture_root / "metadata/capture.json").read_text())
+                    if (
+                        capture_metadata.get("source") != "BDFutbol"
+                        or capture_metadata.get("season") != "2026-27"
+                        or capture_metadata.get("group") != group
+                        or capture_metadata.get("section") != section
+                        or (capture_root / "validation/results.json").is_file() is False
+                        or json.loads((capture_root / "validation/results.json").read_text()).get("valid") is not True
+                    ):
+                        raise ManualUpdateError(f"La captura {section} del Grupo {group} no acredita identidad y validación.")
+                    self._validate_related_capture(section, group, capture_root, roots, normalized)
+                    content_sha256 = _related_section_content_sha256(capture_root, section)
+                    old_root = self._active_related_root(group, section)
+                    old_digest = _related_section_content_sha256(old_root, section) if old_root else None
+                    changed = old_digest != content_sha256
+                    status["groups"][group][section] = {
+                        "status": "changed" if changed else "unchanged",
+                        "capture_id": capture_metadata.get("capture_id"),
+                    }
+                    if changed:
+                        related["groups"].setdefault(group, {})[section] = {
+                            "path": str(capture_root),
+                            "sha256": _tree_sha256(capture_root),
+                            "content_sha256": content_sha256,
+                            "capture_id": capture_metadata["capture_id"],
+                        }
+                except Exception as exc:
+                    reason = f"{type(exc).__name__}: {str(exc)[:240]}"
+                    status["groups"][group][section] = {"status": "error", "reason": reason}
+                    stop_reason = f"La actualización de {section} del Grupo {group} terminó con error; no se iniciaron más adquisiciones."
+
+        if not stop_reason:
+            job["stage"] = "capturing_referees"
+            self._save(job)
+            output = base / "referees"
+            args = [
+                sys.executable, "scripts/scrape_bdfutbol_group2_referees.py",
+                "--matches", str(normalized["II"]),
+                "--output-root", str(output), "--profile", str(self.profile_dir),
+                "--pause-seconds", "5",
+            ]
+            if self.browser_executable:
+                args.extend(["--browser-executable", str(self.browser_executable)])
+            try:
+                capture_root = capture(
+                    section="referees", group=None, args=args, output=output, timeout=1200
+                )
+                metadata = json.loads((capture_root / "metadata/capture.json").read_text())
+                if (
+                    metadata.get("source") != "BDFutbol"
+                    or metadata.get("season") != "2026-27"
+                    or metadata.get("section") != "referees"
+                    or json.loads((capture_root / "validation/results.json").read_text()).get("valid") is not True
+                ):
+                    raise ManualUpdateError("La captura de Árbitros no acredita identidad y validación.")
+                self._validate_related_capture("referees", None, capture_root, roots, normalized)
+                content_sha256 = _related_section_content_sha256(capture_root, "referees")
+                old_digest = (
+                    _related_section_content_sha256(self.referees_root, "referees")
+                    if self.referees_root else None
+                )
+                changed = old_digest != content_sha256
+                status["referees"] = {
+                    "status": "changed" if changed else "unchanged",
+                    "capture_id": metadata.get("capture_id"),
+                }
+                if changed:
+                    related["referees"] = {
+                        "path": str(capture_root),
+                        "sha256": _tree_sha256(capture_root),
+                        "content_sha256": content_sha256,
+                        "capture_id": metadata["capture_id"],
+                    }
+            except Exception as exc:
+                status["referees"] = {
+                    "status": "error", "reason": f"{type(exc).__name__}: {str(exc)[:240]}",
+                }
+        else:
+            status["referees"] = {"status": "not_attempted", "reason": stop_reason}
+        return related, status
+
+    def _active_related_root(self, group: str, section: str) -> Path | None:
+        settings = self.group_related_settings.get(group)
+        if settings is None:
+            return None
+        if section == "statistics":
+            root = settings.statistics_root
+        else:
+            metadata = settings.top_capture_metadata_path
+            root = metadata.parent.parent if metadata is not None else None
+        return root.resolve() if root is not None and root.is_dir() else None
+
+    def _validate_related_capture(
+        self,
+        section: str,
+        group: str | None,
+        capture_root: Path,
+        roots: dict[str, Path],
+        normalized: dict[str, Path],
+    ) -> None:
+        from football_data_hub_api.dataset import load_dataset
+        from football_data_hub_api.referee_dataset import load_referee_dataset
+        from football_data_hub_api.statistics_dataset import load_statistics_dataset
+        from football_data_hub_api.top_dataset import load_top_dataset
+
+        if section in {"top", "statistics"}:
+            assert group is not None
+            prior = self.group_related_settings.get(group)
+            if prior is None:
+                raise ManualUpdateError(f"No se configuró el contrato API del Grupo {group}.")
+            core = replace(
+                prior,
+                matches_path=normalized[group],
+                classification_path=roots[group] / "normalized/classification.json",
+                progress_path=roots[group] / "normalized/progress.json",
+                capture_metadata_path=roots[group] / "metadata/capture.json",
+            )
+            active = load_dataset(core)
+            if section == "top":
+                top = replace(
+                    core,
+                    top_players_path=capture_root / "normalized/players.json",
+                    top_rankings_path=capture_root / "normalized/rankings.json",
+                    top_progress_path=capture_root / "normalized/progress.json",
+                    top_foreigners_path=capture_root / "normalized/foreigners.json",
+                    top_capture_metadata_path=capture_root / "metadata/capture.json",
+                    top_validation_path=capture_root / "validation/results.json",
+                    top_source_html_path=capture_root / "raw/source.html",
+                    top_team_catalog_path=normalized[group],
+                )
+                load_top_dataset(
+                    top,
+                    active_teams=active.bootstrap.teams,
+                    active_team_capture_id=active.bootstrap.metadata.capture_id,
+                )
+            else:
+                load_statistics_dataset(replace(core, statistics_root=capture_root), active)
+            return
+        if self.api_settings is None:
+            raise ManualUpdateError("No se configuró ApiSettings para validar Árbitros.")
+        referee_settings = replace(self.api_settings, referees_root=capture_root)
+        match_sources = {
+            "I": (normalized["I"], roots["I"] / "validation/referee_reference.json"),
+            "II": (normalized["II"], capture_root / "validation/match_reference.json"),
+        }
+        load_referee_dataset(referee_settings, group_match_sources=match_sources)
 
     def _update_team(self, job: dict[str, Any], log_path: Path) -> dict[str, Any]:
         assert self.data_root and job.get("team_id") and job.get("group")

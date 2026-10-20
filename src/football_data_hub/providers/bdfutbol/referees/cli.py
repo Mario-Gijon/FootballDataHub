@@ -159,6 +159,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--browser-executable", type=Path)
     parser.add_argument("--startup-timeout-seconds", type=float, default=35.0)
     parser.add_argument("--navigation-timeout-ms", type=int, default=45_000)
+    parser.add_argument(
+        "--pause-seconds", type=float, default=0.0,
+        help="Pausa entre los ámbitos del árbitro capturados en la misma sesión.",
+    )
     parser.add_argument("--no-xvfb", action="store_false", dest="use_xvfb")
     parser.set_defaults(use_xvfb=True)
     parser.add_argument(
@@ -187,6 +191,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 startup_timeout_seconds=args.startup_timeout_seconds,
                 navigation_timeout_ms=args.navigation_timeout_ms,
                 use_xvfb=args.use_xvfb,
+                pause_seconds=args.pause_seconds,
             )
         parsed = _normalize_bundle(bundle)
         validation = validate_referee_data(parsed)

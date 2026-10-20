@@ -69,7 +69,7 @@ describe("ManualUpdateControl", () => {
     render(<ManualUpdateControl />);
 
     fireEvent.click(screen.getByRole("button", { name: "Actualizar Primera Federación" }));
-    expect(await screen.findByText("Sin cambios en resultados.", {}, { timeout: 4000 })).toBeInTheDocument();
+    expect(await screen.findByText("Sin cambios", {}, { timeout: 4000 })).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("1 partido bloqueado excluido");
   });
 

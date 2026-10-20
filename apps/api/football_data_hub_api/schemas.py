@@ -1542,6 +1542,7 @@ class StatisticsCaptureMetadata(StatisticsApiModel):
     match_dataset_capture_id: str
     match_dataset_captured_at: datetime
     active_match_capture_id: str
+    active_match_captured_at: datetime
 
 
 class StatisticsMetricCoverage(StatisticsApiModel):

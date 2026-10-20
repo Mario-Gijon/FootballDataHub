@@ -75,7 +75,11 @@ export function ManualUpdateControl({ onApplied }: Props) {
           {job.progress && job.progress.total > 0 && <span> · Informes {job.progress.completed}/{job.progress.total}</span>}
         </>}
         {isNoChange && <>
-          <strong>{result && (Number(result.match_details_candidate_count ?? 0) > 0 || Number(result.match_details_blocked_excluded_count ?? 0) > 0) ? "Sin cambios en resultados." : "Sin cambios"}</strong>
+          <strong>{typeof result?.message === "string"
+            ? result.message
+            : result && (Number(result.match_details_candidate_count ?? 0) > 0 || Number(result.match_details_blocked_excluded_count ?? 0) > 0)
+              ? "Sin cambios"
+              : "Sin cambios"}</strong>
           {result && (Number(result.match_details_candidate_count ?? 0) > 0 || Number(result.match_details_blocked_excluded_count ?? 0) > 0) && <span> {summaryText(result)}</span>}
         </>}
         {isApplied && <>
@@ -96,6 +100,11 @@ function stageLabel(stage: string): string {
     preflight: "preparando la captura",
     capturing_group_i: "consultando Grupo I",
     capturing_group_ii: "consultando Grupo II",
+    capturing_top_group_i: "actualizando Destacados del Grupo I",
+    capturing_top_group_ii: "actualizando Destacados del Grupo II",
+    capturing_statistics_group_i: "actualizando Estadísticas del Grupo I",
+    capturing_statistics_group_ii: "actualizando Estadísticas del Grupo II",
+    capturing_referees: "actualizando Árbitros",
     normalizing_matches_group_i: "normalizando partidos del Grupo I",
     normalizing_matches_group_ii: "normalizando partidos del Grupo II",
     building_generation: "validando calendario y resultados",
@@ -132,6 +141,33 @@ function summaryText(summary: Record<string, unknown>): string {
   const corrected = Number(summary.result_corrected ?? 0);
   const fixtureUpdated = Number(summary.fixture_updated ?? 0);
   const pieces = [...groupChanges];
+  const related = summary.related_section_status;
+  if (typeof related === "object" && related !== null) {
+    const sectionLabels: Record<string, string> = {
+      top: "Destacados",
+      statistics: "Estadísticas",
+      referees: "Árbitros",
+    };
+    const groupStatus = (related as Record<string, unknown>).groups;
+    if (typeof groupStatus === "object" && groupStatus !== null) {
+      for (const group of ["I", "II"] as const) {
+        const sections = (groupStatus as Record<string, unknown>)[group];
+        if (typeof sections !== "object" || sections === null) continue;
+        for (const [key, entry] of Object.entries(sections as Record<string, unknown>)) {
+          if (typeof entry !== "object" || entry === null) continue;
+          const state = (entry as Record<string, unknown>).status;
+          if (state === "changed") pieces.push(`${sectionLabels[key] ?? key} Grupo ${group}`);
+          if (state === "error") pieces.push(`${sectionLabels[key] ?? key} Grupo ${group}: error; se conservan los datos anteriores`);
+        }
+      }
+    }
+    const refereeState = (related as Record<string, unknown>).referees;
+    if (typeof refereeState === "object" && refereeState !== null) {
+      const state = (refereeState as Record<string, unknown>).status;
+      if (state === "changed") pieces.push("Árbitros");
+      if (state === "error") pieces.push("Árbitros: error; se conservan los datos anteriores");
+    }
+  }
   if (newlyPlayed) pieces.push(`${newlyPlayed} partidos disputados nuevos`);
   if (corrected) pieces.push(`${corrected} marcadores corregidos`);
   if (fixtureUpdated) pieces.push(`${fixtureUpdated} cambios de calendario`);

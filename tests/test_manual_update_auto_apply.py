@@ -61,7 +61,7 @@ def _candidate(*, no_changes: bool = False, hard_conflicts: int = 0, played_to_u
         "no_changes": no_changes,
         "candidate_generation_id": "generation-candidate",
         "report_sha256": "a" * 64,
-        "changed_groups": {"I": ["results_calendar"], "II": []},
+        "changed_groups": {"I": [] if no_changes else ["results_calendar"], "II": []},
         "summary": {
             "hard_conflicts": hard_conflicts,
             "played_to_unplayed_conflicts": played_to_unplayed,

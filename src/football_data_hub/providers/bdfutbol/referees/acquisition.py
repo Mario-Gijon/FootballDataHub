@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+import time
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
 from uuid import uuid4
@@ -132,12 +133,15 @@ def acquire_referee_pages(
     navigation_timeout_ms: int = 45_000,
     use_xvfb: bool = True,
     capture_id: str | None = None,
+    pause_seconds: float = 0.0,
 ) -> RefereeAcquisitionBundle:
     """Captura Todos, Grupo 1 y Grupo 2 con una sola sesión Pure CDP.
 
     Los selectores de grupo navegan a otra URL. Cada ámbito se visita una vez y
     la adquisición se detiene en la primera denegación o estructura inválida.
     """
+    if pause_seconds < 0:
+        raise ValueError("pause_seconds no puede ser negativo")
     config = BrowserRuntimeConfig(
         profile_dir=profile_dir,
         backend="seleniumbase-pure-cdp",
@@ -154,6 +158,8 @@ def acquire_referee_pages(
             all_page.raw_html, scope="all", source_url=all_page.requested_url
         )
         for scope in ("group1", "group2"):
+            if pause_seconds:
+                time.sleep(pause_seconds)
             url = _scope_target(parsed_all, scope)
             snapshots.append(_access_page(session, url=url, scope=scope))
         info = session.info

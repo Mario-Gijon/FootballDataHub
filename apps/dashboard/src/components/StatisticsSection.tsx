@@ -106,8 +106,8 @@ function StatisticsDashboard({
       <header className="competition-hero statistics-hero">
         <div><span className="section-kicker">PRIMERA FEDERACIÓN · GRUPO {data.statistics.group}</span><h1>Estadísticas</h1></div>
         <div className="statistics-meta" aria-label="Procedencia de las capturas">
-          <span title={`Captura de Resultados ${data.metadata.match_dataset_capture_id}`}>
-            Resultados <time dateTime={data.metadata.match_dataset_captured_at}>{formatCaptureDate(data.metadata.match_dataset_captured_at)}</time>
+          <span title={`Resultados activos ${data.metadata.active_match_capture_id}`}>
+            Resultados <time dateTime={data.metadata.active_match_captured_at}>{formatCaptureDate(data.metadata.active_match_captured_at)}</time>
           </span>
           <span title={`Captura de Estadísticas ${data.metadata.capture_id}`}>
             BDFutbol <time dateTime={data.metadata.captured_at}>{formatCaptureDate(data.metadata.captured_at)}</time>
@@ -252,7 +252,7 @@ function StatisticsDashboard({
       </section>
 
       <footer className="statistics-provenance">
-        <span>Resultados calculados desde la captura {data.metadata.match_dataset_capture_id}.</span>
+        <span>Resultados activos {data.metadata.active_match_capture_id}.</span>
         <span>Datos exclusivos de la captura de Estadísticas {data.metadata.capture_id}.</span>
         {data.limitations.map((limitation) => <span key={limitation}>{limitation}</span>)}
       </footer>
