@@ -5,12 +5,15 @@ from __future__ import annotations
 import hashlib
 import ipaddress
 import logging
+import os
+from dataclasses import replace
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncIterator
 
 from fastapi import FastAPI, HTTPException, Query, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.concurrency import run_in_threadpool
 
 from football_data_hub_api.config import (
     ApiSettings,
@@ -78,9 +81,94 @@ from football_data_hub_api.player_dataset import (
     PlayerDirectoryBundle,
     load_player_directory,
 )
+from football_data_hub_api.manual_updates import (
+    ManualUpdateError,
+    ManualUpdateManager,
+    UpdateAlreadyRunning,
+    apply_active_group_data,
+)
 
 logger = logging.getLogger("football_data_hub_api")
 GROUP_CODES = {"1": "I", "2": "II"}
+
+
+def _reload_after_manual_update(app: FastAPI, configured: ApiSettings, manager: ManualUpdateManager, job: dict[str, object]) -> None:
+    """Load approved disk state off the event loop, then swap validated bundles."""
+    datasets = dict(app.state.datasets)
+    group_settings = dict(app.state.group_settings)
+    match_results = app.state.match_results
+    match_details = app.state.match_detail_documents
+    if job.get("scope") == "competition":
+        candidate = job["candidate"]
+        if not isinstance(candidate, dict):
+            raise ManualUpdateError("La activación no contiene su candidato validado.")
+        for roman, number in (("I", "1"), ("II", "2")):
+            base_settings = group_settings.get(number) or configured.for_group(roman)
+            capture_root = Path(candidate["source_captures"][roman])
+            replacement = replace(
+                base_settings,
+                matches_path=Path(candidate["normalized_matches"][roman]),
+                classification_path=capture_root / "normalized/classification.json",
+                progress_path=capture_root / "normalized/progress.json",
+                capture_metadata_path=capture_root / "metadata/capture.json",
+            )
+            group_settings[number] = replacement
+            datasets[number] = load_dataset(replacement)
+        if configured.match_generation_root is None or configured.local_data_root is None:
+            raise ManualUpdateError("No se puede recargar la generación activa de resultados.")
+        match_results = load_match_results_dataset(
+            configured.match_generation_root,
+            data_root=configured.local_data_root,
+        )
+        match_details = {}
+        if configured.match_details_published_root and configured.match_details_store_root:
+            player_ids = set(app.state.player_directory.players_by_id) if app.state.player_directory else set()
+            match_details = load_published_match_details(
+                configured.match_details_published_root,
+                store_root=configured.match_details_store_root,
+                generation_root=configured.match_generation_root,
+                data_root=configured.local_data_root,
+                match_bundle=match_results,
+                player_ids=player_ids,
+            )
+
+    matches_paths = {key: value.matches_path for key, value in group_settings.items()}
+    unavailable_groups = {
+        "I" if key == "1" else "II": str(value)
+        for key, value in app.state.dataset_errors.items()
+        if key not in datasets
+    }
+    roster = load_team_roster_registry(
+        configured.team_profiles_index_path,
+        datasets=datasets,
+        matches_paths=matches_paths,
+        unavailable_group_errors=unavailable_groups,
+    )
+    follow = load_team_follow_registry(
+        configured.team_profiles_index_path,
+        datasets=datasets,
+        matches_paths=matches_paths,
+        roster_registry=roster,
+        unavailable_group_errors=unavailable_groups,
+    )
+    transfers = load_team_transfers_registry(
+        configured.team_profiles_index_path,
+        roster_registry=roster,
+        unavailable_group_errors=unavailable_groups,
+    )
+
+    app.state.datasets = datasets
+    app.state.group_settings = group_settings
+    app.state.team_roster_registry = roster
+    app.state.team_follow_registry = follow
+    app.state.team_transfers_registry = transfers
+    app.state.match_results = match_results
+    app.state.match_results_error = None if match_results is not None else app.state.match_results_error
+    app.state.match_detail_documents = match_details
+    app.state.match_detail_publication_error = None
+    manager.group_match_paths = {"I": group_settings["1"].matches_path, "II": group_settings["2"].matches_path}
+    manager.group_classification_paths = {"I": group_settings["1"].classification_path, "II": group_settings["2"].classification_path}
+    manager.group_progress_paths = {"I": group_settings["1"].progress_path, "II": group_settings["2"].progress_path}
 
 
 def create_app(settings: ApiSettings | None = None) -> FastAPI:
@@ -108,14 +196,52 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         app.state.player_directory_error = None
 
         group_settings = {}
-        for group in ("1", "2"):
+        group_match_paths = {}
+        group_classification_paths = {}
+        group_progress_paths = {}
+        for group in ("I", "II"):
+            group_key = "1" if group == "I" else "2"
             try:
-                group_settings[group] = configured.for_group(group)
-            except (ValueError, TypeError) as exc:
-                app.state.dataset_errors[group] = exc
-                app.state.top_dataset_errors[group] = exc
-                app.state.statistics_dataset_errors[group] = exc
-                app.state.referee_group_errors[GROUP_CODES[group]] = str(exc)
+                group_settings[group_key] = apply_active_group_data(
+                    configured.for_group(group), group, configured.local_data_root
+                )
+            except (ManualUpdateError, ValueError, TypeError) as exc:
+                app.state.dataset_errors[group_key] = exc
+                app.state.top_dataset_errors[group_key] = exc
+                app.state.statistics_dataset_errors[group_key] = exc
+                app.state.referee_group_errors[group] = str(exc)
+                continue
+            group_match_paths[group] = group_settings[group_key].matches_path
+            group_classification_paths[group] = group_settings[group_key].classification_path
+            group_progress_paths[group] = group_settings[group_key].progress_path
+        app.state.group_settings = group_settings
+        app.state.manual_update_manager = ManualUpdateManager(
+            project_root=PROJECT_ROOT,
+            data_root=configured.local_data_root,
+            admin_token=configured.update_admin_token,
+            profile_dir=Path(os.getenv(
+                "FDH_BDFUTBOL_PROFILE",
+                str(Path.home() / ".football-data-hub-chromium-pure-cdp"),
+            )),
+            browser_executable=(
+                Path(os.environ["FDH_BDFUTBOL_BROWSER_EXECUTABLE"])
+                if os.getenv("FDH_BDFUTBOL_BROWSER_EXECUTABLE")
+                else None
+            ),
+            group_match_paths=group_match_paths,
+            group_classification_paths=group_classification_paths,
+            group_progress_paths=group_progress_paths,
+            team_profiles_index=configured.team_profiles_index_path,
+            match_generation_root=configured.match_generation_root,
+            match_details_store_root=configured.match_details_store_root,
+            player_inventory_root=configured.player_inventory_root,
+            player_compact_root=configured.player_compact_root,
+            player_team_captures_root=configured.player_team_captures_root,
+            player_published_index_path=configured.player_published_index_path,
+        )
+
+        for group in ("1", "2"):
+            if group not in group_settings:
                 continue
 
             try:
@@ -210,7 +336,15 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
                 app.state.team_roster_registry.known_teams, {}, {}, str(exc), unavailable_groups
             )
 
-        if configured.match_generation_root is not None and configured.local_data_root is not None:
+        activation_pending = bool(
+            configured.local_data_root
+            and (configured.local_data_root / "operations" / "manual-updates" / "activation-pending.json").exists()
+        )
+        if activation_pending:
+            app.state.match_results_error = ManualUpdateError(
+                "Hay una activación interrumpida; Resultados queda temporalmente indisponible hasta recuperar los punteros."
+            )
+        elif configured.match_generation_root is not None and configured.local_data_root is not None:
             try:
                 app.state.match_results = load_match_results_dataset(
                     configured.match_generation_root,
@@ -263,12 +397,16 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
                 app.state.match_detail_publication_error = exc
                 app.state.match_detail_documents = {}
                 logger.exception("Los detalles publicados no superaron la validación; Resultados sigue disponible")
-        yield
+        try:
+            yield
+        finally:
+            app.state.manual_update_manager.close()
 
     app = FastAPI(
         title="FootballDataHub API",
         description=(
-            "API de solo lectura para Primera Federación 2026/27, Grupos I y II. "
+            "API de consulta para Primera Federación 2026/27, Grupos I y II, "
+            "con operaciones de actualización manual protegidas para administración. "
             "Los filtros interactivos se calculan en el cliente."
         ),
         version="1.1.0",
@@ -278,9 +416,120 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         CORSMiddleware,
         allow_origins=list(configured.cors_origins),
         allow_credentials=False,
-        allow_methods=["GET"],
-        allow_headers=["If-None-Match", "Content-Type"],
+        allow_methods=["GET", "POST"],
+        allow_headers=["If-None-Match", "Content-Type", "X-FDH-Admin-Token"],
     )
+
+    def require_update_admin(request: Request) -> ManualUpdateManager:
+        manager: ManualUpdateManager = request.app.state.manual_update_manager
+        if not manager.authenticate(request.headers.get("x-fdh-admin-token")):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"code": "admin_auth_required", "message": "Se requiere el token administrativo."},
+            )
+        if not manager.enabled:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={"code": "manual_updates_disabled", "message": "Las actualizaciones administrativas no están configuradas."},
+            )
+        return manager
+
+    @app.get("/api/v1/admin/updates/capabilities", tags=["updates"])
+    def update_capabilities(request: Request) -> dict[str, object]:
+        manager = require_update_admin(request)
+        scopes = [scope for scope in ("competition", "team") if manager.scope_enabled(scope)]
+        return {"enabled": bool(scopes), "scopes": scopes}
+
+    @app.get("/api/v1/admin/updates/status", tags=["updates"])
+    def manual_update_status(scope: str, request: Request, team_id: int | None = None) -> dict[str, object]:
+        manager = require_update_admin(request)
+        if scope not in {"competition", "team"}:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="scope debe ser competition o team")
+        if scope == "team" and (team_id is None or team_id <= 0):
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="team_id es obligatorio para scope=team")
+        return manager.public_status(scope, team_id)
+
+    @app.post("/api/v1/admin/updates/competition", status_code=status.HTTP_202_ACCEPTED, tags=["updates"])
+    def start_competition_update(request: Request) -> dict[str, object]:
+        manager = require_update_admin(request)
+        try:
+            return manager.start(scope="competition")
+        except UpdateAlreadyRunning as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={"code": "update_in_progress", "message": str(exc)}) from exc
+        except ManualUpdateError as exc:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail={"code": "update_unavailable", "message": str(exc)}) from exc
+
+    @app.post("/api/v1/admin/updates/teams/{team_id}", status_code=status.HTTP_202_ACCEPTED, tags=["updates"])
+    def start_team_update(team_id: int, request: Request) -> dict[str, object]:
+        manager = require_update_admin(request)
+        group = None
+        for group_key, dataset in request.app.state.datasets.items():
+            if any(team.team_id == team_id for team in dataset.bootstrap.teams):
+                group = "I" if group_key == "1" else "II"
+                break
+        if group is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"code": "team_not_found", "message": "No encontramos ese equipo en los catálogos activos."})
+        try:
+            return manager.start(scope="team", team_id=team_id, group=group)
+        except UpdateAlreadyRunning as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={"code": "update_in_progress", "message": str(exc)}) from exc
+        except ManualUpdateError as exc:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail={"code": "update_unavailable", "message": str(exc)}) from exc
+
+    @app.get("/api/v1/admin/updates/latest", tags=["updates"])
+    def latest_update(scope: str, request: Request, team_id: int | None = None) -> dict[str, object] | None:
+        manager = require_update_admin(request)
+        if scope not in {"competition", "team"}:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="scope debe ser competition o team")
+        if scope == "team" and (team_id is None or team_id <= 0):
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="team_id es obligatorio para scope=team")
+        return manager.latest(scope, team_id)
+
+    @app.get("/api/v1/admin/updates/jobs/{job_id}", tags=["updates"])
+    def update_job(job_id: str, request: Request) -> dict[str, object]:
+        manager = require_update_admin(request)
+        job = manager.get_job(job_id)
+        if job is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"code": "update_job_not_found", "message": "No encontramos ese trabajo."})
+        return job
+
+    async def approve_update(job_id: str, request: Request) -> dict[str, object]:
+        manager = require_update_admin(request)
+        try:
+            payload = await request.json()
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="El cuerpo JSON no es válido.") from exc
+        if not isinstance(payload, dict):
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Se esperaba un objeto de revisión.")
+        reviewer = payload.get("reviewer")
+        expected_hash = payload.get("candidate_sha256")
+        if not isinstance(reviewer, str) or not isinstance(expected_hash, str):
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Faltan reviewer y candidate_sha256.")
+        try:
+            job = await run_in_threadpool(
+                manager.approve_and_activate,
+                job_id=job_id,
+                reviewer=reviewer,
+                expected_candidate_sha256=expected_hash,
+            )
+        except UpdateAlreadyRunning as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={"code": "update_in_progress", "message": str(exc)}) from exc
+        except ManualUpdateError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={"code": "update_review_rejected", "message": str(exc)}) from exc
+
+        await run_in_threadpool(_reload_after_manual_update, request.app, configured, manager, job)
+        return job
+
+    @app.post("/api/v1/admin/updates/jobs/{job_id}/approve", tags=["updates"])
+    async def approve_update_route(job_id: str, request: Request) -> dict[str, object]:
+        try:
+            return await approve_update(job_id, request)
+        except (ManualUpdateError, DatasetLoadError, MatchResultsLoadError, MatchDetailsLoadError, OSError, ValueError, KeyError, TypeError) as exc:
+            logger.exception("Se publicó el candidato, pero la API no pudo recargar todos los datos en memoria")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={"code": "update_published_reload_failed", "message": f"El candidato pudo publicarse, pero debe reiniciar FastAPI para cargarlo: {exc}"},
+            ) from exc
 
     @app.get("/health", response_model=HealthResponse, tags=["service"])
     def health(request: Request) -> HealthResponse:

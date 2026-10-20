@@ -572,11 +572,12 @@ def _load_campaign_publication_document(
     approval_raw: bytes,
     details_payload: dict[str, Any],
     details_raw: bytes,
-    generation_root: Path,
     data_root: Path,
     match_bundle: MatchResultsBundle,
     player_ids: set[int],
-) -> MatchPublishedDetailsResponse:
+    generation: Any,
+    source_record: dict[str, Any],
+) -> tuple[MatchPublishedDetailsResponse, Any]:
     manifest_fields = {
         "schema_version", "publication_id", "source_kind", "internal_id", "inventory_id",
         "source_generation_id", "source_generation_manifest_sha256", "source_capture_id",
@@ -650,15 +651,16 @@ def _load_campaign_publication_document(
         raise MatchDetailsLoadError("El documento de campaña no cumple el contrato público.") from exc
     if document.publication_status != "approved":
         raise MatchDetailsLoadError("El documento público de campaña no está marcado aprobado.")
-    draft = build_campaign_publication_draft(
+    draft, observation = _build_campaign_publication_draft_from_verified(
         internal_id=indexed_internal_id,
         campaign_id=str(manifest["campaign_id"]),
         artifact_id=str(manifest["artifact_id"]),
         publication_id=publication_id,
-        generation_root=generation_root,
         data_root=data_root,
         match_bundle=match_bundle,
         player_ids=player_ids,
+        generation=generation,
+        record=source_record,
     )
     if (
         draft.get("schema_version") != CAMPAIGN_DRAFT_SCHEMA
@@ -675,7 +677,7 @@ def _load_campaign_publication_document(
     }:
         if manifest.get(key) != draft.get(key):
             raise MatchDetailsLoadError(f"El manifiesto no coincide con la fuente revalidada: {key}.")
-    return document
+    return document, observation
 
 
 def load_published_match_details(
@@ -725,6 +727,7 @@ def load_published_match_details(
     generation_contexts: dict[str, tuple[Path, Any, MatchResultsBundle]] = {
         generation.generation_id: (resolved_active_root, generation, match_bundle)
     }
+    inventory_contexts: dict[str, tuple[dict[str, Any], dict[str, dict[str, Any]], dict[str, str]]] = {}
 
     for item in items:
         if not isinstance(item, dict) or set(item) != {"internal_id", "publication_id", "package_path", "manifest_sha256"}:
@@ -777,16 +780,24 @@ def load_published_match_details(
             match_bundle=match_bundle,
             generation_contexts=generation_contexts,
         )
-        source_inventory = build_match_detail_inventory(source_generation)
-        source_records = {
-            record["internal_id"]: record for record in source_inventory["matches"]
-        }
-        source_captures = {
-            source["group"]: source["capture_id"]
-            for source in source_generation.manifest_payload["source_captures"]
-        }
+        inventory_context = inventory_contexts.get(source_generation.generation_id)
+        if inventory_context is None:
+            source_inventory = build_match_detail_inventory(source_generation)
+            source_records = {
+                record["internal_id"]: record for record in source_inventory["matches"]
+            }
+            source_captures = {
+                source["group"]: source["capture_id"]
+                for source in source_generation.manifest_payload["source_captures"]
+            }
+            inventory_context = (source_inventory, source_records, source_captures)
+            inventory_contexts[source_generation.generation_id] = inventory_context
+        source_inventory, source_records, source_captures = inventory_context
         if manifest.get("schema_version") == CAMPAIGN_PACKAGE_SCHEMA:
-            document = _load_campaign_publication_document(
+            record = source_records.get(internal_id)
+            if record is None:
+                raise MatchDetailsLoadError("El partido de campaña no pertenece a su MATCH-00 histórico.")
+            document, observation = _load_campaign_publication_document(
                 publication_id=publication_id,
                 indexed_internal_id=internal_id,
                 manifest=manifest,
@@ -794,14 +805,12 @@ def load_published_match_details(
                 approval_raw=approval_raw,
                 details_payload=details_payload,
                 details_raw=details_raw,
-                generation_root=source_root,
                 data_root=data_root,
                 match_bundle=source_bundle,
                 player_ids=player_ids,
+                generation=source_generation,
+                source_record=record,
             )
-            record = source_records.get(internal_id)
-            if record is None:
-                raise MatchDetailsLoadError("El partido de campaña no pertenece a su MATCH-00 histórico.")
             _validate_detail_against_match(
                 document,
                 _published_match(source_bundle, internal_id),
@@ -813,14 +822,6 @@ def load_published_match_details(
             )
             _validate_detail_against_active_fixture(
                 document, _published_match(match_bundle, internal_id)
-            )
-            observation, _ = _campaign_observation(
-                campaign_id=str(manifest["campaign_id"]),
-                artifact_id=str(manifest["artifact_id"]),
-                internal_id=internal_id,
-                generation=source_generation,
-                data_root=data_root,
-                record=record,
             )
             document = _with_verified_kickoff(document, observation)
             loaded[internal_id] = document
@@ -998,6 +999,35 @@ def build_campaign_publication_draft(
     record = next((item for item in inventory["matches"] if item["internal_id"] == internal_id), None)
     if record is None:
         raise MatchDetailsLoadError("El partido no pertenece al inventario disputado de MATCH-00.")
+    draft, _observation = _build_campaign_publication_draft_from_verified(
+        internal_id=internal_id,
+        campaign_id=campaign_id,
+        artifact_id=artifact_id,
+        publication_id=publication_id,
+        data_root=data_root,
+        match_bundle=match_bundle,
+        player_ids=player_ids,
+        generation=generation,
+        record=record,
+    )
+    return draft
+
+
+def _build_campaign_publication_draft_from_verified(
+    *,
+    internal_id: str,
+    campaign_id: str,
+    artifact_id: str,
+    publication_id: str | None,
+    data_root: Path,
+    match_bundle: MatchResultsBundle,
+    player_ids: set[int],
+    generation: Any,
+    record: dict[str, Any],
+) -> tuple[dict[str, Any], Any]:
+    """Build from generation evidence verified once by the enclosing read operation."""
+    if record.get("internal_id") != internal_id:
+        raise MatchDetailsLoadError("El registro resuelto del inventario no coincide con el partido.")
     observation, source = _campaign_observation(
         campaign_id=campaign_id,
         artifact_id=artifact_id,
@@ -1032,7 +1062,7 @@ def build_campaign_publication_draft(
         )
     if not _PUBLICATION_ID.fullmatch(publication_id):
         raise MatchDetailsLoadError("publication_id no seguro")
-    return {
+    draft = {
         "schema_version": CAMPAIGN_DRAFT_SCHEMA,
         "publication_id": publication_id,
         **source,
@@ -1040,6 +1070,7 @@ def build_campaign_publication_draft(
         "details_sha256": _sha256(details_raw),
         "details": details,
     }
+    return draft, observation
 
 
 def campaign_approval_confirmation(draft: dict[str, Any]) -> str:

@@ -17,6 +17,7 @@ import type {
 import { MainNavigation } from "./components/MainNavigation";
 import { TeamsDirectory } from "./components/TeamsDirectory";
 import { TeamOverview } from "./components/TeamOverview";
+import { ManualUpdateControl } from "./components/ManualUpdateControl";
 const PlayersPage = lazy(() => import("./components/PlayersPage").then((module) => ({ default: module.PlayersPage })));
 import { ClassificationControls } from "./components/ClassificationControls";
 const ProgressChart = lazy(() => import("./components/ProgressChart").then((module) => ({ default: module.ProgressChart })));
@@ -534,11 +535,14 @@ function GroupDashboard({
 
       <section hidden={activeSection !== "standings"} role="tabpanel" id={`standings-panel${suffix}`} aria-labelledby={`standings-tab${suffix}`}>
         <section className="competition-hero">
-          <h1>Clasificación</h1>
-          <div className="dataset-meta" aria-label="Actualización de los datos">
-            <span>Jornada {data.metadata.last_matchday_with_results ?? "—"} disponible</span>
-            <time dateTime={data.metadata.captured_at}>Actualizado {formatCaptureDate(data.metadata.captured_at)}</time>
+          <div>
+            <h1>Clasificación</h1>
+            <div className="dataset-meta" aria-label="Actualización de los datos">
+              <span>Jornada {data.metadata.last_matchday_with_results ?? "—"} disponible</span>
+              <time dateTime={data.metadata.captured_at}>Actualizado {formatCaptureDate(data.metadata.captured_at)}</time>
+            </div>
           </div>
+          <ManualUpdateControl scope="competition" />
         </section>
         <ClassificationControls filters={filters} onChange={setFilters} matchdays={matchdays} />
         <div className="table-context-bar" id={`clasificacion${suffix}`}>

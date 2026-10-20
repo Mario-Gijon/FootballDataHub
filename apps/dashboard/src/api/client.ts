@@ -28,6 +28,133 @@ export type CompetitionGroup = "1" | "2";
 
 const apiBase = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
 const TEAM_ROSTER_REQUEST_TIMEOUT_MS = 15_000;
+const adminUpdateHeaders = (token: string) => ({
+  Accept: "application/json",
+  "Content-Type": "application/json",
+  "X-FDH-Admin-Token": token,
+});
+
+export interface ManualUpdateJob {
+  job_id: string;
+  scope: "competition" | "team";
+  team_id: number | null;
+  group: string | null;
+  status: "queued" | "running" | "completed" | "review_required" | "published" | "failed" | "interrupted";
+  stage: string;
+  created_at: string;
+  updated_at: string;
+  finished_at: string | null;
+  candidate_sha256?: string | null;
+  candidate: Record<string, unknown> | null;
+  error: string | null;
+  log_tail: string | null;
+}
+
+export interface ManualUpdateStatus {
+  scope: "competition" | "team";
+  team_id: number | null;
+  last_updated_at: string | null;
+  last_unchanged_check_at: string | null;
+  last_checked_at: string | null;
+}
+
+async function adminUpdateDataRequest(path: string, token: string): Promise<Record<string, unknown>> {
+  const response = await fetch(`${apiBase}${path}`, { headers: adminUpdateHeaders(token) });
+  let payload: unknown;
+  try { payload = await response.json(); } catch { payload = null; }
+  if (!response.ok) {
+    const detail = typeof payload === "object" && payload !== null && "detail" in payload
+      ? (payload as { detail?: unknown }).detail : undefined;
+    const message = typeof detail === "object" && detail !== null && "message" in detail
+      ? (detail as { message?: unknown }).message : undefined;
+    throw new Error(typeof message === "string" ? message : `La API respondió con un error (${response.status}).`);
+  }
+  if (typeof payload !== "object" || payload === null || Array.isArray(payload)) {
+    throw new Error("La API devolvió un estado administrativo no válido.");
+  }
+  return payload as Record<string, unknown>;
+}
+
+export async function loadManualUpdateCapabilities(token: string): Promise<string[]> {
+  const payload = await adminUpdateDataRequest("/api/v1/admin/updates/capabilities", token);
+  const scopes = payload.scopes;
+  if (!Array.isArray(scopes) || scopes.some((scope) => scope !== "competition" && scope !== "team")) {
+    throw new Error("La API devolvió capacidades de actualización no válidas.");
+  }
+  return scopes as string[];
+}
+
+export async function loadManualUpdateStatus(
+  scope: "competition" | "team",
+  token: string,
+  teamId?: number,
+): Promise<ManualUpdateStatus> {
+  const query = new URLSearchParams({ scope });
+  if (scope === "team" && teamId) query.set("team_id", String(teamId));
+  const payload = await adminUpdateDataRequest(`/api/v1/admin/updates/status?${query.toString()}`, token);
+  if (payload.scope !== scope || (scope === "team" && payload.team_id !== teamId)) {
+    throw new Error("La API devolvió un estado que no coincide con el ámbito seleccionado.");
+  }
+  return payload as unknown as ManualUpdateStatus;
+}
+
+async function adminUpdateRequest(path: string, token: string, method: "GET" | "POST"): Promise<ManualUpdateJob | null> {
+  const response = await fetch(`${apiBase}${path}`, {
+    method,
+    headers: adminUpdateHeaders(token),
+  });
+  let payload: unknown;
+  try { payload = await response.json(); } catch { payload = null; }
+  if (!response.ok) {
+    const detail = typeof payload === "object" && payload !== null && "detail" in payload
+      ? (payload as { detail?: unknown }).detail : undefined;
+    const message = typeof detail === "object" && detail !== null && "message" in detail
+      ? (detail as { message?: unknown }).message : undefined;
+    throw new Error(typeof message === "string" ? message : `La API respondió con un error (${response.status}).`);
+  }
+  return payload as ManualUpdateJob | null;
+}
+
+export function startCompetitionUpdate(token: string): Promise<ManualUpdateJob | null> {
+  return adminUpdateRequest("/api/v1/admin/updates/competition", token, "POST");
+}
+
+export function startTeamUpdate(teamId: number, token: string): Promise<ManualUpdateJob | null> {
+  return adminUpdateRequest(`/api/v1/admin/updates/teams/${teamId}`, token, "POST");
+}
+
+export function loadManualUpdateJob(jobId: string, token: string): Promise<ManualUpdateJob | null> {
+  return adminUpdateRequest(`/api/v1/admin/updates/jobs/${encodeURIComponent(jobId)}`, token, "GET");
+}
+
+export function loadLatestManualUpdate(scope: "competition" | "team", token: string, teamId?: number): Promise<ManualUpdateJob | null> {
+  const query = new URLSearchParams({ scope });
+  if (scope === "team" && teamId) query.set("team_id", String(teamId));
+  return adminUpdateRequest(`/api/v1/admin/updates/latest?${query.toString()}`, token, "GET");
+}
+
+export async function approveManualUpdate(
+  jobId: string,
+  token: string,
+  reviewer: string,
+  candidateSha256: string,
+): Promise<ManualUpdateJob | null> {
+  const response = await fetch(`${apiBase}/api/v1/admin/updates/jobs/${encodeURIComponent(jobId)}/approve`, {
+    method: "POST",
+    headers: adminUpdateHeaders(token),
+    body: JSON.stringify({ reviewer, candidate_sha256: candidateSha256 }),
+  });
+  let payload: unknown;
+  try { payload = await response.json(); } catch { payload = null; }
+  if (!response.ok) {
+    const detail = typeof payload === "object" && payload !== null && "detail" in payload
+      ? (payload as { detail?: unknown }).detail : undefined;
+    const message = typeof detail === "object" && detail !== null && "message" in detail
+      ? (detail as { message?: unknown }).message : undefined;
+    throw new Error(typeof message === "string" ? message : `La API respondió con un error (${response.status}).`);
+  }
+  return payload as ManualUpdateJob | null;
+}
 
 export type TeamRosterLoadResult =
   | { status: "available"; roster: TeamRoster }

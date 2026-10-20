@@ -453,3 +453,98 @@ def test_publication_requires_independent_approval_receipt(tmp_path, monkeypatch
                 match_bundle=_bundle(),
                 player_ids={123},
             )
+
+
+def test_campaign_loader_reuses_verified_generation_and_inventory_for_139_publications(
+    tmp_path, monkeypatch
+) -> None:
+    """A publication set shares one verified MATCH-00 context per generation."""
+    import football_data_hub_api.match_details_dataset as dataset
+
+    bundle = _bundle()
+    generation_id = bundle.bootstrap.metadata.generation_id
+    generation_sha256 = bundle.bootstrap.metadata.generation_sha256
+    generation = type("VerifiedGeneration", (), {
+        "generation_id": generation_id,
+        "manifest_sha256": generation_sha256,
+        "manifest_payload": {"source_captures": [
+            {"group": "I", "capture_id": "capture-I"},
+            {"group": "II", "capture_id": "capture-II"},
+        ]},
+    })()
+
+    internal_ids = [f"pf-2026-27-group-i-bdfutbol-{260000 + index}" for index in range(139)]
+    publications = []
+    for index, internal_id in enumerate(internal_ids):
+        publication_id = f"campaign-test-{index:03d}"
+        package = tmp_path / "published" / "packages" / publication_id
+        manifest = {
+            "schema_version": dataset.CAMPAIGN_PACKAGE_SCHEMA,
+            "source_generation_id": generation_id,
+            "source_generation_manifest_sha256": generation_sha256,
+        }
+        manifest_raw = _write_json(package / "manifest.json", manifest)
+        _write_json(package / "approval.json", {})
+        _write_json(package / "details.json", {})
+        publications.append({
+            "internal_id": internal_id,
+            "publication_id": publication_id,
+            "package_path": f"packages/{publication_id}",
+            "manifest_sha256": _sha(manifest_raw),
+        })
+    index_raw = _write_json(tmp_path / "published" / "index.json", {
+        "schema_version": INDEX_SCHEMA,
+        "publications": publications,
+    })
+    assert index_raw
+
+    generation_calls = 0
+    inventory_calls = 0
+    campaign_calls: list[str] = []
+    inventory = {
+        "inventory_id": "match-detail-inventory-test0000000000",
+        "matches": [{"internal_id": internal_id, "test_record": index} for index, internal_id in enumerate(internal_ids)],
+    }
+    records_by_id = {record["internal_id"]: record for record in inventory["matches"]}
+
+    def load_generation(*_args, **_kwargs):
+        nonlocal generation_calls
+        generation_calls += 1
+        return generation
+
+    def build_inventory(verified_generation):
+        nonlocal inventory_calls
+        inventory_calls += 1
+        assert verified_generation is generation
+        return inventory
+
+    def load_campaign(**kwargs):
+        campaign_calls.append(kwargs["indexed_internal_id"])
+        assert kwargs["generation"] is generation
+        assert kwargs["source_record"] is records_by_id[kwargs["indexed_internal_id"]]
+        return project_verified_detail(
+            _detail(), source_html_sha256="e" * 64, player_ids=set()
+        ), object()
+
+    monkeypatch.setattr(dataset, "load_verified_match_generation", load_generation)
+    monkeypatch.setattr(dataset, "build_match_detail_inventory", build_inventory)
+    monkeypatch.setattr(dataset, "_load_campaign_publication_document", load_campaign)
+    monkeypatch.setattr(dataset, "_published_match", lambda *_args, **_kwargs: object())
+    monkeypatch.setattr(dataset, "_validate_detail_against_match", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(dataset, "_validate_detail_against_active_fixture", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(dataset, "_with_verified_kickoff", lambda document, _observation: document)
+
+    loaded = load_published_match_details(
+        tmp_path / "published",
+        store_root=tmp_path / "store",
+        generation_root=tmp_path / "generation",
+        data_root=tmp_path,
+        match_bundle=bundle,
+        player_ids=set(),
+    )
+
+    assert len(loaded) == 139
+    assert set(loaded) == set(internal_ids)
+    assert campaign_calls == internal_ids
+    assert generation_calls == 1
+    assert inventory_calls == 1

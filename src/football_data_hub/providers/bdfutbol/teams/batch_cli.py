@@ -54,6 +54,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Pausa entre páginas y equipos adquiridos; los pilotos reales deben respetar al menos 5 s.",
     )
     parser.add_argument("--dry-run", action="store_true", help="Inspecciona el inventario y muestra el plan sin abrir navegador.")
+    parser.add_argument(
+        "--force-refresh",
+        action="store_true",
+        help="No reutiliza capturas completas, parciales ni checkpoints: adquiere de nuevo el equipo solicitado.",
+    )
     parser.add_argument("--view", action="append", choices=tuple(DEFAULT_VIEWS))
     parser.add_argument("--group1-catalog", type=Path)
     parser.add_argument("--group2-catalog", type=Path)
@@ -326,9 +331,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                 matches=matches_by_group[group],
                 required_views=selected_views,
             )
+            if args.force_refresh:
+                inspection = None
             inspections[(group, int(record["team_id"]))] = inspection
             pending = None
-            if not (inspection and inspection.complete_for_current_policy):
+            if not args.force_refresh and not (inspection and inspection.complete_for_current_policy):
                 pending = find_pending_evidence(
                     output_root,
                     season=args.season,
@@ -369,10 +376,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     def complete(group: int, team_id: int, _views: tuple[str, ...]) -> CaptureInspection | None:
+        if args.force_refresh:
+            return None
         item = inspections.get((group, team_id))
         return item if item and item.complete_for_current_policy else None
 
     def partial(group: int, team_id: int) -> CaptureInspection | None:
+        if args.force_refresh:
+            return None
         item = inspections.get((group, team_id))
         return item if item and item.reusable_as_seed else None
 
