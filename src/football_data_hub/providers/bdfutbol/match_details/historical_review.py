@@ -20,6 +20,12 @@ from .semantic_parser import PARSER_VERSION, parse_saved_artifact
 HISTORICAL_272582_HTML_SHA256 = (
     "9242edad00b43a4e83c649ddad006edb0d1172e0d88640082312a0fe1cf16997"
 )
+# The published 272582 recovery was recorded with this parser before v0.3.3
+# added source evidence for TG2 events. Replay that immutable receipt with its
+# recorded version label; all newer recovery candidates use the current parser.
+_HISTORICAL_RECOVERY_PARSER_VERSIONS = frozenset(
+    {"match-detail-semantic-0.3.2", PARSER_VERSION}
+)
 
 
 def _canonical(value: Any) -> bytes:
@@ -193,6 +199,7 @@ def verify_historical_recovery_candidate(
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise MatchCampaignAuthorizationError("El bundle de recuperación no contiene JSON válido") from exc
     evidence = candidate.get("evidence") if isinstance(candidate, dict) else None
+    recovery_parser_version = candidate.get("parser_version") if isinstance(candidate, dict) else None
     candidate_sha256 = _sha(candidate_raw)
     expected_manifest = {
         "schema_version": "football_data_hub.match_detail_legacy_recovery_manifest.v1",
@@ -212,7 +219,7 @@ def verify_historical_recovery_candidate(
         or candidate.get("source_access_status_original") != "INVALID_CONTENT"
         or candidate.get("source_promotion_eligible_original") is not False
         or candidate.get("source_kind") != "offline_revalidation_of_discovery_only_artifact"
-        or candidate.get("parser_version") != PARSER_VERSION
+        or recovery_parser_version not in _HISTORICAL_RECOVERY_PARSER_VERSIONS
         or evidence.get("source_match_id") != "272582"
         or evidence.get("internal_id") != "pf-2026-27-group-ii-bdfutbol-272582"
         or evidence.get("source_html_sha256") != HISTORICAL_272582_HTML_SHA256
@@ -243,7 +250,7 @@ def verify_historical_recovery_candidate(
         or receipt.get("source_generation_manifest_sha256")
         != evidence.get("generation_manifest_sha256")
         or receipt.get("active_generation") != candidate.get("active_fixture")
-        or receipt.get("parser_version") != PARSER_VERSION
+        or receipt.get("parser_version") != recovery_parser_version
         or receipt.get("semantic_valid") is not True
         or receipt.get("all_semantic_checks_passed") is not True
         or receipt.get("source_access_status_preserved") != "INVALID_CONTENT"
@@ -346,7 +353,11 @@ def verify_historical_recovery_candidate(
         or _sha(source_html_raw) != receipt["source_html_sha256"]
     ):
         raise MatchCampaignAuthorizationError("Los hashes del artefacto histórico cambiaron")
-    observation = parse_saved_artifact(artifact_dir, expected_match=historical_match)
+    observation = parse_saved_artifact(
+        artifact_dir,
+        expected_match=historical_match,
+        parser_version=recovery_parser_version,
+    )
     if (
         observation.validation.semantic_valid is not True
         or observation.validation.errors

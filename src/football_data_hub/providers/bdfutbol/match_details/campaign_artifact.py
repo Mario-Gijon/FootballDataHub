@@ -93,7 +93,9 @@ def _validate_discovery_event_sequence(events: list[dict[str, Any]], *, operatio
         transitions = {
             None: {"VALIDATED", "VALIDATION_FAILED"},
             "AUTO_POLICY_REVALIDATED": {"DRAFT_PREPARED"},
-            "AUTO_POLICY_REVALIDATION_FAILED": set(),
+            "AUTO_POLICY_REVALIDATION_FAILED": {
+                "AUTO_POLICY_REVALIDATED", "AUTO_POLICY_REVALIDATION_FAILED",
+            },
             "VALIDATION_FAILED": {
                 "REVALIDATED", "REVALIDATION_FAILED",
                 "AUTO_POLICY_REVALIDATED", "AUTO_POLICY_REVALIDATION_FAILED",

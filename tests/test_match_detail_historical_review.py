@@ -302,3 +302,60 @@ def test_offline_recovery_rejects_corrupt_existing_derived_candidate(tmp_path, m
             active_generation_id=None,
             active_generation_manifest_sha256=None,
         )
+
+
+def test_offline_recovery_replays_supported_recorded_parser_version(tmp_path, monkeypatch):
+    plan, data_root, inventory_dir, store_root, _ = _fixture(tmp_path, monkeypatch)
+    created = prepare_historical_recovery_candidate(
+        plan,
+        data_root=data_root,
+        generation_root=data_root / "generation",
+        inventory_dir=inventory_dir,
+        store_root=store_root,
+        verified_at_utc=datetime.fromisoformat("2026-10-20T12:00:00+00:00"),
+    )
+    recovery_dir = store_root / "recoveries" / created["recovery_id"]
+    candidate_path = recovery_dir / "candidate.json"
+    receipt_path = recovery_dir / "receipt.json"
+    manifest_path = recovery_dir / "manifest.json"
+    candidate = json.loads(candidate_path.read_text())
+    receipt = json.loads(receipt_path.read_text())
+    manifest = json.loads(manifest_path.read_text())
+    historical_version = "match-detail-semantic-0.3.2"
+
+    def set_versions(value):
+        if isinstance(value, dict):
+            return {
+                key: historical_version if key == "parser_version" else set_versions(item)
+                for key, item in value.items()
+            }
+        if isinstance(value, list):
+            return [set_versions(item) for item in value]
+        return value
+
+    candidate = set_versions(candidate)
+    receipt["parser_version"] = historical_version
+    candidate_raw = _canonical(candidate)
+    receipt["candidate_sha256"] = _sha(candidate_raw)
+    receipt["original_evidence_sha256"] = _sha(_canonical(candidate["evidence"]))
+    receipt["receipt_sha256"] = _sha(
+        _canonical({key: value for key, value in receipt.items() if key != "receipt_sha256"})
+    )
+    receipt_raw = _canonical(receipt)
+    manifest["files"] = {
+        "candidate.json": {"sha256": _sha(candidate_raw), "bytes": len(candidate_raw)},
+        "receipt.json": {"sha256": _sha(receipt_raw), "bytes": len(receipt_raw)},
+    }
+    candidate_path.write_bytes(candidate_raw)
+    receipt_path.write_bytes(receipt_raw)
+    manifest_path.write_bytes(_canonical(manifest))
+
+    state = verify_historical_recovery_candidate(
+        store_root,
+        data_root=data_root,
+        expected_match=expected_match(),
+        active_generation_id=None,
+        active_generation_manifest_sha256=None,
+    )
+    assert state["recovery_id"] == created["recovery_id"]
+    assert state["status"] == "VALIDATED_PENDING_EXPLICIT_REVIEW"

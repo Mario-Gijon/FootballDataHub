@@ -331,6 +331,10 @@ def test_tg2_is_a_second_yellow_dismissal_not_a_yellow_or_direct_red_card():
     assert not any(item.event_type in {"yellow_card", "red_card"} for item in observation.events if item.player_id == 1002)
     red_evidence = next(item for item in observation.evidence if item.field_path == "events.red_cards")
     assert red_evidence.state == "not_observed"
+    second_yellow_evidence = next(item for item in observation.evidence if item.field_path == "events.second_yellows")
+    assert second_yellow_evidence.state == "observed"
+    assert second_yellow_evidence.normalized_value == 1
+    assert "icon=TG2" in second_yellow_evidence.source_reference
     assert "direct_red_card_absence_not_asserted_second_yellow_present" in observation.validation.warnings
 
 

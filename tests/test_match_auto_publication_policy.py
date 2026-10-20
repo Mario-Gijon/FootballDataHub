@@ -9,6 +9,7 @@ from football_data_hub.providers.bdfutbol.match_details.automatic_publication_po
     POLICY_ID,
     POLICY_VERSION,
     REQUIRED_CHECKS,
+    SECOND_YELLOW_UNCERTAINTY_WARNING,
     automatic_publication_decision,
     candidate_set_sha256,
     legacy_recovery_publication_decision,
@@ -104,6 +105,67 @@ def test_strict_policy_allows_only_complete_validation_with_known_informational_
     assert automatic_publication_decision(invalid)[0] is False
 
 
+def _second_yellow_evidence(validation: dict) -> dict:
+    validation = dict(validation)
+    validation["parser_version"] = "match-detail-semantic-test"
+    validation["source_html_sha256"] = "a" * 64
+    validation["warnings"] = [SECOND_YELLOW_UNCERTAINTY_WARNING]
+    common = {
+        "source_html_sha256": "a" * 64,
+        "parser_version": "match-detail-semantic-test",
+    }
+    validation["semantic_evidence"] = [
+        {
+            **common,
+            "field_path": "events.red_cards",
+            "state": "not_observed",
+            "source_reference": "direct-red markers absent; second-yellow dismissal observed",
+            "raw_value": "83",
+            "normalized_value": None,
+        },
+        {
+            **common,
+            "field_path": "events.second_yellows",
+            "state": "observed",
+            "source_reference": "recognized lineup/substitute event cells; icon=TG2; title='Doble Tarjeta Amarilla'",
+            "raw_value": "player_id=58463; minute=83; text=83",
+            "normalized_value": 1,
+        },
+    ]
+    return validation
+
+
+def test_v2_allows_only_source_bound_second_yellow_uncertainty_without_asserting_no_direct_red() -> None:
+    validation = _second_yellow_evidence(_validation())
+    assert automatic_publication_decision(validation, policy_version="2") == (True, None)
+    assert automatic_publication_decision(validation, policy_version="1")[0] is False
+
+    missing = dict(validation)
+    missing.pop("semantic_evidence")
+    assert automatic_publication_decision(missing, policy_version="2")[0] is False
+
+    forged_absence = dict(validation)
+    forged_absence["semantic_evidence"] = [
+        {**validation["semantic_evidence"][0], "state": "explicitly_absent"},
+        validation["semantic_evidence"][1],
+    ]
+    assert automatic_publication_decision(forged_absence, policy_version="2")[0] is False
+
+    wrong_source = dict(validation)
+    wrong_source["semantic_evidence"] = [
+        {**validation["semantic_evidence"][0], "source_html_sha256": "b" * 64},
+        validation["semantic_evidence"][1],
+    ]
+    assert automatic_publication_decision(wrong_source, policy_version="2")[0] is False
+
+    unknown_icons = dict(validation)
+    unknown_icons["checks"] = [
+        {**check, "passed": False} if check["check"] == "all_event_icons_recognized" else check
+        for check in validation["checks"]
+    ]
+    assert automatic_publication_decision(unknown_icons, policy_version="2")[0] is False
+
+
 def test_candidate_set_hash_is_bound_to_job_identity_and_exact_candidates() -> None:
     row = _candidate()
     common = {
@@ -142,7 +204,7 @@ def test_ledger_rejects_candidate_set_tampering_without_id_specific_exclusions()
 
 def test_policy_version_and_identity_are_explicit() -> None:
     assert POLICY_ID == "football-data-hub.strict-match-details"
-    assert POLICY_VERSION == "1"
+    assert POLICY_VERSION == "2"
 
 
 def test_offline_legacy_recovery_relaxes_only_the_historic_access_warning() -> None:

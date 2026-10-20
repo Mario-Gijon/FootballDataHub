@@ -336,6 +336,30 @@ def run_offline_batch(
                         result["status"] = "PROTECTED_STATE_SKIPPED"
                         result["reason"] = revalidation.get("reason") or "La causa del fallo no permite revalidación automática."
                         report["skipped_count"] += 1
+                elif state == "AUTO_POLICY_REVALIDATION_FAILED" and auto_publish_policy:
+                    revalidation = ledger.revalidate_auto_policy_uncertainty_failure(
+                        campaign_id=campaign_id,
+                        internal_id=internal_id,
+                        data_root=data_root,
+                    )
+                    result["actions"].append({"operation": "offline_policy_upgrade", **revalidation})
+                    if revalidation.get("status") == "AUTO_POLICY_REVALIDATED":
+                        state = "AUTO_POLICY_REVALIDATED"
+                    elif revalidation.get("status") == "AUTO_POLICY_REVALIDATION_FAILED":
+                        if revalidation.get("semantic_valid") is True:
+                            result["status"] = "PENDING_POLICY_REVIEW"
+                            result["policy_reason"] = revalidation.get("policy_reason") or "automatic_policy_not_satisfied"
+                            report["policy_pending_count"] += 1
+                        else:
+                            result["status"] = "VALIDATION_FAILED"
+                            result["policy_reason"] = "saved_artifact_did_not_pass_strict_semantic_validation"
+                            report["validation_failed_count"] += 1
+                        report["processed_count"] += 1
+                        state = "AUTO_POLICY_REVALIDATION_FAILED"
+                    else:
+                        result["status"] = "PROTECTED_STATE_SKIPPED"
+                        result["reason"] = revalidation.get("reason") or "El fallo previo no permite actualización de política."
+                        report["skipped_count"] += 1
                 if state == "DISCOVERY_REVIEW_REQUIRED":
                     validation = ledger.validate_offline_artifact(
                         campaign_id=campaign_id, internal_id=internal_id, data_root=data_root

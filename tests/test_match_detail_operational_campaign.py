@@ -2007,7 +2007,9 @@ def test_update_policy_known_artifact_sequence_failure_can_be_reparsed_offline_o
     if expected_status == "AUTO_POLICY_REVALIDATION_FAILED":
         assert recovered["semantic_valid"] is True
         assert recovered["policy_eligible"] is False
-        assert recovered["policy_reason"].startswith("blocking_validation_warnings:")
+        assert recovered["policy_reason"] == (
+            "direct_red_card_uncertainty_lacks_source_bound_second_yellow_evidence"
+        )
     assert accesses == [fixture.candidate["source_match_url"]]
     events = fixture.ledger.candidate_events(
         fixture.plan["campaign_id"], fixture.candidate["internal_id"]
@@ -2015,5 +2017,198 @@ def test_update_policy_known_artifact_sequence_failure_can_be_reparsed_offline_o
     assert [event["event_type"] for event in events][-2:] == ["VALIDATION_FAILED", expected_status]
     assert fixture.ledger.preflight(fixture.plan["campaign_id"])["candidate_states"] == {
         expected_status: 1,
+        "NOT_AUTHORIZED": 2,
+    }
+
+
+def test_v1_second_yellow_policy_failure_can_be_upgraded_offline_once(tmp_path, monkeypatch):
+    import uuid
+
+    from football_data_hub.domain.matches.semantic_detail import (
+        SemanticEvidence,
+        SemanticValidation,
+        ValidationCheck,
+    )
+    from football_data_hub.providers.bdfutbol.match_details.automatic_publication_policy import (
+        REQUIRED_CHECKS,
+        SECOND_YELLOW_UNCERTAINTY_WARNING,
+        automatic_publication_decision,
+        candidate_set_sha256,
+    )
+    from football_data_hub.providers.bdfutbol.match_details.campaign_artifact import CampaignArtifactError
+    from football_data_hub.providers.bdfutbol.match_details.real_acquisition import RealDiscoveryResponse
+
+    fixture = _fixture(tmp_path, monkeypatch)
+    _initialize(fixture)
+    campaign_dir = fixture.ledger.root / fixture.plan["campaign_id"]
+    campaign, _, _ = fixture.ledger._read_campaign(campaign_dir)
+    update_job_id = str(uuid.uuid4())
+    candidate_digest = candidate_set_sha256(
+        update_job_id=update_job_id,
+        campaign_id=fixture.plan["campaign_id"],
+        source_generation_id=campaign["source"]["generation_id"],
+        source_generation_manifest_sha256=campaign["source"]["generation_manifest_sha256"],
+        candidates=campaign["candidates"],
+    )
+    current = _current_status(fixture)
+    current["campaign"].update(campaign_version=2, authorization_consumed=False, navigation_count=0)
+    authorization_id = fixture.ledger.authorize_for_competition_update(
+        campaign_id=fixture.plan["campaign_id"],
+        internal_id=fixture.candidate["internal_id"],
+        confirmed_url=fixture.candidate["source_match_url"],
+        update_job_id=update_job_id,
+        candidate_set_sha256=candidate_digest,
+        current_status=current,
+        published=False,
+        captured=False,
+        blocked=False,
+        data_root=fixture.data_root,
+    )
+    accesses = []
+
+    def access_once(_config, *, url, session_factory):
+        accesses.append(url)
+        return RealDiscoveryResponse(
+            final_url=url,
+            http_status=200,
+            html=b"<html><body>saved immutable response</body></html>",
+            page_title="Stored response",
+            access_classification="VALID",
+            captured_at_utc="2026-10-20T10:00:00Z",
+        )
+
+    fixture.ledger.execute_for_competition_update(
+        campaign_id=fixture.plan["campaign_id"],
+        internal_id=fixture.candidate["internal_id"],
+        authorization_id=authorization_id,
+        confirmed_url=fixture.candidate["source_match_url"],
+        update_job_id=update_job_id,
+        data_root=fixture.data_root,
+        profile_dir=fixture.data_root / "browser-profiles" / f"match-detail-v2-{fixture.candidate['source_match_id']}",
+        store_root=fixture.store_root,
+        store_inventory=fixture.inventory,
+        current_status=_current_status(fixture, "AUTO_POLICY_AUTHORIZED"),
+        published=False,
+        captured=False,
+        blocked=False,
+        access_runner=access_once,
+    )
+
+    import football_data_hub.providers.bdfutbol.match_details.campaign_artifact as artifacts
+    from football_data_hub.providers.bdfutbol.match_details.operational_campaign import (
+        KNOWN_ARTIFACT_SEQUENCE_DIAGNOSTIC,
+        AUTO_REVALIDATION_POLICY_ID,
+        AUTO_REVALIDATION_POLICY_VERSION,
+    )
+
+    monkeypatch.setattr(
+        artifacts,
+        "parse_campaign_saved_artifact",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            CampaignArtifactError(KNOWN_ARTIFACT_SEQUENCE_DIAGNOSTIC)
+        ),
+    )
+    failed = fixture.ledger.validate_offline_artifact(
+        campaign_id=fixture.plan["campaign_id"],
+        internal_id=fixture.candidate["internal_id"],
+        data_root=fixture.data_root,
+    )
+    assert failed["status"] == "VALIDATION_FAILED"
+    events = fixture.ledger.candidate_events(fixture.plan["campaign_id"], fixture.candidate["internal_id"])
+    discovery = next(row for row in events if row["event_type"] == "DISCOVERY_REVIEW_REQUIRED")
+    failure = events[-1]
+    authorization = events[0]["authorization"]
+
+    old_validation = {
+        "semantic_valid": True,
+        "errors": [],
+        "warnings": [SECOND_YELLOW_UNCERTAINTY_WARNING, "campaign_discovery_remains_unpromoted_pending_independent_review"],
+        "checks": [{"check": name, "passed": True, "detail": "verified"} for name in sorted(REQUIRED_CHECKS)],
+        "parser_version": "match-detail-semantic-0.3.2",
+    }
+    eligible, reason = automatic_publication_decision(old_validation, policy_version="1")
+    assert not eligible and reason == f"blocking_validation_warnings:{SECOND_YELLOW_UNCERTAINTY_WARNING}"
+    old_evidence = {
+        "based_on_event_sha256": failure["event_sha256"],
+        "artifact_id": discovery["artifact"]["artifact_id"],
+        "source_html_sha256": discovery["artifact"]["source_html_sha256"],
+        "authorization_id": authorization["authorization_id"],
+        "update_job_id": update_job_id,
+        "candidate_set_sha256": candidate_digest,
+        "policy_id": AUTO_REVALIDATION_POLICY_ID,
+        "policy_version": AUTO_REVALIDATION_POLICY_VERSION,
+        "semantic_valid": True,
+        "policy_eligible": False,
+        "policy_reason": reason,
+        "validation": old_validation,
+        "parser_version": old_validation["parser_version"],
+        "validated_at_utc": "2026-10-20T10:01:00Z",
+    }
+    old_evidence["evidence_sha256"] = _sha(_canonical(old_evidence))
+    with fixture.ledger.lock.exclusive_lock():
+        fixture.ledger._append(
+            campaign_dir,
+            campaign,
+            fixture.candidate["internal_id"],
+            {
+                "event_type": "AUTO_POLICY_REVALIDATION_FAILED",
+                "campaign_id": fixture.plan["campaign_id"],
+                "internal_id": fixture.candidate["internal_id"],
+                **old_evidence,
+            },
+        )
+
+    html_sha = discovery["artifact"]["source_html_sha256"]
+    parser_version = "match-detail-semantic-0.3.3"
+    semantic_validation = SemanticValidation(
+        semantic_valid=True,
+        errors=(),
+        warnings=(SECOND_YELLOW_UNCERTAINTY_WARNING, "campaign_discovery_remains_unpromoted_pending_independent_review"),
+        checks=tuple(ValidationCheck(name, True, "verified") for name in sorted(REQUIRED_CHECKS)),
+    )
+    observation = SimpleNamespace(
+        validation=semantic_validation,
+        source=SimpleNamespace(parser_version=parser_version, source_html_sha256=html_sha),
+        evidence=(
+            SemanticEvidence(
+                field_path="events.red_cards",
+                state="not_observed",
+                source_reference="direct-red markers absent; second-yellow dismissal observed",
+                raw_value="90+6",
+                normalized_value=None,
+                source_html_sha256=html_sha,
+                parser_version=parser_version,
+            ),
+            SemanticEvidence(
+                field_path="events.second_yellows",
+                state="observed",
+                source_reference="recognized lineup/substitute event cells; icon=TG2; title='Doble Tarjeta Amarilla'",
+                raw_value="player_id=1002; minute=90+6; text=90+6",
+                normalized_value=1,
+                source_html_sha256=html_sha,
+                parser_version=parser_version,
+            ),
+        ),
+    )
+    monkeypatch.setattr(artifacts, "parse_campaign_saved_artifact", lambda *_args, **_kwargs: observation)
+    source_before = (campaign_dir / discovery["artifact"]["artifact_relative_path"] / "source.html").read_bytes()
+    old_failure_sha = fixture.ledger.candidate_events(fixture.plan["campaign_id"], fixture.candidate["internal_id"])[-1]["event_sha256"]
+
+    upgraded = fixture.ledger.revalidate_auto_policy_uncertainty_failure(
+        campaign_id=fixture.plan["campaign_id"],
+        internal_id=fixture.candidate["internal_id"],
+        data_root=fixture.data_root,
+    )
+
+    assert upgraded["status"] == "AUTO_POLICY_REVALIDATED"
+    assert upgraded["semantic_valid"] is True and upgraded["policy_eligible"] is True
+    assert upgraded["semantic_evidence"][0]["state"] == "not_observed"
+    events_after = fixture.ledger.candidate_events(fixture.plan["campaign_id"], fixture.candidate["internal_id"])
+    assert [row["event_type"] for row in events_after][-2:] == ["AUTO_POLICY_REVALIDATION_FAILED", "AUTO_POLICY_REVALIDATED"]
+    assert events_after[-2]["event_sha256"] == old_failure_sha
+    assert (campaign_dir / discovery["artifact"]["artifact_relative_path"] / "source.html").read_bytes() == source_before
+    assert accesses == [fixture.candidate["source_match_url"]]
+    assert fixture.ledger.preflight(fixture.plan["campaign_id"])["candidate_states"] == {
+        "AUTO_POLICY_REVALIDATED": 1,
         "NOT_AUTHORIZED": 2,
     }

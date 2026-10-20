@@ -98,7 +98,7 @@ class _FakeLedger:
 
     def prepare_draft(self, *, campaign_id, internal_id, **kwargs):
         self.calls.append(("prepare", internal_id))
-        if self.states[internal_id] not in {"VALIDATED", "REVALIDATED", "DRAFT_PREPARED"}:
+        if self.states[internal_id] not in {"VALIDATED", "REVALIDATED", "AUTO_POLICY_REVALIDATED", "DRAFT_PREPARED"}:
             raise ValueError("not validated")
         self.states[internal_id] = "DRAFT_PREPARED"
         return {"status": "DRAFT_PREPARED", "draft_sha256": hashlib.sha256(internal_id.encode()).hexdigest()}
@@ -263,6 +263,42 @@ def test_strict_policy_pending_candidate_does_not_stop_later_candidates(tmp_path
     assert by_id[second["internal_id"]]["status"] == "PENDING_HUMAN_REVIEW"
     assert ledger.states[second["internal_id"]] == "DRAFT_PREPARED"
     assert ledger.calls == [("prepare", second["internal_id"])]
+
+
+def test_offline_batch_revalidates_policy_uncertainty_from_saved_artifact(tmp_path, _null_test_lock):
+    candidate = _candidate(34, "II", "AUTO_POLICY_REVALIDATION_FAILED")
+    ledger = _FakeLedger(tmp_path / "store", [candidate])
+    invocations = []
+
+    def policy_upgrade(*, campaign_id, internal_id, data_root):
+        invocations.append((campaign_id, internal_id))
+        ledger.states[internal_id] = "AUTO_POLICY_REVALIDATED"
+        return {
+            "status": "AUTO_POLICY_REVALIDATED",
+            "semantic_valid": True,
+            "policy_eligible": True,
+            "policy_version": "2",
+        }
+
+    ledger.revalidate_auto_policy_uncertainty_failure = policy_upgrade
+    result = operations.run_offline_batch(
+        ledger=ledger,
+        campaign_id=candidate["campaign_id"],
+        data_root=tmp_path,
+        player_inventory_root=tmp_path,
+        player_compact_root=tmp_path,
+        player_team_captures_root=tmp_path,
+        player_published_index_path=tmp_path / "players.json",
+        auto_publish_policy=True,
+        published_root=tmp_path / "published",
+    )
+
+    assert result["status"] == "COMPLETED"
+    assert result["prepared_count"] == 1
+    assert result["candidates"][0]["status"] == "PENDING_HUMAN_REVIEW"
+    assert invocations == [(candidate["campaign_id"], candidate["internal_id"])]
+    assert ledger.calls == [("prepare", candidate["internal_id"])]
+    assert result["navigation_enabled"] is False
 
 
 def test_auto_policy_approved_candidate_resumes_publication_without_new_approval(tmp_path, _null_test_lock):

@@ -38,7 +38,7 @@ from football_data_hub.providers.bdfutbol.match_details.semantic_validation impo
     roster_identity_errors,
 )
 
-PARSER_VERSION = "match-detail-semantic-0.3.2"
+PARSER_VERSION = "match-detail-semantic-0.3.3"
 _TEAM_HREF = re.compile(r"(?:^|/)e/e(\d+)\.html$")
 _COACH_HREF = re.compile(r"(?:^|/)l/l(\d+)\.html$")
 _STADIUM_PATH = re.compile(r"^/es/s/([A-Za-z0-9_-]+)\.html$")
@@ -1446,6 +1446,17 @@ def parse_match_detail_html(
     red_cards = [event for event in events if event.event_type == "red_card"]
     second_yellows = [event for event in events if event.event_type == "second_yellow"]
     unknown_events = [event for event in raw_roster_events if event.kind == "unknown"]
+    if second_yellows:
+        evidence.add(
+            "events.second_yellows",
+            "observed",
+            "recognized lineup/substitute event cells; icon=TG2; title='Doble Tarjeta Amarilla'",
+            "; ".join(
+                f"player_id={event.player_id}; minute={event.minute_literal}; text={event.raw_text}"
+                for event in second_yellows
+            ),
+            len(second_yellows),
+        )
     if not red_cards and not second_yellows and not unknown_events:
         evidence.add("events.red_cards", "explicitly_absent", "all lineup/substitute event cells; title='Tarjeta Roja'", None, None)
     elif not red_cards and second_yellows:

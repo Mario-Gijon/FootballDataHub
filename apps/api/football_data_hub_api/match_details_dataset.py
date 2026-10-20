@@ -79,14 +79,31 @@ def _canonical_json(value: Any) -> bytes:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
 
-def _automatic_policy_validation_from_observation(observation: Any) -> dict[str, Any]:
+def _automatic_policy_validation_from_observation(
+    observation: Any,
+    *,
+    policy_version: str = "2",
+    parser_version_override: str | None = None,
+) -> dict[str, Any]:
     """Rebuild the exact validation envelope persisted by automatic campaigns."""
-    validation = json.loads(_canonical_json(asdict(observation.validation)))
-    parser_version = getattr(observation.source, "parser_version", None)
-    if not isinstance(parser_version, str) or not parser_version:
-        raise MatchDetailsLoadError("La observación no conserva la versión del parser.")
-    validation["parser_version"] = parser_version
-    return validation
+    from football_data_hub.providers.bdfutbol.match_details.automatic_publication_policy import (
+        automatic_policy_validation_envelope,
+    )
+
+    try:
+        return json.loads(
+            _canonical_json(
+                automatic_policy_validation_envelope(
+                    observation,
+                    policy_version=policy_version,
+                    parser_version_override=parser_version_override,
+                )
+            )
+        )
+    except (AttributeError, TypeError, ValueError) as exc:
+        raise MatchDetailsLoadError(
+            "La observación no conserva la evidencia de validación automática."
+        ) from exc
 
 
 def _legacy_recovery_canonical_json(value: Any) -> bytes:
@@ -652,7 +669,7 @@ def _load_campaign_publication_document(
     elif approval.get("schema_version") == AUTO_POLICY_RECEIPT_SCHEMA:
         from football_data_hub.providers.bdfutbol.match_details.automatic_publication_policy import (
             POLICY_ID,
-            POLICY_VERSION,
+            SUPPORTED_POLICY_VERSIONS,
             automatic_publication_decision,
         )
 
@@ -667,12 +684,15 @@ def _load_campaign_publication_document(
         }
         if set(approval) != auto_fields:
             raise MatchDetailsLoadError("El recibo de política automática no cumple el contrato exacto.")
-        allowed, reason = automatic_publication_decision(approval.get("validation"))
+        policy_version = approval.get("policy_version")
+        allowed, reason = automatic_publication_decision(
+            approval.get("validation"), policy_version=policy_version
+        )
         if (
             approval.get("publication_status") != "approved"
             or approval.get("approval_mode") != "automatic_policy"
             or approval.get("policy_id") != POLICY_ID
-            or approval.get("policy_version") != POLICY_VERSION
+            or policy_version not in SUPPORTED_POLICY_VERSIONS
             or not isinstance(approval.get("update_job_id"), str)
             or not re.fullmatch(r"[0-9a-f-]{36}", approval["update_job_id"])
             or not re.fullmatch(r"[a-f0-9]{64}", str(approval.get("candidate_set_sha256", "")))
@@ -754,8 +774,21 @@ def _load_campaign_publication_document(
 
         # The policy receipt and campaign event bind the parser version in
         # addition to the semantic dataclass, so reconstruct the same envelope.
-        rebuilt_validation = _automatic_policy_validation_from_observation(observation)
-        eligible, reason = automatic_publication_decision(rebuilt_validation)
+        policy_version = str(approval.get("policy_version"))
+        persisted_validation = approval.get("validation")
+        parser_version_override = (
+            persisted_validation.get("parser_version")
+            if policy_version == "1" and isinstance(persisted_validation, dict)
+            else None
+        )
+        rebuilt_validation = _automatic_policy_validation_from_observation(
+            observation,
+            policy_version=policy_version,
+            parser_version_override=parser_version_override,
+        )
+        eligible, reason = automatic_publication_decision(
+            rebuilt_validation, policy_version=policy_version
+        )
         if (
             not eligible
             or _sha256(_canonical_json(rebuilt_validation))
@@ -1402,7 +1435,11 @@ def build_legacy_recovery_publication_draft(
     if evidence.get("artifact_relative_path") != artifact.relative_to(store_root).as_posix():
         raise MatchDetailsLoadError("La ruta del HTML original no coincide con el recibo de recuperación.")
     try:
-        observation = parse_saved_artifact(artifact, expected_match=historic_record)
+        observation = parse_saved_artifact(
+            artifact,
+            expected_match=historic_record,
+            parser_version=candidate.get("parser_version"),
+        )
     except (OSError, ValueError, KeyError, TypeError) as exc:
         raise MatchDetailsLoadError(f"El HTML original de 272582 no se pudo revalidar offline: {exc}") from exc
     if (
@@ -1739,17 +1776,20 @@ def build_auto_policy_receipt(
     update_job_id: str,
     candidate_set_sha256: str,
     validation_event_sha256: str,
+    policy_version: str = "2",
     approved_at_utc: datetime | None = None,
 ) -> dict[str, Any]:
     """Create a machine-policy receipt distinct from human approval records."""
 
     from football_data_hub.providers.bdfutbol.match_details.automatic_publication_policy import (
         POLICY_ID,
-        POLICY_VERSION,
+        SUPPORTED_POLICY_VERSIONS,
         automatic_publication_decision,
     )
 
-    eligible, reason = automatic_publication_decision(validation)
+    eligible, reason = automatic_publication_decision(
+        validation, policy_version=policy_version
+    )
     if (
         draft.get("schema_version") != CAMPAIGN_DRAFT_SCHEMA
         or draft.get("source_kind") != "campaign_discovery"
@@ -1759,6 +1799,7 @@ def build_auto_policy_receipt(
         or draft.get("promotion_eligible") is not False
         or _sha256(_canonical_json(draft.get("details"))) != draft.get("details_sha256")
         or not eligible
+        or policy_version not in SUPPORTED_POLICY_VERSIONS
         or not isinstance(update_job_id, str)
         or not re.fullmatch(r"[0-9a-f-]{36}", update_job_id)
         or not re.fullmatch(r"[a-f0-9]{64}", candidate_set_sha256)
@@ -1783,7 +1824,7 @@ def build_auto_policy_receipt(
         "publication_status": "approved",
         "approval_mode": "automatic_policy",
         "policy_id": POLICY_ID,
-        "policy_version": POLICY_VERSION,
+        "policy_version": policy_version,
         "update_job_id": update_job_id,
         "candidate_set_sha256": candidate_set_sha256,
         "validation_event_sha256": validation_event_sha256,
