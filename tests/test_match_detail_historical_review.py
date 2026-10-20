@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from dataclasses import replace
+from datetime import datetime
 from types import SimpleNamespace
 
 import pytest
 
 from football_data_hub.providers.bdfutbol.match_details.historical_review import (
+    MatchCampaignAuthorizationError,
+    prepare_historical_recovery_candidate,
     verify_historical_stop_evidence,
+    verify_historical_recovery_candidate,
 )
 from tests.match_detail_semantic_fixtures import (
     DISCOVERY_ID,
@@ -212,4 +217,88 @@ def test_historical_review_rejects_semantic_result_marked_invalid(tmp_path, monk
             generation_root=data_root / "generation",
             inventory_dir=inventory_dir,
             store_root=store_root,
+        )
+
+
+def test_offline_recovery_candidate_is_immutable_idempotent_and_not_approved(
+    tmp_path, monkeypatch
+):
+    plan, data_root, inventory_dir, store_root, artifact_dir = _fixture(tmp_path, monkeypatch)
+    historical_paths = [
+        store_root / "states" / f"{INVENTORY_ID}.json",
+        artifact_dir / "raw/source.html",
+        artifact_dir / "metadata.json",
+        artifact_dir / "manifest.json",
+    ]
+    before = {path: _sha(path.read_bytes()) for path in historical_paths}
+
+    first = prepare_historical_recovery_candidate(
+        plan,
+        data_root=data_root,
+        generation_root=data_root / "generation",
+        inventory_dir=inventory_dir,
+        store_root=store_root,
+        verified_at_utc=datetime.fromisoformat("2026-10-20T12:00:00+00:00"),
+    )
+    second = prepare_historical_recovery_candidate(
+        plan,
+        data_root=data_root,
+        generation_root=data_root / "generation",
+        inventory_dir=inventory_dir,
+        store_root=store_root,
+        verified_at_utc=datetime.fromisoformat("2026-10-20T13:00:00+00:00"),
+    )
+
+    assert first == second
+    assert first["status"] == "VALIDATED_PENDING_EXPLICIT_REVIEW"
+    candidate_path = store_root / "recoveries" / first["recovery_id"] / "candidate.json"
+    receipt_path = store_root / "recoveries" / first["recovery_id"] / "receipt.json"
+    candidate = json.loads(candidate_path.read_text())
+    receipt = json.loads(receipt_path.read_text())
+    assert candidate["evidence"]["semantic_valid"] is True
+    assert candidate["publication_eligible"] is False
+    assert candidate["human_approval_required"] is True
+    assert candidate["source_access_status_original"] == "INVALID_CONTENT"
+    assert receipt["source_access_status_preserved"] == "INVALID_CONTENT"
+    assert receipt["publication_status"] == "NOT_PUBLISHED"
+    assert "approval" not in candidate
+    assert {path: _sha(path.read_bytes()) for path in historical_paths} == before
+    state = verify_historical_recovery_candidate(
+        store_root,
+        data_root=data_root,
+        expected_match=expected_match(),
+        active_generation_id=None,
+        active_generation_manifest_sha256=None,
+    )
+    assert state == {
+        "source_match_id": "272582",
+        "status": "VALIDATED_PENDING_EXPLICIT_REVIEW",
+        "recovery_id": first["recovery_id"],
+        "candidate_sha256": first["candidate_sha256"],
+        "receipt_sha256": first["receipt_sha256"],
+        "publication_status": "NOT_PUBLISHED",
+    }
+
+
+def test_offline_recovery_rejects_corrupt_existing_derived_candidate(tmp_path, monkeypatch):
+    plan, data_root, inventory_dir, store_root, _ = _fixture(tmp_path, monkeypatch)
+    kwargs = {
+        "data_root": data_root,
+        "generation_root": data_root / "generation",
+        "inventory_dir": inventory_dir,
+        "store_root": store_root,
+    }
+    candidate = prepare_historical_recovery_candidate(plan, **kwargs)
+    candidate_path = store_root / "recoveries" / candidate["recovery_id"] / "candidate.json"
+    candidate_path.write_bytes(candidate_path.read_bytes() + b" ")
+
+    with pytest.raises(MatchCampaignAuthorizationError, match="hashes del candidato"):
+        prepare_historical_recovery_candidate(plan, **kwargs)
+    with pytest.raises(MatchCampaignAuthorizationError, match="evidencia del recibo"):
+        verify_historical_recovery_candidate(
+            store_root,
+            data_root=tmp_path,
+            expected_match=expected_match(),
+            active_generation_id=None,
+            active_generation_manifest_sha256=None,
         )

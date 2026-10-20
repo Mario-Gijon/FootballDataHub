@@ -116,7 +116,9 @@ def test_saved_272582_artifact_is_semantically_readable_without_mutation(monkeyp
     assert len(observation.away.substitutes or ()) == 9
     assert observation.home.coach and observation.home.coach.name == "Manolo Herrero"
     assert observation.away.coach and observation.away.coach.name == "Albelda"
-    assert observation.stadium_id.value == 100355
+    # Stadium IDs are preserved as source strings by ProvenancedValue; the
+    # referee ID is an integer in the semantic contract.
+    assert observation.stadium_id.value == "100355"
     assert observation.referee_id.value == 601083
     assert observation.referee_name.value == "Campos Salinas"
     assert sum(

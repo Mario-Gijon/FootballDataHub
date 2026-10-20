@@ -506,6 +506,31 @@ def _load_report(args: argparse.Namespace) -> tuple[dict[str, Any], list[dict[st
 
     acquisition_inventory = build_match_detail_inventory(verified)
     reconciliation = MatchDetailStore(args.store_root).reconcile(acquisition_inventory)
+    historical_recovery = None
+    historical_recovery_error = None
+    legacy_record = next(
+        (
+            item
+            for item in acquisition_inventory["matches"]
+            if item.get("source_match_id") == "272582"
+        ),
+        None,
+    )
+    if legacy_record is not None:
+        from .historical_review import verify_historical_recovery_candidate
+
+        try:
+            historical_recovery = verify_historical_recovery_candidate(
+                args.store_root,
+                data_root=data_root,
+                expected_match=legacy_record,
+                active_generation_id=verified.generation_id,
+                active_generation_manifest_sha256=verified.manifest_sha256,
+            )
+        except Exception as exc:
+            # Fail closed: retain the original stop and add an explicit invalid
+            # recovery reason if a derived receipt exists but no longer verifies.
+            historical_recovery_error = f"{type(exc).__name__}: {exc}"
     campaign_states, campaign_summaries = _read_campaign_states(args.store_root / "campaigns")
     proposal_root = args.store_root / "campaign-proposals"
     proposals = load_match_campaign_proposals(proposal_root)
@@ -576,7 +601,21 @@ def _load_report(args: argparse.Namespace) -> tuple[dict[str, Any], list[dict[st
             continue
         internal_id = diag.get("internal_id")
         if internal_id in {item["internal_id"] for item in inventory["matches"]}:
+            if (
+                historical_recovery is not None
+                and internal_id == "pf-2026-27-group-ii-bdfutbol-272582"
+                and diag.get("error_code") == "IDENTITY_OR_CONTENT_UNVERIFIED"
+            ):
+                continue
             blocked.setdefault(internal_id, []).append(str(diag.get("error_code") or "STOP_DIAGNOSTIC"))
+    if historical_recovery is not None:
+        blocked.setdefault("pf-2026-27-group-ii-bdfutbol-272582", []).append(
+            "LEGACY_RECOVERY_VALIDATED_PENDING_EXPLICIT_REVIEW"
+        )
+    elif historical_recovery_error is not None:
+        blocked.setdefault("pf-2026-27-group-ii-bdfutbol-272582", []).append(
+            "LEGACY_RECOVERY_EVIDENCE_INVALID"
+        )
     active_attempt = reconciliation.get("active_navigation_attempt")
     if isinstance(active_attempt, dict):
         internal_id = active_attempt.get("internal_id")
@@ -608,6 +647,14 @@ def _load_report(args: argparse.Namespace) -> tuple[dict[str, Any], list[dict[st
         "integrity_blocked": reconciliation["integrity_blocked"],
     }
     status_report["campaigns"] = campaign_summaries
+    if historical_recovery is not None:
+        status_report["historical_recovery"] = historical_recovery
+    elif historical_recovery_error is not None:
+        status_report["historical_recovery"] = {
+            "source_match_id": "272582",
+            "status": "INVALID_RECOVERY_EVIDENCE",
+            "diagnostic": historical_recovery_error,
+        }
     status_report["proposals"] = [
         {"campaign_id": item["campaign_id"], "candidate_count": item["candidate_count"],
          "authorization_status": item["authorization"]["status"], "proposal_id": item["proposal_id"]}

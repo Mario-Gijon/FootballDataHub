@@ -504,7 +504,6 @@ def run_competition_update_detail_acquisition(
     ):
         raise MatchCampaignAuthorizationError("El ID de trabajo global no es válido")
     from football_data_hub.providers.bdfutbol.match_details.automatic_publication_policy import (
-        BLOCKED_SOURCE_MATCH_IDS,
         POLICY_ID,
         POLICY_VERSION,
         candidate_set_sha256 as build_candidate_set_sha256,
@@ -544,8 +543,7 @@ def run_competition_update_detail_acquisition(
                 + candidate["internal_id"]
             )
         if (
-            candidate["source_match_id"] in BLOCKED_SOURCE_MATCH_IDS
-            or candidate["internal_id"] in context.get("published_ids", set())
+            candidate["internal_id"] in context.get("published_ids", set())
             or candidate["internal_id"] in context.get("captured_ids", set())
             or candidate["internal_id"] in context.get("blocked_ids", set())
             or current.get("detail_status") not in {

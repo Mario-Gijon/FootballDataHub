@@ -197,9 +197,9 @@ def _reload_match_details_after_manual_update(
         match_bundle=match_results,
         player_ids=player_ids,
     )
-    blocked_id = "pf-2026-27-group-ii-bdfutbol-272582"
-    if blocked_id in replacement:
-        raise ManualUpdateError("El partido 272582 sigue excluido de publicaciones automáticas.")
+    # Do not keep a permanent ID-based exclusion here. The publication loader
+    # remains the gate: a recovered legacy match is served only after the same
+    # integrity, provenance, identity and approval checks as every publication.
     app.state.match_detail_documents = replacement
     app.state.match_detail_publication_error = None
 

@@ -657,7 +657,6 @@ class OperationalMatchCampaignLedger:
         elif kind == "AUTO_POLICY_AUTHORIZED":
             authorization = event.get("authorization")
             from football_data_hub.providers.bdfutbol.match_details.automatic_publication_policy import (
-                BLOCKED_SOURCE_MATCH_IDS,
                 candidate_set_sha256 as build_candidate_set_sha256,
             )
 
@@ -680,7 +679,6 @@ class OperationalMatchCampaignLedger:
                 or authorization.get("internal_id") != internal_id
                 or authorization.get("source_match_id") != candidate["source_match_id"]
                 or authorization.get("source_match_url") != candidate["source_match_url"]
-                or candidate["source_match_id"] in BLOCKED_SOURCE_MATCH_IDS
                 or authorization.get("proposal_sha256") != campaign["proposal_sha256"]
                 or authorization.get("source_generation_id") != campaign["source"]["generation_id"]
                 or authorization.get("source_generation_manifest_sha256")
@@ -1714,7 +1712,6 @@ class OperationalMatchCampaignLedger:
         """
 
         from football_data_hub.providers.bdfutbol.match_details.automatic_publication_policy import (
-            BLOCKED_SOURCE_MATCH_IDS,
             candidate_set_sha256 as build_candidate_set_sha256,
         )
 
@@ -1753,8 +1750,7 @@ class OperationalMatchCampaignLedger:
                 )
             )
             if (
-                candidate["source_match_id"] in BLOCKED_SOURCE_MATCH_IDS
-                or candidate_set_sha256 != expected_candidate_set
+                candidate_set_sha256 != expected_candidate_set
                 or not eligible_status
                 or not same_match
                 or current_status.get("source_match_url") != candidate["source_match_url"]

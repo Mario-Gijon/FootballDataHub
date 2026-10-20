@@ -5,7 +5,6 @@ import uuid
 import pytest
 
 from football_data_hub.providers.bdfutbol.match_details.automatic_publication_policy import (
-    BLOCKED_SOURCE_MATCH_IDS,
     POLICY_ID,
     POLICY_VERSION,
     REQUIRED_CHECKS,
@@ -120,7 +119,7 @@ def test_candidate_set_hash_is_bound_to_job_identity_and_exact_candidates() -> N
     assert first != changed
 
 
-def test_ledger_rejects_candidate_set_tampering_and_the_blocked_match() -> None:
+def test_ledger_rejects_candidate_set_tampering_without_id_specific_exclusions() -> None:
     candidate = _candidate()
     campaign, event = _authorization_payload("f" * 64, candidate)
     with pytest.raises(MatchCampaignIntegrityError):
@@ -128,12 +127,15 @@ def test_ledger_rejects_candidate_set_tampering_and_the_blocked_match() -> None:
             event, campaign, candidate["internal_id"], []
         )
 
-    blocked = _candidate(next(iter(BLOCKED_SOURCE_MATCH_IDS)))
-    blocked_campaign, blocked_event = _authorization_payload("", blocked)
-    with pytest.raises(MatchCampaignIntegrityError):
-        OperationalMatchCampaignLedger._validate_event_payload(
-            blocked_event, blocked_campaign, blocked["internal_id"], []
-        )
+    recovered = _candidate("272582")
+    recovered_campaign, recovered_event = _authorization_payload("", recovered)
+    # The ID is no longer rejected by a permanent code list. The regular
+    # candidate-set digest and current evidence-based review state still gate
+    # authorization in the operational caller. This payload is structurally
+    # valid; the caller still refuses it while the recovery state is pending.
+    OperationalMatchCampaignLedger._validate_event_payload(
+        recovered_event, recovered_campaign, recovered["internal_id"], []
+    )
 
 
 def test_policy_version_and_identity_are_explicit() -> None:

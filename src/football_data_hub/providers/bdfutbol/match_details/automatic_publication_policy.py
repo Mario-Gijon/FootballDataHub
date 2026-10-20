@@ -14,9 +14,6 @@ from typing import Any
 
 POLICY_ID = "football-data-hub.strict-match-details"
 POLICY_VERSION = "1"
-# Explicitly unresolved discovery from earlier MATCH work; never candidate for
-# the automatic route until its block is resolved through the established path.
-BLOCKED_SOURCE_MATCH_IDS = frozenset({"272582"})
 NON_BLOCKING_WARNINGS = frozenset(
     {
         "campaign_discovery_remains_unpromoted_pending_independent_review",

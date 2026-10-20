@@ -1238,9 +1238,6 @@ class ManualUpdateManager:
         from types import SimpleNamespace
 
         from football_data_hub.providers.bdfutbol.match_details.campaign_operations import run_offline_batch
-        from football_data_hub.providers.bdfutbol.match_details.automatic_publication_policy import (
-            BLOCKED_SOURCE_MATCH_IDS,
-        )
         from football_data_hub.providers.bdfutbol.match_details.operational_campaign import (
             OperationalMatchCampaignLedger,
         )
@@ -1268,13 +1265,11 @@ class ManualUpdateManager:
         self._save(job)
         status_report, existing_proposals, context = _load_report(args)
         rows = status_report.get("matches", [])
-        blocked_source_ids = set(BLOCKED_SOURCE_MATCH_IDS)
         eligible = [
             row for row in rows
             if row.get("status") == "played"
             and row.get("source_match_url")
             and row.get("detail_status") in {"played_pending_acquisition", "included_in_existing_campaign"}
-            and row.get("source_match_id") not in blocked_source_ids
             and row.get("internal_id") not in context["published_ids"]
             and row.get("internal_id") not in context["captured_ids"]
             and row.get("internal_id") not in context["blocked_ids"]
@@ -1283,8 +1278,7 @@ class ManualUpdateManager:
         blocked_excluded = sum(
             1 for row in rows
             if row.get("status") == "played"
-            and row.get("source_match_id") in blocked_source_ids
-            and row.get("internal_id") not in context["published_ids"]
+            and row.get("detail_status") == "blocked_requires_human_review"
         )
         if not eligible:
             return {
