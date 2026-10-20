@@ -1,8 +1,9 @@
-"""Admin-only manual updates using existing BDFutbol pipelines.
+"""Loopback-only incremental updates using existing BDFutbol pipelines.
 
-Acquisitions are immutable and serialized. A successful job prepares a
-validated candidate and comparison report; activation and team-index changes
-require explicit administrator approval of the displayed candidate fingerprint.
+Competition snapshots are acquired sequentially, validated, compared by stable
+IDs, and activated automatically only when the generation is conflict-free.
+Team capture helpers remain for historical job compatibility; they are not
+exposed by the current update API.
 """
 
 from __future__ import annotations
@@ -23,7 +24,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from football_data_hub_api.config import GroupDatasetSettings
 
@@ -142,6 +143,24 @@ def utc_now() -> str:
 
 def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def _candidate_sha256(candidate: dict[str, Any]) -> str:
+    body = {key: value for key, value in candidate.items() if key != "candidate_sha256"}
+    return _sha256(json.dumps(body, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode())
+
+
+def public_manual_update_job(job: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Project only user-facing progress; source paths and integrity hashes stay local."""
+    if job is None:
+        return None
+    return {
+        key: job.get(key)
+        for key in (
+            "job_id", "scope", "team_id", "group", "status", "stage",
+            "created_at", "updated_at", "finished_at", "summary", "error",
+        )
+    }
 
 
 def _reject_symlink_components(path: Path) -> None:
@@ -380,16 +399,261 @@ def _without_capture_provenance(value: Any) -> Any:
     return value
 
 
+def _team_comparison_value(relative: str, value: Any) -> Any:
+    cleaned = _without_capture_provenance(value)
+    if relative == "normalized/transfers.json" and isinstance(cleaned, dict):
+        records = cleaned.get("records")
+        if not isinstance(records, list):
+            raise ManualUpdateError("La vista normalizada de traspasos no contiene una colección verificable.")
+        keyed: list[tuple[tuple[str, int], dict[str, Any]]] = []
+        for record in records:
+            if not isinstance(record, dict) or record.get("direction") not in {"incoming", "outgoing"}:
+                raise ManualUpdateError("La vista de traspasos contiene una dirección no verificable.")
+            try:
+                player_id = int(record["player_id"])
+            except (KeyError, TypeError, ValueError) as exc:
+                raise ManualUpdateError("La vista de traspasos contiene un jugador sin ID verificable.") from exc
+            keyed.append(((str(record["direction"]), player_id), record))
+        keys = [key for key, _record in keyed]
+        if len(keys) != len(set(keys)):
+            raise ManualUpdateError("La vista de traspasos contiene movimientos duplicados por dirección e ID de jugador.")
+        cleaned["records"] = [record for _key, record in sorted(keyed, key=lambda item: item[0])]
+    return cleaned
+
+
+def _team_change_details(
+    candidate_dir: Path,
+    prior_dir: Path | None,
+    changed_files: list[str],
+) -> list[dict[str, Any]]:
+    """Build a compact, semantic review summary from the two verified captures."""
+    if prior_dir is None:
+        return [{"section": "Perfil del equipo", "items": ["Se publicó la primera captura verificada."]}]
+
+    def payload(base: Path, relative: str) -> Any:
+        try:
+            return _without_capture_provenance(json.loads((base / relative).read_text(encoding="utf-8")))
+        except (OSError, ValueError, TypeError) as exc:
+            raise ManualUpdateError(f"No se pudo preparar la revisión de {relative}.") from exc
+
+    def player_names(base: Path) -> dict[int, str]:
+        players_payload = payload(base, "normalized/players.json")
+        records = players_payload.get("records") if isinstance(players_payload, dict) else None
+        if not isinstance(records, list):
+            raise ManualUpdateError("La captura no contiene un catálogo de jugadores verificable para la revisión.")
+        return {
+            int(record["player_id"]): str(record.get("display_name") or record.get("full_name") or record["player_id"])
+            for record in records
+            if isinstance(record, dict) and record.get("player_id") is not None
+        }
+
+    old_names = player_names(prior_dir)
+    new_names = player_names(candidate_dir)
+    names = {**old_names, **new_names}
+    field_labels = {
+        "jersey_number": "dorsal",
+        "matches_played": "partidos jugados",
+        "starts": "titularidades",
+        "full_matches": "partidos completos",
+        "minutes_played": "minutos",
+        "minutes_per_goal": "minutos por gol",
+        "goals": "goles",
+        "penalty_goals": "goles de penalti",
+        "own_goals": "autogoles",
+        "yellow_cards": "tarjetas amarillas",
+        "red_cards": "tarjetas rojas",
+        "team_wins": "victorias del equipo",
+        "team_draws": "empates del equipo",
+        "team_losses": "derrotas del equipo",
+        "matches_substituted": "partidos sustituidos",
+        "substitute_appearances": "entradas desde el banquillo",
+        "unused_substitute_calls": "convocatorias como suplente sin entrar",
+        "goals_conceded": "goles recibidos",
+        "matches_managed": "partidos dirigidos",
+        "coached_matchdays_source": "jornadas dirigidas",
+    }
+
+    def display(value: Any) -> str:
+        if value is None:
+            return "—"
+        if isinstance(value, list):
+            return ", ".join(map(str, value)) or "—"
+        return str(value)
+
+    def row_details(relative: str, *, key_field: str, section: str) -> dict[str, Any] | None:
+        old_payload = payload(prior_dir, relative)
+        new_payload = payload(candidate_dir, relative)
+        old_rows = old_payload.get("records") if isinstance(old_payload, dict) else None
+        new_rows = new_payload.get("records") if isinstance(new_payload, dict) else None
+        if not isinstance(old_rows, list) or not isinstance(new_rows, list):
+            raise ManualUpdateError(f"La vista {relative} no contiene filas para revisar.")
+        old_by_id = {int(row[key_field]): row for row in old_rows if isinstance(row, dict) and row.get(key_field) is not None}
+        new_by_id = {int(row[key_field]): row for row in new_rows if isinstance(row, dict) and row.get(key_field) is not None}
+        items: list[str] = []
+        identity_fields = {key_field, "team_id", "season", "competition", "group", "source_view", "source_views"}
+        for record_id in sorted(set(old_by_id) | set(new_by_id)):
+            before = old_by_id.get(record_id)
+            after = new_by_id.get(record_id)
+            if before is None or after is None:
+                kind = "añadido" if before is None else "retirado"
+                items.append(f"{names.get(record_id, str(record_id))} (#{record_id}): registro {kind}.")
+                continue
+            fields = sorted((set(before) | set(after)) - identity_fields)
+            changes = [
+                f"{field_labels.get(field, field.replace('_', ' '))} {display(before.get(field))} → {display(after.get(field))}"
+                for field in fields if before.get(field) != after.get(field)
+            ]
+            if changes:
+                items.append(f"{names.get(record_id, str(record_id))} (#{record_id}): " + "; ".join(changes) + ".")
+        return {"section": section, "items": items} if items else None
+
+    details: list[dict[str, Any]] = []
+    for relative, section in (
+        ("normalized/memberships.json", "Plantilla"),
+        ("normalized/player_statistics.json", "Estadísticas de jugadores"),
+    ):
+        if relative in changed_files:
+            detail = row_details(relative, key_field="player_id", section=section)
+            if detail:
+                details.append(detail)
+
+    for relative, section, record_label in (
+        ("normalized/player_match_minutes.json", "Seguimiento · minutos", "registros de minutos"),
+        ("normalized/player_match_metrics.json", "Seguimiento · eventos", "métricas"),
+    ):
+        if relative not in changed_files:
+            continue
+        old_rows = payload(prior_dir, relative).get("records", [])
+        new_rows = payload(candidate_dir, relative).get("records", [])
+        key_fields = ("match_id", "player_id", "metric")
+
+        def row_key(row: dict[str, Any]) -> tuple[str, ...]:
+            return tuple(str(row.get(field)) for field in key_fields)
+
+        old_by_key = {row_key(row): row for row in old_rows if isinstance(row, dict)}
+        new_by_key = {row_key(row): row for row in new_rows if isinstance(row, dict)}
+        grouped: dict[tuple[str, str], dict[str, Any]] = {}
+        for item_key in set(old_by_key) | set(new_by_key):
+            before = old_by_key.get(item_key)
+            after = new_by_key.get(item_key)
+            row = after or before
+            assert row is not None
+            group_key = (str(row.get("matchday") or "?"), str(row.get("match_id") or "?"))
+            bucket = grouped.setdefault(group_key, {"added": 0, "removed": 0, "updated": 0, "metrics": {}})
+            change_kind = "added" if before is None else "removed" if after is None else "updated"
+            if before is None or after is None or before != after:
+                bucket[change_kind] += 1
+                metric = str(row.get("metric") or "registro")
+                bucket["metrics"][metric] = bucket["metrics"].get(metric, 0) + (1 if change_kind == "added" else 0)
+        items = []
+        for (matchday, match_id), bucket in sorted(grouped.items(), key=lambda item: (item[0][0], item[0][1])):
+            if not (bucket["added"] or bucket["removed"] or bucket["updated"]):
+                continue
+            singular_label = "registro de minutos" if relative.endswith("minutes.json") else "métrica"
+            status = f"+{bucket['added']} {singular_label if bucket['added'] == 1 else record_label}"
+            if bucket["removed"]:
+                status += f", −{bucket['removed']} retirados"
+            if bucket["updated"]:
+                status += f", {bucket['updated']} actualizados"
+            metrics = bucket["metrics"]
+            if metrics and relative == "normalized/player_match_metrics.json":
+                plural_labels = {
+                    "goals": ("gol", "goles"),
+                    "yellow_cards": ("tarjeta amarilla", "tarjetas amarillas"),
+                    "red_cards": ("tarjeta roja", "tarjetas rojas"),
+                    "own_goals": ("autogol", "autogoles"),
+                }
+                metric_labels = []
+                for metric, count in sorted(metrics.items()):
+                    singular, plural = plural_labels.get(metric, (field_labels.get(metric, metric.replace('_', ' ')), field_labels.get(metric, metric.replace('_', ' '))))
+                    metric_labels.append(f"{count} {singular if count == 1 else plural}")
+                status += " (" + ", ".join(metric_labels) + ")"
+            items.append(f"Jornada {matchday}, partido {match_id}: {status}.")
+        if items:
+            details.append({"section": section, "items": items})
+
+    if "normalized/profile_references.json" in changed_files:
+        before = payload(prior_dir, "normalized/profile_references.json")
+        after = payload(candidate_dir, "normalized/profile_references.json")
+        items = []
+        for key in ("match_ids_from_profile", "team_ids_from_profile"):
+            old_values = set(map(str, before.get(key, [])))
+            new_values = set(map(str, after.get(key, [])))
+            added, removed = sorted(new_values - old_values), sorted(old_values - new_values)
+            entity = "partidos" if key == "match_ids_from_profile" else "equipos"
+            if added:
+                items.append(f"Nuevos {entity} referenciados: {', '.join(added)}.")
+            if removed:
+                items.append(f"{entity.capitalize()} que dejaron de estar referenciados: {', '.join(removed)}.")
+        if items:
+            details.append({"section": "Referencias del perfil", "items": items})
+
+    if "normalized/team_season.json" in changed_files:
+        before = payload(prior_dir, "normalized/team_season.json").get("record", {})
+        after = payload(candidate_dir, "normalized/team_season.json").get("record", {})
+        old_coaches = {int(item["coach_id"]): item for item in before.get("coaches", []) if item.get("coach_id") is not None}
+        new_coaches = {int(item["coach_id"]): item for item in after.get("coaches", []) if item.get("coach_id") is not None}
+        items = []
+        for coach_id in sorted(set(old_coaches) | set(new_coaches)):
+            old, new = old_coaches.get(coach_id), new_coaches.get(coach_id)
+            if old is None or new is None:
+                items.append(f"Entrenador #{coach_id}: registro {'añadido' if old is None else 'retirado'}.")
+                continue
+            name = str(new.get("display_name") or old.get("display_name") or f"#{coach_id}")
+            changes = [
+                f"{field_labels.get(field, field.replace('_', ' '))} {display(old.get(field))} → {display(new.get(field))}"
+                for field in sorted(set(old) | set(new))
+                if field not in {"coach_id", "source_views"} and old.get(field) != new.get(field)
+            ]
+            if changes:
+                items.append(f"{name} (#{coach_id}): " + "; ".join(changes) + ".")
+        if items:
+            details.append({"section": "Entrenador y temporada", "items": items})
+
+    summarized = {
+        "normalized/memberships.json", "normalized/player_statistics.json",
+        "normalized/player_match_minutes.json", "normalized/player_match_metrics.json",
+        "normalized/profile_references.json", "normalized/team_season.json",
+    }
+    for relative in changed_files:
+        if relative not in summarized:
+            details.append({"section": "Otros datos del equipo", "items": [f"Cambió {relative.removeprefix('normalized/').removesuffix('.json').replace('_', ' ')}."]})
+    return details
+
+
 def _team_data_changes(
     candidate_dir: Path,
     prior_entry: dict[str, Any],
     index_path: Path,
 ) -> list[str]:
-    old_hashes = {
-        name: digest
-        for name, digest in (prior_entry.get("files_sha256") or {}).items()
-        if str(name).startswith("normalized/")
-    }
+    # Published team indexes split normalized-file hashes across several
+    # fields (core profile, follow states, transfers, and the complete
+    # normalized inventory). Merge all of them before comparing; silently
+    # omitting one makes a verified historical view look corrupt.
+    old_hashes: dict[str, str] = {}
+    for field in (
+        "files_sha256",
+        "normalized_files_sha256",
+        "follow_files_sha256",
+        "transfers_files_sha256",
+    ):
+        values = prior_entry.get(field) or {}
+        if not isinstance(values, dict):
+            raise ManualUpdateError(f"El índice del equipo contiene hashes inválidos en {field}.")
+        for name, digest in values.items():
+            name = str(name)
+            if not name.startswith("normalized/"):
+                continue
+            if (
+                not isinstance(digest, str)
+                or len(digest) != 64
+                or any(character not in "0123456789abcdef" for character in digest.lower())
+            ):
+                raise ManualUpdateError(f"El índice del equipo contiene un SHA-256 inválido para {name}.")
+            previous_digest = old_hashes.get(name)
+            if previous_digest is not None and not hmac.compare_digest(previous_digest, digest):
+                raise ManualUpdateError(f"El índice del equipo contiene hashes contradictorios para {name}.")
+            old_hashes[name] = digest
     prior_value = prior_entry.get("directory")
     if not prior_value:
         return sorted(path.relative_to(candidate_dir).as_posix() for path in (candidate_dir / "normalized").glob("*.json"))
@@ -403,18 +667,30 @@ def _team_data_changes(
         for path in (candidate_dir / "normalized").glob("*.json")
         if path.is_file()
     }
-    for relative in sorted(set(candidate_files) | set(old_hashes)):
+    prior_files = {
+        path.relative_to(prior_dir).as_posix(): path
+        for path in (prior_dir / "normalized").glob("*.json")
+        if path.is_file()
+    }
+    for relative in sorted(set(candidate_files) | set(old_hashes) | set(prior_files)):
         new_path = candidate_files.get(relative)
         old_path = prior_dir / relative
-        if new_path is None or not old_path.is_file():
+        old_exists = old_path.is_file()
+        expected_hash = old_hashes.get(relative)
+        if old_exists and expected_hash is None:
+            raise ManualUpdateError(f"La captura publicada no tiene un hash verificable para {relative}.")
+        if not old_exists and expected_hash is not None:
+            raise ManualUpdateError(f"El índice declara una vista publicada ausente: {relative}.")
+        if old_exists:
+            actual_hash = hashlib.sha256(old_path.read_bytes()).hexdigest()
+            if not hmac.compare_digest(actual_hash, expected_hash or ""):
+                raise ManualUpdateError(f"La captura publicada del equipo no supera la comprobación de integridad: {relative}.")
+        if new_path is None or not old_exists:
             changes.append(relative)
             continue
-        expected_hash = old_hashes.get(relative)
-        if not isinstance(expected_hash, str) or hashlib.sha256(old_path.read_bytes()).hexdigest() != expected_hash:
-            raise ManualUpdateError(f"La captura publicada del equipo no supera la comprobación de integridad: {relative}.")
         try:
-            new_payload = _without_capture_provenance(json.loads(new_path.read_text(encoding="utf-8")))
-            old_payload = _without_capture_provenance(json.loads(old_path.read_text(encoding="utf-8")))
+            new_payload = _team_comparison_value(relative, json.loads(new_path.read_text(encoding="utf-8")))
+            old_payload = _team_comparison_value(relative, json.loads(old_path.read_text(encoding="utf-8")))
         except (OSError, ValueError, TypeError) as exc:
             raise ManualUpdateError(f"No se pudo comparar la vista normalizada {relative}.") from exc
         if json.dumps(new_payload, ensure_ascii=False, sort_keys=True) != json.dumps(old_payload, ensure_ascii=False, sort_keys=True):
@@ -430,7 +706,6 @@ class ManualUpdateManager:
         *,
         project_root: Path,
         data_root: Path | None,
-        admin_token: str | None,
         profile_dir: Path,
         browser_executable: Path | None,
         group_match_paths: dict[str, Path],
@@ -446,7 +721,6 @@ class ManualUpdateManager:
     ) -> None:
         self.project_root = project_root.resolve()
         self.data_root = data_root.resolve() if data_root else None
-        self.admin_token = admin_token.strip() if admin_token and admin_token.strip() else None
         self.profile_dir = profile_dir.expanduser().resolve()
         self.browser_executable = browser_executable.expanduser().resolve() if browser_executable else None
         self.group_match_paths = {key: value.resolve() for key, value in group_match_paths.items()}
@@ -464,6 +738,7 @@ class ManualUpdateManager:
         self._mutex = threading.RLock()
         self._leases: dict[str, tuple[int, int]] = {}
         self._active_processes: set[subprocess.Popen[bytes]] = set()
+        self.on_competition_applied: Callable[[dict[str, Any]], None] | None = None
         self._recover_interrupted_jobs()
 
     def close(self) -> None:
@@ -486,7 +761,7 @@ class ManualUpdateManager:
     @property
     def enabled(self) -> bool:
         return bool(
-            self.admin_token and self.root and self.data_root
+            self.root and self.data_root
             and not self.data_root.is_relative_to(self.project_root)
         )
 
@@ -531,9 +806,6 @@ class ManualUpdateManager:
                 and all(path.is_file() for path in self.group_match_paths.values())
             )
         return False
-
-    def authenticate(self, supplied: str | None) -> bool:
-        return bool(self.admin_token and supplied and hmac.compare_digest(self.admin_token, supplied))
 
     def _jobs_dir(self) -> Path:
         if self.root is None:
@@ -618,7 +890,7 @@ class ManualUpdateManager:
             if item.get("scope") != scope or (scope == "team" and item.get("team_id") != team_id):
                 continue
             all_jobs.append(item)
-            if item.get("status") == "published":
+            if item.get("status") in {"applied", "applied_reload_failed"}:
                 published.append(item)
             if item.get("status") == "completed":
                 unchanged.append(item)
@@ -731,18 +1003,21 @@ class ManualUpdateManager:
                 job["candidate"] = self._update_competition(job, log_path)
             else:
                 job["candidate"] = self._update_team(job, log_path)
-            job["candidate_sha256"] = _sha256(
-                json.dumps(job["candidate"], sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode()
-            )
+            job["candidate_sha256"] = _candidate_sha256(job["candidate"])
             job["candidate"]["candidate_sha256"] = job["candidate_sha256"]
             no_changes = bool(job["candidate"].get("no_changes"))
-            job.update({
-                "status": "completed" if no_changes else "review_required",
-                "stage": "no_changes" if no_changes else "candidate_validated",
-                "finished_at": utc_now(),
-            })
-            self._save(job)
-        except Exception as exc:  # errors are stored for the admin job view
+            if job["scope"] == "competition":
+                self._finish_competition_update(job, log_path, no_changes=no_changes)
+            else:
+                # Preserve the old team-capture job contract for recovery of
+                # existing records. No team-update route is exposed by the API.
+                job.update({
+                    "status": "completed" if no_changes else "review_required",
+                    "stage": "no_changes" if no_changes else "candidate_validated",
+                    "finished_at": utc_now(),
+                })
+                self._save(job)
+        except Exception as exc:  # errors are stored for the local update panel
             job.update({
                 "status": "failed",
                 "stage": "failed",
@@ -760,6 +1035,116 @@ class ManualUpdateManager:
                         fcntl.flock(descriptor, fcntl.LOCK_UN)
                     finally:
                         os.close(descriptor)
+
+    def _finish_competition_update(
+        self, job: dict[str, Any], log_path: Path, *, no_changes: bool
+    ) -> None:
+        candidate = job.get("candidate")
+        if not isinstance(candidate, dict):
+            raise ManualUpdateError("La actualización no produjo un candidato verificable.")
+        if no_changes:
+            job.update({
+                "status": "completed",
+                "stage": "no_changes",
+                "finished_at": utc_now(),
+                "summary": {"message": "Sin cambios", "changed_groups": candidate.get("changed_groups", {})},
+            })
+            self._save(job)
+            return
+
+        stored_hash = job.get("candidate_sha256")
+        candidate_hash = candidate.get("candidate_sha256")
+        candidate_body = {key: value for key, value in candidate.items() if key != "candidate_sha256"}
+        if (
+            not isinstance(stored_hash, str)
+            or candidate_hash != stored_hash
+            or not hmac.compare_digest(stored_hash, _candidate_sha256(candidate_body))
+        ):
+            raise ManualUpdateError("La huella interna del candidato no coincide.")
+        if candidate.get("kind") != "competition_generation":
+            raise ManualUpdateError("El resultado no es una generación de Primera Federación.")
+        self._assert_automatic_competition_candidate(candidate)
+
+        event_root = self.root / "reviews"  # type: ignore[operator]
+        event_root.mkdir(parents=True, exist_ok=True, mode=0o700)
+        event_id = str(job["job_id"])
+        event_base = {
+            "schema_version": 1,
+            "job_id": event_id,
+            "scope": "competition",
+            "candidate_sha256": stored_hash,
+            "candidate_generation_id": candidate.get("candidate_generation_id"),
+            "report_sha256": candidate.get("report_sha256"),
+        }
+        _create_once(
+            event_root / f"{event_id}-auto-apply-started.json",
+            (json.dumps({**event_base, "event": "COMPETITION_AUTO_APPLY_STARTED", "started_at": utc_now()}, sort_keys=True, indent=2) + "\n").encode(),
+        )
+        job.update({"status": "running", "stage": "activating_generation"})
+        self._save(job)
+        actor = "football-data-hub-local-update-service"
+        publication = self._activate_competition(job, actor, log_path)
+        _create_once(
+            event_root / f"{event_id}-auto-applied.json",
+            (json.dumps({
+                **event_base,
+                "event": "COMPETITION_AUTO_APPLIED",
+                "actor": actor,
+                "applied_at": utc_now(),
+                "publication": publication,
+            }, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode(),
+        )
+        summary = self._competition_result_summary(candidate)
+        job.update({
+            "status": "applied",
+            "stage": "refreshing_api",
+            "finished_at": utc_now(),
+            "summary": summary,
+            "publication": publication,
+            "auto_apply_event_id": event_id,
+        })
+        self._save(job)
+        if self.on_competition_applied is not None:
+            try:
+                self.on_competition_applied(job)
+            except Exception as exc:
+                job.update({
+                    "status": "applied_reload_failed",
+                    "stage": "refresh_failed",
+                    "error": f"La generación quedó aplicada, pero FastAPI no pudo recargarla: {type(exc).__name__}: {exc}",
+                    "finished_at": utc_now(),
+                })
+                self._save(job)
+                return
+        job.update({"stage": "completed", "finished_at": utc_now()})
+        self._save(job)
+
+    @staticmethod
+    def _assert_automatic_competition_candidate(candidate: dict[str, Any]) -> None:
+        summary = candidate.get("summary")
+        if not isinstance(summary, dict):
+            raise ManualUpdateError("La comparación no contiene un resumen validable.")
+        if summary.get("hard_conflicts") != 0:
+            raise ManualUpdateError("La comparación encontró conflictos de identidad o de calendario; no se aplicó.")
+        if summary.get("played_to_unplayed_conflicts") != 0:
+            raise ManualUpdateError("La comparación contiene partidos disputados que vuelven a pendientes; no se aplicó.")
+        changed_groups = candidate.get("changed_groups")
+        if not isinstance(changed_groups, dict) or set(changed_groups) != {"I", "II"}:
+            raise ManualUpdateError("La comparación no cubre ambos grupos.")
+        if not any(changed_groups.values()):
+            raise ManualUpdateError("El candidato afirma tener cambios, pero no identifica ningún grupo modificado.")
+
+    @staticmethod
+    def _competition_result_summary(candidate: dict[str, Any]) -> dict[str, Any]:
+        source = candidate.get("summary") or {}
+        return {
+            "message": "Actualización aplicada",
+            "changed_groups": candidate.get("changed_groups", {}),
+            "newly_played": source.get("newly_played", 0),
+            "result_corrected": source.get("result_corrected", 0),
+            "fixture_updated": source.get("fixture_updated", 0),
+            "played_without_approved_details": source.get("played_without_approved_details", 0),
+        }
 
     def _preflight(self) -> None:
         if self.data_root is None or not self.data_root.is_dir():
@@ -995,6 +1380,13 @@ class ManualUpdateManager:
         if validation.get("valid") is not True:
             raise ManualUpdateError("La revalidación offline de la captura del equipo falló.")
         changes = _team_data_changes(capture_dir, prior, self.team_profiles_index)
+        prior_dir = None
+        if prior.get("directory"):
+            prior_dir_value = Path(str(prior["directory"])).expanduser()
+            prior_dir = prior_dir_value.resolve() if prior_dir_value.is_absolute() else (self.team_profiles_index.parent / prior_dir_value).resolve()
+            if prior_dir.name != prior.get("capture_id"):
+                raise ManualUpdateError("La ruta de la captura anterior no coincide con su capture_id publicado.")
+        change_details = _team_change_details(capture_dir, prior_dir, changes)
         return {
             "kind": "team_profile_capture",
             "no_changes": bool(prior) and not changes,
@@ -1007,6 +1399,7 @@ class ManualUpdateManager:
             "requested_views": entry.get("requested_views", []),
             "follow_states": entry.get("follow_states", []),
             "changed_files": changes,
+            "change_details": change_details,
             "previous_capture_id": prior.get("capture_id"),
             "published_index_sha256": _sha256(index_bytes),
             "activated": False,
@@ -1172,6 +1565,13 @@ class ManualUpdateManager:
             raise ManualUpdateError("El informe de diferencias cambió desde la revisión.")
         if report.get("report_sha256") != candidate.get("report_sha256"):
             raise ManualUpdateError("La huella de comparación no coincide con el informe.")
+        report_summary = report.get("summary")
+        if not isinstance(report_summary, dict) or report_summary != candidate.get("summary"):
+            raise ManualUpdateError("El resumen de comparación no coincide con el candidato.")
+        if report_summary.get("hard_conflicts") != 0:
+            raise ManualUpdateError("Hay conflictos de identidad o calendario; la generación no se activará.")
+        if report_summary.get("played_to_unplayed_conflicts") != 0:
+            raise ManualUpdateError("Un partido disputado vuelve a aparecer pendiente; la generación no se activará.")
         assert self.data_root is not None
         journal_path = self.root / "activation-pending.json"  # type: ignore[operator]
         if journal_path.exists():

@@ -94,7 +94,6 @@ class ApiSettings:
     match_details_store_root: Path | None = None
     match_details_published_root: Path | None = None
     match_local_preview_artifact: Path | None = None
-    update_admin_token: str | None = None
 
     def for_group(self, group: str | int) -> GroupDatasetSettings:
         """Return a group-specific view without mutating or copying any dataset."""
@@ -348,7 +347,6 @@ class ApiSettings:
                 if os.getenv("FDH_MATCH_LOCAL_PREVIEW_ARTIFACT")
                 else None
             ),
-            update_admin_token=os.getenv("FDH_UPDATE_ADMIN_TOKEN"),
             cors_origins=tuple(
                 origin.strip()
                 for origin in os.getenv("FDH_CORS_ORIGINS", "").split(",")

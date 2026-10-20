@@ -4,13 +4,8 @@ import { ManualUpdateControl } from "../components/ManualUpdateControl";
 import type { ManualUpdateJob } from "../api/client";
 
 const api = vi.hoisted(() => ({
-  loadLatestManualUpdate: vi.fn(),
-  loadManualUpdateCapabilities: vi.fn(),
-  loadManualUpdateStatus: vi.fn(),
   loadManualUpdateJob: vi.fn(),
-  approveManualUpdate: vi.fn(),
   startCompetitionUpdate: vi.fn(),
-  startTeamUpdate: vi.fn(),
 }));
 
 vi.mock("../api/client", () => api);
@@ -21,142 +16,87 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-function reviewJob(): ManualUpdateJob {
+function job(patch: Partial<ManualUpdateJob> = {}): ManualUpdateJob {
   return {
-    job_id: "job-test-01",
-    scope: "competition",
-    team_id: null,
-    group: null,
-    status: "review_required",
-    stage: "candidate_validated",
-    created_at: "2026-10-20T10:00:00Z",
-    updated_at: "2026-10-20T10:01:00Z",
-    finished_at: "2026-10-20T10:01:00Z",
-    candidate_sha256: "abc123-secret-integrity-hash",
-    candidate: {
-      summary: { newly_played: 1, result_corrected: 0, fixture_updated: 0, hard_conflicts: 0 },
-      changed_fixtures: [{ internal_id: "match-1", change_type: "newly_played", changes: [{ field: "status", before: "unplayed", after: "played" }] }],
-    },
-    error: null,
-    log_tail: null,
+    job_id: "job-competition-1", scope: "competition", group: null,
+    status: "queued", stage: "queued", created_at: "2026-10-20T10:00:00Z",
+    updated_at: "2026-10-20T10:00:00Z", finished_at: null, summary: null, error: null,
+    ...patch,
   };
 }
 
 describe("ManualUpdateControl", () => {
-  it("does not query update metadata until the administrator authenticates", () => {
-    api.loadManualUpdateCapabilities.mockResolvedValue(["competition"]);
-    api.loadManualUpdateStatus.mockResolvedValue({ scope: "competition", team_id: null, last_updated_at: null, last_unchanged_check_at: null, last_checked_at: null });
-    api.loadLatestManualUpdate.mockResolvedValue(null);
-    render(<ManualUpdateControl scope="competition" />);
-    expect(screen.getByLabelText("Token administrativo de actualización")).toHaveAttribute("type", "password");
-    expect(screen.getByRole("button", { name: "Acceder" })).toBeInTheDocument();
-    expect(api.loadManualUpdateCapabilities).not.toHaveBeenCalled();
-    expect(api.loadManualUpdateStatus).not.toHaveBeenCalled();
+  it("offers one global competition action without credentials or a review dialog", async () => {
+    render(<ManualUpdateControl />);
+
+    expect(screen.getByRole("button", { name: "Actualizar Primera Federación" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /equipo|revisar|aplicar/i })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/token|contraseña|revisor/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("shows in-progress state and the current capture stage", async () => {
-    api.loadManualUpdateCapabilities.mockResolvedValue(["competition"]);
-    api.loadManualUpdateStatus.mockResolvedValue({ scope: "competition", team_id: null, last_updated_at: null, last_unchanged_check_at: null, last_checked_at: null });
-    api.loadLatestManualUpdate.mockResolvedValue({ ...reviewJob(), status: "running", stage: "capturing_group_ii" });
+  it("starts only the global group I + II job and shows its progress", async () => {
+    api.startCompetitionUpdate.mockResolvedValue(job());
+    api.loadManualUpdateJob.mockResolvedValue(job({ status: "running", stage: "capturing_group_ii" }));
+    render(<ManualUpdateControl />);
 
-    render(<ManualUpdateControl scope="competition" />);
-    fireEvent.change(screen.getByLabelText("Token administrativo de actualización"), { target: { value: "admin-secret" } });
-    fireEvent.click(screen.getByRole("button", { name: "Acceder" }));
-
-    expect(await screen.findByRole("status")).toHaveTextContent("En curso: capturando Grupo II");
+    fireEvent.click(screen.getByRole("button", { name: "Actualizar Primera Federación" }));
+    await waitFor(() => expect(api.startCompetitionUpdate).toHaveBeenCalledOnce());
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Actualizando… consultando Grupo II"), { timeout: 4000 });
     expect(screen.getByRole("button", { name: "Actualizando…" })).toBeDisabled();
   });
 
-  it("surfaces a stopped access error without restarting the job", async () => {
-    api.loadManualUpdateCapabilities.mockResolvedValue(["competition"]);
-    api.loadManualUpdateStatus.mockResolvedValue({ scope: "competition", team_id: null, last_updated_at: null, last_unchanged_check_at: null, last_checked_at: null });
-    api.loadLatestManualUpdate.mockResolvedValue({ ...reviewJob(), status: "failed", error: "HTTP_403_STOPPED" });
+  it("shows Sin cambios when both groups compare equal", async () => {
+    api.startCompetitionUpdate.mockResolvedValue(job());
+    api.loadManualUpdateJob.mockResolvedValue(job({
+      status: "completed", stage: "no_changes", finished_at: "2026-10-20T10:02:00Z",
+      summary: { message: "Sin cambios", changed_groups: { I: [], II: [] } },
+    }));
+    render(<ManualUpdateControl />);
 
-    render(<ManualUpdateControl scope="competition" />);
-    fireEvent.change(screen.getByLabelText("Token administrativo de actualización"), { target: { value: "admin-secret" } });
-    fireEvent.click(screen.getByRole("button", { name: "Acceder" }));
-
-    expect(await screen.findByRole("status")).toHaveTextContent("Actualización detenida. HTTP_403_STOPPED");
-    expect(api.startCompetitionUpdate).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Actualizar Primera Federación" }));
+    expect(await screen.findByText("Sin cambios", {}, { timeout: 4000 })).toBeInTheDocument();
+    expect(api.loadManualUpdateJob).toHaveBeenCalledWith("job-competition-1");
   });
 
-  it("authenticates, starts only its scope, shows diffs and keeps the fingerprint hidden", async () => {
-    api.loadManualUpdateCapabilities.mockResolvedValue(["competition"]);
-    api.loadManualUpdateStatus.mockResolvedValue({ scope: "competition", team_id: null, last_updated_at: null, last_unchanged_check_at: null, last_checked_at: null });
-    api.loadLatestManualUpdate.mockResolvedValue(null);
-    api.startCompetitionUpdate.mockResolvedValue(reviewJob());
+  it("reports the automatic result summary and refreshes the visible competition", async () => {
+    const onApplied = vi.fn();
+    api.startCompetitionUpdate.mockResolvedValue(job());
+    api.loadManualUpdateJob.mockResolvedValue(job({
+      status: "applied", stage: "completed", finished_at: "2026-10-20T10:04:00Z",
+      summary: { message: "Actualización aplicada", newly_played: 2, result_corrected: 1,
+        fixture_updated: 3, played_without_approved_details: 2 },
+    }));
+    const { container } = render(<ManualUpdateControl onApplied={onApplied} />);
 
-    const { container } = render(<ManualUpdateControl scope="competition" />);
-    fireEvent.change(screen.getByLabelText("Token administrativo de actualización"), { target: { value: "admin-secret" } });
-    fireEvent.click(screen.getByRole("button", { name: "Acceder" }));
-    await screen.findByRole("button", { name: "Actualizar competición" });
-    expect(api.loadManualUpdateCapabilities).toHaveBeenCalledWith("admin-secret");
-    expect(api.loadManualUpdateStatus).toHaveBeenCalledWith("competition", "admin-secret", undefined);
-
-    fireEvent.click(screen.getByRole("button", { name: "Actualizar competición" }));
-    await waitFor(() => expect(api.startCompetitionUpdate).toHaveBeenCalledWith("admin-secret"));
-    expect(api.startTeamUpdate).not.toHaveBeenCalled();
-    expect(await screen.findByText(/Cambios: 1 partidos disputados nuevos/)).toBeInTheDocument();
-    expect(screen.getByText(/status: unplayed → played/)).toBeInTheDocument();
-    expect(container.textContent).not.toContain("abc123-secret-integrity-hash");
-    expect(container.querySelector(".manual-update-diff")).toHaveAttribute("open");
+    fireEvent.click(screen.getByRole("button", { name: "Actualizar Primera Federación" }));
+    expect(await screen.findByText(/2 partidos disputados nuevos · 1 marcadores corregidos · 3 cambios de calendario · 2 fichas detalladas pendientes/, {}, { timeout: 4000 })).toBeInTheDocument();
+    await waitFor(() => expect(onApplied).toHaveBeenCalledOnce());
+    expect(container.textContent).not.toMatch(/sha-?256|revisor|aprobar|huella/i);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("muestra errores de autenticación y no guarda credenciales", async () => {
-    api.loadManualUpdateCapabilities.mockRejectedValue(new Error("Token incorrecto."));
-    const { container } = render(<ManualUpdateControl scope="team" teamId={49} />);
-    const tokenInput = screen.getByLabelText("Token administrativo de actualización");
-    fireEvent.change(tokenInput, { target: { value: "wrong-token" } });
-    fireEvent.click(screen.getByRole("button", { name: "Acceder" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Token incorrecto.");
-    expect(container.innerHTML).not.toContain("localStorage");
-    expect(api.startTeamUpdate).not.toHaveBeenCalled();
+  it("describes classification-only changes without claiming match changes", async () => {
+    api.startCompetitionUpdate.mockResolvedValue(job());
+    api.loadManualUpdateJob.mockResolvedValue(job({
+      status: "applied", stage: "completed", finished_at: "2026-10-20T10:04:00Z",
+      summary: { message: "Actualización aplicada", changed_groups: { I: [], II: ["classification", "progress"] } },
+    }));
+    render(<ManualUpdateControl />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Actualizar Primera Federación" }));
+    expect(await screen.findByText("Grupo II: clasificación, progreso", {}, { timeout: 4000 })).toBeInTheDocument();
+    expect(screen.queryByText(/0 partidos|0 marcadores|0 cambios de calendario/)).not.toBeInTheDocument();
   });
 
-  it("actualiza solo el equipo de la ficha y presenta su estado y cambios", async () => {
-    api.loadManualUpdateCapabilities.mockResolvedValue(["team"]);
-    api.loadManualUpdateStatus.mockResolvedValue({ scope: "team", team_id: 49, last_updated_at: null, last_unchanged_check_at: null, last_checked_at: null });
-    api.loadLatestManualUpdate.mockResolvedValue(null);
-    api.startTeamUpdate.mockResolvedValue({
-      ...reviewJob(),
-      scope: "team",
-      team_id: 49,
-      candidate: { kind: "team_profile_capture", changed_files: ["normalized/roster.json"] },
-    });
+  it("surfaces denied or failed access without retrying or opening review", async () => {
+    api.startCompetitionUpdate.mockRejectedValue(new Error("HTTP_403: acceso detenido"));
+    render(<ManualUpdateControl />);
 
-    render(<ManualUpdateControl scope="team" teamId={49} />);
-    fireEvent.change(screen.getByLabelText("Token administrativo de actualización"), { target: { value: "admin-secret" } });
-    fireEvent.click(screen.getByRole("button", { name: "Acceder" }));
-    await screen.findByRole("button", { name: "Actualizar equipo" });
-    expect(api.loadManualUpdateStatus).toHaveBeenCalledWith("team", "admin-secret", 49);
-    fireEvent.click(screen.getByRole("button", { name: "Actualizar equipo" }));
-    await waitFor(() => expect(api.startTeamUpdate).toHaveBeenCalledWith(49, "admin-secret"));
-    expect(api.startCompetitionUpdate).not.toHaveBeenCalled();
-    expect(await screen.findByText("1 archivos normalizados cambiaron.")).toBeInTheDocument();
-    expect(screen.getByText(/normalized\/roster.json ha cambiado/)).toBeInTheDocument();
-  });
-
-  it("aplica los cambios solo después de una confirmación explícita y envía la huella internamente", async () => {
-    api.loadManualUpdateCapabilities.mockResolvedValue(["competition"]);
-    api.loadManualUpdateStatus.mockResolvedValue({ scope: "competition", team_id: null, last_updated_at: null, last_unchanged_check_at: null, last_checked_at: null });
-    api.loadLatestManualUpdate.mockResolvedValue(null);
-    api.startCompetitionUpdate.mockResolvedValue(reviewJob());
-    api.approveManualUpdate.mockResolvedValue({ ...reviewJob(), status: "published" });
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
-
-    render(<ManualUpdateControl scope="competition" />);
-    fireEvent.change(screen.getByLabelText("Token administrativo de actualización"), { target: { value: "admin-secret" } });
-    fireEvent.click(screen.getByRole("button", { name: "Acceder" }));
-    await screen.findByRole("button", { name: "Actualizar competición" });
-    fireEvent.click(screen.getByRole("button", { name: "Actualizar competición" }));
-    await screen.findByText(/Cambios: 1 partidos disputados nuevos/);
-
-    fireEvent.change(screen.getByLabelText("Nombre del revisor"), { target: { value: "Analista local" } });
-    fireEvent.click(screen.getByRole("button", { name: "Revisar y activar competición" }));
-    await waitFor(() => expect(api.approveManualUpdate).toHaveBeenCalledWith(
-      "job-test-01", "admin-secret", "Analista local", "abc123-secret-integrity-hash",
-    ));
-    expect(confirm).toHaveBeenCalledWith(expect.stringContaining("¿Aprobar y aplicar los cambios mostrados?"));
-    expect(document.body.textContent).not.toContain("abc123-secret-integrity-hash");
+    fireEvent.click(screen.getByRole("button", { name: "Actualizar Primera Federación" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("HTTP_403: acceso detenido");
+    expect(api.startCompetitionUpdate).toHaveBeenCalledOnce();
+    expect(api.loadManualUpdateJob).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });

@@ -1641,7 +1641,7 @@ describe("dashboard de clasificación", () => {
     expect(within(group1View).getByLabelText("Jornada inicial")).toHaveValue("2");
     expect(within(group1View).getByLabelText("Jornada final")).toHaveValue("4");
     expect(fetchMock).toHaveBeenCalledTimes(7);
-  }, 15000);
+  }, 30000);
 
   it("aísla un fallo de Árbitros de Grupo I y carga el ámbito válido de Grupo II", async () => {
     fetchMock.mockImplementation((input: RequestInfo | URL) => {

@@ -10,7 +10,6 @@ import { TeamTransfers } from "./TeamTransfers";
 import { TeamMatches } from "./TeamMatches";
 import { InternalTeamLink } from "./InternalTeamLink";
 import { InternalMatchLink } from "./InternalMatchLink";
-import { ManualUpdateControl } from "./ManualUpdateControl";
 import { matchInternalId } from "../domain/matches";
 
 interface Props {
@@ -101,7 +100,6 @@ export function TeamOverview({ team, data, teamCatalog, activeSection, onNavigat
           <h1>{team.name}</h1>
           <p>Primera Federación</p>
         </div>
-        <ManualUpdateControl scope="team" teamId={team.team_id} />
         {team.team_url && <a className="source-team-link" href={team.team_url} target="_blank" rel="noreferrer">BDFutbol ↗</a>}
       </header>
 

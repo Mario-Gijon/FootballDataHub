@@ -10,10 +10,10 @@ from dataclasses import replace
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncIterator
+from urllib.parse import urlsplit
 
 from fastapi import FastAPI, HTTPException, Query, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.concurrency import run_in_threadpool
 
 from football_data_hub_api.config import (
     ApiSettings,
@@ -86,6 +86,7 @@ from football_data_hub_api.manual_updates import (
     ManualUpdateManager,
     UpdateAlreadyRunning,
     apply_active_group_data,
+    public_manual_update_job,
 )
 
 logger = logging.getLogger("football_data_hub_api")
@@ -93,7 +94,7 @@ GROUP_CODES = {"1": "I", "2": "II"}
 
 
 def _reload_after_manual_update(app: FastAPI, configured: ApiSettings, manager: ManualUpdateManager, job: dict[str, object]) -> None:
-    """Load approved disk state off the event loop, then swap validated bundles."""
+    """Load the applied two-group state, then swap validated bundles together."""
     datasets = dict(app.state.datasets)
     group_settings = dict(app.state.group_settings)
     match_results = app.state.match_results
@@ -120,6 +121,7 @@ def _reload_after_manual_update(app: FastAPI, configured: ApiSettings, manager: 
             configured.match_generation_root,
             data_root=configured.local_data_root,
         )
+        _assert_group_catalogs_match_generation(datasets, match_results)
         match_details = {}
         if configured.match_details_published_root and configured.match_details_store_root:
             player_ids = set(app.state.player_directory.players_by_id) if app.state.player_directory else set()
@@ -171,6 +173,33 @@ def _reload_after_manual_update(app: FastAPI, configured: ApiSettings, manager: 
     manager.group_progress_paths = {"I": group_settings["1"].progress_path, "II": group_settings["2"].progress_path}
 
 
+def _assert_group_catalogs_match_generation(datasets: dict[str, DatasetBundle], match_results: MatchResultsBundle) -> None:
+    """Guard the shared fixture truth used by group and team pages after activation."""
+    for group_number, group_roman in (("1", "I"), ("2", "II")):
+        dataset = datasets.get(group_number)
+        generated = match_results.bootstrap.groups.get(group_roman)
+        if dataset is None or generated is None:
+            raise ManualUpdateError(f"No se pueden sincronizar las vistas del Grupo {group_roman}.")
+        api_matches = {str(match.match_id): match for match in dataset.bootstrap.matches}
+        generated_matches = {str(match.source_match_id): match for match in generated.matches}
+        if len(api_matches) != len(dataset.bootstrap.matches) or len(generated_matches) != len(generated.matches):
+            raise ManualUpdateError(f"Hay IDs de partido duplicados en el Grupo {group_roman}.")
+        if set(api_matches) != set(generated_matches):
+            raise ManualUpdateError(f"Clasificación/Resultados y fichas de partido tienen calendarios distintos en Grupo {group_roman}.")
+        shared_fields = (
+            "matchday", "matchday_date", "source_match_date", "home_team_id", "away_team_id",
+            "home_goals", "away_goals", "status", "unplayed_state", "postponed_by_source_rule",
+            "source_match_url", "stadium_id", "stadium_name", "stadium_url",
+            "referee_id", "referee_name", "referee_url",
+        )
+        for source_match_id, api_match in api_matches.items():
+            generated_match = generated_matches[source_match_id]
+            if any(getattr(api_match, field, None) != getattr(generated_match, field, None) for field in shared_fields):
+                raise ManualUpdateError(
+                    f"El partido {source_match_id} discrepa entre el catálogo del Grupo {group_roman} y la generación activa."
+                )
+
+
 def create_app(settings: ApiSettings | None = None) -> FastAPI:
     configured = settings or ApiSettings.from_env()
 
@@ -218,7 +247,6 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         app.state.manual_update_manager = ManualUpdateManager(
             project_root=PROJECT_ROOT,
             data_root=configured.local_data_root,
-            admin_token=configured.update_admin_token,
             profile_dir=Path(os.getenv(
                 "FDH_BDFUTBOL_PROFILE",
                 str(Path.home() / ".football-data-hub-chromium-pure-cdp"),
@@ -238,6 +266,11 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
             player_compact_root=configured.player_compact_root,
             player_team_captures_root=configured.player_team_captures_root,
             player_published_index_path=configured.player_published_index_path,
+        )
+        app.state.manual_update_manager.on_competition_applied = (
+            lambda job: _reload_after_manual_update(
+                app, configured, app.state.manual_update_manager, job
+            )
         )
 
         for group in ("1", "2"):
@@ -406,7 +439,7 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         title="FootballDataHub API",
         description=(
             "API de consulta para Primera Federación 2026/27, Grupos I y II, "
-            "con operaciones de actualización manual protegidas para administración. "
+            "con actualización manual disponible únicamente desde el entorno local. "
             "Los filtros interactivos se calculan en el cliente."
         ),
         version="1.1.0",
@@ -417,119 +450,85 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         allow_origins=list(configured.cors_origins),
         allow_credentials=False,
         allow_methods=["GET", "POST"],
-        allow_headers=["If-None-Match", "Content-Type", "X-FDH-Admin-Token"],
+        allow_headers=["If-None-Match", "Content-Type"],
     )
 
-    def require_update_admin(request: Request) -> ManualUpdateManager:
-        manager: ManualUpdateManager = request.app.state.manual_update_manager
-        if not manager.authenticate(request.headers.get("x-fdh-admin-token")):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"code": "admin_auth_required", "message": "Se requiere el token administrativo."},
+    def require_local_update_access(request: Request) -> ManualUpdateManager:
+        """Keep unauthenticated write operations confined to loopback clients."""
+        client_host = request.client.host if request.client is not None else None
+        try:
+            is_loopback = client_host is not None and ipaddress.ip_address(client_host).is_loopback
+        except ValueError:
+            is_loopback = False
+        host = request.headers.get("host", "")
+        try:
+            host_name = urlsplit(f"//{host}").hostname
+            is_local_host = bool(
+                host_name == "localhost"
+                or (host_name and ipaddress.ip_address(host_name).is_loopback)
             )
+        except ValueError:
+            is_local_host = False
+        origin = request.headers.get("origin")
+        if origin:
+            try:
+                origin_parts = urlsplit(origin)
+                origin_host = origin_parts.hostname
+                is_local_origin = bool(
+                    origin_parts.scheme in {"http", "https"}
+                    and origin_host
+                    and (origin_host == "localhost" or ipaddress.ip_address(origin_host).is_loopback)
+                )
+            except ValueError:
+                is_local_origin = False
+        else:
+            is_local_origin = True
+        has_forwarded_identity = any(
+            request.headers.get(name)
+            for name in ("forwarded", "x-forwarded-for", "x-forwarded-host", "x-real-ip")
+        )
+        fetch_site = request.headers.get("sec-fetch-site")
+        is_same_site_context = fetch_site is None or fetch_site in {"same-origin", "same-site", "none"}
+        if not (is_loopback and is_local_host and is_local_origin and is_same_site_context) or has_forwarded_identity:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"code": "local_updates_only", "message": "Las actualizaciones solo se pueden iniciar desde FootballDataHub en este equipo."},
+            )
+        manager: ManualUpdateManager = request.app.state.manual_update_manager
         if not manager.enabled:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail={"code": "manual_updates_disabled", "message": "Las actualizaciones administrativas no están configuradas."},
+                detail={"code": "manual_updates_disabled", "message": "Las actualizaciones no están configuradas en este entorno local."},
             )
         return manager
 
-    @app.get("/api/v1/admin/updates/capabilities", tags=["updates"])
-    def update_capabilities(request: Request) -> dict[str, object]:
-        manager = require_update_admin(request)
-        scopes = [scope for scope in ("competition", "team") if manager.scope_enabled(scope)]
-        return {"enabled": bool(scopes), "scopes": scopes}
+    @app.get("/api/v1/updates/status", tags=["updates"])
+    def manual_update_status(request: Request) -> dict[str, object]:
+        manager = require_local_update_access(request)
+        return manager.public_status("competition")
 
-    @app.get("/api/v1/admin/updates/status", tags=["updates"])
-    def manual_update_status(scope: str, request: Request, team_id: int | None = None) -> dict[str, object]:
-        manager = require_update_admin(request)
-        if scope not in {"competition", "team"}:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="scope debe ser competition o team")
-        if scope == "team" and (team_id is None or team_id <= 0):
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="team_id es obligatorio para scope=team")
-        return manager.public_status(scope, team_id)
-
-    @app.post("/api/v1/admin/updates/competition", status_code=status.HTTP_202_ACCEPTED, tags=["updates"])
+    @app.post("/api/v1/updates/competition", status_code=status.HTTP_202_ACCEPTED, tags=["updates"])
     def start_competition_update(request: Request) -> dict[str, object]:
-        manager = require_update_admin(request)
+        manager = require_local_update_access(request)
         try:
-            return manager.start(scope="competition")
+            return public_manual_update_job(manager.start(scope="competition")) or {}
         except UpdateAlreadyRunning as exc:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={"code": "update_in_progress", "message": str(exc)}) from exc
         except ManualUpdateError as exc:
             raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail={"code": "update_unavailable", "message": str(exc)}) from exc
 
-    @app.post("/api/v1/admin/updates/teams/{team_id}", status_code=status.HTTP_202_ACCEPTED, tags=["updates"])
-    def start_team_update(team_id: int, request: Request) -> dict[str, object]:
-        manager = require_update_admin(request)
-        group = None
-        for group_key, dataset in request.app.state.datasets.items():
-            if any(team.team_id == team_id for team in dataset.bootstrap.teams):
-                group = "I" if group_key == "1" else "II"
-                break
-        if group is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"code": "team_not_found", "message": "No encontramos ese equipo en los catálogos activos."})
-        try:
-            return manager.start(scope="team", team_id=team_id, group=group)
-        except UpdateAlreadyRunning as exc:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={"code": "update_in_progress", "message": str(exc)}) from exc
-        except ManualUpdateError as exc:
-            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail={"code": "update_unavailable", "message": str(exc)}) from exc
+    @app.get("/api/v1/updates/latest", tags=["updates"])
+    def latest_update(request: Request) -> dict[str, object] | None:
+        manager = require_local_update_access(request)
+        return public_manual_update_job(manager.latest("competition"))
 
-    @app.get("/api/v1/admin/updates/latest", tags=["updates"])
-    def latest_update(scope: str, request: Request, team_id: int | None = None) -> dict[str, object] | None:
-        manager = require_update_admin(request)
-        if scope not in {"competition", "team"}:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="scope debe ser competition o team")
-        if scope == "team" and (team_id is None or team_id <= 0):
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="team_id es obligatorio para scope=team")
-        return manager.latest(scope, team_id)
-
-    @app.get("/api/v1/admin/updates/jobs/{job_id}", tags=["updates"])
+    @app.get("/api/v1/updates/jobs/{job_id}", tags=["updates"])
     def update_job(job_id: str, request: Request) -> dict[str, object]:
-        manager = require_update_admin(request)
+        manager = require_local_update_access(request)
         job = manager.get_job(job_id)
         if job is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"code": "update_job_not_found", "message": "No encontramos ese trabajo."})
-        return job
-
-    async def approve_update(job_id: str, request: Request) -> dict[str, object]:
-        manager = require_update_admin(request)
-        try:
-            payload = await request.json()
-        except ValueError as exc:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="El cuerpo JSON no es válido.") from exc
-        if not isinstance(payload, dict):
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Se esperaba un objeto de revisión.")
-        reviewer = payload.get("reviewer")
-        expected_hash = payload.get("candidate_sha256")
-        if not isinstance(reviewer, str) or not isinstance(expected_hash, str):
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Faltan reviewer y candidate_sha256.")
-        try:
-            job = await run_in_threadpool(
-                manager.approve_and_activate,
-                job_id=job_id,
-                reviewer=reviewer,
-                expected_candidate_sha256=expected_hash,
-            )
-        except UpdateAlreadyRunning as exc:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={"code": "update_in_progress", "message": str(exc)}) from exc
-        except ManualUpdateError as exc:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={"code": "update_review_rejected", "message": str(exc)}) from exc
-
-        await run_in_threadpool(_reload_after_manual_update, request.app, configured, manager, job)
-        return job
-
-    @app.post("/api/v1/admin/updates/jobs/{job_id}/approve", tags=["updates"])
-    async def approve_update_route(job_id: str, request: Request) -> dict[str, object]:
-        try:
-            return await approve_update(job_id, request)
-        except (ManualUpdateError, DatasetLoadError, MatchResultsLoadError, MatchDetailsLoadError, OSError, ValueError, KeyError, TypeError) as exc:
-            logger.exception("Se publicó el candidato, pero la API no pudo recargar todos los datos en memoria")
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail={"code": "update_published_reload_failed", "message": f"El candidato pudo publicarse, pero debe reiniciar FastAPI para cargarlo: {exc}"},
-            ) from exc
+        return public_manual_update_job(job) or {}
 
     @app.get("/health", response_model=HealthResponse, tags=["service"])
     def health(request: Request) -> HealthResponse:

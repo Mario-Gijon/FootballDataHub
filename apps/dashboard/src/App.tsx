@@ -70,6 +70,16 @@ export default function App() {
   const [matchResultsError, setMatchResultsError] = useState("");
   const [matchResultsRequestVersion, setMatchResultsRequestVersion] = useState(0);
   const pending = useRef(new Set<string>());
+  const refreshCompetitionData = useCallback(() => {
+    pending.current.clear();
+    setBaseData({ "1": null, "2": null });
+    setBaseState({ "1": "idle", "2": "idle" });
+    setBaseErrors({ "1": "", "2": "" });
+    setMatchResultsData(null);
+    setMatchResultsState("idle");
+    setMatchResultsError("");
+    setMatchResultsRequestVersion((current) => current + 1);
+  }, []);
   const navigate = useCallback((path: string) => {
     if (window.location.pathname !== path) window.history.pushState({}, "", path);
     setPathname(path);
@@ -253,6 +263,7 @@ export default function App() {
                 <option value="2">Grupo II</option>
               </select>
             </label>
+            <ManualUpdateControl onApplied={refreshCompetitionData} />
           </div>}
           <div className="topbar-season">Temporada <strong>2026/27</strong></div>
         </div>
@@ -542,7 +553,6 @@ function GroupDashboard({
               <time dateTime={data.metadata.captured_at}>Actualizado {formatCaptureDate(data.metadata.captured_at)}</time>
             </div>
           </div>
-          <ManualUpdateControl scope="competition" />
         </section>
         <ClassificationControls filters={filters} onChange={setFilters} matchdays={matchdays} />
         <div className="table-context-bar" id={`clasificacion${suffix}`}>
