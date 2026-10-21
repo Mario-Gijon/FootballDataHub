@@ -123,6 +123,24 @@ def _validate_discovery_event_sequence(events: list[dict[str, Any]], *, operatio
         raise CampaignArtifactError("La secuencia del candidato no es la adquisición esperada")
 
 
+def _inventory_for_generation(
+    verified_generation: Any, verified_inventory: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Reuse a verified inventory inside one publication read, bound to MATCH-00."""
+    if verified_inventory is None:
+        from .inventory import build_match_detail_inventory
+
+        return build_match_detail_inventory(verified_generation)
+    source_generation = verified_inventory.get("source_generation", {})
+    if (
+        not isinstance(source_generation, dict)
+        or source_generation.get("generation_id") != verified_generation.generation_id
+        or source_generation.get("manifest_sha256") != verified_generation.manifest_sha256
+    ):
+        raise CampaignArtifactError("El inventario reutilizado no corresponde a MATCH-00 verificado")
+    return verified_inventory
+
+
 def parse_campaign_saved_artifact(
     artifact_dir: Path,
     *,
@@ -130,6 +148,7 @@ def parse_campaign_saved_artifact(
     verified_generation: Any,
     data_root: Path,
     parser_version: str = PARSER_VERSION,
+    verified_inventory: dict[str, Any] | None = None,
 ) -> MatchDetailObservation:
     """Verify a campaign artifact and parse its original metadata without conversion.
 
@@ -198,9 +217,7 @@ def parse_campaign_saved_artifact(
     inventory_manifest, inventory_manifest_raw = _read_canonical_json(
         inventory_root / "manifest.json", "manifiesto de inventario"
     )
-    from .inventory import build_match_detail_inventory
-
-    rebuilt_inventory = build_match_detail_inventory(verified_generation)
+    rebuilt_inventory = _inventory_for_generation(verified_generation, verified_inventory)
     if inventory_raw != _canonical(rebuilt_inventory):
         raise CampaignArtifactError("El inventario persistido no coincide con MATCH-00 reconstruido")
     expected_inventory_manifest = {

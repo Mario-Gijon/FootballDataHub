@@ -351,7 +351,7 @@ def load_player_directory(
     manifest, _ = _read_json(inventory_root / "manifest.json", "manifest de inventario")
     if manifest.get("schema_version") != 1 or manifest.get("season") != "2026-27":
         raise PlayerDatasetLoadError("El manifest de inventario no corresponde a 2026/27.")
-    _verify_file(published_index_path, manifest.get("source_index"), "índice publicado de equipos")
+    _verify_inventory_source_index(published_index_path, manifest.get("source_index"))
 
     files: dict[str, bytes] = {}
     for name in ("players.json", "memberships.json", "inventory_report.json"):
@@ -923,6 +923,52 @@ def _verify_file(path: Path, spec: Any, label: str) -> bytes:
     ):
         raise PlayerDatasetLoadError(f"SHA-256 o tamaño no coincide para {label}.")
     return raw
+
+
+def _verify_inventory_source_index(path: Path, spec: Any) -> None:
+    """Keep an old inventory tied to its immutable source after team updates.
+
+    The team publisher preserves each replaced index as a timestamped backup.
+    Both that exact old index and the current 40-team identity are required;
+    a missing or corrupt backup cannot silently rebase the inventory.
+    """
+    if not isinstance(spec, dict) or path.is_symlink() or not path.is_file():
+        raise PlayerDatasetLoadError("Índice publicado de equipos ausente o inválido.")
+    current = path.read_bytes()
+    current_index = _decode_json(current, "índice publicado de equipos")
+    current_profiles = current_index.get("profiles")
+    if (
+        current_index.get("schema_version") != 1
+        or current_index.get("season") != "2026-27"
+        or not isinstance(current_profiles, dict)
+        or len(current_profiles) != 40
+    ):
+        raise PlayerDatasetLoadError("El índice actual de equipos no conserva los 40 clubes de 2026/27.")
+    if hashlib.sha256(current).hexdigest() == spec.get("sha256"):
+        _verify_file(path, spec, "índice publicado de equipos")
+        return
+    backup_pattern = re.compile(
+        re.escape(path.name) + r"\.\d{8}T\d{6}\.\d{6}Z\.bak\Z"
+    )
+    for backup in path.parent.iterdir():
+        if not backup_pattern.fullmatch(backup.name) or backup.is_symlink() or not backup.is_file():
+            continue
+        if backup.stat().st_size != spec.get("bytes"):
+            continue
+        old = backup.read_bytes()
+        if hashlib.sha256(old).hexdigest() != spec.get("sha256"):
+            continue
+        source_index = _decode_json(old, "índice original de equipos")
+        if (
+            source_index.get("schema_version") == 1
+            and source_index.get("season") == "2026-27"
+            and isinstance(source_index.get("profiles"), dict)
+            and set(source_index["profiles"]) == set(current_profiles)
+        ):
+            return
+    raise PlayerDatasetLoadError(
+        "El índice publicado cambió y no existe su copia histórica íntegra para el inventario de jugadores."
+    )
 
 
 def _safe_child(root: Path, relative: str) -> Path:

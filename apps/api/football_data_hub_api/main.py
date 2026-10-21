@@ -76,6 +76,7 @@ from football_data_hub_api.match_details_dataset import (
     load_local_discovery_preview,
     load_published_match_details,
 )
+from football_data_hub_api.match_details_cache import load_cached_published_match_details
 from football_data_hub_api.player_dataset import (
     PlayerDatasetLoadError,
     PlayerDirectoryBundle,
@@ -196,13 +197,15 @@ def _reload_after_manual_update(app: FastAPI, configured: ApiSettings, manager: 
             match_details = {}
             if configured.match_details_published_root and configured.match_details_store_root:
                 player_ids = set(app.state.player_directory.players_by_id) if app.state.player_directory else set()
-                match_details = load_published_match_details(
+                match_details = load_cached_published_match_details(
                     configured.match_details_published_root,
                     store_root=configured.match_details_store_root,
                     generation_root=configured.match_generation_root,
                     data_root=configured.local_data_root,
                     match_bundle=match_results,
                     player_ids=player_ids,
+                    cache_root=configured.local_data_root / "operations" / "api-cache" / "match-details",
+                    project_root=PROJECT_ROOT,
                 )
             matches_paths = {key: value.matches_path for key, value in group_settings.items()}
             unavailable_groups = {
@@ -720,13 +723,15 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
         ):
             try:
                 player_ids = set(app.state.player_directory.players_by_id) if app.state.player_directory else set()
-                app.state.match_detail_documents = load_published_match_details(
+                app.state.match_detail_documents = load_cached_published_match_details(
                     configured.match_details_published_root,
                     store_root=configured.match_details_store_root,
                     generation_root=configured.match_generation_root,
                     data_root=configured.local_data_root,
                     match_bundle=app.state.match_results,
                     player_ids=player_ids,
+                    cache_root=configured.local_data_root / "operations" / "api-cache" / "match-details",
+                    project_root=PROJECT_ROOT,
                 )
             except (MatchDetailsLoadError, OSError, ValueError, KeyError, TypeError) as exc:
                 app.state.match_detail_publication_error = exc

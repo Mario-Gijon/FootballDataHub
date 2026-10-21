@@ -516,6 +516,7 @@ def _campaign_observation(
     generation: Any,
     data_root: Path,
     record: dict[str, Any],
+    verified_inventory: dict[str, Any] | None = None,
 ) -> tuple[Any, dict[str, Any]]:
     """Reverify the immutable campaign evidence and return its observation/source refs."""
 
@@ -528,6 +529,7 @@ def _campaign_observation(
             expected_match=record,
             verified_generation=generation,
             data_root=data_root,
+            verified_inventory=verified_inventory,
         )
         manifest, manifest_raw = _read_json(artifact / "manifest.json")
         metadata, _ = _read_json(artifact / "metadata.json")
@@ -624,6 +626,7 @@ def _load_campaign_publication_document(
     player_ids: set[int],
     generation: Any,
     source_record: dict[str, Any],
+    verified_inventory: dict[str, Any] | None = None,
 ) -> tuple[MatchPublishedDetailsResponse, Any]:
     manifest_fields = {
         "schema_version", "publication_id", "source_kind", "internal_id", "inventory_id",
@@ -756,6 +759,7 @@ def _load_campaign_publication_document(
         player_ids=player_ids,
         generation=generation,
         record=source_record,
+        verified_inventory=verified_inventory,
     )
     if (
         draft.get("schema_version") != CAMPAIGN_DRAFT_SCHEMA
@@ -1023,6 +1027,7 @@ def load_published_match_details(
                 player_ids=player_ids,
                 generation=source_generation,
                 source_record=record,
+                verified_inventory=source_inventory,
             )
             _validate_detail_against_match(
                 document,
@@ -1261,6 +1266,7 @@ def _build_campaign_publication_draft_from_verified(
     player_ids: set[int],
     generation: Any,
     record: dict[str, Any],
+    verified_inventory: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], Any]:
     """Build from generation evidence verified once by the enclosing read operation."""
     if record.get("internal_id") != internal_id:
@@ -1272,6 +1278,7 @@ def _build_campaign_publication_draft_from_verified(
         generation=generation,
         data_root=data_root,
         record=record,
+        verified_inventory=verified_inventory,
     )
     match_page = build_match_page(match_bundle, internal_id)
     if match_page is None:

@@ -49,6 +49,18 @@ describe("ManualUpdateControl", () => {
     expect(screen.getByRole("button", { name: "Actualizando…" })).toBeDisabled();
   });
 
+  it("shows real team capture progress without claiming publication", async () => {
+    api.startCompetitionUpdate.mockResolvedValue(job({
+      status: "running", stage: "refreshing_team_profiles",
+      team_progress: { total: 20, preflight_checked: 20, captured: 7, failed: 2, current_team_id: 49 },
+    }));
+    render(<ManualUpdateControl />);
+    fireEvent.click(screen.getByRole("button", { name: "Actualizar Primera Federación" }));
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Capturas de equipos 7/20"));
+    expect(screen.getByRole("status")).toHaveTextContent("2 pendientes por error");
+    expect(screen.getByRole("status")).toHaveTextContent("Equipo 49");
+  });
+
   it("shows Sin cambios when both groups compare equal", async () => {
     api.startCompetitionUpdate.mockResolvedValue(job());
     api.loadManualUpdateJob.mockResolvedValue(job({

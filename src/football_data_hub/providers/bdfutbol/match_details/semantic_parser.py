@@ -1104,7 +1104,7 @@ def parse_match_detail_html(
         if metadata.get(key) != value:
             raise MatchDetailParserError(f"Metadata/catalog mismatch: {key}")
     html_text = source_html.decode("utf-8", errors="replace")
-    soup = BeautifulSoup(html_text, "html.parser")
+    soup = BeautifulSoup(html_text, "lxml")
     hero = soup.select_one("div.hero.hero-partit")
     if not isinstance(hero, Tag):
         raise MatchDetailParserError("No se encuentra div.hero.hero-partit")

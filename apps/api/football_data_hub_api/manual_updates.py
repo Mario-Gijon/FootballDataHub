@@ -522,6 +522,57 @@ def public_manual_update_job(job: dict[str, Any] | None) -> dict[str, Any] | Non
             if isinstance(job.get("match_details_progress"), dict)
             else None
         ),
+        "team_progress": job.get("team_profile_progress"),
+    }
+
+
+def _team_batch_progress(
+    root: Path, team_ids: set[int], *, started_ns: int, log_tail: str,
+) -> dict[str, Any]:
+    """Read only this run's evidence; never infer success from a checkpoint alone."""
+    completed: set[int] = set()
+    failed: set[int] = set()
+    current_team_id: int | None = None
+    newest_evidence_ns = started_ns
+    for team_id in team_ids:
+        team_root = root / "2026-27" / str(team_id)
+        if not team_root.is_dir():
+            continue
+        for capture_dir in team_root.iterdir():
+            if capture_dir.name.startswith(".") or capture_dir.name == "diagnostics" or not capture_dir.is_dir():
+                continue
+            validation = capture_dir / "validation" / "results.json"
+            try:
+                if validation.is_symlink() or not validation.is_file() or validation.stat().st_mtime_ns < started_ns:
+                    continue
+                if json.loads(validation.read_text(encoding="utf-8")).get("valid") is True:
+                    completed.add(team_id)
+            except (OSError, ValueError, TypeError):
+                pass
+        diagnostics = team_root / "diagnostics"
+        if not diagnostics.is_dir():
+            continue
+        for evidence in diagnostics.glob("*/metadata/evidence.json"):
+            try:
+                if evidence.is_symlink() or evidence.stat().st_mtime_ns < started_ns:
+                    continue
+                status = json.loads(evidence.read_text(encoding="utf-8")).get("status")
+                evidence_ns = evidence.stat().st_mtime_ns
+            except (OSError, ValueError, TypeError):
+                continue
+            if status == "acquiring" and evidence_ns >= newest_evidence_ns:
+                newest_evidence_ns = evidence_ns
+                current_team_id = team_id
+            elif status not in {"acquiring", "complete"}:
+                failed.add(team_id)
+    preflight = re.findall(r"FDH_TEAM_PREFLIGHT (\d+)/(\d+) (\d+)", log_tail)
+    checked = int(preflight[-1][0]) if preflight else 0
+    return {
+        "total": len(team_ids),
+        "preflight_checked": checked,
+        "captured": len(completed),
+        "failed": len(failed - completed),
+        "current_team_id": current_team_id,
     }
 
 
@@ -2528,7 +2579,10 @@ class ManualUpdateManager:
         env.pop("WAYLAND_SOCKET", None)
         return env
 
-    def _command(self, args: list[str], log_path: Path, *, timeout: int) -> str:
+    def _command(
+        self, args: list[str], log_path: Path, *, timeout: int,
+        on_tick: Callable[[], None] | None = None,
+    ) -> str:
         with log_path.open("ab") as log:
             log.write(("\n$ " + " ".join(args) + "\n").encode())
             log.flush()
@@ -2543,7 +2597,19 @@ class ManualUpdateManager:
             with self._mutex:
                 self._active_processes.add(process)
             try:
-                return_code = process.wait(timeout=timeout)
+                if on_tick is None:
+                    return_code = process.wait(timeout=timeout)
+                else:
+                    deadline = time.monotonic() + timeout
+                    while True:
+                        try:
+                            return_code = process.wait(timeout=max(0, min(10, deadline - time.monotonic())))
+                            on_tick()
+                            break
+                        except subprocess.TimeoutExpired:
+                            if time.monotonic() >= deadline:
+                                raise
+                            on_tick()
             except subprocess.TimeoutExpired as exc:
                 try:
                     os.killpg(process.pid, signal.SIGTERM)
@@ -2555,6 +2621,19 @@ class ManualUpdateManager:
                         pass
                     process.wait(timeout=5)
                 raise ManualUpdateError("La adquisición superó el límite de tiempo y se detuvo; no se reintentó.") from exc
+            except Exception:
+                # A progress persistence error must not orphan an acquisition.
+                if process.poll() is None:
+                    try:
+                        os.killpg(process.pid, signal.SIGTERM)
+                        process.wait(timeout=10)
+                    except (ProcessLookupError, subprocess.TimeoutExpired):
+                        try:
+                            os.killpg(process.pid, signal.SIGKILL)
+                        except ProcessLookupError:
+                            pass
+                        process.wait(timeout=5)
+                raise
             finally:
                 with self._mutex:
                     self._active_processes.discard(process)
@@ -3268,6 +3347,7 @@ class ManualUpdateManager:
                 args.extend(("--refresh-view", view))
             for team_id, _group, _team, _missing, _active_dir in acquisition_targets:
                 args.extend(["--team-id", str(team_id)])
+                args.extend(["--seed-capture", f"{team_id}:{_active_dir.name}"])
             if self.browser_executable:
                 args.extend(["--browser-executable", str(self.browser_executable)])
             # The provider batch owns sequential pauses and stops after any
@@ -3275,7 +3355,20 @@ class ManualUpdateManager:
             # 40-team, three-view run; it does not enable retries.
             try:
                 time.sleep(5)
-                self._command(args, log_path, timeout=14_400)
+                started_ns = time.time_ns()
+                team_ids = {item[0] for item in acquisition_targets}
+
+                def update_progress() -> None:
+                    progress = _team_batch_progress(
+                        store_root, team_ids, started_ns=started_ns,
+                        log_tail=_tail(log_path, 1200),
+                    )
+                    if progress != job.get("team_profile_progress"):
+                        job["team_profile_progress"] = progress
+                        self._save(job)
+
+                update_progress()
+                self._command(args, log_path, timeout=14_400, on_tick=update_progress)
             except Exception as exc:
                 batch_error = f"{type(exc).__name__}: {str(exc)[:240]}"
             new_manifests = sorted(

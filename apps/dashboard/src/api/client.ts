@@ -44,6 +44,7 @@ export interface ManualUpdateJob {
   finished_at: string | null;
   summary: Record<string, unknown> | null;
   progress: { completed: number; total: number } | null;
+  team_progress?: { total: number; preflight_checked: number; captured: number; failed: number; current_team_id: number | null } | null;
   error: string | null;
 }
 

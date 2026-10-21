@@ -6,7 +6,9 @@ import argparse
 import json
 import math
 import os
+import re
 import shutil
+import sys
 from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -46,6 +48,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--season", choices=(SUPPORTED_SEASON,), default=SUPPORTED_SEASON)
     parser.add_argument("--groups", choices=("I", "II", "both"), default="both")
     parser.add_argument("--team-id", type=int, action="append", dest="team_ids")
+    parser.add_argument(
+        "--seed-capture", action="append", default=[], metavar="TEAM_ID:CAPTURE_ID",
+        help="Usa una captura publicada concreta como semilla, sin inspeccionar todo el historial del equipo.",
+    )
     parser.add_argument("--limit", type=int, help="Limita el número de equipos seleccionados para un piloto.")
     parser.add_argument(
         "--pause-seconds",
@@ -133,6 +139,18 @@ def _storage_preflight(root: Path) -> dict[str, Any]:
     }
 
 
+def _access_failure_kind(status: AccessStatus, http_status: int | None) -> str:
+    if status is AccessStatus.CHALLENGE_REQUIRED:
+        return "challenge_required"
+    if status is AccessStatus.HTTP_ERROR:
+        return "http_denial" if http_status in {401, 403, 407, 429} else "http_error"
+    if status is AccessStatus.NAVIGATION_ERROR:
+        return "navigation_error"
+    if status is AccessStatus.INVALID_CONTENT:
+        return "invalid_content"
+    return "access_denied"
+
+
 def _is_inside_repository(path: Path) -> bool:
     repository_root = Path(__file__).resolve().parents[5]
     try:
@@ -166,6 +184,48 @@ def _inspect_best(
     )
     usable = [candidate for candidate in candidates if candidate.reusable_as_seed]
     return max(usable, key=_assessment_key) if usable else None
+
+
+def _seed_capture_ids(values: list[str], selected_ids: set[int]) -> dict[int, str]:
+    """Explicit seeds must name only selected teams and safe capture directories."""
+    seeds: dict[int, str] = {}
+    for value in values:
+        team, separator, capture_id = value.partition(":")
+        if (
+            not separator or not team.isdecimal() or int(team) not in selected_ids
+            or int(team) in seeds
+            or not re.fullmatch(r"\d{8}T\d{6}\.\d{6}Z-[a-f0-9]{8}", capture_id)
+        ):
+            raise ValueError(f"--seed-capture inválida o duplicada: {value}")
+        seeds[int(team)] = capture_id
+    return seeds
+
+
+def _inspect_selected_seed(
+    output_root: Path, *, season: str, group: int, capture_id: str,
+    record: dict[str, Any], context, reference: dict[str, Any],
+    teams: list[dict[str, Any]], matches: list[dict[str, Any]],
+    required_views: tuple[str, ...],
+) -> CaptureInspection:
+    capture_dir = output_root / season / str(record["team_id"]) / capture_id
+    if capture_dir.is_symlink() or not capture_dir.is_dir():
+        raise ValueError(f"La captura semilla publicada de team_id={record['team_id']} no existe o es insegura.")
+    inspection = inspect_team_capture(
+        capture_dir,
+        team_catalog_record=record,
+        competition=context,
+        team_catalog_reference=reference,
+        group_team_catalog=teams,
+        known_matches=matches,
+        required_views=required_views,
+        include_seed_payloads=True,
+    )
+    if not inspection.reusable_as_seed or inspection.seed is None:
+        raise ValueError(
+            f"La captura semilla publicada de team_id={record['team_id']} no superó la validación: "
+            + "; ".join(inspection.reasons)
+        )
+    return inspection
 
 
 def _team_plan(
@@ -332,23 +392,36 @@ def main(argv: Sequence[str] | None = None) -> int:
         team_ids=args.team_ids,
         limit=args.limit,
     )
+    selected_ids = {
+        int(record["team_id"])
+        for records in team_records.values() for record in records
+    }
+    explicit_seeds = _seed_capture_ids(args.seed_capture, selected_ids)
+    if args.force_refresh and explicit_seeds:
+        raise ValueError("--force-refresh no puede combinarse con --seed-capture.")
 
     inspections: dict[tuple[int, int], CaptureInspection | None] = {}
     pending_by_team = {}
     plans: list[dict[str, Any]] = []
+    selected_count = sum(len(records) for records in team_records.values())
+    checked_count = 0
     for group in groups:
         for record in team_records[group]:
-            inspection = _inspect_best(
-                output_root,
-                season=args.season,
-                group=group,
-                record=record,
-                context=contexts[group],
-                reference=references[group],
-                teams=catalog_teams_by_group[group],
-                matches=matches_by_group[group],
-                required_views=selected_views,
-            )
+            seed_id = explicit_seeds.get(int(record["team_id"]))
+            if seed_id:
+                inspection = _inspect_selected_seed(
+                    output_root, season=args.season, group=group, capture_id=seed_id,
+                    record=record, context=contexts[group], reference=references[group],
+                    teams=catalog_teams_by_group[group], matches=matches_by_group[group],
+                    required_views=selected_views,
+                )
+            else:
+                inspection = _inspect_best(
+                    output_root, season=args.season, group=group, record=record,
+                    context=contexts[group], reference=references[group],
+                    teams=catalog_teams_by_group[group], matches=matches_by_group[group],
+                    required_views=selected_views,
+                )
             if args.force_refresh:
                 inspection = None
             inspections[(group, int(record["team_id"]))] = inspection
@@ -370,6 +443,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                 catalog_reference=references[group],
                 refresh_views=refresh_views,
             ))
+            checked_count += 1
+            if not args.dry_run:
+                print(
+                    f"FDH_TEAM_PREFLIGHT {checked_count}/{selected_count} {record['team_id']}",
+                    file=sys.stderr, flush=True,
+                )
 
     if args.dry_run:
         full_catalog_scope = covers_full_catalog_scope(
@@ -412,7 +491,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         inspection = inspections.get((group, team_id))
         seed = None
         if inspection and inspection.reusable_as_seed:
-            seed = _reuse_capture_seed(
+            seed = inspection.seed or _reuse_capture_seed(
                 inspection.path,
                 team_catalog_record=record,
                 competition=context,
@@ -497,15 +576,17 @@ def main(argv: Sequence[str] | None = None) -> int:
                 evidence_checkpoint=checkpoint,
             )
         except TeamAcquisitionStopped as exc:
-            record_failure(kind="access_denied", message=str(exc))
+            kind = _access_failure_kind(exc.assessment.status, exc.assessment.http_status)
+            record_failure(kind=kind, message=str(exc))
             if exc.assessment.status is AccessStatus.CHALLENGE_REQUIRED:
-                raise BatchAccessDenied(str(exc), kind="challenge_required", capture_id=checkpoint.capture_id) from exc
+                raise BatchAccessDenied(str(exc), kind=kind, capture_id=checkpoint.capture_id) from exc
             if exc.assessment.status is AccessStatus.HTTP_ERROR:
-                kind = "http_denial" if exc.assessment.http_status in {401, 403, 407, 429} else "http_error"
                 raise BatchStop(str(exc), kind=kind, capture_id=checkpoint.capture_id) from exc
             if exc.assessment.status is AccessStatus.NAVIGATION_ERROR:
-                raise BatchStop(str(exc), kind="navigation_error", capture_id=checkpoint.capture_id) from exc
-            raise
+                raise BatchStop(str(exc), kind=kind, capture_id=checkpoint.capture_id) from exc
+            if exc.assessment.status is AccessStatus.INVALID_CONTENT:
+                raise BatchLocalFailure(str(exc), capture_id=checkpoint.capture_id) from exc
+            raise BatchAccessDenied(str(exc), kind=kind, capture_id=checkpoint.capture_id) from exc
         except (BrowserRuntimeError, BrowserSessionError) as exc:
             record_failure(kind="browser_environment_error", message=f"{type(exc).__name__}: {exc}")
             raise BatchStop(f"{type(exc).__name__}: {exc}", kind="browser_environment_error", capture_id=checkpoint.capture_id) from exc

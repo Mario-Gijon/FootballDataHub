@@ -234,6 +234,13 @@ export function ManualUpdateControl({ onApplied }: Props) {
         {active && <>
           <strong>Actualizando…</strong> {stageLabel(job.stage)}
           {job.progress && job.progress.total > 0 && <span> · Informes {job.progress.completed}/{job.progress.total}</span>}
+          {job.stage === "refreshing_team_profiles" && job.team_progress && <span>
+            {job.team_progress.preflight_checked < job.team_progress.total
+              ? ` · Verificando capturas ${job.team_progress.preflight_checked}/${job.team_progress.total}`
+              : ` · Capturas de equipos ${job.team_progress.captured}/${job.team_progress.total}`}
+            {job.team_progress.failed > 0 && ` · ${job.team_progress.failed} pendientes por error`}
+            {job.team_progress.current_team_id && ` · Equipo ${job.team_progress.current_team_id}`}
+          </span>}
         </>}
         {isNoChange && <>
           <strong>{typeof result?.message === "string"

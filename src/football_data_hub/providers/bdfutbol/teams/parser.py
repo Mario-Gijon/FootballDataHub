@@ -977,7 +977,7 @@ def parse_team_transfers_snapshot(
 ) -> tuple[tuple[TeamTransfer, ...], tuple[TeamTransferSection, ...]]:
     """Parse a single saved Traspasos document without a browser or network."""
     return _parse_transfers(
-        BeautifulSoup(source_html, "html.parser"),
+        BeautifulSoup(source_html, "lxml"),
         team_id=team_id,
         season=season,
         competition=competition,
@@ -1053,7 +1053,7 @@ def _require_view(views: dict[str, str], view: str, selector: str) -> BeautifulS
     source = views.get(view)
     if source is None:
         return None
-    soup = BeautifulSoup(source, "html.parser")
+    soup = BeautifulSoup(source, "lxml")
     if soup.select_one(selector) is None:
         raise TeamProfileParseError(f"La vista {view} no contiene {selector}")
     return soup
@@ -1081,7 +1081,16 @@ def parse_team_profile_pages(
         raise TeamProfileParseError("El catálogo no publica un nombre de equipo")
     if not views or "alignment" not in views:
         raise TeamProfileParseError("Se requiere la vista real Alineación")
-    alignment = _require_view(views, "alignment", "#taulaplantilla")
+    parsed_views: dict[str, BeautifulSoup] = {}
+
+    def view_soup(view: str, selector: str) -> BeautifulSoup | None:
+        if view not in parsed_views:
+            parsed = _require_view(views, view, selector)
+            if parsed is not None:
+                parsed_views[view] = parsed
+        return parsed_views.get(view)
+
+    alignment = view_soup("alignment", "#taulaplantilla")
     assert alignment is not None
     heading = alignment.select_one("h1")
     heading_text = clean_text(heading.get_text(" ", strip=True)) if heading else ""
@@ -1105,7 +1114,7 @@ def parse_team_profile_pages(
     for view, selector in source_selectors.items():
         if view not in views:
             continue
-        soup = _require_view(views, view, selector)
+        soup = view_soup(view, selector)
         assert soup is not None
         _merge_coaches = _parse_coaches(
             soup, base_url=team_url, view=view, issues=issues
@@ -1157,7 +1166,7 @@ def parse_team_profile_pages(
 
     statistics: dict[int, PlayerSeasonStatistics] = {}
     if "statistics" in views:
-        soup = _require_view(views, "statistics", "#c3p0")
+        soup = view_soup("statistics", "#c3p0")
         assert soup is not None
         parsed, parsed_statistics = _parse_statistics(
             soup, base_url=team_url, view="statistics", issues=issues
@@ -1201,9 +1210,11 @@ def parse_team_profile_pages(
         for player_id, values in sorted(membership_values.items())
     )
 
-    follow = _require_view(views, "follow", "#taula-seguiment") if "follow" in views else None
+    follow = view_soup("follow", "#taula-seguiment") if "follow" in views else None
+    state_soups: dict[str, BeautifulSoup] = {}
     for state, state_html in (follow_state_html or {}).items():
-        state_soup = BeautifulSoup(state_html, "html.parser")
+        state_soup = BeautifulSoup(state_html, "lxml")
+        state_soups[state] = state_soup
         if state not in {"p", "t", "go", "tot"}:
             raise TeamProfileParseError(f"Estado de seguimiento no reconocido: {state!r}")
         if state_soup.select_one("#taula-seguiment") is None:
@@ -1225,10 +1236,7 @@ def parse_team_profile_pages(
     )
     follow_metrics: list[PlayerMatchMetric] = []
     follow_warnings: list[str] = []
-    state_soups: dict[str, BeautifulSoup] = {}
-    for state, state_html in (follow_state_html or {}).items():
-        state_soup = BeautifulSoup(state_html, "html.parser")
-        state_soups[state] = state_soup
+    for state, state_soup in state_soups.items():
         if state == "t":
             rows, warnings = _parse_follow_event_metrics(
                 state_soup,
@@ -1285,7 +1293,7 @@ def parse_team_profile_pages(
     if len(follow_metric_keys) != len(follow_metrics):
         raise TeamProfileParseError("Seguimiento repite una métrica por jugador y partido")
     transfers_soup = views.get("transfers")
-    transfers_parsed_soup = BeautifulSoup(transfers_soup, "html.parser") if transfers_soup else None
+    transfers_parsed_soup = BeautifulSoup(transfers_soup, "lxml") if transfers_soup else None
     if transfers_parsed_soup is not None and transfers_parsed_soup.select_one("#pestaltesbaixes") is None:
         raise TeamProfileParseError("La vista Traspasos no contiene el contenedor #pestaltesbaixes")
     transfers, transfer_sections = (
@@ -1301,7 +1309,7 @@ def parse_team_profile_pages(
         else ((), ())
     )
     match_soup = (
-        _require_view(views, "matches", "#taula-resultats-plantilla")
+        view_soup("matches", "#taula-resultats-plantilla")
         if "matches" in views
         else None
     )

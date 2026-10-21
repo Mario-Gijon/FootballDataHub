@@ -52,7 +52,7 @@ def extract_tactical_positions(
     directly traceable to the saved HTML.
     """
 
-    soup = BeautifulSoup(html, "html.parser")
+    soup = BeautifulSoup(html, "lxml")
     tactic = soup.select_one("#alineacio #tactica #js")
     if tactic is None:
         raise TacticalLayoutError("No existe #alineacio #tactica #js en el snapshot.")

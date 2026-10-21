@@ -8,6 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from football_data_hub.providers.bdfutbol.teams import batch_cli
+from football_data_hub.providers.bdfutbol.access import AccessStatus
 
 
 def _install_fake_batch(monkeypatch, tmp_path: Path, statuses: list[str], *, stopped: bool = False):
@@ -140,3 +141,64 @@ def test_refresh_views_force_selected_reacquisition_for_complete_profiles() -> N
     assert plan["planned_page_visits"] == ["squad", "statistics", "follow"]
     assert plan["follow_state_transitions"] == 4
     assert plan["planned_navigation_count"] == 3
+
+
+def test_explicit_seed_skips_historical_scan_and_reuses_verified_payload(monkeypatch, tmp_path):
+    written = _install_fake_batch(monkeypatch, tmp_path, ["complete"])
+    seed_id = "20261012T131518.543469Z-43ff1122"
+    seed = {"raw_views": {"alignment": "verified"}}
+    inspection = SimpleNamespace(
+        reusable_as_seed=True, seed=seed, complete_for_current_policy=True,
+        valid_views=("alignment",), valid_follow_states=(),
+        manifest_summary=lambda: {"capture_id": seed_id},
+    )
+    selected = []
+
+    def inspect_selected(*_args, **kwargs):
+        selected.append(kwargs["capture_id"])
+        return inspection
+
+    monkeypatch.setattr(batch_cli, "_inspect_selected_seed", inspect_selected)
+    monkeypatch.setattr(batch_cli, "_inspect_best", lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("history scanned")))
+    assert batch_cli.main([
+        "--groups", "I", "--team-id", "101", "--seed-capture", f"101:{seed_id}",
+        "--output-root", str(tmp_path / "captures"), "--pause-seconds", "0",
+    ]) == 0
+    assert selected == [seed_id]
+    assert written[0]["teams"][0]["status"] == "complete"
+
+
+def test_seed_ids_reject_other_team_duplicate_and_unsafe_paths():
+    seed = "20261012T131518.543469Z-43ff1122"
+    for values in ([f"102:{seed}"], [f"101:{seed}", f"101:{seed}"], ["101:../../other"]):
+        try:
+            batch_cli._seed_capture_ids(values, {101})
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"Unsafe explicit seed accepted: {values}")
+
+
+def test_corrupt_explicit_seed_fails_before_any_acquisition(monkeypatch, tmp_path):
+    _install_fake_batch(monkeypatch, tmp_path, ["complete"])
+    seed_id = "20261012T131518.543469Z-43ff1122"
+    seed_dir = tmp_path / "captures" / "2026-27" / "101" / seed_id
+    seed_dir.mkdir(parents=True)
+    monkeypatch.setattr(batch_cli, "inspect_team_capture", lambda *_args, **_kwargs: SimpleNamespace(
+        reusable_as_seed=False, seed=None, reasons=("SHA-256 incorrecto",),
+    ))
+    try:
+        batch_cli.main([
+            "--groups", "I", "--team-id", "101", "--seed-capture", f"101:{seed_id}",
+            "--output-root", str(tmp_path / "captures"), "--pause-seconds", "0",
+        ])
+    except ValueError as exc:
+        assert "SHA-256 incorrecto" in str(exc)
+    else:
+        raise AssertionError("Corrupt explicit seed did not stop preflight")
+
+
+def test_invalid_content_is_not_misreported_as_access_denial():
+    assert batch_cli._access_failure_kind(AccessStatus.INVALID_CONTENT, 200) == "invalid_content"
+    assert batch_cli._access_failure_kind(AccessStatus.HTTP_ERROR, 403) == "http_denial"
+    assert batch_cli._access_failure_kind(AccessStatus.CHALLENGE_REQUIRED, 200) == "challenge_required"
