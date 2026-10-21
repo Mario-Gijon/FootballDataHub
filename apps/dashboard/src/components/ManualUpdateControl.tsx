@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   loadManualUpdateJob,
+  loadLatestCompetitionUpdate,
   startCompetitionUpdate,
   type ManualUpdateJob,
 } from "../api/client";
@@ -9,12 +10,137 @@ interface Props {
   onApplied?: () => void;
 }
 
+const UPDATE_RECOVERY_KEY = "fdh:manual-update:competition";
+const UPDATE_RECOVERY_CLOCK_SKEW_MS = 10_000;
+
+interface StoredUpdateRecovery {
+  jobId?: string;
+  startedAt: number;
+}
+
+function readStoredRecovery(): StoredUpdateRecovery | null {
+  try {
+    const raw = window.sessionStorage.getItem(UPDATE_RECOVERY_KEY);
+    if (!raw) return null;
+    const value: unknown = JSON.parse(raw);
+    if (typeof value !== "object" || value === null || !("startedAt" in value)) return null;
+    const record = value as { startedAt?: unknown; jobId?: unknown };
+    if (typeof record.startedAt !== "number" || !Number.isFinite(record.startedAt)) return null;
+    return {
+      startedAt: record.startedAt,
+      ...(typeof record.jobId === "string" ? { jobId: record.jobId } : {}),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function storeRecovery(value: StoredUpdateRecovery | null): void {
+  try {
+    if (value) window.sessionStorage.setItem(UPDATE_RECOVERY_KEY, JSON.stringify(value));
+    else window.sessionStorage.removeItem(UPDATE_RECOVERY_KEY);
+  } catch {
+    // Recovery remains available for this mounted page even if browser storage is unavailable.
+  }
+}
+
+function isTransportFailure(reason: unknown): boolean {
+  if (reason instanceof TypeError) return true;
+  return reason instanceof Error && /failed to fetch|fetch failed|networkerror|network request failed|load failed/i.test(reason.message);
+}
+
+function isAmbiguousStartFailure(reason: unknown): boolean {
+  if (isTransportFailure(reason)) return true;
+  if (typeof reason !== "object" || reason === null || !("statusCode" in reason)) return false;
+  const statusCode = (reason as { statusCode?: unknown }).statusCode;
+  return typeof statusCode === "number"
+    && (statusCode === 408 || statusCode === 409 || statusCode === 425 || statusCode === 429 || statusCode >= 500);
+}
+
+function isActiveJob(value: ManualUpdateJob): boolean {
+  return value.status === "queued" || value.status === "running";
+}
+
+function jobStartedAfter(value: ManualUpdateJob, startedAt: number): boolean {
+  const createdAt = Date.parse(value.created_at);
+  return Number.isFinite(createdAt) && createdAt >= startedAt - UPDATE_RECOVERY_CLOCK_SKEW_MS;
+}
+
 export function ManualUpdateControl({ onApplied }: Props) {
   const [job, setJob] = useState<ManualUpdateJob | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [pollAttempt, setPollAttempt] = useState(0);
+  const [recoveryAttempt, setRecoveryAttempt] = useState(0);
+  const [pendingStartAt, setPendingStartAt] = useState<number | null>(() => {
+    const stored = readStoredRecovery();
+    return stored?.jobId ? null : stored?.startedAt ?? null;
+  });
+  const [restoreJobId, setRestoreJobId] = useState<string | null>(() => readStoredRecovery()?.jobId ?? null);
   const notified = useRef(new Set<string>());
+
+  useEffect(() => {
+    if (!restoreJobId) return;
+    let active = true;
+    const timer = window.setTimeout(() => {
+      void loadManualUpdateJob(restoreJobId)
+        .then((restored) => {
+          if (!active) return;
+          if (!restored) throw new Error("La API no encontró el trabajo que estaba guardado en esta pestaña.");
+          setJob(restored);
+          setRestoreJobId(null);
+          setError("");
+          setPollAttempt(0);
+          if (isActiveJob(restored)) {
+            const startedAt = Date.parse(restored.created_at);
+            storeRecovery({ jobId: restored.job_id, startedAt: Number.isFinite(startedAt) ? startedAt : Date.now() });
+          } else {
+            storeRecovery(null);
+            if (restored.status === "applied" && !notified.current.has(restored.job_id)) {
+              notified.current.add(restored.job_id);
+              onApplied?.();
+            }
+          }
+        })
+        .catch((reason: unknown) => {
+          if (!active) return;
+          setError(reason instanceof Error
+            ? `No se pudo recuperar el trabajo guardado. Se volverá a consultar: ${reason.message}`
+            : "No se pudo recuperar el trabajo guardado. Se volverá a consultar.");
+          setRecoveryAttempt((value) => value + 1);
+        });
+    }, recoveryAttempt ? 4000 : 0);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [restoreJobId, recoveryAttempt, onApplied]);
+
+  useEffect(() => {
+    if (pendingStartAt === null || restoreJobId) return;
+    let active = true;
+    const timer = window.setTimeout(() => {
+      void loadLatestCompetitionUpdate()
+        .then((latest) => {
+          if (!active) return;
+          if (latest && latest.scope === "competition" && (isActiveJob(latest) || jobStartedAfter(latest, pendingStartAt))) {
+            setJob(latest);
+            setPendingStartAt(null);
+            setError("");
+            setPollAttempt(0);
+            const startedAt = Date.parse(latest.created_at);
+            storeRecovery({ jobId: latest.job_id, startedAt: Number.isFinite(startedAt) ? startedAt : pendingStartAt });
+            return;
+          }
+          setPendingStartAt(null);
+          storeRecovery(null);
+          setError("La API confirma que no hay un trabajo nuevo registrado. Puedes volver a pulsar «Actualizar Primera Federación».");
+        })
+        .catch(() => {
+          if (!active) return;
+          setError("Se perdió la conexión con la API. Estoy intentando recuperar el estado; no vuelvas a iniciar otra actualización mientras se comprueba.");
+          setRecoveryAttempt((value) => value + 1);
+        });
+    }, recoveryAttempt ? 4000 : 0);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [pendingStartAt, restoreJobId, recoveryAttempt]);
 
   useEffect(() => {
     if (!job || !["queued", "running"].includes(job.status)) return;
@@ -22,9 +148,16 @@ export function ManualUpdateControl({ onApplied }: Props) {
     const timer = window.setTimeout(() => {
       void loadManualUpdateJob(job.job_id)
         .then((next) => {
-          if (!active || !next) return;
+          if (!active) return;
+          if (!next) throw new Error("La API no devolvió el trabajo solicitado.");
           setJob(next);
           setError("");
+          if (isActiveJob(next)) {
+            const startedAt = Date.parse(next.created_at);
+            storeRecovery({ jobId: next.job_id, startedAt: Number.isFinite(startedAt) ? startedAt : Date.now() });
+          } else {
+            storeRecovery(null);
+          }
           if (next.status === "applied" && !notified.current.has(next.job_id)) {
             notified.current.add(next.job_id);
             onApplied?.();
@@ -42,21 +175,39 @@ export function ManualUpdateControl({ onApplied }: Props) {
 
   async function begin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pendingStartAt !== null || restoreJobId) return;
     setError("");
     setBusy(true);
+    setJob(null);
+    const startedAt = Date.now();
+    storeRecovery({ startedAt });
     try {
       const created = await startCompetitionUpdate();
-      if (!created) throw new Error("La API no devolvió el trabajo de actualización.");
+      if (!created) {
+        setPendingStartAt(startedAt);
+        setRecoveryAttempt(0);
+        setError("La API no confirmó el inicio. Estoy comprobando si el trabajo llegó a registrarse.");
+        return;
+      }
       setJob(created);
+      storeRecovery({ jobId: created.job_id, startedAt });
       setPollAttempt(0);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "No se pudo iniciar la actualización.");
+      if (isAmbiguousStartFailure(reason)) {
+        setPendingStartAt(startedAt);
+        setRecoveryAttempt(0);
+        setError("No se pudo confirmar la respuesta de inicio. Estoy comprobando si el trabajo llegó a registrarse.");
+      } else {
+        storeRecovery(null);
+        setError(reason instanceof Error ? reason.message : "No se pudo iniciar la actualización.");
+      }
     } finally {
       setBusy(false);
     }
   }
 
-  const active = job && ["queued", "running"].includes(job.status);
+  const active = job && isActiveJob(job);
+  const recovering = pendingStartAt !== null || restoreJobId !== null;
   const result = job?.summary;
   const isNoChange = job?.status === "completed";
   const isApplied = job?.status === "applied";
@@ -65,11 +216,12 @@ export function ManualUpdateControl({ onApplied }: Props) {
   return (
     <section className="manual-update-control" aria-label="Actualizar Primera Federación">
       <form onSubmit={(event) => { void begin(event); }}>
-        <button className="manual-update-button" type="submit" disabled={busy || Boolean(active)}>
-          {busy || active ? "Actualizando…" : "Actualizar Primera Federación"}
+        <button className="manual-update-button" type="submit" disabled={busy || Boolean(active) || recovering}>
+          {busy || active ? "Actualizando…" : recovering ? "Recuperando…" : "Actualizar Primera Federación"}
         </button>
       </form>
-      {(active || job || error) && <div className="manual-update-status" aria-live="polite" role="status">
+      {(active || job || error || recovering) && <div className="manual-update-status" aria-live="polite" role="status">
+        {recovering && <><strong>Recuperando estado…</strong> Comprobando el último trabajo registrado; no se iniciará otra actualización.</>}
         {active && <>
           <strong>Actualizando…</strong> {stageLabel(job.stage)}
           {job.progress && job.progress.total > 0 && <span> · Informes {job.progress.completed}/{job.progress.total}</span>}

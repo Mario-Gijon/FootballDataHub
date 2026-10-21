@@ -54,6 +54,13 @@ export interface ManualUpdateStatus {
   last_checked_at: string | null;
 }
 
+export class ManualUpdateRequestError extends Error {
+  constructor(message: string, readonly statusCode: number) {
+    super(message);
+    this.name = "ManualUpdateRequestError";
+  }
+}
+
 async function updateDataRequest(path: string): Promise<Record<string, unknown>> {
   const response = await fetch(`${apiBase}${path}`, { headers: updateHeaders });
   let payload: unknown;
@@ -89,7 +96,10 @@ async function manualUpdateRequest(path: string, method: "GET" | "POST"): Promis
       ? (payload as { detail?: unknown }).detail : undefined;
     const message = typeof detail === "object" && detail !== null && "message" in detail
       ? (detail as { message?: unknown }).message : undefined;
-    throw new Error(typeof message === "string" ? message : `La API respondió con un error (${response.status}).`);
+    throw new ManualUpdateRequestError(
+      typeof message === "string" ? message : `La API respondió con un error (${response.status}).`,
+      response.status,
+    );
   }
   return payload as ManualUpdateJob | null;
 }

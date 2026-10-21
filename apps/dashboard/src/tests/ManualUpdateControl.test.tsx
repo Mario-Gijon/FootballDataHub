@@ -5,6 +5,7 @@ import type { ManualUpdateJob } from "../api/client";
 
 const api = vi.hoisted(() => ({
   loadManualUpdateJob: vi.fn(),
+  loadLatestCompetitionUpdate: vi.fn(),
   startCompetitionUpdate: vi.fn(),
 }));
 
@@ -14,6 +15,8 @@ afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   vi.clearAllMocks();
+  vi.useRealTimers();
+  window.sessionStorage.clear();
 });
 
 function job(patch: Partial<ManualUpdateJob> = {}): ManualUpdateJob {
@@ -112,6 +115,69 @@ describe("ManualUpdateControl", () => {
     expect(api.startCompetitionUpdate).toHaveBeenCalledOnce();
     expect(api.loadManualUpdateJob).not.toHaveBeenCalled();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("recovers the registered job when the POST response is lost, without starting a second job", async () => {
+    const startedAt = Date.parse("2026-10-21T12:00:00.000Z");
+    vi.spyOn(Date, "now").mockReturnValue(startedAt);
+    api.startCompetitionUpdate.mockRejectedValue(new TypeError("Failed to fetch"));
+    api.loadLatestCompetitionUpdate.mockResolvedValue(job({
+      status: "running", stage: "capturing_group_i", created_at: new Date(startedAt).toISOString(),
+    }));
+    api.loadManualUpdateJob.mockResolvedValue(job({ status: "running", stage: "capturing_group_ii" }));
+    render(<ManualUpdateControl />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Actualizar Primera Federación" }));
+    expect(await screen.findByText(/consultando Grupo II/, {}, { timeout: 4000 })).toBeInTheDocument();
+    expect(api.startCompetitionUpdate).toHaveBeenCalledOnce();
+    expect(api.loadLatestCompetitionUpdate).toHaveBeenCalledOnce();
+    expect(api.loadManualUpdateJob).toHaveBeenCalledWith("job-competition-1");
+  });
+
+  it("does not mistake an older completed job for a start whose response was lost", async () => {
+    const startedAt = Date.parse("2026-10-21T12:00:00.000Z");
+    vi.spyOn(Date, "now").mockReturnValue(startedAt);
+    api.startCompetitionUpdate.mockRejectedValue(new TypeError("Failed to fetch"));
+    api.loadLatestCompetitionUpdate.mockResolvedValue(job({
+      status: "applied", stage: "completed", created_at: "2026-10-20T12:00:00.000Z",
+    }));
+    render(<ManualUpdateControl />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Actualizar Primera Federación" }));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("no hay un trabajo nuevo registrado"));
+    expect(screen.getByRole("button", { name: "Actualizar Primera Federación" })).toBeEnabled();
+    expect(api.startCompetitionUpdate).toHaveBeenCalledOnce();
+    expect(api.loadManualUpdateJob).not.toHaveBeenCalled();
+  });
+
+  it("keeps the button locked while the API is unavailable, then recovers without a second POST", async () => {
+    const startedAt = Date.parse("2026-10-21T12:00:00.000Z");
+    vi.spyOn(Date, "now").mockReturnValue(startedAt);
+    api.startCompetitionUpdate.mockRejectedValue(new TypeError("Failed to fetch"));
+    api.loadLatestCompetitionUpdate
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValueOnce(job({ status: "running", created_at: new Date(startedAt).toISOString() }));
+    api.loadManualUpdateJob.mockResolvedValue(job({ status: "running", stage: "capturing_group_ii" }));
+    render(<ManualUpdateControl />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Actualizar Primera Federación" }));
+    await vi.waitFor(() => expect(api.loadLatestCompetitionUpdate).toHaveBeenCalledOnce());
+    expect(screen.getByRole("button", { name: "Recuperando…" })).toBeDisabled();
+    await waitFor(() => expect(api.loadLatestCompetitionUpdate).toHaveBeenCalledTimes(2), { timeout: 6000 });
+    expect(api.startCompetitionUpdate).toHaveBeenCalledOnce();
+    expect(await screen.findByText(/consultando Grupo II/, {}, { timeout: 4000 })).toBeInTheDocument();
+  }, 10000);
+
+  it("restores the active job from this tab after a page remount", async () => {
+    window.sessionStorage.setItem("fdh:manual-update:competition", JSON.stringify({
+      jobId: "job-competition-1", startedAt: Date.parse("2026-10-21T12:00:00.000Z"),
+    }));
+    api.loadManualUpdateJob.mockResolvedValue(job({ status: "running", stage: "capturing_group_ii" }));
+    render(<ManualUpdateControl />);
+
+    expect(await screen.findByText(/consultando Grupo II/, {}, { timeout: 4000 })).toBeInTheDocument();
+    expect(api.loadManualUpdateJob).toHaveBeenCalledWith("job-competition-1");
+    expect(api.startCompetitionUpdate).not.toHaveBeenCalled();
   });
 
   it("shows the diagnosed normalization failure and leaves the global button available", async () => {
