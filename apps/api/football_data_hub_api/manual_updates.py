@@ -26,6 +26,7 @@ from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
+from urllib.parse import urlsplit, parse_qs
 
 from football_data_hub_api.config import GroupDatasetSettings
 
@@ -315,6 +316,48 @@ def _sha256(data: bytes) -> str:
 def _candidate_sha256(candidate: dict[str, Any]) -> str:
     body = {key: value for key, value in candidate.items() if key != "candidate_sha256"}
     return _sha256(json.dumps(body, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode())
+
+
+def _legacy_statistics_section_identity(
+    capture_root: Path, metadata: dict[str, Any], validation: dict[str, Any], group: str
+) -> bool:
+    """Recognize older statistics exports whose metadata omitted ``section``.
+
+    Identity is recovered only from the exact expected BDFutbol statistics URL
+    plus matching, valid HTTP/access evidence in the immutable capture. The
+    normal statistics dataset loader still performs the full hash and semantic
+    validation afterwards.
+    """
+    if metadata.get("section") is not None:
+        return False
+    from football_data_hub.providers.bdfutbol.context import get_competition_context
+
+    expected_url = get_competition_context(group=1 if group == "I" else 2).section_url("statistics")
+    try:
+        access = json.loads((capture_root / "raw/access.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError):
+        return False
+    source_page = validation.get("source_page")
+    if not isinstance(source_page, dict):
+        return False
+    requested = metadata.get("requested_url")
+    final = metadata.get("final_url")
+    parsed = urlsplit(str(requested or ""))
+    return bool(
+        requested == expected_url
+        and final == expected_url
+        and metadata.get("http_status") == 200
+        and access.get("status") == "VALID"
+        and access.get("http_status") == 200
+        and access.get("requested_url") == expected_url
+        and access.get("final_url") == expected_url
+        and source_page.get("access_status") == "VALID"
+        and source_page.get("http_status") == 200
+        and source_page.get("requested_url") == expected_url
+        and source_page.get("final_url") == expected_url
+        and parsed.hostname == "www.bdfutbol.com"
+        and parse_qs(parsed.query).get("tab") == ["stats"]
+    )
 
 
 def public_manual_update_job(job: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -1350,6 +1393,11 @@ class ManualUpdateManager:
                             "status": "applied_reload_failed",
                             "stage": "refresh_failed",
                             "error": f"Las secciones quedaron activadas, pero FastAPI no pudo recargarlas: {type(exc).__name__}: {exc}",
+                            "summary": {
+                                "outcome": "partial",
+                                "message": "Las secciones cambiadas están activadas, pero la API necesita recargarse.",
+                                "related_section_status": candidate.get("related_section_status", {}),
+                            },
                             "finished_at": utc_now(),
                         })
                         self._save(job)
@@ -1363,11 +1411,23 @@ class ManualUpdateManager:
                 "related_section_status": candidate.get("related_section_status", {}),
                 **detail_summary,
             }
+            outcome = self._update_outcome(candidate, detail_summary, core_applied=False)
+            summary["outcome"] = outcome
+            if outcome == "partial" and not str(summary["message"]).startswith("Actualización parcial"):
+                summary["message"] = f"Actualización parcial: {summary['message']}"
+            elif outcome == "failed":
+                summary["message"] = self._failure_message(candidate, detail_summary)
+            terminal_status = (
+                "applied"
+                if related_changed or detail_summary.get("match_details_published_count")
+                else "failed" if outcome == "failed" else "completed"
+            )
             job.update({
-                "status": "applied" if related_changed or detail_summary.get("match_details_published_count") else "completed",
+                "status": terminal_status,
                 "stage": "completed",
                 "finished_at": utc_now(),
                 "summary": summary,
+                **({"error": summary["message"]} if terminal_status == "failed" else {}),
             })
             self._save(job)
             return
@@ -1423,15 +1483,25 @@ class ManualUpdateManager:
                     "status": "applied_reload_failed",
                     "stage": "refresh_failed",
                     "error": f"La generación quedó aplicada, pero FastAPI no pudo recargarla: {type(exc).__name__}: {exc}",
+                    "summary": {**summary, "outcome": "partial"},
                     "finished_at": utc_now(),
                 })
                 self._save(job)
                 return
         job.update({"status": "running", "stage": "checking_match_details"})
         self._save(job)
-        summary.update(self._safe_process_new_match_details(job))
+        detail_summary = self._safe_process_new_match_details(job)
+        summary.update(detail_summary)
+        outcome = self._update_outcome(candidate, detail_summary, core_applied=True)
+        summary["outcome"] = outcome
+        if outcome == "partial" and not str(summary.get("message", "")).startswith("Actualización parcial"):
+            summary["message"] = f"Actualización parcial: {summary.get('message') or 'algunas fuentes quedaron pendientes.'}"
+        elif outcome == "failed":
+            summary["message"] = self._failure_message(candidate, detail_summary)
         job["summary"] = summary
-        job["status"] = "applied"
+        job["status"] = "applied" if outcome != "failed" else "failed"
+        if outcome == "failed":
+            job["error"] = summary["message"]
         self._save(job)
         job.update({"stage": "completed", "finished_at": utc_now()})
         self._save(job)
@@ -1469,6 +1539,83 @@ class ManualUpdateManager:
         if details.get("match_details_published_count"):
             return "Informes de partidos añadidos."
         return "Sin cambios"
+
+    @staticmethod
+    def _update_outcome(
+        candidate: dict[str, Any], details: dict[str, Any], *, core_applied: bool
+    ) -> str:
+        """Separate complete, partial and failed outcomes from job lifecycle."""
+        related = candidate.get("related_section_status", {})
+        section_states: list[str] = []
+        if isinstance(related, dict):
+            groups = related.get("groups", {})
+            if isinstance(groups, dict):
+                for group_sections in groups.values():
+                    if isinstance(group_sections, dict):
+                        section_states.extend(
+                            item["status"]
+                            for item in group_sections.values()
+                            if isinstance(item, dict) and isinstance(item.get("status"), str)
+                        )
+            referees = related.get("referees")
+            if isinstance(referees, dict) and isinstance(referees.get("status"), str):
+                section_states.append(referees["status"])
+
+        has_error = any(state in {"error", "not_attempted"} for state in section_states)
+        has_error = has_error or any(
+            isinstance(details.get(key), str) and bool(details.get(key))
+            for key in (
+                "match_details_error",
+                "match_details_reload_error",
+                "match_details_recovery_error",
+            )
+        )
+        has_error = has_error or details.get("match_details_stopped") is True
+        has_error = has_error or int(details.get("match_details_error_count", 0) or 0) > 0
+        has_error = has_error or int(details.get("match_details_validation_failed_count", 0) or 0) > 0
+        has_pending = int(details.get("match_details_pending_count", 0) or 0) > 0
+
+        changed_groups = candidate.get("changed_groups", {})
+        core_changed = isinstance(changed_groups, dict) and any(
+            bool(value) for value in changed_groups.values()
+        )
+        related_changed = candidate.get("related_sections_changed") is True or any(
+            state == "changed" for state in section_states
+        )
+        any_applied = (
+            core_applied
+            or core_changed
+            or related_changed
+            or int(details.get("match_details_published_count", 0) or 0) > 0
+        )
+        if has_error:
+            return "partial" if any_applied else "failed"
+        if has_pending:
+            return "partial"
+        return "full"
+
+    @staticmethod
+    def _failure_message(candidate: dict[str, Any], details: dict[str, Any]) -> str:
+        related = candidate.get("related_section_status", {})
+        reasons: list[str] = []
+        if isinstance(related, dict):
+            groups = related.get("groups", {})
+            if isinstance(groups, dict):
+                for group, sections in groups.items():
+                    if not isinstance(sections, dict):
+                        continue
+                    for name, item in sections.items():
+                        if isinstance(item, dict) and item.get("status") == "error":
+                            reasons.append(f"{name} Grupo {group}: {item.get('reason') or 'falló'}")
+            referees = related.get("referees")
+            if isinstance(referees, dict) and referees.get("status") == "error":
+                reasons.append(f"Árbitros: {referees.get('reason') or 'falló'}")
+        detail_error = details.get("match_details_error")
+        if isinstance(detail_error, str) and detail_error:
+            reasons.append(f"informes: {detail_error}")
+        return "Actualización fallida: " + (
+            "; ".join(reasons) if reasons else "ninguna sección pudo actualizarse."
+        )
 
     def _safe_process_new_match_details(self, job: dict[str, Any]) -> dict[str, Any]:
         try:
@@ -1543,6 +1690,27 @@ class ManualUpdateManager:
         job["stage"] = "scanning_unpublished_matches"
         self._save(job)
         status_report, existing_proposals, context = _load_report(args)
+        if context.get("pending_played_ids") == []:
+            # _load_report verifies every package in the published index against
+            # the active fixture and source. If there are no played IDs left,
+            # skip all campaign traversal and report acquisition/processing.
+            verified_count = len(context.get("published_ids", set()))
+            return {
+                "match_details_candidate_count": 0,
+                "match_details_captured_count": 0,
+                "match_details_navigation_count": 0,
+                "match_details_published_count": 0,
+                "match_details_pending_count": 0,
+                "match_details_policy_review_count": 0,
+                "match_details_validation_failed_count": 0,
+                "match_details_error_count": 0,
+                "match_details_stopped": False,
+                "match_details_verified_published_count": verified_count,
+                "match_details_message": (
+                    f"No se procesaron informes: los {verified_count} informes publicados "
+                    "cubren todos los partidos disputados y superaron la verificación."
+                ),
+            }
         ledger = OperationalMatchCampaignLedger(self.match_details_store_root / "campaigns")
         offline_reports: list[dict[str, Any]] = []
         saved_capture_count = 0
@@ -2248,6 +2416,7 @@ class ManualUpdateManager:
                         sys.executable, "scripts/scrape_bdfutbol_statistics.py",
                         "--season", "2026-27", "--group", number,
                         "--matches", str(normalized[group]),
+                        "--match-source-snapshot", str(roots[group] / "raw/source.html"),
                         "--output-root", str(output), "--profile", str(self.profile_dir),
                     ]
                     timeout = 900
@@ -2258,13 +2427,18 @@ class ManualUpdateManager:
                         section=section, group=group, args=args, output=output, timeout=timeout
                     )
                     capture_metadata = json.loads((capture_root / "metadata/capture.json").read_text())
+                    validation = json.loads((capture_root / "validation/results.json").read_text())
+                    section_identity_valid = capture_metadata.get("section") == section
+                    if section == "statistics" and not section_identity_valid:
+                        section_identity_valid = _legacy_statistics_section_identity(
+                            capture_root, capture_metadata, validation, group
+                        )
                     if (
                         capture_metadata.get("source") != "BDFutbol"
                         or capture_metadata.get("season") != "2026-27"
                         or capture_metadata.get("group") != group
-                        or capture_metadata.get("section") != section
-                        or (capture_root / "validation/results.json").is_file() is False
-                        or json.loads((capture_root / "validation/results.json").read_text()).get("valid") is not True
+                        or not section_identity_valid
+                        or validation.get("valid") is not True
                     ):
                         raise ManualUpdateError(f"La captura {section} del Grupo {group} no acredita identidad y validación.")
                     self._validate_related_capture(section, group, capture_root, roots, normalized)

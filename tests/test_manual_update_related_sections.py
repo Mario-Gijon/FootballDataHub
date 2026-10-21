@@ -12,12 +12,39 @@ import pytest
 from football_data_hub_api.manual_updates import (
     ManualUpdateError,
     ManualUpdateManager,
+    _legacy_statistics_section_identity,
     _activate_group_data_pointer,
     _candidate_sha256,
     _related_section_content_sha256,
     _tree_sha256,
     apply_active_group_section,
 )
+
+
+def test_legacy_statistics_identity_requires_exact_group_stats_url_and_http_evidence(tmp_path: Path) -> None:
+    root = tmp_path / "capture"
+    (root / "raw").mkdir(parents=True)
+    expected_url = "https://www.bdfutbol.com/es/t/t2026-271rf1.html?tab=stats"
+    metadata = {
+        "section": None,
+        "requested_url": expected_url,
+        "final_url": expected_url,
+        "http_status": 200,
+    }
+    (root / "raw/access.json").write_text(json.dumps({
+        "status": "VALID", "requested_url": expected_url,
+        "final_url": expected_url, "http_status": 200,
+    }), encoding="utf-8")
+    validation = {"source_page": {
+        "access_status": "VALID", "http_status": 200,
+        "requested_url": expected_url, "final_url": expected_url,
+    }}
+
+    assert _legacy_statistics_section_identity(root, metadata, validation, "I") is True
+    assert _legacy_statistics_section_identity(root, metadata, validation, "II") is False
+    assert _legacy_statistics_section_identity(
+        root, metadata, {"source_page": {**validation["source_page"], "http_status": 403}}, "I"
+    ) is False
 
 
 def _manager(tmp_path: Path, *, related: dict[str, object] | None = None) -> ManualUpdateManager:
@@ -218,6 +245,55 @@ def test_no_results_changes_can_apply_only_changed_related_sections_and_reload_a
     assert {item.name for item in (manager.root / "reviews").glob("*.json")} == {  # type: ignore[operator]
         f"{job['job_id']}-sections-apply-started.json", f"{job['job_id']}-sections-applied.json",
     }
+    manager.close()
+
+
+def test_related_source_error_is_recorded_as_partial_when_another_source_was_applied(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    manager = _manager(tmp_path)
+    assert manager.data_root is not None
+    capture = _write_capture(manager.data_root / "top-capture", "top", "I")
+    candidate = {
+        "kind": "competition_generation",
+        "no_changes": True,
+        "no_competition_changes": True,
+        "related_sections_changed": True,
+        "related_sections": {"groups": {"I": {"top": {
+            "path": str(capture), "sha256": _tree_sha256(capture), "capture_id": capture.name,
+        }}}},
+        "related_section_status": {"groups": {"I": {
+            "top": {"status": "changed", "capture_id": capture.name},
+            "statistics": {"status": "error", "reason": "La metadata no declaraba la sección."},
+        }, "II": {
+            "top": {"status": "not_attempted", "reason": "falló Estadísticas Grupo I"},
+        }}, "referees": {"status": "not_attempted", "reason": "falló Estadísticas Grupo I"}},
+        "changed_groups": {"I": [], "II": []},
+    }
+    candidate_digest = _candidate_sha256(candidate)
+    candidate["candidate_sha256"] = candidate_digest
+    job = {
+        "job_id": str(uuid.uuid4()),
+        "candidate": candidate,
+        "candidate_sha256": candidate_digest,
+        "scope": "competition",
+        "status": "running",
+    }
+    monkeypatch.setattr(manager, "_safe_process_new_match_details", lambda _job: {
+        "match_details_candidate_count": 0,
+        "match_details_pending_count": 0,
+        "match_details_published_count": 0,
+        "match_details_error": "ScalableCampaignError: Entrada inesperada en review v2",
+        "match_details_stopped": True,
+    })
+
+    manager._finish_competition_update(job, tmp_path / "worker.log", no_changes=True)
+
+    assert job["status"] == "applied"
+    assert job["summary"]["outcome"] == "partial"
+    assert job["summary"]["message"].startswith("Actualización parcial")
+    assert job["summary"]["related_section_status"]["groups"]["I"]["statistics"]["status"] == "error"
+    assert json.loads((manager.data_root / "operations/manual-updates/active-group-data.json").read_text())["sections"]["groups"]["I"]["top"]["capture_id"] == capture.name  # type: ignore[operator]
     manager.close()
 
 

@@ -209,7 +209,16 @@ export function ManualUpdateControl({ onApplied }: Props) {
   const active = job && isActiveJob(job);
   const recovering = pendingStartAt !== null || restoreJobId !== null;
   const result = job?.summary;
-  const isNoChange = job?.status === "completed";
+  const summaryHasFailures = Boolean(result && (
+    typeof result.match_details_error === "string"
+    || typeof result.match_details_reload_error === "string"
+    || result.match_details_stopped === true
+    || (typeof result.message === "string" && result.message.startsWith("Actualización parcial"))
+    || hasRelatedSectionFailures(result.related_section_status)
+  ));
+  const outcome = result?.outcome;
+  const isPartial = outcome === "partial" || (outcome === undefined && summaryHasFailures);
+  const isNoChange = job?.status === "completed" && !isPartial && outcome !== "failed";
   const isApplied = job?.status === "applied";
   const isReloadFailure = job?.status === "applied_reload_failed";
 
@@ -235,16 +244,40 @@ export function ManualUpdateControl({ onApplied }: Props) {
           {result && (Number(result.match_details_candidate_count ?? 0) > 0 || Number(result.match_details_blocked_excluded_count ?? 0) > 0) && <span> {summaryText(result)}</span>}
         </>}
         {isApplied && <>
-          <strong>Actualización completada.</strong>
+          <strong>{isPartial ? "Actualización parcial." : "Actualización completada."}</strong>
+          {result && <span> {summaryText(result)}</span>}
+        </>}
+        {job?.status === "completed" && isPartial && <>
+          <strong>Actualización parcial.</strong>
           {result && <span> {summaryText(result)}</span>}
         </>}
         {isReloadFailure && <><strong>Datos aplicados, recarga pendiente.</strong> {job.error}</>}
-        {job?.status === "failed" && <><strong>Actualización detenida.</strong> {job.error}</>}
+        {job?.status === "failed" && <><strong>Actualización fallida.</strong> {job.error ?? result?.message}</>}
         {job?.status === "interrupted" && <><strong>Actualización interrumpida.</strong> {job.error}</>}
         {error && <p className="manual-update-error" role="alert">{error}</p>}
       </div>}
     </section>
   );
+}
+
+function hasRelatedSectionFailures(value: unknown): boolean {
+  if (typeof value !== "object" || value === null) return false;
+  const root = value as Record<string, unknown>;
+  const groups = root.groups;
+  if (typeof groups === "object" && groups !== null) {
+    for (const group of Object.values(groups as Record<string, unknown>)) {
+      if (typeof group !== "object" || group === null) continue;
+      for (const item of Object.values(group as Record<string, unknown>)) {
+        if (typeof item === "object" && item !== null) {
+          const status = (item as Record<string, unknown>).status;
+          if (status === "error" || status === "not_attempted") return true;
+        }
+      }
+    }
+  }
+  const referees = root.referees;
+  return typeof referees === "object" && referees !== null
+    && ["error", "not_attempted"].includes(String((referees as Record<string, unknown>).status));
 }
 
 function stageLabel(stage: string): string {
@@ -309,7 +342,11 @@ function summaryText(summary: Record<string, unknown>): string {
           if (typeof entry !== "object" || entry === null) continue;
           const state = (entry as Record<string, unknown>).status;
           if (state === "changed") pieces.push(`${sectionLabels[key] ?? key} Grupo ${group}`);
-          if (state === "error") pieces.push(`${sectionLabels[key] ?? key} Grupo ${group}: error; se conservan los datos anteriores`);
+          if (state === "error") {
+            const reason = (entry as Record<string, unknown>).reason;
+            pieces.push(`${sectionLabels[key] ?? key} Grupo ${group}: error; se conservan los datos anteriores${typeof reason === "string" ? ` (${reason})` : ""}`);
+          }
+          if (state === "not_attempted") pieces.push(`${sectionLabels[key] ?? key} Grupo ${group}: no se intentó`);
         }
       }
     }
@@ -317,7 +354,10 @@ function summaryText(summary: Record<string, unknown>): string {
     if (typeof refereeState === "object" && refereeState !== null) {
       const state = (refereeState as Record<string, unknown>).status;
       if (state === "changed") pieces.push("Árbitros");
-      if (state === "error") pieces.push("Árbitros: error; se conservan los datos anteriores");
+      if (state === "error") {
+        const reason = (refereeState as Record<string, unknown>).reason;
+        pieces.push(`Árbitros: error; se conservan los datos anteriores${typeof reason === "string" ? ` (${reason})` : ""}`);
+      }
     }
   }
   if (newlyPlayed) pieces.push(`${newlyPlayed} partidos disputados nuevos`);
@@ -328,7 +368,7 @@ function summaryText(summary: Record<string, unknown>): string {
   if (detailPublished) pieces.push(`${detailPublished} informes completos publicados`);
   if (detailPending) pieces.push(`${detailPending} informes pendientes de disponibilidad o revisión`);
   if (summary.match_details_stopped === true) pieces.push("adquisición detenida por una restricción o error");
-  if (typeof summary.match_details_error === "string") pieces.push("informes no procesados por un error de integridad o configuración");
+  if (typeof summary.match_details_error === "string") pieces.push(`Informes: ${summary.match_details_error}`);
   if (typeof summary.match_details_reload_error === "string") pieces.push("recarga de informes pendiente");
   const excluded = Number(summary.match_details_blocked_excluded_count ?? 0);
   if (excluded) pieces.push(`${excluded} partido bloqueado excluido`);

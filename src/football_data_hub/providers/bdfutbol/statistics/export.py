@@ -94,6 +94,7 @@ def export_statistics_capture(
             "competition": parsed.competition,
             "season": parsed.season,
             "group": parsed.group,
+            "section": "statistics",
             "extractor_version": "0.1.0",
             "browser": browser,
             "match_dataset": match_dataset_reference,

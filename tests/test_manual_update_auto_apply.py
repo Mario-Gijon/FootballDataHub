@@ -372,6 +372,80 @@ def test_auto_detail_pipeline_targets_only_unpublished_unblocked_played_matches(
     manager.close()
 
 
+def test_report_processor_skips_all_work_when_verified_publications_cover_played_ids(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from football_data_hub.providers.bdfutbol.match_details import scalable_campaign_cli
+
+    manager = _manager(tmp_path)
+    data = manager.data_root
+    assert data is not None
+    manager.match_generation_root = data / "matches"
+    manager.match_details_published_root = data / "matches/details/published"
+    manager.match_details_published_root.mkdir(parents=True)
+    manager.player_inventory_root = data / "players/inventory-2026-27"
+    manager.player_inventory_root.mkdir(parents=True)
+    manager.player_compact_root = data / "players/compact-2026-27"
+    manager.player_compact_root.mkdir(parents=True)
+    manager.player_team_captures_root = data / "team-captures"
+    manager.player_team_captures_root.mkdir()
+    manager.player_published_index_path = data / "published/team_profiles_2026-27.json"
+    manager.player_published_index_path.parent.mkdir()
+    manager.player_published_index_path.write_text("{}", encoding="utf-8")
+    verified_ids = {
+        f"pf-2026-27-group-{group.lower()}-bdfutbol-{index}"
+        for group in ("I", "II") for index in range(80)
+    }
+    context = {"pending_played_ids": [], "published_ids": verified_ids}
+    monkeypatch.setattr(
+        scalable_campaign_cli,
+        "_load_report",
+        lambda _args: ({"matches": []}, [], context),
+    )
+    monkeypatch.setattr(
+        manager,
+        "_command",
+        lambda *_args, **_kwargs: pytest.fail("no se deben iniciar comandos al no haber informes pendientes"),
+    )
+
+    result = manager._process_new_match_details({"job_id": str(uuid.uuid4())})
+
+    assert result["match_details_candidate_count"] == 0
+    assert result["match_details_navigation_count"] == 0
+    assert result["match_details_pending_count"] == 0
+    assert result["match_details_verified_published_count"] == 160
+    assert "no se procesaron informes" in result["match_details_message"].lower()
+    manager.close()
+
+
+def test_refresh_outcome_distinguishes_partial_and_failed_from_full() -> None:
+    partial_candidate = {
+        "no_changes": True,
+        "changed_groups": {"I": [], "II": []},
+        "related_sections_changed": True,
+        "related_section_status": {"groups": {
+            "I": {"top": {"status": "changed"}, "statistics": {"status": "error"}},
+            "II": {"top": {"status": "not_attempted"}},
+        }},
+    }
+    details = {"match_details_error": "ScalableCampaignError: receipt inválido"}
+    assert ManualUpdateManager._update_outcome(partial_candidate, details, core_applied=False) == "partial"
+    assert ManualUpdateManager._update_outcome(
+        {"changed_groups": {"I": [], "II": []}, "related_section_status": {"groups": {"I": {
+            "statistics": {"status": "error", "reason": "falló"}
+        }}}},
+        {},
+        core_applied=False,
+    ) == "failed"
+    assert ManualUpdateManager._update_outcome(
+        {"changed_groups": {"I": [], "II": []}, "related_section_status": {"groups": {"I": {
+            "top": {"status": "unchanged"}
+        }}}},
+        {"match_details_pending_count": 0},
+        core_applied=False,
+    ) == "full"
+
+
 def test_auto_detail_pipeline_reuses_exact_unstarted_proposal_without_duplicate_plan(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

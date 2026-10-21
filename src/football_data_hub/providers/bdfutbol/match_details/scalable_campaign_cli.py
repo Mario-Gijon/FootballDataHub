@@ -360,6 +360,7 @@ def _review_state_ids(
     bundle: Any,
     player_ids: set[int],
     published_ids: set[str],
+    campaign_states: dict[str, dict[str, Any]],
 ) -> tuple[set[str], set[str], dict[str, list[str]]]:
     """Rebuild draft and approval states from their source artifacts offline."""
 
@@ -368,6 +369,7 @@ def _review_state_ids(
         build_campaign_approval_receipt,
         build_campaign_publication_draft,
         campaign_approval_confirmation,
+        AUTO_POLICY_RECEIPT_SCHEMA,
     )
 
     review_root = store_root / "review"
@@ -379,6 +381,9 @@ def _review_state_ids(
     if review_root.is_symlink() or not review_root.is_dir():
         raise ScalableCampaignError("La raíz review no es un directorio regular")
     review_files: list[Path] = []
+    verified_policy_states = {
+        "AUTO_POLICY_APPROVED", "PUBLISHED", "REVIEW_COMPLETED"
+    }
     for path in sorted(review_root.iterdir()):
         if path.is_symlink():
             raise ScalableCampaignError(f"Entrada review no regular: {path.name}")
@@ -406,6 +411,38 @@ def _review_state_ids(
             if campaign_dir.is_symlink() or not campaign_dir.is_dir():
                 raise ScalableCampaignError(f"Entrada v2 no regular: {campaign_dir.name}")
             for record in sorted(campaign_dir.iterdir()):
+                if (
+                    not record.is_symlink()
+                    and record.is_file()
+                    and record.name.endswith("-auto-policy.json")
+                ):
+                    # Operational v2 AUTO_POLICY_APPROVED receipts share this
+                    # directory with human review drafts. Their hashes and
+                    # semantics were already checked by _read_campaign_states
+                    # via OperationalMatchCampaignLedger.preflight above.
+                    try:
+                        receipt = json.loads(record.read_text(encoding="utf-8"))
+                    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+                        raise ScalableCampaignError(
+                            f"Recibo de política automática ilegible: {record.name}"
+                        ) from exc
+                    internal_id = receipt.get("internal_id") if isinstance(receipt, dict) else None
+                    campaign_state = campaign_states.get(internal_id) if isinstance(internal_id, str) else None
+                    if (
+                        not isinstance(receipt, dict)
+                        or receipt.get("schema_version") != AUTO_POLICY_RECEIPT_SCHEMA
+                        or receipt.get("approval_mode") != "automatic_policy"
+                        or receipt.get("campaign_id") != campaign_dir.name
+                        or not isinstance(receipt.get("source_match_id"), str)
+                        or record.name != f"{receipt['source_match_id']}-auto-policy.json"
+                        or not isinstance(campaign_state, dict)
+                        or campaign_state.get("campaign_id") != campaign_dir.name
+                        or campaign_state.get("state") not in verified_policy_states
+                    ):
+                        raise ScalableCampaignError(
+                            f"Recibo de política automática no respaldado por un ledger verificado: {record.name}"
+                        )
+                    continue
                 if (
                     record.is_symlink()
                     or not record.is_file()
@@ -504,6 +541,33 @@ def _load_report(args: argparse.Namespace) -> tuple[dict[str, Any], list[dict[st
     )
     published_ids = set(published)
 
+    pending_played_ids = _unpublished_played_match_ids(inventory, published_ids)
+    verified_context = {
+        "generation_root": generation_root,
+        "store_root": args.store_root,
+        "data_root": data_root,
+        "published_root": args.published_root,
+        "published_ids": published_ids,
+        "captured_ids": set(),
+        "blocked_ids": set(),
+        "match_bundle": bundle,
+        "player_ids": set(player_dir.players_by_id),
+        "active_generation_id": verified.generation_id,
+        "active_generation_manifest_sha256": verified.manifest_sha256,
+        "pending_played_ids": pending_played_ids,
+    }
+
+    if not pending_played_ids:
+        # Published details were fully loaded and verified above. No campaign
+        # ledger, saved capture, acquisition, validation, or publication work
+        # is necessary when every currently played fixture has a valid report.
+        status_report = classify_match_campaign_inventory(
+            inventory, published_ids=published_ids
+        )
+        status_report["publication_count"] = len(published_ids)
+        status_report["pending_played_report_count"] = 0
+        return status_report, [], verified_context
+
     acquisition_inventory = build_match_detail_inventory(verified)
     reconciliation = MatchDetailStore(args.store_root).reconcile(acquisition_inventory)
     historical_recovery = None
@@ -577,6 +641,7 @@ def _load_report(args: argparse.Namespace) -> tuple[dict[str, Any], list[dict[st
         bundle=bundle,
         player_ids=set(player_dir.players_by_id),
         published_ids=published_ids,
+        campaign_states=campaign_states,
     )
     for internal_id, campaign in campaign_states.items():
         if campaign["state"] in {"CAMPAIGN_BLOCKED", "CONFLICTING_CAMPAIGN_MEMBERSHIP"}:
@@ -684,7 +749,29 @@ def _load_report(args: argparse.Namespace) -> tuple[dict[str, Any], list[dict[st
         "player_ids": set(player_dir.players_by_id),
         "active_generation_id": verified.generation_id,
         "active_generation_manifest_sha256": verified.manifest_sha256,
+        "pending_played_ids": pending_played_ids,
     }
+
+
+def _unpublished_played_match_ids(
+    inventory: dict[str, Any], published_ids: set[str]
+) -> list[str]:
+    """Return only played fixture IDs not covered by verified publications."""
+    matches = inventory.get("matches")
+    if not isinstance(matches, list):
+        raise ScalableCampaignError("El inventario no contiene la lista de partidos")
+    played: set[str] = set()
+    for row in matches:
+        if not isinstance(row, dict):
+            raise ScalableCampaignError("El inventario contiene un partido no válido")
+        if row.get("status") == "played":
+            internal_id = row.get("internal_id")
+            if not isinstance(internal_id, str) or not internal_id:
+                raise ScalableCampaignError("Un partido disputado no tiene internal_id verificable")
+            played.add(internal_id)
+    if any(not isinstance(item, str) or not item for item in published_ids):
+        raise ScalableCampaignError("La lista de publicaciones verificadas contiene IDs no válidos")
+    return sorted(played - published_ids)
 
 
 def main(argv: list[str] | None = None) -> int:

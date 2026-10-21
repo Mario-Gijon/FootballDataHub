@@ -100,15 +100,25 @@ def _align_current_source_matches(
     captured_at: datetime,
     match_metadata: dict[str, Any],
     matches_path: Path,
+    source_snapshot_path: Path | None = None,
 ) -> tuple[tuple[Any, ...], dict[str, Any]]:
-    source_snapshot = _resolve_source_snapshot(match_metadata, matches_path)
+    source_snapshot = (
+        source_snapshot_path.expanduser().resolve()
+        if source_snapshot_path is not None
+        else _resolve_source_snapshot(match_metadata, matches_path)
+    )
     if not source_snapshot.is_file():
         return (), {
             "status": "unavailable",
             "reason": "El snapshot original de Clasificación que aporta el catálogo no está disponible",
         }
     expected_hash = match_metadata.get("source_snapshot_sha256")
-    if expected_hash and _sha256(source_snapshot) != expected_hash:
+    if not isinstance(expected_hash, str) or not expected_hash:
+        return (), {
+            "status": "unavailable",
+            "reason": "matches.json no declara el hash del snapshot de Clasificación",
+        }
+    if _sha256(source_snapshot) != expected_hash:
         return (), {
             "status": "unavailable",
             "reason": "El hash del snapshot de Clasificación no coincide con matches.json",
@@ -171,6 +181,12 @@ def _parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help="Ruta al dataset normalized/matches.json del mismo grupo",
+    )
+    parser.add_argument(
+        "--match-source-snapshot",
+        type=Path,
+        default=None,
+        help="HTML de Clasificación exacto que originó el catálogo indicado en --matches",
     )
     parser.add_argument(
         "--output-root",
@@ -324,7 +340,12 @@ def main(argv: list[str] | None = None) -> int:
 
     captured_datetime = datetime.fromisoformat(captured_at)
     current_matches, source_parse_status = _align_current_source_matches(
-        raw_html, parsed.source_url, captured_datetime, dataset_metadata, matches_path
+        raw_html,
+        parsed.source_url,
+        captured_datetime,
+        dataset_metadata,
+        matches_path,
+        args.match_source_snapshot,
     )
     alignment = (
         build_match_alignment_report(current_matches, matches)

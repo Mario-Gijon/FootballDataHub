@@ -106,6 +106,33 @@ describe("ManualUpdateControl", () => {
     expect(screen.queryByText(/0 partidos|0 marcadores|0 cambios de calendario/)).not.toBeInTheDocument();
   });
 
+  it("reports partial completion instead of success when an optional source failed", async () => {
+    api.startCompetitionUpdate.mockResolvedValue(job());
+    api.loadManualUpdateJob.mockResolvedValue(job({
+      status: "applied", stage: "completed", finished_at: "2026-10-21T12:04:33Z",
+      summary: {
+        message: "Actualización parcial: una fuente relacionada dio error; se conservaron sus datos anteriores.",
+        related_section_status: { groups: { I: {
+          top: { status: "changed" },
+          statistics: { status: "error", reason: "La captura no acredita identidad y validación." },
+        } } },
+        match_details_error: "ScalableCampaignError: Entrada inesperada en review v2",
+        match_details_pending_count: 0,
+      },
+    }));
+    render(<ManualUpdateControl />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Actualizar Primera Federación" }));
+    await screen.findByText("Actualización parcial.", {}, { timeout: 4000 });
+    const status = await screen.findByRole("status", {}, { timeout: 4000 });
+    expect(status).toHaveTextContent("Actualización parcial.");
+    expect(status).not.toHaveTextContent("Actualización completada.");
+    expect(status).toHaveTextContent("Destacados Grupo I");
+    expect(status).not.toHaveTextContent("Destacados Grupo I: error");
+    expect(status).toHaveTextContent("Estadísticas Grupo I");
+    expect(status).toHaveTextContent("Entrada inesperada en review v2");
+  });
+
   it("surfaces denied or failed access without retrying or opening review", async () => {
     api.startCompetitionUpdate.mockRejectedValue(new Error("HTTP_403: acceso detenido"));
     render(<ManualUpdateControl />);

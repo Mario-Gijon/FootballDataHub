@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import hashlib
 from dataclasses import replace
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 import pytest
@@ -17,7 +17,11 @@ from football_data_hub.providers.bdfutbol.statistics.parser import (
     parse_statistics_page,
     validate_statistics_page_html,
 )
-from scrape_bdfutbol_group2_statistics import _resolve_source_snapshot, main
+from scrape_bdfutbol_group2_statistics import (
+    _align_current_source_matches,
+    _resolve_source_snapshot,
+    main,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 CAPTURE = ROOT / "data/exports/bdfutbol/group2_statistics/20261010T182210.859321Z-28543363"
@@ -216,8 +220,10 @@ def test_offline_cli_exports_readable_capture_without_network(tmp_path: Path, so
     )
     assert result == 0
     export = output_root / "20261010T182210.859321Z-28543363"
+    metadata = json.loads((export / "metadata/capture.json").read_text())
     derived = json.loads((export / "normalized/derived_statistics.json").read_text())
     exclusive = json.loads((export / "normalized/exclusive_statistics.json").read_text())
+    assert metadata["section"] == "statistics"
     assert derived["statistics"]["played_matches"] == 59
     assert exclusive["items"]["penalties"]["penalties_awarded"] == 24
     assert not (export / "normalized/matches.json").exists()
@@ -252,3 +258,53 @@ def test_external_match_dataset_resolves_its_adjacent_raw_snapshot(tmp_path: Pat
     }
 
     assert _resolve_source_snapshot(metadata, matches_path) == raw_snapshot
+
+
+def test_explicit_classification_snapshot_is_hash_verified(tmp_path: Path, monkeypatch) -> None:
+    source_snapshot = tmp_path / "classification-source.html"
+    source_snapshot.write_text("<html>classification</html>", encoding="utf-8")
+    expected_hash = hashlib.sha256(source_snapshot.read_bytes()).hexdigest()
+    metadata = {
+        "source_snapshot_sha256": expected_hash,
+        "url": "https://www.bdfutbol.com/es/t/t2026-271rf1.html",
+    }
+    expected_matches = (object(),)
+
+    monkeypatch.setattr(
+        "scrape_bdfutbol_group2_statistics.parse_classification_page",
+        lambda html, *, base_url: object(),
+    )
+    monkeypatch.setattr(
+        "scrape_bdfutbol_group2_statistics.extract_matches",
+        lambda html, classification, *, base_url, captured_at: (None, expected_matches),
+    )
+    matches, status = _align_current_source_matches(
+        "<html>stats</html>",
+        "https://www.bdfutbol.com/es/t/t2026-271rf1.html?tab=stats",
+        datetime.fromisoformat("2026-10-21T12:00:00+00:00"),
+        metadata,
+        tmp_path / "separate-job" / "normalized/matches.json",
+        source_snapshot,
+    )
+
+    assert status == {"status": "ready"}
+    assert matches == expected_matches
+
+
+def test_explicit_classification_snapshot_hash_mismatch_fails_closed(tmp_path: Path) -> None:
+    source_snapshot = tmp_path / "classification-source.html"
+    source_snapshot.write_text("<html>changed classification</html>", encoding="utf-8")
+    metadata = {"source_snapshot_sha256": "0" * 64, "url": "source"}
+
+    matches, status = _align_current_source_matches(
+        "<html>stats</html>",
+        "https://www.bdfutbol.com/es/t/t2026-271rf1.html?tab=stats",
+        datetime.fromisoformat("2026-10-21T12:00:00+00:00"),
+        metadata,
+        tmp_path / "separate-job" / "normalized/matches.json",
+        source_snapshot,
+    )
+
+    assert matches == ()
+    assert status["status"] == "unavailable"
+    assert "hash" in status["reason"]

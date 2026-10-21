@@ -562,6 +562,30 @@ def test_operation_report_rejects_non_object_envelope(tmp_path):
         operations.load_operation_report(path)
 
 
+def test_unpublished_played_ids_compares_fixture_ids_with_verified_publications():
+    from football_data_hub.providers.bdfutbol.match_details.scalable_campaign_cli import (
+        _unpublished_played_match_ids,
+    )
+
+    rows = [
+        {"internal_id": f"played-{index}", "status": "played"}
+        for index in range(160)
+    ] + [{"internal_id": "future", "status": "unplayed"}]
+    published = {f"played-{index}" for index in range(160)}
+    assert _unpublished_played_match_ids({"matches": rows}, published) == []
+    assert _unpublished_played_match_ids({"matches": rows}, published - {"played-81"}) == ["played-81"]
+
+
+def test_unpublished_played_ids_fails_closed_on_invalid_fixture_identity():
+    from football_data_hub.providers.bdfutbol.match_details.scalable_campaign_cli import (
+        _unpublished_played_match_ids,
+    )
+    from football_data_hub.providers.bdfutbol.match_details.scalable_campaigns import ScalableCampaignError
+
+    with pytest.raises(ScalableCampaignError, match="internal_id"):
+        _unpublished_played_match_ids({"matches": [{"status": "played"}]}, set())
+
+
 def test_review_index_accepts_v2_campaign_directory_and_rejects_unknown_entries(tmp_path):
     from football_data_hub.providers.bdfutbol.match_details.scalable_campaign_cli import _review_state_ids
     from football_data_hub.providers.bdfutbol.match_details.scalable_campaigns import ScalableCampaignError
@@ -575,6 +599,7 @@ def test_review_index_accepts_v2_campaign_directory_and_rejects_unknown_entries(
         bundle=SimpleNamespace(),
         player_ids=set(),
         published_ids=set(),
+        campaign_states={},
     )
     assert result == (set(), set(), {})
 
@@ -587,6 +612,7 @@ def test_review_index_accepts_v2_campaign_directory_and_rejects_unknown_entries(
             bundle=SimpleNamespace(),
             player_ids=set(),
             published_ids=set(),
+            campaign_states={},
         )
 
 
@@ -609,6 +635,7 @@ def test_review_index_ignores_only_regular_human_html_dossiers(tmp_path):
         bundle=SimpleNamespace(),
         player_ids=set(),
         published_ids=set(),
+        campaign_states={},
     )
     assert result == (set(), set(), {})
 
@@ -621,6 +648,52 @@ def test_review_index_ignores_only_regular_human_html_dossiers(tmp_path):
             bundle=SimpleNamespace(),
             player_ids=set(),
             published_ids=set(),
+            campaign_states={},
+        )
+
+
+def test_review_index_accepts_only_ledger_verified_auto_policy_receipt(tmp_path):
+    from football_data_hub.providers.bdfutbol.match_details.scalable_campaign_cli import _review_state_ids
+    from football_data_hub.providers.bdfutbol.match_details.scalable_campaigns import ScalableCampaignError
+
+    campaign_id = "match-detail-campaign-v2-0123456789abcdef"
+    internal_id = "pf-2026-27-group-i-bdfutbol-269478"
+    store_root = tmp_path / "matches" / "details"
+    review_dir = store_root / "review" / "v2" / campaign_id
+    review_dir.mkdir(parents=True)
+    receipt = {
+        "schema_version": "football_data_hub.match_detail_auto_policy_receipt.v1",
+        "approval_mode": "automatic_policy",
+        "campaign_id": campaign_id,
+        "source_match_id": "269478",
+        "internal_id": internal_id,
+    }
+    (review_dir / "269478-auto-policy.json").write_text(json.dumps(receipt), encoding="utf-8")
+
+    result = _review_state_ids(
+        store_root=store_root,
+        generation_root=tmp_path / "generation",
+        data_root=tmp_path,
+        bundle=SimpleNamespace(),
+        player_ids=set(),
+        published_ids=set(),
+        campaign_states={internal_id: {
+            "campaign_id": campaign_id,
+            "campaign_version": 2,
+            "state": "PUBLISHED",
+        }},
+    )
+    assert result == (set(), set(), {})
+
+    with pytest.raises(ScalableCampaignError, match="ledger verificado"):
+        _review_state_ids(
+            store_root=store_root,
+            generation_root=tmp_path / "generation",
+            data_root=tmp_path,
+            bundle=SimpleNamespace(),
+            player_ids=set(),
+            published_ids=set(),
+            campaign_states={},
         )
 
 
