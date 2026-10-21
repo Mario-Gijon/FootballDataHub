@@ -661,6 +661,14 @@ def test_acquisition_orchestration_uses_pure_cdp_access_contract(jaen, monkeypat
         "BrowserSessionManager",
         lambda *_args, **_kwargs: _FakeSessionManager(fake_session),
     )
+    access_class = team_acquisition.BDFutbolAccess
+
+    class RecordingAccess(access_class):
+        def open(self, url, **kwargs):
+            assert kwargs["max_wait_seconds"] == 8
+            return super().open(url, **kwargs)
+
+    monkeypatch.setattr(team_acquisition, "BDFutbolAccess", RecordingAccess)
     result = team_acquisition.acquire_team_profile(
         team_catalog_record=record,
         team_catalog_reference={"path": "fixture", "sha256": "fixture"},

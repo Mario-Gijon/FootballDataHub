@@ -88,7 +88,7 @@ def _access_page(
         required_selectors=("#tab_arb", "#tab_arb a[href*='/r/r']"),
         document_validator=validate_referee_structure,
         settle_ms=500,
-        max_wait_seconds=0,
+        max_wait_seconds=8,
     )
     with opened:
         if opened.assessment.status is not AccessStatus.VALID or opened.visit is None:

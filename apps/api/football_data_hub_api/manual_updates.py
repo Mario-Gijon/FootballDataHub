@@ -578,6 +578,12 @@ def _team_batch_progress(
 
 def _friendly_process_failure(log_tail: str, fallback: str) -> str:
     """Summarize known subprocess failures without returning private paths/logs."""
+    current_output = log_tail.rsplit("\n$ ", 1)[-1]
+    if '"status": "INVALID_CONTENT"' in current_output:
+        return (
+            "La fuente devolvió una página sin la estructura deportiva requerida "
+            "(INVALID_CONTENT). Se conservaron los datos anteriores y no se reintentó."
+        )
     if "FileExistsError" in log_tail and "validation/matches.json" in log_tail:
         group = "II" if "group-ii" in log_tail else "I"
         return (
@@ -759,6 +765,71 @@ def _sports_section_changed(candidate: Path, active: Path, *, kind: str) -> bool
     return json.dumps(new_data, sort_keys=True, ensure_ascii=False) != json.dumps(
         active_data, sort_keys=True, ensure_ascii=False
     )
+
+
+def _unchanged_failed_team_checkpoint(
+    *, team_root: Path, team_id: int, group: str, current_catalog: Path,
+    data_root: Path, comparison_cache: dict[Path, dict[str, Any]],
+) -> bool:
+    """Do not repeat an unresolved invalid-content navigation for identical sports data.
+
+    A checkpoint is only a reason to defer another acquisition. It can never
+    validate or publish a profile. Corrupt evidence fails closed.
+    """
+    diagnostics = team_root / "diagnostics"
+    if not diagnostics.is_dir() or diagnostics.is_symlink():
+        return False
+    evidence_paths = sorted(diagnostics.glob("*/metadata/evidence.json"), reverse=True)
+    if not evidence_paths:
+        return False
+    evidence_path = evidence_paths[0]
+    if evidence_path.is_symlink():
+        raise ManualUpdateError(f"Checkpoint del equipo {team_id} contiene un enlace simbólico.")
+    try:
+        evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+        if (
+            evidence.get("source") != "BDFutbol"
+            or evidence.get("section") != "team_profile_evidence_checkpoint"
+            or evidence.get("season") != "2026-27"
+            or evidence.get("group") != group
+            or evidence.get("team_id") != team_id
+        ):
+            raise ValueError("identidad o procedencia del checkpoint incorrecta")
+        failures = evidence.get("failures")
+        if not isinstance(failures, list) or not failures:
+            return False
+        failure = failures[-1]
+        if not isinstance(failure, dict) or "INVALID_CONTENT" not in str(failure.get("message", "")):
+            return False
+        reference = evidence.get("related_team_catalog")
+        if not isinstance(reference, dict):
+            raise ValueError("catálogo de referencia ausente")
+        old_catalog = Path(str(reference.get("path", ""))).resolve(strict=True)
+        if (
+            not old_catalog.is_relative_to(data_root.resolve())
+            or reference.get("group") != group
+            or reference.get("season") != "2026-27"
+            or _sha256(old_catalog.read_bytes()) != reference.get("sha256")
+        ):
+            raise ValueError("catálogo de referencia alterado")
+        for path in (current_catalog, old_catalog):
+            if path not in comparison_cache:
+                comparison_cache[path] = _sports_projection(path, kind="matches")
+
+        def team_sports(path: Path) -> str:
+            projection = comparison_cache[path]
+            teams = [row for row in projection["teams"] if row.get("team_id") == team_id]
+            if len(teams) != 1:
+                raise ValueError("identidad del equipo ausente o duplicada en el catálogo")
+            matches = [
+                row for row in projection["matches"]
+                if team_id in (row.get("home_team_id"), row.get("away_team_id"))
+            ]
+            return json.dumps({"team": teams[0], "matches": matches}, sort_keys=True, ensure_ascii=False)
+
+        return team_sports(current_catalog) == team_sports(old_catalog)
+    except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as exc:
+        raise ManualUpdateError(f"Checkpoint del equipo {team_id} no verificable: {exc}") from exc
 
 
 def _classification_changes(candidate: Path, active: Path) -> list[dict[str, Any]]:
@@ -3271,6 +3342,7 @@ class ManualUpdateManager:
         statuses: dict[str, Any] = {}
         candidates: list[dict[str, Any]] = []
         acquisition_targets: list[tuple[int, str, dict[str, Any], set[str], Path]] = []
+        failed_catalog_comparisons: dict[Path, dict[str, Any]] = {}
         for group in ("I", "II"):
             group_matches = matches_by_group[group]
             group_match_map = matches_by_team_catalog[group]
@@ -3307,6 +3379,16 @@ class ManualUpdateManager:
                             "status": "changed", "group": group,
                             "missing_match_ids": sorted(missing), "capture_id": candidate["capture_id"],
                             "reused_existing_capture": True,
+                        }
+                    elif _unchanged_failed_team_checkpoint(
+                        team_root=self.player_team_captures_root / "2026-27" / key,
+                        team_id=team_id, group=group, current_catalog=normalized[group],
+                        data_root=self.data_root, comparison_cache=failed_catalog_comparisons,
+                    ):
+                        statuses[key] = {
+                            "status": "not_attempted", "group": group,
+                            "missing_match_ids": sorted(missing),
+                            "reason": "La vista anterior terminó en INVALID_CONTENT con el mismo catálogo deportivo; se conserva pendiente sin repetir navegación.",
                         }
                     else:
                         acquisition_targets.append((team_id, group, team, missing, active_dir))

@@ -114,7 +114,7 @@ def _install_fake_referee_acquisition(monkeypatch, *, deny_scope: str | None = N
             else:
                 scope = "group2"
             assert kwargs["required_markers"] == ("2026-27",)
-            assert kwargs["max_wait_seconds"] == 0
+            assert kwargs["max_wait_seconds"] == 8
             title_group = "Grupo I" if scope == "group1" else "Grupo II"
             title = f"Clasificación 1ª RFEF {title_group} 2026-27 | BDFutbol"
             if scope == deny_scope:

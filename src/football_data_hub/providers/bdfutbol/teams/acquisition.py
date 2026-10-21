@@ -248,7 +248,10 @@ def acquire_team_profile(
                     required_selectors=selectors,
                     document_validator=lambda html, v=view: _view_markers(v, html),
                     settle_ms=750,
-                    max_wait_seconds=0,
+                    # Some valid tabs render their table after the title. Wait
+                    # on this same navigation; access.open still stops at once
+                    # on HTTP errors and access challenges.
+                    max_wait_seconds=8,
                 )
                 last_navigation = time.monotonic()
                 with opened:
