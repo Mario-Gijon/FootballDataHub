@@ -9,6 +9,7 @@ exposed by the current update API.
 from __future__ import annotations
 
 import fcntl
+import gzip
 import hashlib
 import hmac
 import json
@@ -21,6 +22,7 @@ import sys
 import threading
 import time
 import uuid
+import zlib
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from datetime import datetime, timezone
@@ -37,6 +39,142 @@ class ManualUpdateError(RuntimeError):
 
 class UpdateAlreadyRunning(ManualUpdateError):
     """Another update owns the browser or the requested scope."""
+
+
+TEAM_FOLLOW_AUTO_POLICY_ID = "validated-incremental-team-follow-v1"
+TEAM_PROFILE_REFRESH_VIEWS = ("squad", "statistics", "follow")
+
+
+def _has_related_section_changes(sections: object) -> bool:
+    """Whether a candidate contains at least one activated related capture."""
+    if not isinstance(sections, dict):
+        return False
+    groups = sections.get("groups", {})
+    if isinstance(groups, dict) and any(
+        isinstance(group_sections, dict) and bool(group_sections)
+        for group_sections in groups.values()
+    ):
+        return True
+    return bool(sections.get("referees"))
+
+
+def _team_match_ids_by_group(
+    matches_by_group: dict[str, list[dict[str, Any]]],
+) -> tuple[dict[str, dict[int, set[str]]], dict[str, dict[int, dict[str, Any]]]]:
+    """Return played fixture IDs per club and the validated match catalogs."""
+    played: dict[str, dict[int, set[str]]] = {"I": {}, "II": {}}
+    matches: dict[str, dict[int, dict[str, Any]]] = {"I": {}, "II": {}}
+    for group in ("I", "II"):
+        for match in matches_by_group.get(group, []):
+            match_id = str(match.get("match_id") or "")
+            home_id = match.get("home_team_id")
+            away_id = match.get("away_team_id")
+            if not match_id or type(home_id) is not int or type(away_id) is not int:
+                raise ManualUpdateError(f"El catálogo del Grupo {group} contiene un partido sin identidad completa.")
+            if match_id in matches[group]:
+                raise ManualUpdateError(f"El catálogo del Grupo {group} contiene match_id duplicado {match_id}.")
+            matches[group][match_id] = match
+            if match.get("status") == "played":
+                if match.get("home_goals") is None or match.get("away_goals") is None:
+                    raise ManualUpdateError(f"El partido disputado {match_id} no tiene marcador verificable.")
+                for team_id in (home_id, away_id):
+                    played[group].setdefault(team_id, set()).add(match_id)
+    return played, matches
+
+
+def _follow_covered_match_ids(
+    records: list[dict[str, Any]],
+    *,
+    team_id: int,
+    group: str,
+    matches: dict[str, dict[str, Any]],
+) -> set[str]:
+    """Identify played matches with at least one observed numeric minute.
+
+    Upcoming fixtures can already occur in BDFutbol's matrix with blank cells;
+    those rows do not count as coverage. Numeric zeroes are preserved as real
+    observations but coverage requires at least one positive minute in the match.
+    """
+    values_by_match: dict[str, list[int]] = {}
+    identities: set[tuple[int, str]] = set()
+    for row in records:
+        if not isinstance(row, dict):
+            raise ManualUpdateError(f"Seguimiento de team_id={team_id} contiene una fila inválida.")
+        if (
+            row.get("team_id") != team_id
+            or row.get("season") != "2026-27"
+            or row.get("group") != group
+            or row.get("metric") != "minutes_played"
+        ):
+            raise ManualUpdateError(f"Seguimiento de team_id={team_id} mezcla identidad, temporada o métrica.")
+        match_id = str(row.get("match_id") or "")
+        match = matches.get(match_id)
+        if match is None or team_id not in {match.get("home_team_id"), match.get("away_team_id")}:
+            raise ManualUpdateError(f"Seguimiento referencia un partido ajeno o desconocido: {match_id}.")
+        try:
+            player_id = int(row["player_id"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ManualUpdateError(f"Seguimiento de team_id={team_id} contiene un jugador sin ID.") from exc
+        key = (player_id, match_id)
+        if key in identities:
+            raise ManualUpdateError(f"Seguimiento contiene la pareja jugador/partido duplicada: {player_id}/{match_id}.")
+        identities.add(key)
+        value = row.get("value")
+        if value is not None:
+            if type(value) is not int or value < 0:
+                raise ManualUpdateError(f"Seguimiento contiene minutos no válidos para {player_id}/{match_id}.")
+            values_by_match.setdefault(match_id, []).append(value)
+    return {
+        match_id
+        for match_id, values in values_by_match.items()
+        if matches[match_id].get("status") == "played" and any(value > 0 for value in values)
+    }
+
+
+def _verified_follow_state_bytes(
+    capture_dir: Path,
+    *,
+    state: str,
+    evidence: dict[str, Any],
+    indexed_file_hashes: dict[str, Any],
+    indexed_state_hashes: dict[str, Any] | None = None,
+) -> bytes:
+    """Verify both the stored snapshot bytes and its decompressed HTML hash.
+
+    Team publication indexes hash compressed files, while capture metadata's
+    ``sha256`` identifies the uncompressed HTML. They are distinct integrity
+    checks and must not be compared to each other.
+    """
+    relative = Path(str(evidence.get("path") or ""))
+    if relative.is_absolute() or ".." in relative.parts or not relative.parts:
+        raise ManualUpdateError(f"El estado de Seguimiento {state} tiene una ruta inválida.")
+    unresolved = capture_dir / relative
+    _reject_symlink_components(unresolved)
+    path = unresolved.resolve()
+    if not path.is_relative_to(capture_dir.resolve()) or not path.is_file():
+        raise ManualUpdateError(f"El estado de Seguimiento {state} no tiene un snapshot dentro de la captura.")
+    expected_file_hash = indexed_file_hashes.get(relative.as_posix())
+    payload = path.read_bytes()
+    if not isinstance(expected_file_hash, str) or _sha256(payload) != expected_file_hash:
+        raise ManualUpdateError(f"El archivo fuente del estado de Seguimiento {state} no supera SHA-256.")
+    compression = evidence.get("compression")
+    try:
+        if compression == "gzip":
+            content = gzip.decompress(payload)
+        elif compression in {None, "none", "identity"}:
+            content = payload
+        else:
+            raise ManualUpdateError(f"Compresión no reconocida para Seguimiento {state}.")
+    except (OSError, EOFError, zlib.error) as exc:
+        raise ManualUpdateError(f"El snapshot comprimido del estado {state} está corrupto.") from exc
+    content_hash = _sha256(content)
+    if content_hash != evidence.get("sha256"):
+        raise ManualUpdateError(f"El HTML descomprimido del estado {state} no coincide con sus metadatos.")
+    if indexed_state_hashes is not None:
+        indexed_state_hash = indexed_state_hashes.get(state)
+        if indexed_state_hash is not None and indexed_state_hash != content_hash:
+            raise ManualUpdateError(f"El índice y los metadatos discrepan en el estado de Seguimiento {state}.")
+    return content
 
 
 def apply_active_group_data(settings: GroupDatasetSettings, group: str, data_root: Path | None) -> GroupDatasetSettings:
@@ -1345,6 +1483,179 @@ class ManualUpdateManager:
                     finally:
                         os.close(descriptor)
 
+    def _publish_team_follow_profiles(
+        self,
+        job: dict[str, Any],
+        candidate: dict[str, Any],
+        log_path: Path,
+    ) -> dict[str, Any] | None:
+        """Atomically publish validated team captures under the named local policy."""
+        updates = candidate.get("team_profile_candidates")
+        if not isinstance(updates, list) or not updates:
+            return None
+        if self.team_profiles_index is None or self.player_team_captures_root is None:
+            raise ManualUpdateError("No se configuró el índice externo para publicar Seguimiento.")
+        if self.team_profiles_index.is_symlink() or self.team_profiles_index.is_relative_to(self.project_root):
+            raise ManualUpdateError("El índice de equipos no es un archivo externo seguro.")
+        original_bytes = self.team_profiles_index.read_bytes()
+        original_sha = _sha256(original_bytes)
+        if original_sha != candidate.get("team_profiles_index_sha256"):
+            raise ManualUpdateError("El índice de equipos cambió durante la actualización; no se publicaron capturas.")
+        index = json.loads(original_bytes)
+        profiles = index.get("profiles")
+        if index.get("schema_version") != 1 or index.get("season") != "2026-27" or not isinstance(profiles, dict):
+            raise ManualUpdateError("El índice de equipo cambió de contrato durante la actualización.")
+        catalogs: dict[str, tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]] = {}
+        for group in ("I", "II"):
+            capture_root = Path(candidate["source_captures"][group])
+            matches_path = Path(candidate["normalized_matches"][group])
+            _reject_symlink_components(capture_root)
+            _reject_symlink_components(matches_path)
+            if _tree_sha256(capture_root) != candidate.get("source_capture_sha256", {}).get(group):
+                raise ManualUpdateError(f"La captura del Grupo {group} cambió antes de publicar Seguimiento.")
+            if _sha256(matches_path.read_bytes()) != candidate.get("normalized_match_sha256", {}).get(group):
+                raise ManualUpdateError(f"El catálogo del Grupo {group} cambió antes de publicar Seguimiento.")
+            from football_data_hub.providers.bdfutbol.context import get_competition_context
+            from football_data_hub.providers.bdfutbol.teams.catalog import load_team_catalog
+            catalogs[group] = load_team_catalog(
+                matches_path, competition=get_competition_context("2026-27", 1 if group == "I" else 2)
+            )
+        catalog_by_id: dict[int, tuple[str, str]] = {}
+        for group in ("I", "II"):
+            for team in catalogs[group][0]:
+                team_id = int(team["team_id"])
+                if team_id in catalog_by_id:
+                    raise ManualUpdateError(f"team_id duplicado en los catálogos de publicación: {team_id}.")
+                catalog_by_id[team_id] = (group, str(team.get("name") or team.get("team_name") or ""))
+        if len(catalog_by_id) != 40 or set(map(int, profiles)) != set(catalog_by_id):
+            raise ManualUpdateError("El índice y los catálogos de publicación no conservan los mismos 40 IDs.")
+
+        by_team: dict[int, dict[str, Any]] = {}
+        for update in updates:
+            if not isinstance(update, dict):
+                raise ManualUpdateError("El candidato de Seguimiento contiene una entrada inválida.")
+            team_id = int(update["team_id"])
+            if team_id in by_team or team_id not in catalog_by_id:
+                raise ManualUpdateError(f"El candidato de Seguimiento duplica o desconoce team_id={team_id}.")
+            capture_dir = Path(str(update["capture_directory"])).resolve()
+            if (
+                not capture_dir.is_relative_to(self.player_team_captures_root)
+                or capture_dir.name != update.get("capture_id")
+                or _tree_sha256(capture_dir) != update.get("capture_tree_sha256")
+            ):
+                raise ManualUpdateError(f"La captura incremental de team_id={team_id} cambió o sale del almacén autorizado.")
+            profile = profiles[str(team_id)]
+            if profile.get("capture_id") != update.get("previous_capture_id"):
+                raise ManualUpdateError(f"La captura publicada de team_id={team_id} cambió durante la actualización.")
+            by_team[team_id] = update
+
+        manifest_teams = []
+        for team_id, (group, name) in sorted(catalog_by_id.items()):
+            current_profile = profiles[str(team_id)]
+            update = by_team.get(team_id)
+            selected_capture = str(update["capture_id"]) if update else current_profile.get("capture_id")
+            selected_directory = str(update["capture_directory"]) if update else current_profile.get("directory")
+            if not selected_capture or not selected_directory:
+                raise ManualUpdateError(f"El perfil {team_id} no tiene una ruta de captura verificable.")
+            resolved = Path(str(selected_directory)).expanduser().resolve()
+            if not resolved.is_relative_to(self.player_team_captures_root) or resolved.name != selected_capture:
+                raise ManualUpdateError(f"El manifiesto de publicación contiene una ruta no autorizada para {team_id}.")
+            manifest_teams.append({
+                "group": group, "team_id": team_id, "team_name": name,
+                "status": "complete", "capture_id": selected_capture,
+                "coverage": {"capture_path": str(resolved)},
+            })
+        manifest = {
+            "schema_version": 1,
+            "season": "2026-27",
+            "run_id": f"competition-update-team-profiles-{job['job_id']}",
+            "batch_complete": True,
+            "stopped_on_access_denial": False,
+            "stop_reason": None,
+            "requested_views": ["alignment", "squad", "statistics", "follow", "transfers", "matches"],
+            "required_follow_states": ["p", "t", "go", "tot"],
+            "teams": manifest_teams,
+        }
+        manifest_path = self._jobs_dir() / str(job["job_id"]) / "team-profiles-publish-manifest.json"
+        manifest_bytes = (json.dumps(manifest, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+        if manifest_path.exists():
+            if manifest_path.read_bytes() != manifest_bytes:
+                raise ManualUpdateError("El manifiesto de perfiles ya existe con contenido distinto; no se sobrescribirá.")
+        else:
+            descriptor = os.open(manifest_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(descriptor, "wb") as stream:
+                stream.write(manifest_bytes)
+                stream.flush()
+                os.fsync(stream.fileno())
+
+        event_root = self.root / "reviews"  # type: ignore[operator]
+        event_root.mkdir(parents=True, exist_ok=True, mode=0o700)
+        event_id = str(job["job_id"])
+        event_base = {
+            "schema_version": 1,
+            "event_id": event_id,
+            "policy_id": TEAM_FOLLOW_AUTO_POLICY_ID,
+            "actor": "football-data-hub-local-update-service",
+            "source_candidate_sha256": job.get("candidate_sha256"),
+            "manifest_sha256": _sha256(manifest_bytes),
+            "previous_index_sha256": original_sha,
+            "team_captures": [
+                {
+                    "team_id": item["team_id"], "group": item["group"],
+                    "previous_capture_id": item["previous_capture_id"],
+                    "capture_id": item["capture_id"],
+                    "capture_tree_sha256": item["capture_tree_sha256"],
+                    "match_ids_added_to_follow": item["missing_match_ids"],
+                    "reused_existing_capture": item["reused_existing_capture"],
+                }
+                for item in updates
+            ],
+        }
+        _create_once(
+            event_root / f"{event_id}-team-follow-auto-apply-started.json",
+            (json.dumps({**event_base, "event": "TEAM_FOLLOW_AUTO_APPLY_STARTED", "started_at": utc_now()}, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode(),
+        )
+        job["stage"] = "publishing_team_follow"
+        self._save(job)
+        output = self._command([
+            sys.executable, "scripts/publish_bdfutbol_team_profiles.py",
+            "--store-root", str(self.player_team_captures_root),
+            "--manifest", str(manifest_path),
+            "--group1-catalog", str(candidate["normalized_matches"]["I"]),
+            "--group2-catalog", str(candidate["normalized_matches"]["II"]),
+            "--output", str(self.team_profiles_index),
+        ], log_path, timeout=1800)
+        receipt = _last_json_object(output)
+        new_bytes = self.team_profiles_index.read_bytes()
+        new_index = json.loads(new_bytes)
+        new_profiles = new_index.get("profiles")
+        if not isinstance(new_profiles, dict) or set(new_profiles) != set(profiles):
+            raise ManualUpdateError("La publicación incremental no conservó los 40 perfiles.")
+        for team_id, (group, _name) in catalog_by_id.items():
+            expected_capture = by_team[team_id]["capture_id"] if team_id in by_team else profiles[str(team_id)]["capture_id"]
+            if new_profiles[str(team_id)].get("capture_id") != expected_capture:
+                raise ManualUpdateError(f"La publicación no conservó la captura esperada para team_id={team_id} ({group}).")
+        event = {
+            **event_base,
+            "event": "TEAM_FOLLOW_AUTO_APPLIED",
+            "applied_at": utc_now(),
+            "new_index_sha256": _sha256(new_bytes),
+            "publisher_receipt": receipt,
+            "unchanged_team_count": 40 - len(by_team),
+        }
+        _create_once(
+            event_root / f"{event_id}-team-follow-auto-applied.json",
+            (json.dumps(event, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode(),
+        )
+        return {
+            "status": "published",
+            "policy_id": TEAM_FOLLOW_AUTO_POLICY_ID,
+            "team_count": len(by_team),
+            "unchanged_team_count": 40 - len(by_team),
+            "index_sha256": _sha256(new_bytes),
+            "publisher_receipt": receipt,
+        }
+
     def _finish_competition_update(
         self, job: dict[str, Any], log_path: Path, *, no_changes: bool
     ) -> None:
@@ -1353,7 +1664,15 @@ class ManualUpdateManager:
             raise ManualUpdateError("La actualización no produjo un candidato verificable.")
         self._verify_candidate_fingerprint(job, candidate)
         if no_changes:
-            related_changed = candidate.get("related_sections_changed") is True
+            related_changed = _has_related_section_changes(candidate.get("related_sections"))
+            team_follow_publication: dict[str, Any] | None = None
+            team_follow_error: str | None = None
+            try:
+                team_follow_publication = self._publish_team_follow_profiles(job, candidate, log_path)
+            except Exception as exc:
+                team_follow_error = f"{type(exc).__name__}: {str(exc)[:240]}"
+                team_follow_publication = {"status": "error", "reason": team_follow_error}
+            team_follow_changed = bool(team_follow_publication and team_follow_publication.get("status") == "published")
             if related_changed:
                 event_root = self.root / "reviews"  # type: ignore[operator]
                 event_root.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -1385,30 +1704,35 @@ class ManualUpdateManager:
                     }, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode(),
                 )
                 job["publication"] = publication
-                if self.on_competition_applied is not None:
-                    try:
-                        self.on_competition_applied(job)
-                    except Exception as exc:
-                        job.update({
-                            "status": "applied_reload_failed",
-                            "stage": "refresh_failed",
-                            "error": f"Las secciones quedaron activadas, pero FastAPI no pudo recargarlas: {type(exc).__name__}: {exc}",
-                            "summary": {
-                                "outcome": "partial",
-                                "message": "Las secciones cambiadas están activadas, pero la API necesita recargarse.",
-                                "related_section_status": candidate.get("related_section_status", {}),
-                            },
-                            "finished_at": utc_now(),
-                        })
-                        self._save(job)
-                        return
+            if (related_changed or team_follow_changed) and self.on_competition_applied is not None:
+                try:
+                    job["team_follow_publication"] = team_follow_publication
+                    self.on_competition_applied(job)
+                except Exception as exc:
+                    job.update({
+                        "status": "applied_reload_failed",
+                        "stage": "refresh_failed",
+                        "error": f"Los datos verificados quedaron activados, pero FastAPI no pudo recargarlos: {type(exc).__name__}: {exc}",
+                        "summary": {
+                            "outcome": "partial",
+                            "message": "Las secciones cambiadas están activadas, pero la API necesita recargarse.",
+                            "related_section_status": candidate.get("related_section_status", {}),
+                            "team_follow_publication": team_follow_publication,
+                        },
+                        "finished_at": utc_now(),
+                    })
+                    self._save(job)
+                    return
             job.update({"status": "running", "stage": "checking_match_details"})
             self._save(job)
             detail_summary = self._safe_process_new_match_details(job)
+            detail_summary["team_follow_update_published"] = team_follow_changed
             summary = {
                 "message": self._related_sections_message(candidate, detail_summary),
                 "changed_groups": candidate.get("changed_groups", {}),
                 "related_section_status": candidate.get("related_section_status", {}),
+                **({"team_follow_publication": team_follow_publication} if team_follow_publication else {}),
+                **({"team_follow_update_error": team_follow_error} if team_follow_error else {}),
                 **detail_summary,
             }
             outcome = self._update_outcome(candidate, detail_summary, core_applied=False)
@@ -1419,7 +1743,7 @@ class ManualUpdateManager:
                 summary["message"] = self._failure_message(candidate, detail_summary)
             terminal_status = (
                 "applied"
-                if related_changed or detail_summary.get("match_details_published_count")
+                if related_changed or team_follow_changed or detail_summary.get("match_details_published_count")
                 else "failed" if outcome == "failed" else "completed"
             )
             job.update({
@@ -1455,6 +1779,13 @@ class ManualUpdateManager:
         self._save(job)
         actor = "football-data-hub-local-update-service"
         publication = self._activate_competition(job, actor, log_path)
+        team_follow_publication: dict[str, Any] | None = None
+        team_follow_error: str | None = None
+        try:
+            team_follow_publication = self._publish_team_follow_profiles(job, candidate, log_path)
+        except Exception as exc:
+            team_follow_error = f"{type(exc).__name__}: {str(exc)[:240]}"
+            team_follow_publication = {"status": "error", "reason": team_follow_error}
         _create_once(
             event_root / f"{event_id}-auto-applied.json",
             (json.dumps({
@@ -1466,6 +1797,8 @@ class ManualUpdateManager:
             }, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode(),
         )
         summary = self._competition_result_summary(candidate)
+        if team_follow_publication:
+            summary["team_follow_publication"] = team_follow_publication
         job.update({
             "status": "applied",
             "stage": "refreshing_api",
@@ -1473,6 +1806,7 @@ class ManualUpdateManager:
             "summary": summary,
             "publication": publication,
             "auto_apply_event_id": event_id,
+            **({"team_follow_publication": team_follow_publication} if team_follow_publication else {}),
         })
         self._save(job)
         if self.on_competition_applied is not None:
@@ -1491,6 +1825,11 @@ class ManualUpdateManager:
         job.update({"status": "running", "stage": "checking_match_details"})
         self._save(job)
         detail_summary = self._safe_process_new_match_details(job)
+        detail_summary["team_follow_update_published"] = bool(
+            team_follow_publication and team_follow_publication.get("status") == "published"
+        )
+        if team_follow_error:
+            detail_summary["team_follow_update_error"] = team_follow_error
         summary.update(detail_summary)
         outcome = self._update_outcome(candidate, detail_summary, core_applied=True)
         summary["outcome"] = outcome
@@ -1529,7 +1868,10 @@ class ManualUpdateManager:
         ]
         if isinstance(status, dict) and isinstance(status.get("referees"), dict):
             statuses.append(status["referees"].get("status"))
-        if "error" in statuses:
+        team_follow = status.get("team_follow") if isinstance(status, dict) else None
+        if isinstance(team_follow, dict):
+            statuses.append(team_follow.get("status"))
+        if "error" in statuses or "partial" in statuses:
             return "Actualización parcial: una fuente relacionada dio error; se conservaron sus datos anteriores."
         changed_groups = candidate.get("changed_groups", {})
         if isinstance(changed_groups, dict) and any(changed_groups.values()):
@@ -1560,8 +1902,16 @@ class ManualUpdateManager:
             referees = related.get("referees")
             if isinstance(referees, dict) and isinstance(referees.get("status"), str):
                 section_states.append(referees["status"])
+            team_follow = related.get("team_follow")
+            if isinstance(team_follow, dict):
+                team_status = team_follow.get("status")
+                if isinstance(team_status, str):
+                    section_states.append(team_status)
 
         has_error = any(state in {"error", "not_attempted"} for state in section_states)
+        team_follow = related.get("team_follow") if isinstance(related, dict) else None
+        if isinstance(team_follow, dict):
+            has_error = has_error or int(team_follow.get("error_team_count", 0) or 0) > 0
         has_error = has_error or any(
             isinstance(details.get(key), str) and bool(details.get(key))
             for key in (
@@ -1574,24 +1924,30 @@ class ManualUpdateManager:
         has_error = has_error or int(details.get("match_details_error_count", 0) or 0) > 0
         has_error = has_error or int(details.get("match_details_validation_failed_count", 0) or 0) > 0
         has_pending = int(details.get("match_details_pending_count", 0) or 0) > 0
+        has_pending = has_pending or bool(
+            isinstance(related, dict)
+            and isinstance(related.get("team_follow"), dict)
+            and int(related["team_follow"].get("pending_team_count", 0) or 0) > 0
+        )
+        has_error = has_error or bool(details.get("team_follow_update_error"))
 
         changed_groups = candidate.get("changed_groups", {})
         core_changed = isinstance(changed_groups, dict) and any(
             bool(value) for value in changed_groups.values()
         )
-        related_changed = candidate.get("related_sections_changed") is True or any(
+        related_changed = _has_related_section_changes(candidate.get("related_sections")) or any(
             state == "changed" for state in section_states
-        )
+        ) or details.get("team_follow_update_published") is True
         any_applied = (
             core_applied
             or core_changed
             or related_changed
             or int(details.get("match_details_published_count", 0) or 0) > 0
         )
-        if has_error:
-            return "partial" if any_applied else "failed"
         if has_pending:
             return "partial"
+        if has_error:
+            return "partial" if any_applied else "failed"
         return "full"
 
     @staticmethod
@@ -1610,6 +1966,19 @@ class ManualUpdateManager:
             referees = related.get("referees")
             if isinstance(referees, dict) and referees.get("status") == "error":
                 reasons.append(f"Árbitros: {referees.get('reason') or 'falló'}")
+            team_follow = related.get("team_follow")
+            if isinstance(team_follow, dict) and team_follow.get("status") in {"error", "partial"}:
+                team_errors = [
+                    f"equipo {team_id}: {item.get('reason') or item.get('status')}"
+                    for team_id, item in (team_follow.get("teams") or {}).items()
+                    if isinstance(item, dict) and item.get("status") in {"error", "not_attempted", "pending"}
+                ]
+                if team_follow.get("reason"):
+                    reasons.append(f"Seguimiento: {team_follow['reason']}")
+                elif team_errors:
+                    reasons.append("Seguimiento: " + "; ".join(team_errors[:3]))
+                else:
+                    reasons.append("Seguimiento: hay equipos con cobertura pendiente")
         detail_error = details.get("match_details_error")
         if isinstance(detail_error, str) and detail_error:
             reasons.append(f"informes: {detail_error}")
@@ -2265,12 +2634,25 @@ class ManualUpdateManager:
         related_sections, related_section_status = self._capture_related_sections(
             job, log_path, roots=roots, normalized=normalized
         )
+        related_acquisition_stopped = related_section_status.get("acquisition_stopped") is True
+        team_follow_status = self._update_team_follow(
+            job,
+            log_path,
+            normalized=normalized,
+            stop_before_acquisition=(
+                str(related_section_status.get("stop_reason") or "Otra sección recibió una denegación o un error de validación; se detuvieron las adquisiciones posteriores.")
+                if related_acquisition_stopped else None
+            ),
+        )
+        team_profile_candidates = team_follow_status.pop("candidate_profiles", [])
+        team_profiles_index_sha256 = team_follow_status.pop("source_index_sha256", None)
+        related_section_status["team_follow"] = team_follow_status
         core_no_changes = not any(changed_groups.values())
         has_related_changes = any(
             item.get("status") == "changed"
             for group_sections in related_section_status.get("groups", {}).values()
             for item in group_sections.values()
-        ) or related_section_status.get("referees", {}).get("status") == "changed"
+        ) or related_section_status.get("referees", {}).get("status") == "changed" or bool(team_profile_candidates)
         if not any(changed_groups.values()):
             return {
                 "kind": "competition_generation",
@@ -2286,6 +2668,8 @@ class ManualUpdateManager:
                 "normalized_matches": {group: str(path) for group, path in normalized.items()},
                 "source_capture_sha256": {group: _tree_sha256(path) for group, path in roots.items()},
                 "normalized_match_sha256": {group: _sha256(path.read_bytes()) for group, path in normalized.items()},
+                "team_profiles_index_sha256": team_profiles_index_sha256,
+                "team_profile_candidates": team_profile_candidates,
                 "activated": False,
                 "published_match_details": False,
             }
@@ -2344,6 +2728,8 @@ class ManualUpdateManager:
             "normalized_matches": {group: str(path) for group, path in normalized.items()},
             "source_capture_sha256": {group: _tree_sha256(path) for group, path in roots.items()},
             "normalized_match_sha256": {group: _sha256(path.read_bytes()) for group, path in normalized.items()},
+            "team_profiles_index_sha256": team_profiles_index_sha256,
+            "team_profile_candidates": team_profile_candidates,
             "candidate_generation_sha256": _tree_sha256(candidate_path),
             "activated": False,
             "published_match_details": False,
@@ -2510,6 +2896,9 @@ class ManualUpdateManager:
                 }
         else:
             status["referees"] = {"status": "not_attempted", "reason": stop_reason}
+        status["acquisition_stopped"] = stop_reason is not None
+        if stop_reason:
+            status["stop_reason"] = stop_reason
         return related, status
 
     def _active_related_root(self, group: str, section: str) -> Path | None:
@@ -2577,6 +2966,420 @@ class ManualUpdateManager:
             "II": (normalized["II"], capture_root / "validation/match_reference.json"),
         }
         load_referee_dataset(referee_settings, group_match_sources=match_sources)
+
+    def _read_team_follow_profile(
+        self,
+        entry: dict[str, Any],
+        *,
+        team_id: int,
+        group: str,
+        catalog_matches: dict[str, dict[str, Any]],
+    ) -> tuple[Path, set[str]]:
+        """Verify the active profile's Follow evidence before calculating gaps."""
+        if self.team_profiles_index is None or self.player_team_captures_root is None:
+            raise ManualUpdateError("No están configurados el índice externo y el almacén de capturas de equipos.")
+        capture_id = entry.get("capture_id")
+        directory_value = entry.get("directory")
+        file_hashes = entry.get("files_sha256")
+        follow_hashes = entry.get("follow_files_sha256")
+        if not isinstance(capture_id, str) or not isinstance(directory_value, str):
+            raise ManualUpdateError(f"El índice no fija captura/directorio para team_id={team_id}.")
+        if not isinstance(file_hashes, dict) or not isinstance(follow_hashes, dict):
+            raise ManualUpdateError(f"El índice no fija los hashes necesarios para team_id={team_id}.")
+        configured = Path(directory_value).expanduser()
+        if ".." in configured.parts:
+            raise ManualUpdateError(f"La ruta seleccionada de team_id={team_id} contiene traversal.")
+        unresolved_capture_dir = configured if configured.is_absolute() else self.team_profiles_index.parent / configured
+        _reject_symlink_components(unresolved_capture_dir)
+        capture_dir = unresolved_capture_dir.resolve()
+        root = self.player_team_captures_root.resolve()
+        if (
+            capture_dir.name != capture_id
+            or not capture_dir.is_relative_to(root)
+            or capture_dir.is_symlink()
+        ):
+            raise ManualUpdateError(f"La ruta seleccionada de team_id={team_id} no es una captura externa versionada.")
+        for relative in (
+            "metadata/capture.json", "validation/results.json", "raw/access.json",
+            "normalized/team_identity.json", "normalized/team_season.json",
+            "normalized/players.json", "normalized/memberships.json",
+        ):
+            path = capture_dir / relative
+            if path.is_symlink() or not path.is_file() or _sha256(path.read_bytes()) != file_hashes.get(relative):
+                raise ManualUpdateError(f"La captura activa del equipo no supera SHA-256 en {relative}.")
+        for relative, expected in follow_hashes.items():
+            relative_path = Path(relative)
+            if relative_path.is_absolute() or ".." in relative_path.parts:
+                raise ManualUpdateError(f"La captura activa de Seguimiento tiene una ruta inválida: {relative}.")
+            unresolved_path = capture_dir / relative_path
+            _reject_symlink_components(unresolved_path)
+            path = unresolved_path.resolve()
+            if not path.is_relative_to(capture_dir) or not path.is_file():
+                raise ManualUpdateError(f"La captura activa de Seguimiento tiene una ruta inválida: {relative}.")
+            if _sha256(path.read_bytes()) != expected:
+                raise ManualUpdateError(f"La captura activa de Seguimiento no supera SHA-256 en {relative}.")
+        metadata = json.loads((capture_dir / "metadata/capture.json").read_text(encoding="utf-8"))
+        validation = json.loads((capture_dir / "validation/results.json").read_text(encoding="utf-8"))
+        access = json.loads((capture_dir / "raw/access.json").read_text(encoding="utf-8"))
+        snapshots = metadata.get("source_snapshots")
+        follow_snapshot = snapshots.get("follow") if isinstance(snapshots, dict) else None
+        access_by_view = metadata.get("access_by_view")
+        follow_report = access_by_view.get("follow") if isinstance(access_by_view, dict) else None
+        expected_identity = {
+            "source": "BDFutbol", "section": "team_profile", "team_id": team_id,
+            "season": "2026-27", "group": group,
+        }
+        if (
+            any(metadata.get(key) != value for key, value in expected_identity.items())
+            or metadata.get("capture_id") != capture_id
+            or validation.get("valid") is not True
+            or access.get("capture_id") != capture_id
+            or access.get("views") != access_by_view
+            or set(metadata.get("follow_states", {})) != {"p", "t", "go", "tot"}
+            or not isinstance(follow_snapshot, dict)
+            or follow_snapshot.get("access_status") != "VALID"
+            or follow_snapshot.get("http_status") != 200
+            or not isinstance(follow_report, dict)
+            or follow_report.get("status") != "VALID"
+            or follow_report.get("http_status") != 200
+            or not follow_report.get("requested_url")
+            or follow_report.get("requested_url") != follow_report.get("final_url")
+            or follow_snapshot.get("url") != follow_report.get("requested_url")
+        ):
+            raise ManualUpdateError(f"La identidad, validación o los cuatro estados de Seguimiento no se verifican para team_id={team_id}.")
+        indexed_state_hashes = entry.get("follow_states_sha256")
+        if indexed_state_hashes is not None and not isinstance(indexed_state_hashes, dict):
+            raise ManualUpdateError(f"El índice contiene hashes de estados inválidos para team_id={team_id}.")
+        for state, evidence in metadata["follow_states"].items():
+            if (
+                evidence.get("status") not in {"VALID", "DERIVED_OFFLINE"}
+                or evidence.get("selected_value") != state
+            ):
+                raise ManualUpdateError(f"La evidencia del estado de Seguimiento {state} no coincide con sus hashes.")
+            _verified_follow_state_bytes(
+                capture_dir,
+                state=state,
+                evidence=evidence,
+                indexed_file_hashes=follow_hashes,
+                indexed_state_hashes=indexed_state_hashes,
+            )
+        minutes_path = capture_dir / "normalized/player_match_minutes.json"
+        minutes_hash = follow_hashes.get("normalized/player_match_minutes.json")
+        if not minutes_hash or _sha256(minutes_path.read_bytes()) != minutes_hash:
+            raise ManualUpdateError(f"Falta el hash de minutos por partido para team_id={team_id}.")
+        minutes = json.loads(minutes_path.read_text(encoding="utf-8"))
+        document_metadata = minutes.get("metadata") or {}
+        if any(document_metadata.get(key) != value for key, value in {
+            "capture_id": capture_id, "team_id": team_id, "season": "2026-27", "group": group,
+        }.items()):
+            raise ManualUpdateError(f"El JSON de Seguimiento no pertenece a team_id={team_id}.")
+        records = minutes.get("records")
+        if not isinstance(records, list):
+            raise ManualUpdateError(f"El JSON de Seguimiento no contiene registros para team_id={team_id}.")
+        return capture_dir, _follow_covered_match_ids(records, team_id=team_id, group=group, matches=catalog_matches)
+
+    def _find_team_follow_candidate(
+        self,
+        *,
+        team_id: int,
+        group: str,
+        team_record: dict[str, Any],
+        catalog_path: Path,
+        catalog_reference: dict[str, Any],
+        group_teams: list[dict[str, Any]],
+        group_matches: list[dict[str, Any]],
+        missing_match_ids: set[str],
+        active_capture_id: str,
+    ) -> dict[str, Any] | None:
+        """Reuse the newest fully revalidated local capture that covers the gap."""
+        if self.player_team_captures_root is None:
+            return None
+        from football_data_hub.providers.bdfutbol.context import get_competition_context
+        from football_data_hub.providers.bdfutbol.teams.acquisition import DEFAULT_VIEWS
+        from football_data_hub.providers.bdfutbol.teams.capture_store import inspect_team_capture
+
+        team_root = self.player_team_captures_root / "2026-27" / str(team_id)
+        if not team_root.is_dir() or team_root.is_symlink():
+            return None
+        candidates = sorted(
+            (path for path in team_root.iterdir() if path.is_dir() and not path.is_symlink() and path.name != active_capture_id),
+            key=lambda path: path.name,
+            reverse=True,
+        )
+        for capture_dir in candidates:
+            try:
+                inspection = inspect_team_capture(
+                    capture_dir,
+                    team_catalog_record=team_record,
+                    competition=get_competition_context("2026-27", 1 if group == "I" else 2),
+                    team_catalog_reference=catalog_reference,
+                    group_team_catalog=group_teams,
+                    known_matches=group_matches,
+                    required_views=DEFAULT_VIEWS,
+                    catalog_history_root=self.project_root,
+                )
+                if not inspection.complete_for_current_policy:
+                    continue
+                normalized = json.loads((capture_dir / "normalized/player_match_minutes.json").read_text(encoding="utf-8"))
+                records = normalized.get("records")
+                if not isinstance(records, list):
+                    continue
+                covered = _follow_covered_match_ids(
+                    records,
+                    team_id=team_id,
+                    group=group,
+                    matches={str(row["match_id"]): row for row in group_matches},
+                )
+                if missing_match_ids <= covered:
+                    return {
+                        "capture_id": inspection.capture_id,
+                        "capture_directory": str(capture_dir.resolve()),
+                        "capture_tree_sha256": _tree_sha256(capture_dir),
+                        "missing_match_ids": sorted(missing_match_ids),
+                        "reused_existing_capture": True,
+                        "source_capture_ids": list(inspection.metadata.get("reused_source_capture_ids") or []),
+                    }
+            except Exception:
+                # A corrupt/ambiguous local candidate is retained for diagnosis;
+                # it cannot be used to replace the selected profile.
+                continue
+        return None
+
+    def _update_team_follow(
+        self,
+        job: dict[str, Any],
+        log_path: Path,
+        *,
+        normalized: dict[str, Path],
+        stop_before_acquisition: str | None = None,
+    ) -> dict[str, Any]:
+        """Incrementally synchronize team player stats and Follow for played fixtures."""
+        from football_data_hub.providers.bdfutbol.context import get_competition_context
+        from football_data_hub.providers.bdfutbol.teams.catalog import load_team_catalog
+
+        if self.team_profiles_index is None or self.player_team_captures_root is None:
+            return {
+                "status": "error",
+                "teams": {},
+                "reason": "El índice publicado o el almacén externo de capturas de equipos no está configurado.",
+            }
+        if self.team_profiles_index.is_symlink() or self.team_profiles_index.is_relative_to(self.project_root):
+            return {"status": "error", "teams": {}, "reason": "El índice de equipos no es un archivo externo seguro."}
+        try:
+            index_bytes = self.team_profiles_index.read_bytes()
+            index = json.loads(index_bytes)
+            profiles = index.get("profiles")
+            if index.get("schema_version") != 1 or index.get("season") != "2026-27" or not isinstance(profiles, dict):
+                raise ValueError("contrato del índice no compatible")
+            loaded = {
+                group: load_team_catalog(normalized[group], competition=get_competition_context("2026-27", 1 if group == "I" else 2))
+                for group in ("I", "II")
+            }
+            team_records = {group: value[0] for group, value in loaded.items()}
+            matches_by_group = {group: value[1] for group, value in loaded.items()}
+            references = {group: value[2] for group, value in loaded.items()}
+            expected_profiles = {
+                str(int(team["team_id"]))
+                for group in ("I", "II") for team in team_records[group]
+            }
+            if len(expected_profiles) != 40 or set(profiles) != expected_profiles:
+                raise ValueError("el índice y los dos catálogos no contienen los mismos 40 equipos")
+            played_by_group, matches_by_team_catalog = _team_match_ids_by_group(matches_by_group)
+        except Exception as exc:
+            return {"status": "error", "teams": {}, "reason": f"No se pudo reconciliar el índice/catálogos de equipos: {type(exc).__name__}: {exc}"}
+
+        index_sha256 = _sha256(index_bytes)
+        statuses: dict[str, Any] = {}
+        candidates: list[dict[str, Any]] = []
+        acquisition_targets: list[tuple[int, str, dict[str, Any], set[str], Path]] = []
+        for group in ("I", "II"):
+            group_matches = matches_by_group[group]
+            group_match_map = matches_by_team_catalog[group]
+            for team in team_records[group]:
+                team_id = int(team["team_id"])
+                key = str(team_id)
+                try:
+                    active_dir, covered = self._read_team_follow_profile(
+                        profiles[key], team_id=team_id, group=group, catalog_matches=group_match_map,
+                    )
+                    required = played_by_group[group].get(team_id, set())
+                    missing = required - covered
+                    if not missing:
+                        statuses[key] = {
+                            "status": "unchanged", "group": group,
+                            "played_matches": len(required), "covered_matches": len(required),
+                            "capture_id": active_dir.name,
+                        }
+                        continue
+                    candidate = self._find_team_follow_candidate(
+                        team_id=team_id, group=group, team_record=team,
+                        catalog_path=normalized[group], catalog_reference=references[group],
+                        group_teams=team_records[group], group_matches=group_matches,
+                        missing_match_ids=missing, active_capture_id=active_dir.name,
+                    )
+                    if candidate is not None:
+                        candidate.update({
+                            "team_id": team_id, "group": group,
+                            "previous_capture_id": active_dir.name,
+                            "previous_covered_match_ids": sorted(covered),
+                        })
+                        candidates.append(candidate)
+                        statuses[key] = {
+                            "status": "changed", "group": group,
+                            "missing_match_ids": sorted(missing), "capture_id": candidate["capture_id"],
+                            "reused_existing_capture": True,
+                        }
+                    else:
+                        acquisition_targets.append((team_id, group, team, missing, active_dir))
+                        statuses[key] = {
+                            "status": "pending", "group": group,
+                            "missing_match_ids": sorted(missing), "capture_id": active_dir.name,
+                        }
+                except Exception as exc:
+                    statuses[key] = {"status": "error", "group": group, "reason": f"{type(exc).__name__}: {str(exc)[:220]}"}
+
+        batch_manifest_path: Path | None = None
+        batch_error: str | None = None
+        if acquisition_targets and stop_before_acquisition:
+            batch_error = stop_before_acquisition
+            for team_id, group, _team, missing, _active_dir in acquisition_targets:
+                statuses[str(team_id)] = {
+                    "status": "not_attempted", "group": group,
+                    "missing_match_ids": sorted(missing),
+                    "reason": stop_before_acquisition,
+                }
+            acquisition_targets = []
+        if acquisition_targets:
+            job["stage"] = "refreshing_team_profiles"
+            self._save(job)
+            store_root = self.player_team_captures_root
+            manifests_dir = store_root / "2026-27" / "batch-manifests"
+            previous_manifests = set(manifests_dir.glob("*/manifest.json")) if manifests_dir.is_dir() else set()
+            args = [
+                sys.executable, "scripts/acquire_bdfutbol_team_batch.py",
+                "--season", "2026-27", "--groups", "both", "--pause-seconds", "5",
+                "--output-root", str(store_root),
+                "--group1-catalog", str(normalized["I"]), "--group2-catalog", str(normalized["II"]),
+                "--profile", str(self.profile_dir),
+            ]
+            for view in TEAM_PROFILE_REFRESH_VIEWS:
+                args.extend(("--view", view))
+            for view in TEAM_PROFILE_REFRESH_VIEWS:
+                args.extend(("--refresh-view", view))
+            for team_id, _group, _team, _missing, _active_dir in acquisition_targets:
+                args.extend(["--team-id", str(team_id)])
+            if self.browser_executable:
+                args.extend(["--browser-executable", str(self.browser_executable)])
+            # The provider batch owns sequential pauses and stops after any
+            # access denial. This generous bound is for a single uninterrupted
+            # 40-team, three-view run; it does not enable retries.
+            try:
+                time.sleep(5)
+                self._command(args, log_path, timeout=14_400)
+            except Exception as exc:
+                batch_error = f"{type(exc).__name__}: {str(exc)[:240]}"
+            new_manifests = sorted(
+                (set(manifests_dir.glob("*/manifest.json")) - previous_manifests)
+                if manifests_dir.is_dir() else (),
+                key=lambda path: path.stat().st_mtime_ns,
+                reverse=True,
+            )
+            if len(new_manifests) == 1:
+                batch_manifest_path = new_manifests[0]
+                try:
+                    manifest = json.loads(batch_manifest_path.read_text(encoding="utf-8"))
+                    for entry in manifest.get("teams", []):
+                        team_id = int(entry["team_id"])
+                        key = str(team_id)
+                        target = next((item for item in acquisition_targets if item[0] == team_id), None)
+                        if target is None or entry.get("status") != "complete" or not entry.get("capture_id"):
+                            if target is not None:
+                                statuses[key] = {
+                                    "status": "error" if entry.get("status") in {"failed", "incomplete"} else "not_attempted",
+                                    "group": target[1], "missing_match_ids": sorted(target[3]),
+                                    "reason": entry.get("error") or (manifest.get("stop_reason") or {}).get("message") or batch_error or "No se produjo una captura completa.",
+                                }
+                            continue
+                        _team_id, group, team, missing, _active_dir = target
+                        capture_dir = store_root / "2026-27" / str(team_id) / str(entry["capture_id"])
+                        from football_data_hub.providers.bdfutbol.context import get_competition_context
+                        from football_data_hub.providers.bdfutbol.teams.acquisition import DEFAULT_VIEWS
+                        from football_data_hub.providers.bdfutbol.teams.capture_store import inspect_team_capture
+
+                        inspection = inspect_team_capture(
+                            capture_dir,
+                            team_catalog_record=team,
+                            competition=get_competition_context("2026-27", 1 if group == "I" else 2),
+                            team_catalog_reference=references[group],
+                            group_team_catalog=team_records[group],
+                            known_matches=matches_by_group[group],
+                            required_views=DEFAULT_VIEWS,
+                            catalog_history_root=self.project_root,
+                        )
+                        if not inspection.complete_for_current_policy:
+                            raise ManualUpdateError(f"La captura incremental del equipo {team_id} no es completa: {'; '.join(inspection.reasons[:3])}")
+                        normalized_minutes = json.loads((capture_dir / "normalized/player_match_minutes.json").read_text(encoding="utf-8"))
+                        records = normalized_minutes.get("records")
+                        if not isinstance(records, list):
+                            raise ManualUpdateError(f"La captura incremental del equipo {team_id} carece de minutos normalizados.")
+                        covered = _follow_covered_match_ids(
+                            records, team_id=team_id, group=group,
+                            matches=matches_by_team_catalog[group],
+                        )
+                        if not missing <= covered:
+                            raise ManualUpdateError(f"La captura incremental del equipo {team_id} sigue sin cubrir todos los partidos disputados.")
+                        candidate = {
+                            "team_id": team_id, "group": group,
+                            "capture_id": inspection.capture_id,
+                            "capture_directory": str(capture_dir.resolve()),
+                            "capture_tree_sha256": _tree_sha256(capture_dir),
+                            "previous_capture_id": _active_dir.name,
+                            "previous_covered_match_ids": sorted(played_by_group[group].get(team_id, set()) - missing),
+                            "missing_match_ids": sorted(missing),
+                            "reused_existing_capture": False,
+                            "acquired_views": list(entry.get("acquired_views") or []),
+                            "reused_views": list(entry.get("reused_views") or []),
+                            "acquired_follow_states": list(entry.get("acquired_follow_states") or []),
+                            "reused_follow_states": list(entry.get("reused_follow_states") or []),
+                        }
+                        candidates.append(candidate)
+                        statuses[key] = {
+                            "status": "changed", "group": group,
+                            "missing_match_ids": sorted(missing),
+                            "capture_id": inspection.capture_id,
+                            "reused_existing_capture": False,
+                            "acquired_views": candidate["acquired_views"],
+                        }
+                except Exception as exc:
+                    batch_error = batch_error or f"{type(exc).__name__}: {str(exc)[:240]}"
+            elif batch_error is None:
+                batch_error = "El lote de perfiles no dejó exactamente un manifiesto nuevo e íntegro."
+            for team_id, group, _team, missing, _active_dir in acquisition_targets:
+                key = str(team_id)
+                if statuses.get(key, {}).get("status") == "pending":
+                    statuses[key] = {
+                        "status": "not_attempted", "group": group,
+                        "missing_match_ids": sorted(missing),
+                        "reason": batch_error or "El lote secuencial no llegó a este equipo.",
+                    }
+
+        errors = sum(item.get("status") == "error" for item in statuses.values())
+        pending = sum(item.get("status") == "not_attempted" for item in statuses.values())
+        changed = sum(item.get("status") == "changed" for item in statuses.values())
+        unchanged = sum(item.get("status") == "unchanged" for item in statuses.values())
+        return {
+            "status": "error" if errors and not changed else "partial" if errors or pending else "changed" if changed else "unchanged",
+            "teams": statuses,
+            "candidate_profiles": candidates,
+            "candidate_count": len(candidates),
+            "changed_team_count": changed,
+            "unchanged_team_count": unchanged,
+            "error_team_count": errors,
+            "pending_team_count": pending,
+            "source_index_sha256": index_sha256,
+            "batch_manifest": str(batch_manifest_path) if batch_manifest_path else None,
+            "batch_error": batch_error,
+        }
 
     def _update_team(self, job: dict[str, Any], log_path: Path) -> dict[str, Any]:
         assert self.data_root and job.get("team_id") and job.get("group")

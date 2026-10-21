@@ -591,6 +591,29 @@ class _FakeDocument:
     def wait(self, milliseconds: int):
         return None
 
+    def select(self, selector: str, value: str):
+        control = self._soup.select_one(selector)
+        option = control.select_one(f'option[value="{value}"]') if control else None
+        if option is None:
+            raise ValueError(f"No option {value} for {selector}")
+        for item in control.select("option"):
+            item.attrs.pop("selected", None)
+        option["selected"] = "selected"
+        self._html = str(self._soup)
+
+    def value(self, selector: str):
+        control = self._soup.select_one(selector)
+        if control is None:
+            return None
+        option = control.select_one("option[selected]") or control.select_one("option")
+        return str(option.get("value")) if option else None
+
+    def count(self, selector: str):
+        return len(self._soup.select(selector))
+
+    def evaluate(self, _script: str):
+        return []
+
     def close(self):
         return None
 
@@ -759,6 +782,72 @@ def test_refreshing_a_view_preserves_follow_metrics_and_provenance(racing, monke
         assert current["source_capture_id"] == previous.get("source_capture_id", capture["capture_id"])
         assert current["sha256"] == previous["sha256"]
     assert capture["capture_id"] in exported_metadata["reused_source_capture_ids"]
+
+
+def test_global_refresh_reacquires_all_follow_states_in_one_follow_page_visit(monkeypatch, tmp_path):
+    context = get_competition_context(group=2)
+    record = {"team_id": 49, "name": "Real Jaén", "team_url": "https://www.bdfutbol.com/es/t/t2026-271rf2.html"}
+    reference = {"group": "II", "season": context.season, "sha256": "fixture"}
+    teams = [record]
+    follow_url = "https://www.bdfutbol.com/es/t/t2026-271rf2.html?t=seg"
+    html = """<!doctype html><html><head><title>Real Jaén 2026-27</title></head>
+    <body><h1>Real Jaén 2026-27</h1><select id="vista_jornades">
+    <option value="p" selected>Partidos</option><option value="t">Tarjetas</option>
+    <option value="go">Goles</option><option value="tot">Todo</option></select>
+    <table id="taula-seguiment"><tr><td>Real Jaén</td></tr></table></body></html>"""
+    follow_html = {state: html for state in ("p", "t", "go", "tot")}
+    seed = {
+        "raw_views": {"alignment": "<html>Real Jaén</html>", "follow": html},
+        "access_by_view": {},
+        "view_urls": {"alignment": record["team_url"], "follow": follow_url},
+        "page_titles": {"follow": "Real Jaén 2026-27"},
+        "browser": {},
+        "capture_id": "seed-capture",
+        "follow_state_html": follow_html,
+        "follow_state_diagnostics": {
+            state: {"selected_value": state, "url": follow_url, "reused": True}
+            for state in follow_html
+        },
+        "seed_capture_ids": ("seed-capture",),
+    }
+    session = _FakeSession({follow_url: (html, 200)})
+    monkeypatch.setattr(
+        team_acquisition,
+        "BrowserSessionManager",
+        lambda *_args, **_kwargs: _FakeSessionManager(session),
+    )
+    monkeypatch.setattr(
+        team_acquisition, "resolve_team_view_urls",
+        lambda *_args, **_kwargs: {"follow": follow_url},
+    )
+    monkeypatch.setattr(team_acquisition, "parse_team_profile_pages", lambda *_args, **_kwargs: object())
+    monkeypatch.setattr(team_acquisition, "validate_team_profile", lambda *_args, **_kwargs: {"valid": True})
+
+    bundle = team_acquisition.acquire_team_profile(
+        team_catalog_record=record,
+        team_catalog_reference=reference,
+        group_team_catalog=teams,
+        known_matches=[],
+        competition=context,
+        profile_dir=tmp_path / "profile",
+        requested_views=("follow",),
+        seed_raw_views=seed["raw_views"],
+        seed_access_by_view=seed["access_by_view"],
+        seed_view_urls=seed["view_urls"],
+        seed_page_titles=seed["page_titles"],
+        seed_browser=seed["browser"],
+        seed_capture_id=seed["capture_id"],
+        seed_follow_state_html=seed["follow_state_html"],
+        seed_follow_state_diagnostics=seed["follow_state_diagnostics"],
+        seed_capture_ids=seed["seed_capture_ids"],
+        refresh_follow_states=True,
+        require_follow_states=True,
+    )
+
+    assert session.opened_urls == [follow_url]
+    assert set(bundle.follow_state_html) == {"p", "t", "go", "tot"}
+    assert all(bundle.follow_state_diagnostics[state].get("reused") is not True for state in ("p", "t", "go", "tot"))
+    assert bundle.validation["valid"] is True
 
 
 def test_cli_derives_jaen_follow_states_offline_without_opening_browser(capsys, monkeypatch, tmp_path):

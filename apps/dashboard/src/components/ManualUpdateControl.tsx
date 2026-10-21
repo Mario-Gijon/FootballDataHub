@@ -276,8 +276,14 @@ function hasRelatedSectionFailures(value: unknown): boolean {
     }
   }
   const referees = root.referees;
-  return typeof referees === "object" && referees !== null
-    && ["error", "not_attempted"].includes(String((referees as Record<string, unknown>).status));
+  if (typeof referees === "object" && referees !== null
+    && ["error", "not_attempted"].includes(String((referees as Record<string, unknown>).status))) return true;
+  const teamFollow = root.team_follow;
+  return typeof teamFollow === "object" && teamFollow !== null
+    && (String((teamFollow as Record<string, unknown>).status) === "error"
+      || String((teamFollow as Record<string, unknown>).status) === "partial"
+      || Number((teamFollow as Record<string, unknown>).error_team_count ?? 0) > 0
+      || Number((teamFollow as Record<string, unknown>).pending_team_count ?? 0) > 0);
 }
 
 function stageLabel(stage: string): string {
@@ -290,6 +296,8 @@ function stageLabel(stage: string): string {
     capturing_statistics_group_i: "actualizando Estadísticas del Grupo I",
     capturing_statistics_group_ii: "actualizando Estadísticas del Grupo II",
     capturing_referees: "actualizando Árbitros",
+    refreshing_team_profiles: "actualizando Seguimiento de los equipos con partidos nuevos",
+    publishing_team_follow: "publicando los perfiles de equipo verificados",
     normalizing_matches_group_i: "normalizando partidos del Grupo I",
     normalizing_matches_group_ii: "normalizando partidos del Grupo II",
     building_generation: "validando calendario y resultados",
@@ -357,6 +365,28 @@ function summaryText(summary: Record<string, unknown>): string {
       if (state === "error") {
         const reason = (refereeState as Record<string, unknown>).reason;
         pieces.push(`Árbitros: error; se conservan los datos anteriores${typeof reason === "string" ? ` (${reason})` : ""}`);
+      }
+    }
+    const followState = (related as Record<string, unknown>).team_follow;
+    if (typeof followState === "object" && followState !== null) {
+      const entry = followState as Record<string, unknown>;
+      const changed = Number(entry.changed_team_count ?? 0);
+      const unchanged = Number(entry.unchanged_team_count ?? 0);
+      const pending = Number(entry.pending_team_count ?? 0);
+      const errors = Number(entry.error_team_count ?? 0);
+      if (changed) pieces.push(`Seguimiento actualizado en ${changed} equipos`);
+      if (unchanged) pieces.push(`Seguimiento sin cambios en ${unchanged} equipos`);
+      if (pending || errors) pieces.push(`Seguimiento pendiente en ${pending + errors} equipos`);
+      if (typeof entry.reason === "string") pieces.push(`Seguimiento: ${entry.reason}`);
+      const teamStatuses = entry.teams;
+      if ((pending || errors) && typeof teamStatuses === "object" && teamStatuses !== null) {
+        const firstProblem = Object.values(teamStatuses as Record<string, unknown>).find((item) =>
+          typeof item === "object" && item !== null
+          && ["error", "not_attempted", "pending"].includes(String((item as Record<string, unknown>).status)));
+        if (typeof firstProblem === "object" && firstProblem !== null) {
+          const reason = (firstProblem as Record<string, unknown>).reason;
+          if (typeof reason === "string") pieces.push(`Detalle de Seguimiento: ${reason}`);
+        }
       }
     }
   }

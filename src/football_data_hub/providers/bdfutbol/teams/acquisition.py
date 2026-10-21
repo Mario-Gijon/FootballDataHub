@@ -135,6 +135,7 @@ def acquire_team_profile(
     seed_follow_state_html: dict[str, str] | None = None,
     seed_follow_state_diagnostics: dict[str, dict[str, Any]] | None = None,
     seed_capture_ids: tuple[str, ...] = (),
+    refresh_follow_states: bool = False,
     explore_follow_states: bool = True,
     require_follow_states: bool | None = None,
     navigation_pause_seconds: float = 0.0,
@@ -172,7 +173,11 @@ def acquire_team_profile(
     captured_views: list[str] = []
     if "alignment" not in raw_views and "alignment" not in views:
         raise ValueError("La adquisición debe incluir alignment o reutilizar su snapshot")
-    missing_follow_states = tuple(state for state in FOLLOW_STATES if state not in follow_state_html)
+    refresh_states = set(FOLLOW_STATES) if refresh_follow_states and "follow" in views else set()
+    missing_follow_states = tuple(
+        state for state in FOLLOW_STATES
+        if state not in follow_state_html or state in refresh_states
+    )
     follow_states_required = ("follow" in views) if require_follow_states is None else require_follow_states
     needs_follow_state_page = bool(
         explore_follow_states
@@ -187,7 +192,10 @@ def acquire_team_profile(
             last_navigation = 0.0
 
             def capture_missing_follow_states(document: Any, follow_url: str) -> None:
-                states_to_capture = tuple(state for state in FOLLOW_STATES if state not in follow_state_html)
+                states_to_capture = tuple(
+                    state for state in FOLLOW_STATES
+                    if state not in follow_state_html or state in refresh_states
+                )
                 if not states_to_capture:
                     return
                 resource_urls_before = set(

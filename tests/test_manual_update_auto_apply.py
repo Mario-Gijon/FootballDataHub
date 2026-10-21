@@ -130,6 +130,11 @@ def test_valid_competition_candidate_is_applied_and_audited_without_human_approv
 def test_equal_group_snapshots_report_sin_cambios_without_activation(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     manager = _manager(tmp_path)
     job = _job(_candidate(no_changes=True))
+    job["candidate"]["related_sections"] = {"groups": {}}
+    job["candidate_sha256"] = _candidate_sha256({
+        key: value for key, value in job["candidate"].items() if key != "candidate_sha256"
+    })
+    job["candidate"]["candidate_sha256"] = job["candidate_sha256"]
     pending_report_checks: list[str] = []
     monkeypatch.setattr(
         manager,
@@ -145,6 +150,7 @@ def test_equal_group_snapshots_report_sin_cambios_without_activation(tmp_path: P
     assert job["summary"]["message"] == "Sin cambios"
     assert pending_report_checks == [job["job_id"]]
     assert not (manager.root / "reviews").exists()
+    assert not (manager.data_root / "operations/manual-updates/active-group-data.json").exists()
     manager.close()
 
 
@@ -444,6 +450,16 @@ def test_refresh_outcome_distinguishes_partial_and_failed_from_full() -> None:
         {"match_details_pending_count": 0},
         core_applied=False,
     ) == "full"
+    assert ManualUpdateManager._update_outcome(
+        {
+            "related_sections": {"groups": {}},
+            "related_section_status": {"team_follow": {
+                "status": "partial", "pending_team_count": 2, "error_team_count": 0,
+            }},
+        },
+        {},
+        core_applied=False,
+    ) == "partial"
 
 
 def test_auto_detail_pipeline_reuses_exact_unstarted_proposal_without_duplicate_plan(

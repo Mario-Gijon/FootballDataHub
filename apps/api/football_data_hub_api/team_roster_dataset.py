@@ -70,6 +70,7 @@ def load_team_roster_registry(
     datasets: dict[str, DatasetBundle],
     matches_paths: dict[str, Path],
     unavailable_group_errors: dict[str, str] | None = None,
+    team_ids: set[int] | None = None,
 ) -> TeamRosterRegistry:
     """Read and validate the selected captures once; HTTP handlers use memory only."""
 
@@ -125,6 +126,8 @@ def load_team_roster_registry(
             team_id = int(team_key)
         except (TypeError, ValueError):
             logger.error("El índice contiene team_id no numérico: %r", team_key)
+            continue
+        if team_ids is not None and team_id not in team_ids:
             continue
         try:
             if team_id not in known:

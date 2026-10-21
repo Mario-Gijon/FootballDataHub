@@ -60,6 +60,15 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="No reutiliza capturas completas, parciales ni checkpoints: adquiere de nuevo el equipo solicitado.",
     )
     parser.add_argument("--view", action="append", choices=tuple(DEFAULT_VIEWS))
+    parser.add_argument(
+        "--refresh-view",
+        action="append",
+        choices=tuple(DEFAULT_VIEWS),
+        help=(
+            "Vuelve a adquirir una vista seleccionada aunque exista en la captura semilla; "
+            "las demás vistas verificadas se reutilizan."
+        ),
+    )
     parser.add_argument("--group1-catalog", type=Path)
     parser.add_argument("--group2-catalog", type=Path)
     parser.add_argument(
@@ -167,6 +176,7 @@ def _team_plan(
     assessment: CaptureInspection | None,
     catalog_reference: dict[str, Any],
     pending_evidence=None,
+    refresh_views: tuple[str, ...] = (),
 ) -> dict[str, Any]:
     valid_views = set(assessment.valid_views if assessment else ())
     valid_states = set(assessment.valid_follow_states if assessment else ())
@@ -182,15 +192,18 @@ def _team_plan(
     if missing_states and "follow" not in visit_views:
         visit_views.append("follow")
     already_complete = bool(assessment and assessment.complete_for_current_policy)
+    views_to_refresh = [view for view in views if view in refresh_views]
     if already_complete:
-        visit_views = []
+        visit_views = list(views_to_refresh)
         missing_states = []
         missing_views = []
+    elif views_to_refresh:
+        visit_views = list(dict.fromkeys((*views_to_refresh, *visit_views)))
     return {
         "group": "I" if group == 1 else "II",
         "team_id": int(record["team_id"]),
         "team_name": str(record.get("name") or record.get("team_name") or ""),
-        "action": "skip_complete" if already_complete else (
+        "action": "refresh_selected_views" if already_complete and views_to_refresh else "skip_complete" if already_complete else (
             "recover_offline" if pending_evidence and not visit_views else
             "resume_pending" if pending_evidence else "acquire_or_rebuild"
         ),
@@ -206,7 +219,9 @@ def _team_plan(
         "missing_views": missing_views,
         "missing_follow_states": missing_states,
         "planned_page_visits": visit_views,
-        "follow_state_transitions": len(missing_states),
+        "follow_state_transitions": (
+            len(FOLLOW_STATES) if "follow" in views_to_refresh else len(missing_states)
+        ),
         "planned_navigation_count": len(visit_views),
         "catalog_reference": catalog_reference,
     }
@@ -291,6 +306,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     groups = (1, 2) if args.groups == "both" else ((1,) if args.groups == "I" else (2,))
     selected_views = tuple(dict.fromkeys(args.view)) if args.view else DEFAULT_VIEWS
+    refresh_views = tuple(dict.fromkeys(args.refresh_view or ()))
+    if not set(refresh_views).issubset(selected_views):
+        raise ValueError("Cada --refresh-view debe aparecer también entre las vistas seleccionadas con --view.")
     output_root = args.output_root.expanduser()
     if not args.dry_run and _is_inside_repository(output_root) and not args.allow_repository_storage:
         raise ValueError(
@@ -350,6 +368,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 assessment=inspection,
                 pending_evidence=pending,
                 catalog_reference=references[group],
+                refresh_views=refresh_views,
             ))
 
     if args.dry_run:
@@ -376,7 +395,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     def complete(group: int, team_id: int, _views: tuple[str, ...]) -> CaptureInspection | None:
-        if args.force_refresh:
+        if args.force_refresh or refresh_views:
             return None
         item = inspections.get((group, team_id))
         return item if item and item.complete_for_current_policy else None
@@ -442,7 +461,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 ) from exc
 
         acquired_views_needed = tuple(
-            view for view in views if seed is None or view not in seed["raw_views"]
+            view for view in views
+            if seed is None or view not in seed["raw_views"] or view in refresh_views
         )
         if seed is None and "alignment" not in acquired_views_needed:
             acquired_views_needed = ("alignment", *acquired_views_needed)
@@ -470,6 +490,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 seed_follow_state_html=(seed or {}).get("follow_state_html"),
                 seed_follow_state_diagnostics=(seed or {}).get("follow_state_diagnostics"),
                 seed_capture_ids=(seed or {}).get("seed_capture_ids", ()),
+                refresh_follow_states="follow" in refresh_views,
                 capture_id=checkpoint.capture_id,
                 require_follow_states=("follow" in views),
                 navigation_pause_seconds=args.pause_seconds,

@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import Counter
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 from football_data_hub.providers.bdfutbol.teams import batch_cli
 
@@ -108,3 +109,34 @@ def test_controlled_stop_writes_incomplete_manifest_and_returns_nonzero(monkeypa
     assert written[0]["stopped_on_access_denial"] is True
     assert written[0]["batch_complete"] is False
     assert written[0]["summary"] == {"failed": 1, "pending": 39}
+
+
+def test_refresh_views_force_selected_reacquisition_for_complete_profiles() -> None:
+    views = ("squad", "statistics", "follow")
+    assessment = SimpleNamespace(
+        valid_views=views,
+        valid_follow_states=("p", "t", "go", "tot"),
+        complete_for_current_policy=True,
+        manifest_summary=lambda: {"complete": True},
+    )
+    args = batch_cli.parse_args([
+        "--groups", "II", "--team-id", "49",
+        "--view", "squad", "--view", "statistics", "--view", "follow",
+        "--refresh-view", "squad", "--refresh-view", "statistics", "--refresh-view", "follow",
+    ])
+
+    plan = batch_cli._team_plan(
+        record={"team_id": 49, "name": "Real Jaén"},
+        group=2,
+        views=views,
+        assessment=assessment,
+        catalog_reference={"group": "II"},
+        refresh_views=tuple(args.refresh_view),
+    )
+
+    assert plan["action"] == "refresh_selected_views"
+    assert plan["missing_views"] == []
+    assert plan["missing_follow_states"] == []
+    assert plan["planned_page_visits"] == ["squad", "statistics", "follow"]
+    assert plan["follow_state_transitions"] == 4
+    assert plan["planned_navigation_count"] == 3

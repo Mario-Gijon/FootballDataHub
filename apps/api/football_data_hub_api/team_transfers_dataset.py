@@ -54,6 +54,7 @@ def load_team_transfers_registry(
     *,
     roster_registry: TeamRosterRegistry,
     unavailable_group_errors: dict[str, str] | None = None,
+    team_ids: set[int] | None = None,
 ) -> TeamTransfersRegistry:
     """Validate fixed capture selections once; request handlers read memory only."""
     known = roster_registry.known_teams
@@ -75,6 +76,8 @@ def load_team_transfers_registry(
     for team_key, entry in entries.items():
         try:
             team_id = int(team_key)
+            if team_ids is not None and team_id not in team_ids:
+                continue
             if team_id not in known:
                 raise TeamTransfersLoadError("El equipo de la captura no existe en los catálogos publicados.")
             if not isinstance(entry, dict):

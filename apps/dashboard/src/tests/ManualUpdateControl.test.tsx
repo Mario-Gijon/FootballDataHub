@@ -133,6 +133,36 @@ describe("ManualUpdateControl", () => {
     expect(status).toHaveTextContent("Entrada inesperada en review v2");
   });
 
+  it("reports Follow coverage gaps without calling the competition update a full success", async () => {
+    api.startCompetitionUpdate.mockResolvedValue(job());
+    api.loadManualUpdateJob.mockResolvedValue(job({
+      status: "completed", stage: "completed", finished_at: "2026-10-21T14:00:00Z",
+      summary: {
+        message: "Actualización parcial: algunas jornadas de Seguimiento siguen pendientes.",
+        outcome: "partial",
+        related_section_status: {
+          groups: {},
+          team_follow: {
+            status: "partial", changed_team_count: 1, unchanged_team_count: 38,
+            pending_team_count: 1, error_team_count: 0,
+            teams: { "49": { status: "not_attempted", reason: "No existe una captura local compatible." } },
+          },
+        },
+      },
+    }));
+    render(<ManualUpdateControl />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Actualizar Primera Federación" }));
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Seguimiento actualizado en 1 equipos"), { timeout: 5000 });
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent("Actualización parcial.");
+    expect(status).toHaveTextContent("Seguimiento actualizado en 1 equipos");
+    expect(status).toHaveTextContent("Seguimiento sin cambios en 38 equipos");
+    expect(status).toHaveTextContent("Seguimiento pendiente en 1 equipos");
+    expect(status).toHaveTextContent("No existe una captura local compatible.");
+    expect(status).not.toHaveTextContent("Actualización completada.");
+  });
+
   it("surfaces denied or failed access without retrying or opening review", async () => {
     api.startCompetitionUpdate.mockRejectedValue(new Error("HTTP_403: acceso detenido"));
     render(<ManualUpdateControl />);

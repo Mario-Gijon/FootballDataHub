@@ -67,6 +67,7 @@ def load_team_follow_registry(
     matches_paths: dict[str, Path],
     roster_registry: TeamRosterRegistry,
     unavailable_group_errors: dict[str, str] | None = None,
+    team_ids: set[int] | None = None,
 ) -> TeamFollowRegistry:
     """Validate selected captures once at startup; route handlers use memory only."""
 
@@ -90,6 +91,8 @@ def load_team_follow_registry(
         team_id: int | None = None
         try:
             team_id = int(team_key)
+            if team_ids is not None and team_id not in team_ids:
+                continue
             if team_id not in known:
                 raise TeamFollowLoadError("El perfil seleccionado no pertenece a un equipo conocido.")
             if not isinstance(entry, dict):

@@ -289,6 +289,84 @@ def _reload_after_manual_update(app: FastAPI, configured: ApiSettings, manager: 
         app.state.team_roster_registry = roster
         app.state.team_follow_registry = follow
         app.state.team_transfers_registry = transfers
+    elif job.get("scope") == "competition":
+        team_publication = job.get("team_follow_publication")
+        team_candidates = candidate.get("team_profile_candidates", [])
+        selected_team_ids = {
+            int(item["team_id"])
+            for item in team_candidates
+            if isinstance(item, dict) and item.get("team_id") is not None
+        } if isinstance(team_candidates, list) else set()
+        if (
+            selected_team_ids
+            and isinstance(team_publication, dict)
+            and team_publication.get("status") == "published"
+        ):
+            try:
+                partial_roster = load_team_roster_registry(
+                    configured.team_profiles_index_path,
+                    datasets=datasets,
+                    matches_paths={key: value.matches_path for key, value in group_settings.items()},
+                    team_ids=selected_team_ids,
+                )
+                current_roster = app.state.team_roster_registry
+                if partial_roster.index_error is None:
+                    roster_profiles = dict(current_roster.profiles)
+                    roster_errors = dict(current_roster.profile_errors)
+                    roster_profiles.update(partial_roster.profiles)
+                    for team_id in partial_roster.profiles:
+                        roster_errors.pop(team_id, None)
+                    roster_errors.update(partial_roster.profile_errors)
+                    roster = TeamRosterRegistry(
+                        partial_roster.known_teams, roster_profiles, roster_errors,
+                        None, partial_roster.unavailable_group_errors,
+                    )
+                    partial_follow = load_team_follow_registry(
+                        configured.team_profiles_index_path,
+                        datasets=datasets,
+                        matches_paths={key: value.matches_path for key, value in group_settings.items()},
+                        roster_registry=roster,
+                        team_ids=selected_team_ids,
+                    )
+                    current_follow = app.state.team_follow_registry
+                    follow_profiles = dict(current_follow.profiles)
+                    follow_errors = dict(current_follow.profile_errors)
+                    follow_profiles.update(partial_follow.profiles)
+                    for team_id in partial_follow.profiles:
+                        follow_errors.pop(team_id, None)
+                    follow_errors.update(partial_follow.profile_errors)
+                    follow = TeamFollowRegistry(
+                        partial_follow.known_teams, follow_profiles, follow_errors,
+                        partial_follow.index_error, partial_follow.unavailable_group_errors,
+                    )
+                    partial_transfers = load_team_transfers_registry(
+                        configured.team_profiles_index_path,
+                        roster_registry=roster,
+                        team_ids=selected_team_ids,
+                    )
+                    current_transfers = app.state.team_transfers_registry
+                    transfer_profiles = dict(current_transfers.profiles)
+                    transfer_errors = dict(current_transfers.profile_errors)
+                    transfer_profiles.update(partial_transfers.profiles)
+                    for team_id in partial_transfers.profiles:
+                        transfer_errors.pop(team_id, None)
+                    transfer_errors.update(partial_transfers.profile_errors)
+                    transfers = TeamTransfersRegistry(
+                        partial_transfers.known_teams, transfer_profiles, transfer_errors,
+                        partial_transfers.index_error, partial_transfers.unavailable_group_errors,
+                    )
+                    # A Follow-only publication does not reload the competition
+                    # generation. Swap the merged registries here so the API
+                    # serves the new profile capture immediately.
+                    app.state.team_roster_registry = roster
+                    app.state.team_follow_registry = follow
+                    app.state.team_transfers_registry = transfers
+                else:
+                    logger.error("No se actualizaron las fichas de equipos: %s", partial_roster.index_error)
+            except (ManualUpdateError, ValueError, TypeError, KeyError):
+                logger.exception("No se pudieron recargar los perfiles incrementales de equipo")
+                # The published index remains authoritative and the old in-memory
+                # profile cache is retained until a controlled API reload.
     app.state.match_results = match_results
     app.state.match_results_error = None if match_results is not None else app.state.match_results_error
     app.state.match_detail_documents = match_details
