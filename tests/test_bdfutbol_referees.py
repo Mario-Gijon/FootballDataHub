@@ -94,7 +94,9 @@ class _FakeSession:
         pass
 
 
-def _install_fake_referee_acquisition(monkeypatch, *, deny_scope: str | None = None):
+def _install_fake_referee_acquisition(
+    monkeypatch, *, deny_scope: str | None = None, invalid_scope: str | None = None,
+):
     visited: list[str] = []
     html_by_scope = {
         scope: (FIXTURES / f"{scope}.html").read_text(encoding="utf-8")
@@ -127,6 +129,16 @@ def _install_fake_referee_acquisition(monkeypatch, *, deny_scope: str | None = N
                     reason="Desafío simulado en fixture de test",
                 )
                 return _FakeOpened(assessment, None)
+            if scope == invalid_scope:
+                assessment = AccessAssessment(
+                    status=AccessStatus.INVALID_CONTENT,
+                    requested_url=url,
+                    final_url=url,
+                    http_status=200,
+                    page_title=title,
+                    reason="Falta la tabla de árbitros",
+                )
+                return _FakeOpened(assessment, _FakeVisit(url, "<html><body>Incompleto</body></html>"))
             source_html = html_by_scope[scope]
             assert kwargs["document_validator"](source_html) == ()
             assessment = AccessAssessment(
@@ -197,6 +209,23 @@ def test_acquisition_stops_at_first_access_denial_without_retry(monkeypatch, tmp
         referee_acquisition.acquire_referee_pages(profile_dir=tmp_path / "profile")
 
     assert visited == [URLS["all"], URLS["group1"]]
+
+
+def test_invalid_referee_html_is_preserved_without_promotion(monkeypatch, tmp_path):
+    visited = _install_fake_referee_acquisition(monkeypatch, invalid_scope="all")
+    root = tmp_path / "captures"
+    with pytest.raises(referee_acquisition.RefereeAcquisitionStopped):
+        referee_acquisition.acquire_referee_pages(
+            profile_dir=tmp_path / "profile", diagnostic_root=root,
+        )
+    assert visited == [URLS["all"]]
+    diagnostics = list((root / "diagnostics").iterdir())
+    assert len(diagnostics) == 1
+    html = (diagnostics[0] / "source.html").read_bytes()
+    metadata = json.loads((diagnostics[0] / "metadata.json").read_text())
+    assert metadata["source_html_sha256"] == hashlib.sha256(html).hexdigest()
+    assert metadata["access"]["status"] == "INVALID_CONTENT"
+    assert not (diagnostics[0] / "normalized").exists()
 
 
 def test_empty_values_remain_null_and_published_zero_remains_zero():

@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
+import hashlib
+import json
+import os
 from pathlib import Path
 import time
 from typing import Any
@@ -79,6 +82,7 @@ def _access_page(
     *,
     url: str,
     scope: RefereeScope,
+    diagnostic_dir: Path | None = None,
 ) -> RefereeScopeSnapshot:
     group_title = {"all": "Grupo II", "group1": "Grupo I", "group2": "Grupo II"}[scope]
     opened = BDFutbolAccess(session).open(
@@ -92,6 +96,28 @@ def _access_page(
     )
     with opened:
         if opened.assessment.status is not AccessStatus.VALID or opened.visit is None:
+            if (
+                diagnostic_dir is not None
+                and opened.assessment.status is AccessStatus.INVALID_CONTENT
+                and opened.assessment.http_status == 200
+                and opened.visit is not None
+            ):
+                html_bytes = opened.visit.document.html().encode("utf-8")
+                diagnostic_dir.mkdir(parents=True, exist_ok=False)
+                raw_path = diagnostic_dir / "source.html"
+                raw_tmp = diagnostic_dir / "source.html.tmp"
+                raw_tmp.write_bytes(html_bytes)
+                os.replace(raw_tmp, raw_path)
+                metadata = {
+                    "scope": scope,
+                    "captured_at_utc": datetime.now(timezone.utc).isoformat(),
+                    "source_html_sha256": hashlib.sha256(html_bytes).hexdigest(),
+                    "source_html_bytes": len(html_bytes),
+                    "access": asdict(opened.assessment),
+                }
+                meta_tmp = diagnostic_dir / "metadata.json.tmp"
+                meta_tmp.write_text(json.dumps(metadata, ensure_ascii=False, default=str), encoding="utf-8")
+                os.replace(meta_tmp, diagnostic_dir / "metadata.json")
             raise RefereeAcquisitionStopped(opened.assessment)
         page = opened.visit.document
         source_html = page.html()
@@ -134,6 +160,7 @@ def acquire_referee_pages(
     use_xvfb: bool = True,
     capture_id: str | None = None,
     pause_seconds: float = 0.0,
+    diagnostic_root: Path | None = None,
 ) -> RefereeAcquisitionBundle:
     """Captura Todos, Grupo 1 y Grupo 2 con una sola sesión Pure CDP.
 
@@ -151,8 +178,10 @@ def acquire_referee_pages(
         use_xvfb=use_xvfb,
     )
     snapshots: list[RefereeScopeSnapshot] = []
+    capture_id = capture_id or create_referee_capture_id()
+    diagnostic_dir = diagnostic_root / "diagnostics" / capture_id if diagnostic_root else None
     with BrowserSessionManager(config, navigation_timeout_ms=navigation_timeout_ms) as session:
-        all_page = _access_page(session, url=REFEREES_URL, scope="all")
+        all_page = _access_page(session, url=REFEREES_URL, scope="all", diagnostic_dir=diagnostic_dir)
         snapshots.append(all_page)
         parsed_all = parse_referee_page(
             all_page.raw_html, scope="all", source_url=all_page.requested_url
@@ -161,7 +190,7 @@ def acquire_referee_pages(
             if pause_seconds:
                 time.sleep(pause_seconds)
             url = _scope_target(parsed_all, scope)
-            snapshots.append(_access_page(session, url=url, scope=scope))
+            snapshots.append(_access_page(session, url=url, scope=scope, diagnostic_dir=diagnostic_dir))
         info = session.info
         browser_info = {
             "backend": info.backend if info else config.backend,
@@ -174,7 +203,7 @@ def acquire_referee_pages(
             "xvfb_external": info.xvfb_external if info else use_xvfb,
         }
     return RefereeAcquisitionBundle(
-        capture_id=capture_id or create_referee_capture_id(),
+        capture_id=capture_id,
         captured_at_utc=snapshots[0].captured_at_utc,
         pages=tuple(snapshots),
         browser=browser_info,

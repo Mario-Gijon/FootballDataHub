@@ -180,6 +180,35 @@ class TeamEvidenceCheckpoint:
         }
         self._save()
 
+    def record_rejected_view(
+        self,
+        view: str,
+        html: str,
+        *,
+        access: dict[str, Any],
+    ) -> None:
+        """Preserve rejected HTTP 200 evidence without making it reusable as a valid view."""
+        if view not in TEAM_VIEW_SELECTORS:
+            raise ValueError("Vista de equipo desconocida")
+        if str(access.get("status", "")).upper().split(".")[-1] != "INVALID_CONTENT":
+            raise ValueError("Solo se conserva contenido rechazado por estructura")
+        if access.get("http_status") != 200:
+            raise ValueError("La evidencia rechazada requiere HTTP 200 confirmado")
+        if view in self.manifest.get("rejected_snapshots", {}):
+            raise ValueError("La evidencia rechazada ya está registrada; no se sobrescribe")
+        details = self._save_html(f"raw/rejected/{view}.html.gz", html)
+        self.manifest.setdefault("rejected_snapshots", {})[view] = {
+            **details,
+            "requested_url": access.get("requested_url"),
+            "final_url": access.get("final_url"),
+            "title": access.get("page_title"),
+            "http_status": 200,
+            "access_status": "INVALID_CONTENT",
+            "captured_at_utc": _utc_now(),
+            "access": access,
+        }
+        self._save()
+
     def record_follow_state(self, state: str, html: str, diagnostics: dict[str, Any]) -> None:
         if state not in FOLLOW_STATES or diagnostics.get("selected_value") != state:
             raise ValueError("El estado de Seguimiento no coincide con el valor seleccionado")

@@ -192,6 +192,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 navigation_timeout_ms=args.navigation_timeout_ms,
                 use_xvfb=args.use_xvfb,
                 pause_seconds=args.pause_seconds,
+                diagnostic_root=args.output_root,
             )
         parsed = _normalize_bundle(bundle)
         validation = validate_referee_data(parsed)

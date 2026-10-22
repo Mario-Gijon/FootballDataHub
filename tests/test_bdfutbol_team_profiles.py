@@ -937,6 +937,55 @@ def test_acquisition_stops_on_challenge_without_retry(jaen, monkeypatch, tmp_pat
     assert fake_session.opened_urls == [record["team_url"]]
 
 
+def test_acquisition_preserves_invalid_html_in_checkpoint(jaen, monkeypatch, tmp_path):
+    from football_data_hub.providers.bdfutbol.access import (
+        AccessAssessment, AccessStatus, BDFutbolVisit,
+    )
+
+    context, payload, record, _, _, _, _, _ = jaen
+    html = f"<html><head><title>{record['name']} 2026-27</title></head><body>{record['name']} 2026-27</body></html>"
+    fake_session = _FakeSession({record["team_url"]: (html, 200)})
+    monkeypatch.setattr(
+        team_acquisition, "BrowserSessionManager",
+        lambda *_args, **_kwargs: _FakeSessionManager(fake_session),
+    )
+
+    class FakeAccess:
+        def __init__(self, session):
+            self.session = session
+
+        def open(self, url, **_kwargs):
+            visit = self.session.open_page(url)
+            return BDFutbolVisit(
+                AccessAssessment(
+                    AccessStatus.INVALID_CONTENT, url, url, 200,
+                    f"{record['name']} 2026-27", reason="Falta estructura",
+                ),
+                visit,
+            )
+
+    monkeypatch.setattr(team_acquisition, "BDFutbolAccess", FakeAccess)
+    checkpoint = TeamEvidenceCheckpoint(
+        tmp_path / "captures", season=context.season, group=context.group_roman,
+        team_record=record, catalog_reference={"path": "fixture", "sha256": "fixture"},
+        requested_views=("alignment",),
+    )
+    with pytest.raises(TeamAcquisitionStopped):
+        team_acquisition.acquire_team_profile(
+            team_catalog_record=record,
+            team_catalog_reference={"path": "fixture", "sha256": "fixture"},
+            group_team_catalog=payload["teams"], known_matches=payload["matches"],
+            competition=context, profile_dir=tmp_path / "profile",
+            requested_views=("alignment",), evidence_checkpoint=checkpoint,
+        )
+    manifest = _read_json(checkpoint.manifest_path)
+    assert fake_session.opened_urls == [record["team_url"]]
+    assert manifest["source_snapshots"] == {}
+    rejected = manifest["rejected_snapshots"]["alignment"]
+    assert gzip.decompress((checkpoint.path / rejected["path"]).read_bytes()).decode() == html
+    assert rejected["sha256"] == hashlib.sha256(html.encode()).hexdigest()
+
+
 def _checkpoint_from_complete_jaen(root: Path, *, capture_id: str = "diag-jaen-1"):
     context = get_competition_context(group=2)
     payload = _read_json(GROUP_CATALOGS[2])
@@ -978,6 +1027,36 @@ def _checkpoint_from_complete_jaen(root: Path, *, capture_id: str = "diag-jaen-1
             "url": evidence.get("url"),
         })
     return checkpoint, context, payload, record, reference, views, follow_state_html
+
+
+def test_rejected_html_is_preserved_but_never_promoted_to_valid_view(tmp_path):
+    checkpoint, context, _, record, _, _, _ = _checkpoint_from_complete_jaen(
+        tmp_path / "captures"
+    )
+    html = "<html><body>Respuesta incompleta</body></html>"
+    access = {
+        "status": "INVALID_CONTENT",
+        "http_status": 200,
+        "requested_url": record["team_url"],
+        "final_url": record["team_url"],
+        "page_title": "Respuesta incompleta",
+    }
+    checkpoint.record_rejected_view("squad", html, access=access)
+    manifest = _read_json(checkpoint.manifest_path)
+    rejected = manifest["rejected_snapshots"]["squad"]
+    assert gzip.decompress((checkpoint.path / rejected["path"]).read_bytes()).decode() == html
+    assert rejected["sha256"] == hashlib.sha256(html.encode()).hexdigest()
+    assert manifest["source_snapshots"]["squad"]["access_status"] == "VALID"
+    with pytest.raises(ValueError):
+        checkpoint.record_rejected_view("squad", "new response", access=access)
+    assert gzip.decompress((checkpoint.path / rejected["path"]).read_bytes()).decode() == html
+    with pytest.raises(ValueError):
+        checkpoint.record_rejected_view("statistics", html, access={**access, "status": "VALID"})
+    pending = read_pending_evidence(
+        checkpoint.path, season=context.season, group=context.group_roman,
+        team_record=record,
+    )
+    assert pending.seed["raw_views"]["squad"] != html
 
 
 def test_valid_html_is_durable_before_parse_and_recovers_offline(tmp_path):

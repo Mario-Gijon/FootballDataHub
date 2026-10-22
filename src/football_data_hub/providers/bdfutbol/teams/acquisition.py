@@ -259,6 +259,17 @@ def acquire_team_profile(
                     access_by_view[view] = asdict(assessment)
                     view_urls[view] = url
                     if assessment.status is not AccessStatus.VALID or opened.visit is None:
+                        if (
+                            evidence_checkpoint is not None
+                            and assessment.status is AccessStatus.INVALID_CONTENT
+                            and assessment.http_status == 200
+                            and opened.visit is not None
+                        ):
+                            evidence_checkpoint.record_rejected_view(
+                                view,
+                                opened.visit.document.html(),
+                                access=access_by_view[view],
+                            )
                         raise TeamAcquisitionStopped(view, assessment)
                     document = opened.visit.document
                     if capture_as_view:
